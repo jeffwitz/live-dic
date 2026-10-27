@@ -1,0 +1,23 @@
+{
+  "source_repository": "/home/jeff/CNRS/Code/DIC_CODEC/DIC_FROM_H264",
+  "source_file": "experiments/codec_observation_closure/validation_inputs/seed2026101102_translation/master.yuv",
+  "source_sha256": "18737085d7a31b43693eafccae813cb4d8096693abdfd419e2fd34d2e3907755",
+  "source_format": "yuv420p",
+  "width": 512,
+  "height": 512,
+  "source_frames": 201,
+  "selected_frames": [0, 1, 5, 10, 20],
+  "motion": {
+    "kind": "translation",
+    "vx_px_per_frame": 0.2,
+    "vy_px_per_frame": -0.1
+  },
+  "png_sha256": {
+    "frame_000.png": "0f2542b8f0cf8a2c412327425bc40f3eed356b83f1d788008f529953c4d12959",
+    "frame_001.png": "66096535a521b0d9c9647e0272cf25f570eab4337b5570bb4cb050a520fd1470",
+    "frame_005.png": "36765d666de8f3611c296be68e173d39a4c4590ecc01e40418bcf18286a9bc23",
+    "frame_010.png": "5ae599789c8c77d3a1d79106a4fabc3809bbb0aa830e35360030ec687b8fda22",
+    "frame_020.png": "a253a9fcae76e98f58a2566aefc0962175925bc9795e876a55416039a6c13232"
+  },
+  "conversion": "Direct extraction of the luma frames from raw YUV with FFmpeg; no H.264 input or decoding."
+}

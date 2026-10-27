@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lucas-kanade-icgn-webgl"
+version = "0.1.0"
+description = "Headless Python interface for the affine IC-GN WebGL2 solver"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.24",
+  "Pillow>=9.0",
+  "websockets>=10",
+]
+
+[project.optional-dependencies]
+dev = ["ruff>=0.8"]
+
+[project.scripts]
+icgn-webgl = "lucas_kanade_icgn.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+lucas_kanade_icgn = ["py.typed"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["B", "E4", "E7", "E9", "F", "I", "SIM", "UP"]
+
