@@ -8,9 +8,10 @@ The current backend requires:
 
 * Python 3.10 or newer;
 * Chromium or Google Chrome with WebGL2 support;
-* a GPU and driver accepted by Chromium;
-* the ``tests_gpuio`` checkout, because the runtime serves ``gpu-io.js`` and
-  the IC-GN shader directly from the repository.
+* a GPU and driver accepted by Chromium.
+
+The package embeds ``gpu-io.js``, the IC-GN solver, and the headless HTML page.
+It does not require a repository checkout or a network connection at runtime.
 
 Install the package
 -------------------
@@ -39,6 +40,29 @@ Verify the headless GPU runtime:
 
 The JSON output should name the GPU, report a 32 x 32 grid, and contain 900
 accepted subsets for this test pair.
+
+Prepare an offline installation
+-------------------------------
+
+On a connected machine with the same operating system, architecture, and
+Python version as the offline machine, build a local wheelhouse:
+
+.. code-block:: console
+
+   $ python3 -m pip wheel DIC/LucasKanadeICGN/python --wheel-dir wheelhouse
+
+This downloads wheels for NumPy, Pillow, and websockets and builds the IC-GN
+wheel with its HTML and JavaScript resources. Copy ``wheelhouse/`` to the
+offline machine, where Chromium must already be installed, then run:
+
+.. code-block:: console
+
+   $ python3 -m pip install \
+       --no-index \
+       --find-links wheelhouse \
+       lucas-kanade-icgn-webgl
+
+No CDN or package index is contacted during subsequent registrations.
 
 Select a browser explicitly
 ---------------------------

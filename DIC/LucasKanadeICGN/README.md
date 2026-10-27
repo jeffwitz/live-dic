@@ -60,6 +60,8 @@ provides:
 
 Chromium is used only as an invisible WebGL2 runtime. The headless entry point
 does not load Tweakpane, attach the canvas to the DOM, or render a visible UI.
+All HTML and JavaScript runtime assets are embedded in the Python wheel, so an
+installed package does not need this repository or network access at runtime.
 See [`python/README.md`](./python/README.md) for installation and API examples.
 
 ## Optional browser demo
@@ -74,6 +76,10 @@ The page loads `t = 0` as the reference, evaluates all four targets, and runs a
 synchronous benchmark. Its controls can select another target or rerun the
 campaign. Timings use `gl.finish()` or WebGL timer queries, so GPU completion is
 observed without including video decoding.
+
+GPU-IO, Tweakpane 3.1.2, and Tweakpane Essentials 0.1.0 are loaded from local
+files. The demo makes no CDN request. Versions, hashes, and licence locations
+are recorded in [`THIRD_PARTY.md`](./THIRD_PARTY.md).
 
 Default parameters match the SYCL geometry: a 16-pixel grid spacing, 16 x 16
 subsets centered at `(8 + 16i, 8 + 16j)`, a `1e-3` pixel tolerance, a minimum

@@ -215,19 +215,62 @@ def _free_port() -> int:
         return int(sock.getsockname()[1])
 
 
-def _find_repo_root(explicit: str | os.PathLike[str] | None) -> Path:
-    """Locate the checkout containing GPU-IO and the headless entry point."""
+@dataclass(frozen=True, slots=True)
+class _RuntimeAssets:
+    """Filesystem location and URL path of the browser runtime."""
 
-    candidates: list[Path] = []
+    root: Path
+    headless_path: str
+
+
+def _direct_runtime_assets(root: Path) -> _RuntimeAssets | None:
+    """Return a runtime layout rooted directly at the three browser assets."""
+
+    required = ("headless.html", "gpu-io.js", "LucasKanadeICGN.js")
+    if all((root / filename).is_file() for filename in required):
+        return _RuntimeAssets(root=root, headless_path="headless.html")
+    return None
+
+
+def _checkout_runtime_assets(root: Path) -> _RuntimeAssets | None:
+    """Return the legacy checkout layout when all source assets are present."""
+
+    page = root / "DIC/LucasKanadeICGN/headless.html"
+    solver = root / "DIC/LucasKanadeICGN/LucasKanadeICGN.js"
+    if (root / "gpu-io.js").is_file() and page.is_file() and solver.is_file():
+        return _RuntimeAssets(
+            root=root,
+            headless_path="DIC/LucasKanadeICGN/headless.html",
+        )
+    return None
+
+
+def _find_runtime_assets(explicit: str | os.PathLike[str] | None) -> _RuntimeAssets:
+    """Locate self-contained package assets or an explicitly selected checkout."""
+
     if explicit is not None:
-        candidates.append(Path(explicit).expanduser().resolve())
-    candidates.extend([Path.cwd().resolve(), *Path(__file__).resolve().parents])
-    for candidate in candidates:
-        if (candidate / "gpu-io.js").is_file() and (
-            candidate / "DIC/LucasKanadeICGN/headless.html"
-        ).is_file():
-            return candidate
-    raise ICGNError("Cannot find the tests_gpuio root. Pass repo_root=... to ICGNWebGL.")
+        root = Path(explicit).expanduser().resolve()
+        assets = _direct_runtime_assets(root) or _checkout_runtime_assets(root)
+        if assets is None:
+            raise ICGNError(
+                "The requested runtime root does not contain headless.html, "
+                "gpu-io.js, and LucasKanadeICGN.js."
+            )
+        return assets
+
+    # Wheels install package data as ordinary files. Prefer that stable layout
+    # so execution never depends on the current directory or a source checkout.
+    packaged = _direct_runtime_assets(Path(__file__).resolve().parent / "web")
+    if packaged is not None:
+        return packaged
+
+    # Keep a source-tree fallback for incomplete editable installations and for
+    # developers exercising this module before rebuilding package data.
+    for candidate in (Path.cwd().resolve(), *Path(__file__).resolve().parents):
+        checkout = _checkout_runtime_assets(candidate)
+        if checkout is not None:
+            return checkout
+    raise ICGNError("The packaged WebGL runtime assets are missing; reinstall the package.")
 
 
 def _find_chromium(explicit: str | os.PathLike[str] | None) -> str:
@@ -333,7 +376,9 @@ class ICGNWebGL:
             raise ValueError("startup_timeout must be greater than zero")
         if call_timeout <= 0:
             raise ValueError("call_timeout must be greater than zero")
-        self.repo_root = _find_repo_root(repo_root)
+        assets = _find_runtime_assets(repo_root)
+        self.repo_root = assets.root
+        self._headless_path = assets.headless_path
         self.chromium = _find_chromium(chromium)
         self.startup_timeout = float(startup_timeout)
         self.call_timeout = float(call_timeout)
@@ -361,9 +406,7 @@ class ICGNWebGL:
         self._temporary = tempfile.TemporaryDirectory(prefix="icgn-webgl-")
         log_path = Path(self._temporary.name) / "chromium.log"
         self._log_handle = log_path.open("wb")
-        page_url = (
-            f"http://127.0.0.1:{self._server.port}/DIC/LucasKanadeICGN/headless.html?headless=1"
-        )
+        page_url = f"http://127.0.0.1:{self._server.port}/{self._headless_path}?headless=1"
         command = [
             self.chromium,
             "--headless=new",
@@ -402,7 +445,7 @@ class ICGNWebGL:
                     item
                     for item in pages
                     if item.get("type") == "page"
-                    and "LucasKanadeICGN/headless.html" in item.get("url", "")
+                    and f"/{self._headless_path}?" in item.get("url", "")
                 )
                 self._websocket_url = str(page["webSocketDebuggerUrl"])
                 if self._wait_until_ready(deadline):

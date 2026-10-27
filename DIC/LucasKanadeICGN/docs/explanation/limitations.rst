@@ -27,11 +27,17 @@ Runtime
 -------
 
 * Chromium is required as the WebGL2 execution environment.
+* Chromium itself is a system dependency and is not distributed in the Python
+  wheel.
 * One engine instance is not thread-safe.
 * WebGL2 shader arithmetic is single precision.
 * Full parameter and status fields are read back for every ``register`` call.
 * Current timing is soft real-time and provides no operating-system deadline
   guarantee.
+
+The solver's HTML and JavaScript resources are packaged locally. Network access
+is not a runtime requirement once the Python dependencies and Chromium are
+installed.
 
 Acquisition
 -----------

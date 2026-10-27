@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import tempfile
 import unittest
+from pathlib import Path
 
 import numpy as np
 
@@ -10,6 +12,7 @@ from lucas_kanade_icgn.engine import (
     BenchmarkResult,
     RegistrationResult,
     _as_uint8_gray,
+    _find_runtime_assets,
     _run_async_blocking,
 )
 
@@ -95,6 +98,40 @@ class NotebookLoopTests(unittest.TestCase):
             return _run_async_blocking(asyncio.sleep(0, result=7))
 
         self.assertEqual(asyncio.run(outer()), 7)
+
+
+class RuntimeAssetTests(unittest.TestCase):
+    def test_packaged_runtime_is_complete(self) -> None:
+        assets = _find_runtime_assets(None)
+        self.assertEqual(assets.headless_path, "headless.html")
+        for filename in ("headless.html", "gpu-io.js", "LucasKanadeICGN.js"):
+            self.assertTrue((assets.root / filename).is_file(), filename)
+        page = (assets.root / "headless.html").read_text(encoding="utf-8")
+        self.assertNotIn("https://", page)
+        self.assertNotIn("http://", page)
+
+    def test_explicit_direct_asset_directory_is_supported(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for filename in ("headless.html", "gpu-io.js", "LucasKanadeICGN.js"):
+                (root / filename).touch()
+            assets = _find_runtime_assets(root)
+        self.assertEqual(assets.root, root)
+        self.assertEqual(assets.headless_path, "headless.html")
+
+    def test_browser_demo_uses_local_script_dependencies(self) -> None:
+        module_root = Path(__file__).resolve().parents[2]
+        page = (module_root / "index.html").read_text(encoding="utf-8")
+        self.assertNotIn('<script src="http://', page)
+        self.assertNotIn('<script src="https://', page)
+        for relative in (
+            "../../gpu-io.js",
+            "../../tweakpane.js",
+            "./vendor/tweakpane-plugin-essentials-0.1.0.min.js",
+            "./LucasKanadeICGN.js",
+        ):
+            self.assertIn(f'src="{relative}"', page)
+            self.assertTrue((module_root / relative).resolve().is_file(), relative)
 
 
 if __name__ == "__main__":

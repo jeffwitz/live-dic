@@ -31,7 +31,12 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-lucas_kanade_icgn = ["py.typed"]
+lucas_kanade_icgn = [
+  "py.typed",
+  "web/*.html",
+  "web/*.js",
+  "web/LICENSES/*.txt",
+]
 
 [tool.ruff]
 line-length = 100

@@ -13,9 +13,8 @@ GPU shaders as the browser implementation.
 ## Requirements and installation
 
 - Python 3.10 or newer;
-- Chromium or Google Chrome;
-- a checkout containing `gpu-io.js` and
-  `DIC/LucasKanadeICGN/headless.html`.
+- Chromium or Google Chrome with WebGL2 support;
+- a compatible GPU and driver.
 
 From the `tests_gpuio` repository root:
 
@@ -24,9 +23,26 @@ python3 -m venv .venv-icgn
 .venv-icgn/bin/pip install -e DIC/LucasKanadeICGN/python
 ```
 
-The repository root is discovered automatically from the working directory and
-package location. Pass `repo_root=...` to `ICGNWebGL` when using a different
-layout.
+The wheel embeds `gpu-io.js`, `LucasKanadeICGN.js`, and `headless.html`. The
+installed runtime therefore needs neither a source checkout nor network access.
+`repo_root=...` remains available as an explicit development override for a
+directory containing those three files or for a complete `tests_gpuio`
+checkout.
+
+For a fully offline installation on another machine, prepare a wheelhouse on a
+connected machine with the same operating system and Python version:
+
+```bash
+python3 -m pip wheel DIC/LucasKanadeICGN/python --wheel-dir wheelhouse
+```
+
+Copy `wheelhouse/` to the offline machine, where Chromium must already be
+installed, then run:
+
+```bash
+python3 -m pip install --no-index --find-links wheelhouse \
+  lucas-kanade-icgn-webgl
+```
 
 ## Persistent engine
 

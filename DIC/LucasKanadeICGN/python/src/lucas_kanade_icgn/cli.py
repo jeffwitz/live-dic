@@ -48,7 +48,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--repeats", type=int, default=30, help="measured benchmark runs")
     parser.add_argument("--warmups", type=int, default=3, help="benchmark warm-up runs")
     parser.add_argument("--output", type=Path, help="write complete numeric fields to .npz")
-    parser.add_argument("--repo-root", type=Path, help="tests_gpuio repository root")
+    parser.add_argument(
+        "--repo-root",
+        type=Path,
+        help="optional runtime asset directory or tests_gpuio repository root",
+    )
     parser.add_argument("--chromium", type=Path, help="Chromium or Chrome executable")
     parser.add_argument(
         "--startup-timeout",

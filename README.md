@@ -132,8 +132,7 @@ Requirements:
 
 - Python 3.10 or newer;
 - Chromium or Google Chrome with WebGL2 support;
-- a compatible GPU and driver;
-- this repository checkout, which contains `gpu-io.js` and the shaders.
+- a compatible GPU and driver.
 
 Install the local Python package:
 
@@ -141,6 +140,12 @@ Install the local Python package:
 python3 -m venv .venv-icgn
 .venv-icgn/bin/pip install -e DIC/LucasKanadeICGN/python
 ```
+
+The Python package embeds `gpu-io.js`, the IC-GN solver, and its headless HTML
+entry point. After Python dependencies and Chromium have been installed, the
+runtime performs no network requests and does not require the repository
+checkout. The optional browser demonstration also uses only vendored scripts;
+see [`THIRD_PARTY.md`](./DIC/LucasKanadeICGN/THIRD_PARTY.md).
 
 ## First Python registration
 
@@ -248,7 +253,7 @@ better initial estimate.
 
 The current code has been verified with:
 
-- six Python unit tests;
+- nine Python unit tests;
 - Ruff linting and formatting checks;
 - JavaScript syntax checking;
 - wheel build and installation;
