@@ -1,6 +1,14 @@
 Real-Time DIC in Python
 =======================
 
+.. important:: Foundational work by Pierre Margerit
+
+   This work would not exist without `Pierre Margerit's original tests_gpuio
+   project <https://github.com/MargeritPierre/tests_gpuio>`_. His GPU-IO
+   experiments, repository structure, and WebGL groundwork are the foundation
+   on which this Python real-time DIC implementation is built. The work
+   documented here is a continuation of that foundation.
+
 This documentation describes a Python workflow for GPU-accelerated digital
 image correlation (DIC). The current implementation performs affine
 inverse-compositional Gauss-Newton registration on 512 x 512 grayscale frames
@@ -69,3 +77,4 @@ acquisition and codec integration are deliberately outside the current path.
    explanation/icgn
    explanation/realtime-performance
    explanation/limitations
+   explanation/acknowledgements

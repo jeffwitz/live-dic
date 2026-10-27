@@ -42,6 +42,23 @@
         font: 12px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
         white-space: pre-wrap;
       }
+
+      #credit {
+        position: fixed;
+        right: 12px;
+        bottom: 10px;
+        z-index: 3;
+        max-width: min(430px, calc(100vw - 24px));
+        padding: 8px 11px;
+        color: #eee;
+        background: rgb(0 0 0 / 72%);
+        border: 1px solid rgb(255 255 255 / 24%);
+        font: 12px/1.4 system-ui, sans-serif;
+      }
+
+      #credit a {
+        color: #8ecbff;
+      }
     </style>
     <script src="../../gpu-io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tweakpane@3.1.2/dist/tweakpane.min.js"></script>
@@ -50,6 +67,18 @@
   <body>
     <pre id="results">Loading the raw test dataset...</pre>
     <div id="status">Initializing the raw-image benchmark...</div>
+    <aside id="credit">
+      <strong>Foundational work by
+        <a href="https://github.com/MargeritPierre" target="_blank" rel="noreferrer">
+          Pierre Margerit
+        </a>.
+      </strong>
+      This implementation continues Pierre's original
+      <a href="https://github.com/MargeritPierre/tests_gpuio" target="_blank" rel="noreferrer">
+        tests_gpuio
+      </a>
+      GPU-IO and WebGL work.
+    </aside>
     <script src="./LucasKanadeICGN.js"></script>
   </body>
 </html>

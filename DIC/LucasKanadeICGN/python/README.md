@@ -1,5 +1,10 @@
 # Headless Python interface for IC-GN WebGL2
 
+> **Built on Pierre Margerit's foundational work.** This Python interface is an
+> extension of [Pierre Margerit's original `tests_gpuio`
+> project](https://github.com/MargeritPierre/tests_gpuio). His GPU-IO
+> experiments and WebGL foundation made this real-time DIC path possible.
+
 This package exposes the affine IC-GN solver in the parent directory to Python
 without opening a browser window or loading the graphical controls. Chromium is
 still used as an invisible WebGL2 runtime so the Python path executes the same

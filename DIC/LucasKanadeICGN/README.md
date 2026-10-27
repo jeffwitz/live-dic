@@ -1,5 +1,12 @@
 # Affine Lucas-Kanade IC-GN for GPU-IO
 
+> **Foundational acknowledgement — Pierre Margerit.** This work would not exist
+> without [Pierre Margerit's original `tests_gpuio`
+> project](https://github.com/MargeritPierre/tests_gpuio). Its GPU-IO
+> experiments, repository structure, and WebGL groundwork made this Python
+> real-time DIC implementation possible. The implementation presented here is a
+> continuation of that foundation.
+
 This implementation ports the affine inverse-compositional Gauss-Newton
 (IC-GN) registration core from the SYCL prototype in
 `DIC_CODEC/DIC_FROM_H264` to the repository's WebGL2/GPU-IO framework. It runs
