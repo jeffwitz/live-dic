@@ -51,6 +51,9 @@ const DEFAULT_TOLERANCE = 1e-3;
 const DEFAULT_ZNCC_MIN = 0.8;
 const FIR_RADIUS = 15;
 const FIR_TAPS = 2 * FIR_RADIUS + 1;
+const PREFILTER_TILE_SIZE = 16;
+const PREFILTER_TILE_STRIDE = PREFILTER_TILE_SIZE + 2 * FIR_RADIUS;
+const PREFILTER_TILE_PIXELS = PREFILTER_TILE_SIZE * PREFILTER_TILE_STRIDE;
 const FORCE_WEBGL = new URLSearchParams(window.location.search).get('forceWebGL') === '1';
 
 const configuration = {
@@ -195,19 +198,75 @@ const mirrorNode = (coordinate, size) => select(
   select(coordinate.greaterThanEqual(size), int(2 * size - 2).sub(coordinate), coordinate),
 );
 
-const makePrefilterKernel = (input, output, horizontal) => Fn(() => {
-  const index = instanceIndex;
-  const x = int(index.mod(uint(FRAME_WIDTH)));
-  const y = int(index.div(uint(FRAME_WIDTH)));
-  const result = float(0).toVar();
-  for (let tap = -FIR_RADIUS; tap <= FIR_RADIUS; ++tap) {
-    const sx = horizontal ? mirrorNode(x.add(tap), FRAME_WIDTH) : x;
-    const sy = horizontal ? y : mirrorNode(y.add(tap), FRAME_HEIGHT);
-    const sampleIndex = uint(sy.mul(FRAME_WIDTH).add(sx));
-    result.addAssign(input.element(sampleIndex).mul(FIR_WEIGHTS[tap + FIR_RADIUS]));
+const makePrefilterKernel = (input, output, horizontal) => {
+  if (renderer.backend.isWebGPUBackend !== true) {
+    return Fn(() => {
+      const index = instanceIndex;
+      const x = int(index.mod(uint(FRAME_WIDTH)));
+      const y = int(index.div(uint(FRAME_WIDTH)));
+      const result = float(0).toVar();
+      for (let tap = -FIR_RADIUS; tap <= FIR_RADIUS; ++tap) {
+        const sx = horizontal ? mirrorNode(x.add(tap), FRAME_WIDTH) : x;
+        const sy = horizontal ? y : mirrorNode(y.add(tap), FRAME_HEIGHT);
+        const sampleIndex = uint(sy.mul(FRAME_WIDTH).add(sx));
+        result.addAssign(input.element(sampleIndex).mul(FIR_WEIGHTS[tap + FIR_RADIUS]));
+      }
+      output.element(index).assign(result);
+    })().compute(PIXEL_COUNT, [256])
+      .setName(horizontal ? 'DIC-RT WebGL2 prefilter X' : 'DIC-RT WebGL2 prefilter Y');
   }
-  output.element(index).assign(result);
-})().compute(PIXEL_COUNT, [256]).setName(horizontal ? 'DIC-RT prefilter X' : 'DIC-RT prefilter Y');
+  const tileColumns = Math.ceil(FRAME_WIDTH / PREFILTER_TILE_SIZE);
+  const tileRows = Math.ceil(FRAME_HEIGHT / PREFILTER_TILE_SIZE);
+  return Fn(() => {
+    const lane = int(localId.x);
+    const tileColumn = int(workgroupId.x.mod(uint(tileColumns)));
+    const tileRow = int(workgroupId.x.div(uint(tileColumns)));
+    const baseX = tileColumn.mul(PREFILTER_TILE_SIZE);
+    const baseY = tileRow.mul(PREFILTER_TILE_SIZE);
+    const tile = workgroupArray('float', PREFILTER_TILE_PIXELS);
+
+    // A 256-lane workgroup cooperatively loads the 16x46 halo. Each lane
+    // performs at most three global reads instead of every output doing 31.
+    for (let batch = 0; batch < 3; ++batch) {
+      const tileIndex = lane.add(batch * 256);
+      If(tileIndex.lessThan(PREFILTER_TILE_PIXELS), () => {
+        const tileX = horizontal
+          ? tileIndex.mod(PREFILTER_TILE_STRIDE)
+          : tileIndex.mod(PREFILTER_TILE_SIZE);
+        const tileY = horizontal
+          ? tileIndex.div(PREFILTER_TILE_STRIDE)
+          : tileIndex.div(PREFILTER_TILE_SIZE);
+        const candidateX = horizontal ? baseX.add(tileX).sub(FIR_RADIUS) : baseX.add(tileX);
+        const candidateY = horizontal ? baseY.add(tileY) : baseY.add(tileY).sub(FIR_RADIUS);
+        const sampleX = horizontal
+          ? mirrorNode(candidateX, FRAME_WIDTH)
+          : select(candidateX.lessThan(FRAME_WIDTH), candidateX, FRAME_WIDTH - 1);
+        const sampleY = horizontal
+          ? select(candidateY.lessThan(FRAME_HEIGHT), candidateY, FRAME_HEIGHT - 1)
+          : mirrorNode(candidateY, FRAME_HEIGHT);
+        const sampleIndex = uint(sampleY.mul(FRAME_WIDTH).add(sampleX));
+        tile.element(tileIndex).assign(input.element(sampleIndex));
+      });
+    }
+    workgroupBarrier();
+
+    const localX = lane.mod(PREFILTER_TILE_SIZE);
+    const localY = lane.div(PREFILTER_TILE_SIZE);
+    const x = baseX.add(localX);
+    const y = baseY.add(localY);
+    If(x.lessThan(FRAME_WIDTH).and(y.lessThan(FRAME_HEIGHT)), () => {
+      const result = float(0).toVar();
+      for (let tap = -FIR_RADIUS; tap <= FIR_RADIUS; ++tap) {
+        const tileIndex = horizontal
+          ? localY.mul(PREFILTER_TILE_STRIDE).add(localX).add(FIR_RADIUS + tap)
+          : localY.add(FIR_RADIUS + tap).mul(PREFILTER_TILE_SIZE).add(localX);
+        result.addAssign(tile.element(tileIndex).mul(FIR_WEIGHTS[tap + FIR_RADIUS]));
+      }
+      output.element(uint(y.mul(FRAME_WIDTH).add(x))).assign(result);
+    });
+  })().compute(tileColumns * tileRows * 256, [256])
+    .setName(horizontal ? 'DIC-RT tiled prefilter X' : 'DIC-RT tiled prefilter Y');
+};
 
 const packedComponent = (buffer, itemIndex, componentIndex) => {
   const packed = buffer.element(itemIndex);
@@ -626,7 +685,10 @@ const makeFusedCooperativeSolverKernel = () => Fn(() => {
  * reduce the per-column sums without workgroup barriers or global state
  * round-trips; converged subsets skip the expensive interpolation and update.
  */
-const makeSubgroupSolverKernel = () => Fn(() => {
+const makeSubgroupSolverKernel = () => {
+  const solverLanes = Math.min(subgroupWidth, SUBSET_PIXELS);
+  const pixelsPerLane = Math.ceil(SUBSET_PIXELS / solverLanes);
+  return Fn(() => {
   const subsetIndex = uint(workgroupId.x);
   const lane = int(localId.x);
   const currentTranslation = translationNode.element(subsetIndex).toVar();
@@ -669,32 +731,37 @@ const makeSubgroupSolverKernel = () => Fn(() => {
     const sumReferenceCurrent = float(0).toVar();
     const sumJCurrent = Array.from({ length: 6 }, () => float(0).toVar());
     If(active, () => {
-      Loop({ start: int(0), end: int(SUBSET_SIZE), type: 'int', condition: '<', name: 'row' }, ({ row }) => {
-        const localX = float(lane).sub(SUBSET_HALF_EXTENT);
-        const localY = float(row).sub(SUBSET_HALF_EXTENT);
-        const displacement = currentTranslation.add(vec2(
-          currentLinear.x.mul(localX).add(currentLinear.y.mul(localY)),
-          currentLinear.z.mul(localX).add(currentLinear.w.mul(localY)),
-        ));
-        const current = sampleCubic(center.sub(0.5).add(vec2(localX, localY)).add(displacement));
-        const templateIndex = uint(gridY.mul(SUBSET_SIZE).add(row).mul(FRAME_WIDTH)
-          .add(gridX.mul(SUBSET_SIZE)).add(lane));
-        const reference = referenceNode.element(templateIndex);
-        const jacobian = [
-          reference.y,
-          reference.y.mul(localX),
-          reference.y.mul(localY),
-          reference.z,
-          reference.z.mul(localX),
-          reference.z.mul(localY),
-        ];
-        sumCurrent.addAssign(current);
-        sumCurrent2.addAssign(current.mul(current));
-        sumReferenceCurrent.addAssign(reference.x.mul(current));
-        for (let component = 0; component < 6; ++component) {
-          sumJCurrent[component].addAssign(jacobian[component].mul(current));
-        }
-      });
+      for (let batch = 0; batch < pixelsPerLane; ++batch) {
+        const pixel = lane.add(batch * solverLanes);
+        If(pixel.lessThan(SUBSET_PIXELS), () => {
+          const pixelX = pixel.mod(SUBSET_SIZE);
+          const pixelY = pixel.div(SUBSET_SIZE);
+          const localX = float(pixelX).sub(SUBSET_HALF_EXTENT);
+          const localY = float(pixelY).sub(SUBSET_HALF_EXTENT);
+          const displacement = currentTranslation.add(vec2(
+            currentLinear.x.mul(localX).add(currentLinear.y.mul(localY)),
+            currentLinear.z.mul(localX).add(currentLinear.w.mul(localY)),
+          ));
+          const current = sampleCubic(center.sub(0.5).add(vec2(localX, localY)).add(displacement));
+          const templateIndex = uint(gridY.mul(SUBSET_SIZE).add(pixelY).mul(FRAME_WIDTH)
+            .add(gridX.mul(SUBSET_SIZE)).add(pixelX));
+          const reference = referenceNode.element(templateIndex);
+          const jacobian = [
+            reference.y,
+            reference.y.mul(localX),
+            reference.y.mul(localY),
+            reference.z,
+            reference.z.mul(localX),
+            reference.z.mul(localY),
+          ];
+          sumCurrent.addAssign(current);
+          sumCurrent2.addAssign(current.mul(current));
+          sumReferenceCurrent.addAssign(reference.x.mul(current));
+          for (let component = 0; component < 6; ++component) {
+            sumJCurrent[component].addAssign(jacobian[component].mul(current));
+          }
+        });
+      }
     });
 
     const totalsA = subgroupAdd(
@@ -741,8 +808,9 @@ const makeSubgroupSolverKernel = () => Fn(() => {
     linearNode.element(subsetIndex).assign(currentLinear);
     statusNode.element(subsetIndex).assign(vec2(currentStatus, currentIterations));
   });
-})().compute([GRID_COUNT, 1, 1], [SOLVER_LANES])
-  .setName('DIC-RT subgroup affine IC-GN solver');
+  })().compute([GRID_COUNT, 1, 1], [solverLanes])
+    .setName(`DIC-RT ${solverLanes}-lane subgroup affine IC-GN solver`);
+};
 
 const median8Node = (values, count) => {
   Loop(8, () => {
