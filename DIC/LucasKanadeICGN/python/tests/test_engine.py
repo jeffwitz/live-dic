@@ -119,6 +119,22 @@ class RuntimeAssetTests(unittest.TestCase):
         self.assertEqual(assets.root, root)
         self.assertEqual(assets.headless_path, "headless.html")
 
+    def test_packaged_three_tsl_runtime_is_complete_and_offline(self) -> None:
+        assets = _find_runtime_assets(None, "three-tsl")
+        self.assertEqual(assets.headless_path, "headless.html")
+        for filename in (
+            "headless.html",
+            "LucasKanadeICGNThree.js",
+            "vendor/three.core.js",
+            "vendor/three.webgpu.js",
+            "vendor/three.tsl.js",
+            "vendor/THREE-LICENSE.txt",
+        ):
+            self.assertTrue((assets.root / filename).is_file(), filename)
+        page = (assets.root / "headless.html").read_text(encoding="utf-8")
+        self.assertNotIn("https://", page)
+        self.assertNotIn("http://", page)
+
     def test_browser_demo_uses_local_script_dependencies(self) -> None:
         module_root = Path(__file__).resolve().parents[2]
         page = (module_root / "index.html").read_text(encoding="utf-8")

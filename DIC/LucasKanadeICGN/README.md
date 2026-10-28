@@ -1,4 +1,4 @@
-# Affine Lucas-Kanade IC-GN for GPU-IO
+# Affine Lucas-Kanade IC-GN browser backends
 
 > **Foundational acknowledgement — Pierre Margerit.** This work would not exist
 > without [Pierre Margerit's original `tests_gpuio`
@@ -9,8 +9,9 @@
 
 This implementation ports the affine inverse-compositional Gauss-Newton
 (IC-GN) registration core from the SYCL prototype in
-`DIC_CODEC/DIC_FROM_H264` to the repository's WebGL2/GPU-IO framework. It runs
-on offline test images and does not require a camera or an H.264 pipeline.
+`DIC_CODEC/DIC_FROM_H264` to two browser GPU backends: the original
+WebGL2/GPU-IO path and an independent Three.js/TSL WebGPU path. It runs on
+offline test images and does not require a camera or an H.264 pipeline.
 
 The implementation retains the main algorithmic choices of the SYCL version:
 
@@ -23,13 +24,20 @@ The implementation retains the main algorithmic choices of the SYCL version:
 - one constant inverse Hessian prepared with the reference image;
 - ZNCC rejection and median replacement of spatial outliers.
 
-WebGL2 requires a different memory layout from C++/SYCL. Translation and the
+The GPU-IO backend requires a different memory layout from C++/SYCL. Translation and the
 four linear affine terms are stored in two floating-point textures. Reference
 quantities (`F`, gradients, `H^-1`, `J^T F`, and `sum(J)`) are prepared once on
 the CPU and uploaded to three GPU textures. Each target is filtered on the GPU
 with the same radius-15 FIR as the optimized SYCL configuration. The IC-GN
 shader accumulates ZNSSD statistics and `J^T g` in one pass before applying the
 inverse-compositional update.
+
+The Three.js backend implements those same operations as TSL storage-buffer
+compute kernels: two target prefilter passes, the six-parameter affine IC-GN
+iteration, and the final median consistency pass. It is an implementation of
+the DIC-RT equations in this repository, not a copy of Strobox. Three.js r186
+and its licence are vendored locally under [`three/vendor/`](./three/vendor/)
+for offline execution.
 
 The remaining differences are platform constraints: WebGL2 uses single
 precision and exposes neither SYCL subgroups nor the same register resources.
@@ -58,11 +66,15 @@ provides:
 - `.npz` export and the `icgn-webgl` command-line tool;
 - compatibility with scripts and Jupyter notebooks.
 
-Chromium is used only as an invisible WebGL2 runtime. The headless entry point
+Chromium is used only as an invisible GPU runtime. The headless entry points
 does not load Tweakpane, attach the canvas to the DOM, or render a visible UI.
 All HTML and JavaScript runtime assets are embedded in the Python wheel, so an
 installed package does not need this repository or network access at runtime.
 See [`python/README.md`](./python/README.md) for installation and API examples.
+
+Select the new backend from Python with
+`ICGNWebGL(backend="three-tsl")`. The default remains `"gpuio"` for backwards
+compatibility. Both return the same NumPy result schema.
 
 ## Optional browser demo
 

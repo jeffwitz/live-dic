@@ -25,7 +25,7 @@ from .engine import (
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="icgn-webgl",
-        description="Run affine IC-GN registration through headless WebGL2.",
+        description="Run affine IC-GN registration through a headless browser GPU backend.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("reference", type=Path, help="512 x 512 reference image")
@@ -54,6 +54,12 @@ def _parser() -> argparse.ArgumentParser:
         help="optional runtime asset directory or tests_gpuio repository root",
     )
     parser.add_argument("--chromium", type=Path, help="Chromium or Chrome executable")
+    parser.add_argument(
+        "--backend",
+        choices=("gpuio", "three-tsl"),
+        default="gpuio",
+        help="browser compute backend",
+    )
     parser.add_argument(
         "--startup-timeout",
         type=float,
@@ -250,6 +256,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             call_timeout=args.call_timeout,
             no_sandbox=not args.enable_chromium_sandbox,
             chromium_args=args.chromium_arg,
+            backend=args.backend,
         ) as engine:
             info = engine.info()
             payload = (

@@ -36,6 +36,10 @@ lucas_kanade_icgn = [
   "web/*.html",
   "web/*.js",
   "web/LICENSES/*.txt",
+  "web/three/*.html",
+  "web/three/*.js",
+  "web/three/vendor/*.js",
+  "web/three/vendor/*.txt",
 ]
 
 [tool.ruff]

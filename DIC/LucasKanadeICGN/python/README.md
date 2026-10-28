@@ -1,4 +1,4 @@
-# Headless Python interface for IC-GN WebGL2
+# Headless Python interface for affine IC-GN
 
 > **Built on Pierre Margerit's foundational work.** This Python interface is an
 > extension of [Pierre Margerit's original `tests_gpuio`
@@ -6,14 +6,14 @@
 > experiments and WebGL foundation made this real-time DIC path possible.
 
 This package exposes the affine IC-GN solver in the parent directory to Python
-without opening a browser window or loading the graphical controls. Chromium is
-still used as an invisible WebGL2 runtime so the Python path executes the same
-GPU shaders as the browser implementation.
+without opening a browser window or loading graphical controls. Chromium is
+used as an invisible runtime for either the WebGL2/GPU-IO backend or the
+Three.js/TSL WebGPU backend.
 
 ## Requirements and installation
 
 - Python 3.10 or newer;
-- Chromium or Google Chrome with WebGL2 support;
+- Chromium or Google Chrome with WebGL2 and WebGPU support;
 - a compatible GPU and driver.
 
 From the `tests_gpuio` repository root:
@@ -23,7 +23,7 @@ python3 -m venv .venv-icgn
 .venv-icgn/bin/pip install -e DIC/LucasKanadeICGN/python
 ```
 
-The wheel embeds `gpu-io.js`, `LucasKanadeICGN.js`, and `headless.html`. The
+The wheel embeds the GPU-IO runtime and Three.js r186 runtime. The
 installed runtime therefore needs neither a source checkout nor network access.
 `repo_root=...` remains available as an explicit development override for a
 directory containing those three files or for a complete `tests_gpuio`
@@ -58,7 +58,7 @@ targets = [
     "DIC/LucasKanadeICGN/assets/frame_010.png",
 ]
 
-with ICGNWebGL() as engine:
+with ICGNWebGL(backend="three-tsl") as engine:
     engine_info = engine.info()
     reference_info = engine.set_reference(reference)
     results = [engine.register(target) for target in targets]
@@ -97,6 +97,12 @@ prepares the reference once. The synchronous API works inside Jupyter notebooks
 that already have an active `asyncio` event loop. An engine instance must not be
 used concurrently from multiple threads.
 
+`backend="gpuio"` remains the default. Use `backend="three-tsl"` for the
+independent WebGPU implementation. On Linux the engine supplies Chromium's
+native headless Vulkan flags and `engine.info().device` identifies the selected
+adapter; check that it does not report SwiftShader before interpreting GPU
+benchmarks.
+
 ## One-shot function
 
 ```python
@@ -105,6 +111,7 @@ from lucas_kanade_icgn import register_pair
 result = register_pair(
     "DIC/LucasKanadeICGN/assets/frame_000.png",
     "DIC/LucasKanadeICGN/assets/frame_010.png",
+    backend="three-tsl",
 )
 ```
 
@@ -125,16 +132,17 @@ The runtime validates these values before launching the GPU calculation.
 ## Benchmarking
 
 ```python
-with ICGNWebGL() as engine:
+with ICGNWebGL(backend="three-tsl") as engine:
     benchmark = engine.benchmark(reference, targets[-1], repeats=30, warmups=3)
 
 print(benchmark.gpu_median_ms, benchmark.gpu_p95_ms)
 print(benchmark.wall_median_ms, benchmark.wall_p95_ms)
 ```
 
-GPU time is returned when `EXT_disjoint_timer_query_webgl2` is available. Wall
-time includes target prefiltering and the solver, but excludes PNG conversion in
-Python and DevTools transport.
+GPU time uses WebGL timer queries for GPU-IO and WebGPU timestamp queries for
+Three.js/TSL. It includes target prefiltering, IC-GN, and median replacement.
+Wall time excludes PNG conversion in Python, DevTools transport, and result
+readback.
 
 ## Command-line interface
 
@@ -154,6 +162,7 @@ Benchmark the same pair:
 icgn-webgl \
   DIC/LucasKanadeICGN/assets/frame_000.png \
   DIC/LucasKanadeICGN/assets/frame_010.png \
+  --backend three-tsl \
   --benchmark --repeats 30 --warmups 3 --truth 2 -1
 ```
 

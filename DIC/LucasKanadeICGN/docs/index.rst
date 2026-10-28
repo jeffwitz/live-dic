@@ -12,7 +12,7 @@ Real-Time DIC in Python
 This documentation describes a Python workflow for GPU-accelerated digital
 image correlation (DIC). The current implementation performs affine
 inverse-compositional Gauss-Newton registration on 512 x 512 grayscale frames
-through a headless WebGL2 backend.
+through interchangeable GPU-IO/WebGL2 and Three.js/TSL WebGPU backends.
 
 The engineering objective is sustained, measurable DIC processing from Python.
 That means keeping the GPU runtime alive, preparing the reference only once,

@@ -1,6 +1,6 @@
-# WebGL2 IC-GN benchmark against the SYCL implementation
+# Affine IC-GN backend benchmarks
 
-Date: October 27, 2026.
+Date: October 27, 2026. Three.js/TSL comparison added October 28, 2026.
 
 ## Common configuration
 
@@ -67,6 +67,65 @@ After the API cleanup, English documentation pass, and added validation, two
 time, with **16.8 ms** and **16.9 ms** median wall time. Their midpoint is
 3.913 ms, effectively unchanged from the 3.908 ms baseline. The displacement,
 accepted-subset count, and iteration count remained identical.
+
+## Three.js/TSL WebGPU backend
+
+The independent Three.js r186 backend implements the same radius-15 target
+prefilter, 30 affine IC-GN dispatches, and eight-neighbour median-replacement
+pass with TSL storage-buffer compute kernels. The reference-dependent
+quantities are prepared with the same double-precision JavaScript equations as
+the GPU-IO implementation. No code from Strobox is used.
+
+Three paired campaigns ran both browser backends on the same Intel Lunar Lake
+GPU, image pair, Python driver, and process-launch environment. Each campaign
+uses five warm-ups followed by 30 measured runs. The table reports the median
+of the three campaign summaries. GPU times include prefiltering, IC-GN, and
+median replacement; image decoding, result readback, and DevTools transport
+are excluded from both samples.
+
+| Backend | Native device path | GPU median | GPU p95 | Browser wall median | Browser wall p95 |
+|---|---|---:|---:|---:|---:|
+| GPU-IO | ANGLE / Mesa Intel OpenGL 4.6 | 3.794 ms | 4.160 ms | 16.6 ms | 19.2 ms |
+| Three.js/TSL | WebGPU / Intel Xe2-LPG Vulkan | **3.461 ms** | **3.713 ms** | **5.6 ms** | **6.2 ms** |
+
+For this workload, Three.js/TSL uses **91.2% of the GPU time** of GPU-IO, an
+8.8% reduction. The three per-campaign ratios are 91.0%, 91.3%, and 91.2%, so
+the median advantage is repeatable in this sample. Its browser-side
+synchronized measurement is 66.3% lower.
+Three.js GPU p95 ranged from 3.707 to 4.562 ms across the campaigns; GPU-IO
+ranged from 4.128 to 4.326 ms, so the tail advantage was not universal.
+That wall-time difference is backend synchronization overhead, not an
+acquisition-to-result measurement; complete Python calls still include
+DevTools transport and result readback.
+
+Numerical agreement on the 1,024-subset field is:
+
+- identical status values for all 1,024 subsets;
+- 900 accepted subsets with both backends and no median replacements;
+- translation difference RMS: `1.70e-5 px`;
+- largest absolute translation difference: `1.92e-4 px`;
+- Three.js mean translation: `(1.9999924, -0.9999951) px`;
+- Three.js truth RMSE: `4.08e-5 px` versus `3.82e-5 px` for GPU-IO.
+
+All four offline targets were also checked after one reference preparation:
+
+| Target | Accepted GPU-IO / Three.js | Replaced | Equal statuses | Translation difference RMS | Maximum difference |
+|---|---:|---:|---:|---:|---:|
+| t=1 | 900 / 900 | 0 / 0 | 1,024 / 1,024 | `1.72e-5 px` | `1.49e-4 px` |
+| t=5 | 900 / 900 | 0 / 0 | 1,024 / 1,024 | `1.73e-5 px` | `2.80e-4 px` |
+| t=10 | 900 / 900 | 0 / 0 | 1,024 / 1,024 | `1.70e-5 px` | `1.92e-4 px` |
+| t=20 | 634 / 634 | 1 / 1 | 1,023 / 1,024 | `1.51e-5 px` | `2.16e-4 px` |
+
+The sole status mismatch at `t=20` is a convergence-boundary classification;
+it does not change the accepted or median-replaced counts. The four comparisons
+therefore exercise small motion, nominal motion, large motion, rejection, and
+the median-replacement path.
+
+Chromium must use the native Vulkan adapter for a meaningful comparison. With
+only `--enable-unsafe-webgpu`, Chromium selected Google SwiftShader and the
+same Three.js pipeline took 29.38 ms median GPU time. The Python engine supplies
+the required headless Vulkan flags automatically and reports the selected
+adapter through `ICGNWebGL.info()`.
 
 ## Direct comparison with SYCL
 

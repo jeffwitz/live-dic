@@ -43,7 +43,7 @@ class ICGNError(RuntimeError):
 
 @dataclass(frozen=True, slots=True)
 class EngineInfo:
-    """Static properties of the active WebGL2 runtime."""
+    """Static properties of the active browser GPU runtime."""
 
     width: int
     height: int
@@ -223,54 +223,74 @@ class _RuntimeAssets:
     headless_path: str
 
 
-def _direct_runtime_assets(root: Path) -> _RuntimeAssets | None:
-    """Return a runtime layout rooted directly at the three browser assets."""
+def _direct_runtime_assets(root: Path, backend: str = "gpuio") -> _RuntimeAssets | None:
+    """Return a runtime layout rooted directly at one browser backend."""
 
-    required = ("headless.html", "gpu-io.js", "LucasKanadeICGN.js")
+    if backend == "gpuio":
+        required = ("headless.html", "gpu-io.js", "LucasKanadeICGN.js")
+    else:
+        required = (
+            "headless.html",
+            "LucasKanadeICGNThree.js",
+            "vendor/three.webgpu.js",
+            "vendor/three.tsl.js",
+            "vendor/three.core.js",
+        )
     if all((root / filename).is_file() for filename in required):
         return _RuntimeAssets(root=root, headless_path="headless.html")
     return None
 
 
-def _checkout_runtime_assets(root: Path) -> _RuntimeAssets | None:
-    """Return the legacy checkout layout when all source assets are present."""
+def _checkout_runtime_assets(root: Path, backend: str = "gpuio") -> _RuntimeAssets | None:
+    """Return a source-checkout runtime layout for the selected backend."""
 
-    page = root / "DIC/LucasKanadeICGN/headless.html"
-    solver = root / "DIC/LucasKanadeICGN/LucasKanadeICGN.js"
-    if (root / "gpu-io.js").is_file() and page.is_file() and solver.is_file():
-        return _RuntimeAssets(
-            root=root,
-            headless_path="DIC/LucasKanadeICGN/headless.html",
+    relative = Path("DIC/LucasKanadeICGN")
+    if backend == "gpuio":
+        required = (
+            root / "gpu-io.js",
+            root / relative / "headless.html",
+            root / relative / "LucasKanadeICGN.js",
         )
+        if all(path.is_file() for path in required):
+            return _RuntimeAssets(root=root, headless_path=str(relative / "headless.html"))
+    else:
+        relative /= "three"
+        if _direct_runtime_assets(root / relative, backend) is not None:
+            return _RuntimeAssets(root=root, headless_path=str(relative / "headless.html"))
     return None
 
 
-def _find_runtime_assets(explicit: str | os.PathLike[str] | None) -> _RuntimeAssets:
+def _find_runtime_assets(
+    explicit: str | os.PathLike[str] | None,
+    backend: str = "gpuio",
+) -> _RuntimeAssets:
     """Locate self-contained package assets or an explicitly selected checkout."""
 
     if explicit is not None:
         root = Path(explicit).expanduser().resolve()
-        assets = _direct_runtime_assets(root) or _checkout_runtime_assets(root)
+        assets = _direct_runtime_assets(root, backend) or _checkout_runtime_assets(root, backend)
         if assets is None:
             raise ICGNError(
-                "The requested runtime root does not contain headless.html, "
-                "gpu-io.js, and LucasKanadeICGN.js."
+                f"The requested runtime root does not contain the {backend!r} browser assets."
             )
         return assets
 
     # Wheels install package data as ordinary files. Prefer that stable layout
     # so execution never depends on the current directory or a source checkout.
-    packaged = _direct_runtime_assets(Path(__file__).resolve().parent / "web")
+    packaged_root = Path(__file__).resolve().parent / "web"
+    if backend == "three-tsl":
+        packaged_root /= "three"
+    packaged = _direct_runtime_assets(packaged_root, backend)
     if packaged is not None:
         return packaged
 
     # Keep a source-tree fallback for incomplete editable installations and for
     # developers exercising this module before rebuilding package data.
     for candidate in (Path.cwd().resolve(), *Path(__file__).resolve().parents):
-        checkout = _checkout_runtime_assets(candidate)
+        checkout = _checkout_runtime_assets(candidate, backend)
         if checkout is not None:
             return checkout
-    raise ICGNError("The packaged WebGL runtime assets are missing; reinstall the package.")
+    raise ICGNError("The packaged browser runtime assets are missing; reinstall the package.")
 
 
 def _find_chromium(explicit: str | os.PathLike[str] | None) -> str:
@@ -371,19 +391,34 @@ class ICGNWebGL:
         call_timeout: float = 120.0,
         no_sandbox: bool = True,
         chromium_args: Iterable[str] = (),
+        backend: str = "gpuio",
     ) -> None:
         if startup_timeout <= 0:
             raise ValueError("startup_timeout must be greater than zero")
         if call_timeout <= 0:
             raise ValueError("call_timeout must be greater than zero")
-        assets = _find_runtime_assets(repo_root)
+        if backend not in {"gpuio", "three-tsl"}:
+            raise ValueError("backend must be 'gpuio' or 'three-tsl'")
+        assets = _find_runtime_assets(repo_root, backend)
         self.repo_root = assets.root
         self._headless_path = assets.headless_path
+        self.backend = backend
         self.chromium = _find_chromium(chromium)
         self.startup_timeout = float(startup_timeout)
         self.call_timeout = float(call_timeout)
         self.no_sandbox = bool(no_sandbox)
-        self.chromium_args = tuple(chromium_args)
+        backend_arguments: tuple[str, ...] = ()
+        if backend == "three-tsl":
+            # Chromium on Linux needs all four switches to expose the native
+            # Vulkan WebGPU adapter in new-headless mode. Without the surface
+            # switch it silently falls back to SwiftShader on this platform.
+            backend_arguments = (
+                "--enable-unsafe-webgpu",
+                "--use-angle=vulkan",
+                "--enable-features=Vulkan",
+                "--disable-vulkan-surface",
+            )
+        self.chromium_args = (*backend_arguments, *tuple(chromium_args))
         self._server: _StaticServer | None = None
         self._process: subprocess.Popen[bytes] | None = None
         self._temporary: tempfile.TemporaryDirectory[str] | None = None
@@ -464,7 +499,7 @@ class ICGNWebGL:
             details = log_path.read_text(errors="replace")[-_CHROMIUM_LOG_TAIL_BYTES:]
         self.close()
         raise ICGNError(
-            "The headless WebGL engine did not start before the timeout. "
+            "The headless browser GPU engine did not start before the timeout. "
             f"Last error: {last_error!r}\n{details}"
         )
 
@@ -722,13 +757,14 @@ def register_pair(
     *,
     repo_root: str | os.PathLike[str] | None = None,
     chromium: str | os.PathLike[str] | None = None,
+    backend: str = "gpuio",
     iterations: int | None = None,
     tolerance: float | None = None,
     zncc_min: float | None = None,
 ) -> RegistrationResult:
     """Run a one-shot registration and release the headless runtime afterward."""
 
-    with ICGNWebGL(repo_root=repo_root, chromium=chromium) as engine:
+    with ICGNWebGL(repo_root=repo_root, chromium=chromium, backend=backend) as engine:
         return engine.register_pair(
             reference,
             target,

@@ -12,7 +12,7 @@ stable workload:
    reference = "DIC/LucasKanadeICGN/assets/frame_000.png"
    target = "DIC/LucasKanadeICGN/assets/frame_010.png"
 
-   with ICGNWebGL() as engine:
+   with ICGNWebGL(backend="three-tsl") as engine:
        benchmark = engine.benchmark(reference, target, repeats=30, warmups=3)
 
    print(f"GPU median: {benchmark.gpu_median_ms:.3f} ms")
@@ -25,14 +25,15 @@ The command-line equivalent is:
 .. code-block:: console
 
    $ icgn-webgl reference.png target.png \
-       --benchmark --repeats 30 --warmups 3
+       --backend three-tsl --benchmark --repeats 30 --warmups 3
 
 Interpret the timers
 --------------------
 
 ``gpu_times_ms``
-   WebGL timer-query duration for target prefiltering plus IC-GN and median
-   replacement. It excludes Python transport and result readback.
+   WebGL timer-query or WebGPU timestamp duration for target prefiltering plus
+   IC-GN and median replacement. It excludes Python transport and result
+   readback.
 
 ``wall_times_ms``
    Browser-side elapsed time around the same prefilter-and-solve operation. It

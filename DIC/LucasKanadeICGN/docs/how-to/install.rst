@@ -4,13 +4,13 @@ Install the Python runtime
 System requirements
 -------------------
 
-The current backend requires:
+The browser backends require:
 
 * Python 3.10 or newer;
-* Chromium or Google Chrome with WebGL2 support;
+* Chromium or Google Chrome with WebGL2 and WebGPU support;
 * a GPU and driver accepted by Chromium.
 
-The package embeds ``gpu-io.js``, the IC-GN solver, and the headless HTML page.
+The package embeds GPU-IO, Three.js r186, the IC-GN solvers, and both headless pages.
 It does not require a repository checkout or a network connection at runtime.
 
 Install the package
@@ -40,6 +40,21 @@ Verify the headless GPU runtime:
 
 The JSON output should name the GPU, report a 32 x 32 grid, and contain 900
 accepted subsets for this test pair.
+
+Select a compute backend
+------------------------
+
+GPU-IO remains the default for backwards compatibility. Select the independent
+Three.js/TSL implementation explicitly:
+
+.. code-block:: python
+
+   engine = ICGNWebGL(backend="three-tsl")
+
+The command-line equivalent is ``--backend three-tsl``. On Linux, the Python
+driver supplies the native headless Vulkan flags required by Chromium. Confirm
+that ``engine.info().device`` names the physical adapter rather than
+``swiftshader`` before reporting performance.
 
 Prepare an offline installation
 -------------------------------

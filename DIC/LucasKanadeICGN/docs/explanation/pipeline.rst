@@ -1,10 +1,10 @@
 Pipeline architecture
 =====================
 
-The Python API controls a persistent WebGL2 numerical backend. Chromium is an
-execution environment, not a user interface: the headless page loads only
-``gpu-io.js`` and the IC-GN implementation, creates no controls, and never
-attaches its canvas to the visible document.
+The Python API controls either a persistent GPU-IO/WebGL2 backend or an
+independent Three.js/TSL WebGPU backend. Chromium is an execution environment,
+not a user interface: each headless page loads only its numerical runtime,
+creates no controls, and never attaches a canvas to the visible document.
 
 Data flow
 ---------
@@ -21,7 +21,7 @@ Data flow
                          F, gradients, H^-1, J^T F, sum(J)
                                       |
                                       v
-                               persistent GPU textures
+                         persistent GPU textures or buffers
 
    Python target frame
            |
@@ -58,7 +58,7 @@ Target stage
 ------------
 
 Every target is converted to grayscale, uploaded, and filtered into cubic
-B-spline coefficients. The WebGL solver then runs up to 30 affine IC-GN
+B-spline coefficients. The selected GPU solver then runs up to 30 affine IC-GN
 iterations per subset. Subsets stop updating after convergence or rejection,
 although the fixed shader passes still execute for the full grid. A final GPU
 pass detects spatial outliers and can replace them with neighbor medians.
@@ -69,7 +69,7 @@ Control path
 Python communicates with the headless page through the Chromium DevTools
 Protocol over a loopback WebSocket. The returned JavaScript arrays are converted
 to NumPy without changing their floating-point values. This design preserves
-the existing WebGL implementation, but PNG serialization and DevTools transfer
+the existing browser implementations, but PNG serialization and DevTools transfer
 are visible costs in the complete Python latency.
 
 Concurrency model
