@@ -6,6 +6,13 @@ reference results for regression detection, not portable performance claims.
 Driver versions, browser versions, power policy, and thermal state can change
 the result on otherwise identical hardware.
 
+.. note::
+
+   The latest recorded campaign is from commit ``01c9e03``. Subsequent
+   corrections to reduction arithmetic and selective-retry state preservation
+   require a new GPU validation and timing campaign. The values below describe
+   the recorded campaigns and do not qualify those later kernel changes.
+
 ``gpuio`` results are retained as historical baselines. GPU-IO is deprecated
 for application use; current WebGL2 compatibility measurements should use
 ``three-tsl`` with ``force_three_webgl=True``.

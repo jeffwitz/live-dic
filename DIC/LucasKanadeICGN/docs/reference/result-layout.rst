@@ -112,6 +112,13 @@ The native ``ICGNWGPU`` engine reports:
    * - ``executeReadbackWallMs``
      - FIR, IC-GN, median replacement, synchronization, and packed readback
    * - ``totalWallMs``
-     - complete native Python call, including validation and result statistics
+     - synchronous native call through result statistics and optional pyramid recovery
 
 These are host wall-clock boundaries, not WebGPU timestamp-query durations.
+For synchronous registration, ``totalWallMs`` starts before target validation
+and conversion. Streaming uses a different boundary: its per-frame total runs
+from slot submission through result construction and optional recovery. It
+excludes the earlier target conversion, input-producer work, and time spent by
+the consumer after the result is yielded. ``pipelineLatencyWallMs`` ends at
+mapped readback and therefore excludes result statistics and recovery. Use an
+external acquisition timestamp to measure end-to-end camera latency.

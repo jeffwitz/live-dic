@@ -2,6 +2,11 @@
 
 Date: October 28, 2026.
 
+The latest campaign below was recorded at commit `01c9e03`. Later corrections
+to reduction arithmetic and selective-retry state preservation have not yet
+been re-benchmarked on the validation GPU. Run the opt-in GPU regression tests
+described in the root README before updating these quality and timing claims.
+
 ## Common configuration
 
 - GPU: Intel Lunar Lake `[8086:64a0]`, `xe` kernel driver;

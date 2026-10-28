@@ -173,18 +173,25 @@ Setting one level creates only the original fine-level resources and
 dispatches; no reduction or seed transfer is encoded.
 
 The separable five-tap reduction stores its horizontal intermediate in a
-single-channel ``r32float`` texture. This preserves the CPU reference builder's
-float32 arithmetic before the final 8-bit quantization and uses four bytes per
-intermediate pixel. The earlier ``rgba16float`` intermediate used eight bytes
-per pixel and could move a constant value by one gray level because of half
-precision rounding. Both the native and browser adapters bind ``r32float`` as
-unfilterable and access it with exact ``textureLoad`` operations.
+single-channel ``r32float`` texture, using four bytes per intermediate pixel.
+The input UNORM sample is first converted back to its integer gray level with
+``round(sample * 255)``. Both convolution passes operate in units from 0 to 255,
+like the CPU reference builder, and normalization is deferred until the final
+8-bit texture write. The five-tap weights are multiples of ``1/16``; the two-pass
+result is a multiple of ``1/256``, exactly representable in float32 in this
+range. This avoids truncating a normalized sum that has rounded just below an
+integer. The GPU regression tests compare the resulting pixels to the CPU
+reduction. Both adapters bind the intermediate as unfilterable and read it
+with ``textureLoad``.
 
-Every dispatched subset writes an explicit state, including disabled boundary
-workgroups, so an untouched zero-filled buffer cannot masquerade as a valid
-status-0 partial estimate. Seed interpolation ignores unavailable coarse
-subsets. If none of the four coarse neighbours provides an estimate, the finer
-subset is still executed from a zero affine seed instead of being suppressed.
+A fresh solve writes an explicit state for every dispatched subset, including
+disabled workgroups, so an untouched zero-filled buffer cannot masquerade as
+a computed status-0 estimate. Selective retries use a separate entry point
+sharing the same equations and preserve disabled subsets' existing states;
+the median pass can therefore still use their accepted neighbours. Seed
+interpolation ignores unavailable coarse subsets. If none of the four coarse
+neighbours provides an estimate, the finer subset is still executed from a
+zero affine seed instead of being suppressed.
 
 Iteration limits are ceilings rather than fixed costs: each subset exits as
 soon as its corner-change and ZNCC criteria converge. On the measured 4K

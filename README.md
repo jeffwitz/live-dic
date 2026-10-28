@@ -10,12 +10,16 @@
 
 The project goal is sustained digital image correlation on 3840 x 2160 frames
 at 60 frames per second, measured across the complete acquisition-to-result
-pipeline. The new native wgpu-py path processes the reproducible UHD test pair
-with a two-level GPU-resident pyramid in a **14.811 ms median complete Python
-call** with a **15.163 ms p95**. This boundary includes direct target upload,
+pipeline. The published campaign at
+[`01c9e03`](https://github.com/jeffwitz/tests_gpuio/commit/01c9e031b233c6caa45be7fca2145ecda249182e)
+processed the reproducible UHD test pair with a two-level GPU-resident pyramid
+in a **14.548 ms median complete Python call** with a **15.532 ms p95**.
+This boundary includes direct target upload,
 GPU pyramid construction, coarse-to-fine IC-GN computation, packed readback,
 and NumPy result construction. Both measurements are below the 16.667 ms
-period on the validation machine.
+period on the validation machine. Subsequent changes to reduction arithmetic
+and selective recovery require a new GPU validation and timing campaign;
+these recorded figures do not qualify the changed kernels.
 
 This is an encouraging compute result, not yet a 4K60 system qualification.
 Camera acquisition and downstream consumers are still excluded. The browser
@@ -329,8 +333,9 @@ available from [`index.html`](./index.html).
 - dynamic grayscale frame dimensions in all backends; GPU-IO requires width
   and height to be multiples of 16;
 - fixed 16 x 16 subsets on a 16-pixel grid;
-- the browser backends remain single-scale; the native full-pyramid backend
-  defaults to two levels and supports three explicitly;
+- Three.js/TSL and historical GPU-IO remain single-scale; the raw WGSL browser
+  backend and native full-pyramid backend default to two levels and support
+  three explicitly;
 - no temporal or extrapolated initialization;
 - no Aitken acceleration or predictive-tolerance guard;
 - no camera, trigger, synchronization, or codec ownership;
@@ -340,22 +345,23 @@ available from [`index.html`](./index.html).
 - soft real-time behavior only, with no operating-system deadline guarantee.
 
 The direct `t=0 -> 20` displacement of `(4, -2)` pixels is outside the robust
-local basin for many single-scale subsets. The default two-level native full
-pyramid returns 31,692 accepted subsets out of 32,400 at UHD with a translation
-RMSE of 0.00123 pixel. Larger motions can select three levels or provide a
-better initial estimate.
+local basin for many single-scale subsets. The published two-level native
+full-pyramid campaign at `01c9e03` returned 31,719 accepted subsets out of
+32,400 at UHD with a translation RMSE of 0.00180 pixel. These values refer to
+that campaign's accepted population. Larger motions can select three levels
+or provide a better initial estimate.
 
 ## Verification
 
-The current code has been verified with:
+Development checks and the recorded GPU campaigns include:
 
-- 43 hardware-independent Python unit tests;
+- hardware-independent Python regression tests for API and numerical helpers;
 - Ruff linting and formatting checks;
 - offline Cargo check, rustfmt, Clippy with warnings denied, release wheel
   build, and installed PyO3 smoke test;
 - JavaScript syntax checking;
 - wheel build and installation;
-- real GPU execution through the installed package;
+- real GPU execution through the installed package in the recorded campaigns;
 - strict Sphinx builds with warnings treated as errors;
 - visual inspection of the generated landing page and API reference.
 
@@ -373,14 +379,31 @@ cargo clippy --release --offline \
   --manifest-path DIC/LucasKanadeICGN/native/Cargo.toml -- -D warnings
 node --check DIC/LucasKanadeICGN/LucasKanadeICGN.js
 node --check DIC/LucasKanadeICGN/three/LucasKanadeICGNThree.js
+node --check DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/three/LucasKanadeICGNThree.js
+node --check DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/webgpu/LucasKanadeICGNWebGPU.js
 ```
 
-The unit tests do not require Chromium or a GPU. Platform-specific browser
+The default unit tests do not require Chromium or a GPU. Platform-specific browser
 discovery and launch arguments are covered with deterministic Linux, Windows,
 and macOS simulations. The separate GitHub Actions matrix is prepared to run
 the same installed-package suite on all three operating-system families;
 hardware-backed execution and performance still require qualification on each
 target machine and architecture.
+
+The native GPU regression tests are explicit opt-in tests. On a GPU host with
+Python 3.11 or newer, install the native extra and run:
+
+```bash
+python -m pip install -e 'DIC/LucasKanadeICGN/python[native]'
+ICGN_RUN_GPU_TESTS=1 python -m unittest discover \
+  -s DIC/LucasKanadeICGN/python/tests -p 'test_gpu_regressions.py' -v
+```
+
+These tests compare GPU reductions against the CPU reference and check that
+seeded retries preserve the states needed by the median filter. When enabled,
+a missing native dependency or adapter is an error, not a successful skip.
+The portable CI matrix skips these tests; its green status alone does not
+validate shader execution or performance.
 
 ## Acknowledgements and provenance
 

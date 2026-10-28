@@ -59,8 +59,12 @@ fn reduce_x(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var value = 0.0;
     for (var tap = -2; tap <= 2; tap = tap + 1) {
         let sample_x = mirror_coordinate(source_x + tap, i32(source_size.x));
-        value += reduction_weight(tap)
-            * textureLoad(reduce_x_source, vec2<i32>(sample_x, source_y), 0).x;
+        // Recover the source byte before filtering. In grayscale units the
+        // five-tap sums are exact binary fractions, retained by r32float.
+        let sample = round(
+            textureLoad(reduce_x_source, vec2<i32>(sample_x, source_y), 0).x * 255.0,
+        );
+        value += reduction_weight(tap) * sample;
     }
     textureStore(
         reduce_x_destination,
@@ -84,10 +88,9 @@ fn reduce_y(@builtin(global_invocation_id) global_id: vec3<u32>) {
         value += reduction_weight(tap)
             * textureLoad(reduce_y_source, vec2<i32>(source_x, sample_y), 0).x;
     }
-    // The established CPU pyramid truncates to uint8.  Quantizing here keeps
-    // reference and target levels numerically equivalent while all per-frame
-    // reduction remains on the GPU.
-    let quantized = floor(clamp(value, 0.0, 1.0) * 255.0) / 255.0;
+    // Both passes use grayscale units [0, 255], matching the CPU reduction.
+    // Truncate only the final sum, then normalize for rgba8unorm storage.
+    let quantized = floor(clamp(value, 0.0, 255.0)) / 255.0;
     textureStore(
         reduce_y_destination,
         vec2<i32>(global_id.xy),
