@@ -14,6 +14,8 @@ Validation machine
 
    * - Component
      - Value
+   * - Measurement date
+     - 2026-10-28
    * - CPU
      - Intel Core Ultra 5 228V, 8 cores
    * - GPU
