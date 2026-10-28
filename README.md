@@ -349,7 +349,7 @@ better initial estimate.
 
 The current code has been verified with:
 
-- 34 Python unit tests;
+- 43 hardware-independent Python unit tests;
 - Ruff linting and formatting checks;
 - offline Cargo check, rustfmt, Clippy with warnings denied, release wheel
   build, and installed PyO3 smoke test;
@@ -362,10 +362,10 @@ The current code has been verified with:
 Run the local checks:
 
 ```bash
+python -m pip install -e 'DIC/LucasKanadeICGN/python[dev]'
 ruff check DIC/LucasKanadeICGN/python
 ruff format --check DIC/LucasKanadeICGN/python
-PYTHONPATH=DIC/LucasKanadeICGN/python/src \
-  python3 -m unittest discover -s DIC/LucasKanadeICGN/python/tests -v
+python -m unittest discover -s DIC/LucasKanadeICGN/python/tests -v
 cargo fmt --check --manifest-path DIC/LucasKanadeICGN/native/Cargo.toml
 cargo check --release --offline \
   --manifest-path DIC/LucasKanadeICGN/native/Cargo.toml
@@ -374,6 +374,13 @@ cargo clippy --release --offline \
 node --check DIC/LucasKanadeICGN/LucasKanadeICGN.js
 node --check DIC/LucasKanadeICGN/three/LucasKanadeICGNThree.js
 ```
+
+The unit tests do not require Chromium or a GPU. Platform-specific browser
+discovery and launch arguments are covered with deterministic Linux, Windows,
+and macOS simulations. The separate GitHub Actions matrix is prepared to run
+the same installed-package suite on all three operating-system families;
+hardware-backed execution and performance still require qualification on each
+target machine and architecture.
 
 ## Acknowledgements and provenance
 

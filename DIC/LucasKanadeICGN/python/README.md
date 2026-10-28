@@ -331,9 +331,15 @@ options and additional solver controls.
 From the repository root:
 
 ```bash
+python -m pip install -e 'DIC/LucasKanadeICGN/python[dev]'
 ruff check DIC/LucasKanadeICGN/python
 ruff format --check DIC/LucasKanadeICGN/python
-PYTHONPATH=DIC/LucasKanadeICGN/python/src \
-  python3 -m unittest discover -s DIC/LucasKanadeICGN/python/tests -v
+python -m unittest discover -s DIC/LucasKanadeICGN/python/tests -v
 node --check DIC/LucasKanadeICGN/LucasKanadeICGN.js
 ```
+
+The Python unit suite is intentionally hardware-independent: constructing and
+validating an engine does not discover Chromium or create a GPU device. It also
+checks the browser-discovery and GPU-argument policies for Linux, Windows, and
+macOS without pretending to exercise those systems. Real browser and native
+GPU registrations remain separate integration checks on each target machine.

@@ -9,6 +9,7 @@ import os
 import shutil
 import socket
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -338,18 +339,88 @@ def _find_runtime_assets(
     raise ICGNError("The packaged browser runtime assets are missing; reinstall the package.")
 
 
-def _find_chromium(explicit: str | os.PathLike[str] | None) -> str:
-    """Resolve a Chromium-compatible executable."""
+def _chromium_candidates(platform: str) -> tuple[str, ...]:
+    """Return Chromium-family executable candidates for an operating system."""
 
+    if platform == "darwin":
+        return (
+            "chromium",
+            "google-chrome",
+            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+            "/Applications/Chromium.app/Contents/MacOS/Chromium",
+            "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+        )
+    if platform == "win32" or platform.startswith("cygwin"):
+        return ("chrome.exe", "msedge.exe", "chromium.exe", "google-chrome.exe")
+    return ("chromium-browser", "chromium", "google-chrome", "google-chrome-stable")
+
+
+def _chromium_base_arguments(platform: str) -> tuple[str, ...]:
+    """Return platform-safe arguments shared by all browser GPU backends."""
+
+    if platform.startswith("linux"):
+        return (
+            "--disable-dev-shm-usage",
+            "--use-gl=angle",
+            "--use-angle=gl",
+            "--ignore-gpu-blocklist",
+        )
+    return ("--ignore-gpu-blocklist",)
+
+
+def _chromium_backend_arguments(
+    platform: str,
+    backend: str,
+    force_three_webgl: bool,
+) -> tuple[str, ...]:
+    """Return browser switches needed by the selected GPU implementation."""
+
+    if backend not in {"three-tsl", "webgpu-wgsl"} or force_three_webgl:
+        return ()
+    if platform.startswith("linux"):
+        # New-headless Chromium otherwise tends to select SwiftShader instead
+        # of the native Vulkan adapter on Linux. Other systems must retain
+        # Chromium's native Metal or D3D adapter selection.
+        return (
+            "--enable-unsafe-webgpu",
+            "--use-angle=vulkan",
+            "--enable-features=Vulkan",
+            "--disable-vulkan-surface",
+        )
+    return ("--enable-unsafe-webgpu",)
+
+
+def _subprocess_session_arguments(platform: str) -> dict[str, bool]:
+    """Return process-session options supported by the host operating system."""
+
+    if platform == "win32" or platform.startswith("cygwin"):
+        return {}
+    return {"start_new_session": True}
+
+
+def _find_chromium(
+    explicit: str | os.PathLike[str] | None,
+    *,
+    platform: str | None = None,
+) -> str:
+    """Resolve a Chromium-compatible executable for the current platform."""
+
+    platform_name = sys.platform if platform is None else platform
     if explicit is not None:
         path = Path(explicit).expanduser()
-        if not path.is_file() or not os.access(path, os.X_OK):
+        is_windows = platform_name == "win32" or platform_name.startswith("cygwin")
+        if not path.is_file() or (not is_windows and not os.access(path, os.X_OK)):
             raise ICGNError(f"Chromium executable is missing or not executable: {path}")
         return str(path)
-    for name in ("chromium-browser", "chromium", "google-chrome", "google-chrome-stable"):
-        path = shutil.which(name)
-        if path:
-            return path
+    for candidate in _chromium_candidates(platform_name):
+        path = Path(candidate).expanduser()
+        if path.is_absolute():
+            if path.is_file() and os.access(path, os.X_OK):
+                return str(path)
+            continue
+        resolved = shutil.which(candidate)
+        if resolved:
+            return resolved
     raise ICGNError("Chromium or Chrome is required, but no executable was found.")
 
 
@@ -515,21 +586,17 @@ class ICGNWebGL:
         self.pyramid_levels = level_count if backend == "webgpu-wgsl" else 1
         self.iterations_per_level = iteration_schedule
         self.tolerance_per_level = tolerance_schedule
-        self.chromium = _find_chromium(chromium)
+        # Browser discovery is intentionally lazy. Pure configuration and
+        # numerical tests must not require a browser installation.
+        self.chromium = _find_chromium(chromium) if chromium is not None else None
         self.startup_timeout = float(startup_timeout)
         self.call_timeout = float(call_timeout)
         self.no_sandbox = bool(no_sandbox)
-        backend_arguments: tuple[str, ...] = ()
-        if backend in {"three-tsl", "webgpu-wgsl"} and not self.force_three_webgl:
-            # Chromium on Linux needs all four switches to expose the native
-            # Vulkan WebGPU adapter in new-headless mode. Without the surface
-            # switch it silently falls back to SwiftShader on this platform.
-            backend_arguments = (
-                "--enable-unsafe-webgpu",
-                "--use-angle=vulkan",
-                "--enable-features=Vulkan",
-                "--disable-vulkan-surface",
-            )
+        backend_arguments = _chromium_backend_arguments(
+            sys.platform,
+            backend,
+            self.force_three_webgl,
+        )
         self.chromium_args = (*backend_arguments, *tuple(chromium_args))
         self._server: _StaticServer | None = None
         self._process: subprocess.Popen[bytes] | None = None
@@ -561,13 +628,12 @@ class ICGNWebGL:
         if self.backend == "gpuio" and self._requested_dimensions is not None:
             width, height = self._requested_dimensions
             page_url += f"&width={width}&height={height}"
+        chromium = _find_chromium(self.chromium)
+        self.chromium = chromium
         command = [
-            self.chromium,
+            chromium,
             "--headless=new",
-            "--disable-dev-shm-usage",
-            "--use-gl=angle",
-            "--use-angle=gl",
-            "--ignore-gpu-blocklist",
+            *_chromium_base_arguments(sys.platform),
             f"--remote-debugging-port={devtools_port}",
             f"--remote-allow-origins={self._devtools_origin}",
             f"--user-data-dir={self._temporary.name}/profile",
@@ -581,7 +647,7 @@ class ICGNWebGL:
                 command,
                 stdout=subprocess.DEVNULL,
                 stderr=self._log_handle,
-                start_new_session=True,
+                **_subprocess_session_arguments(sys.platform),
             )
         except Exception:
             self.close()

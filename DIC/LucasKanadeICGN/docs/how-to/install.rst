@@ -143,6 +143,12 @@ toolchain, or source access once that wheel has been built.
 Select a browser explicitly
 ---------------------------
 
+The launcher searches common Chromium and Chrome executable names on Linux,
+Chrome and Edge names on Windows, and the standard Chrome, Chromium, and Edge
+application locations on macOS. Platform-specific GPU switches are selected
+at launch: Linux keeps the qualified Vulkan path, while Windows and macOS let
+Chromium select their native D3D or Metal adapter.
+
 If automatic browser discovery fails, pass the executable path:
 
 .. code-block:: python
@@ -164,6 +170,23 @@ On a system with a working Chromium sandbox, prefer:
    engine = ICGNWebGL(no_sandbox=False)
 
 Use ``--enable-chromium-sandbox`` on the command line.
+
+Run the portable unit tests
+---------------------------
+
+Install the package and its development tools, then run the standard-library
+test runner from the repository root:
+
+.. code-block:: console
+
+   $ python -m pip install -e 'DIC/LucasKanadeICGN/python[dev]'
+   $ python -m unittest discover -s DIC/LucasKanadeICGN/python/tests -v
+
+These tests do not require Chromium or a GPU. They validate numerical helpers,
+packaged offline resources, public contracts, and simulated browser policies
+for Linux, Windows, and macOS. A successful unit suite does not qualify a GPU
+driver, shader compiler, or performance on the host; run the registration
+command above separately on every deployment platform.
 
 Build the documentation locally
 -------------------------------

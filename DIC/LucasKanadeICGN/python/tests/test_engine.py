@@ -5,6 +5,7 @@ import inspect
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import numpy as np
 
@@ -16,8 +17,13 @@ from lucas_kanade_icgn.engine import (
     RegistrationResult,
     _array_data_url,
     _as_uint8_gray,
+    _chromium_backend_arguments,
+    _chromium_base_arguments,
+    _chromium_candidates,
+    _find_chromium,
     _find_runtime_assets,
     _run_async_blocking,
+    _subprocess_session_arguments,
     register_pair,
 )
 
@@ -119,6 +125,46 @@ class NotebookLoopTests(unittest.TestCase):
 
 
 class RuntimeAssetTests(unittest.TestCase):
+    def test_browser_discovery_is_lazy(self) -> None:
+        with mock.patch(
+            "lucas_kanade_icgn.engine._find_chromium",
+            side_effect=AssertionError("browser discovery must wait for start()"),
+        ):
+            engine = ICGNWebGL()
+        self.assertIsNone(engine.chromium)
+
+    def test_browser_candidates_cover_supported_platform_families(self) -> None:
+        self.assertIn("chromium", _chromium_candidates("linux"))
+        self.assertIn("chrome.exe", _chromium_candidates("win32"))
+        self.assertTrue(
+            any(".app/Contents/MacOS/" in path for path in _chromium_candidates("darwin"))
+        )
+
+    def test_browser_discovery_uses_platform_candidates(self) -> None:
+        with mock.patch(
+            "lucas_kanade_icgn.engine.shutil.which",
+            side_effect=lambda name: "C:/Chrome/chrome.exe" if name == "chrome.exe" else None,
+        ):
+            self.assertEqual(_find_chromium(None, platform="win32"), "C:/Chrome/chrome.exe")
+
+    def test_browser_gpu_arguments_do_not_force_vulkan_off_linux(self) -> None:
+        for platform in ("win32", "darwin"):
+            with self.subTest(platform=platform):
+                arguments = _chromium_backend_arguments(platform, "webgpu-wgsl", False)
+                self.assertIn("--enable-unsafe-webgpu", arguments)
+                self.assertFalse(any("vulkan" in argument.lower() for argument in arguments))
+                self.assertNotIn("--use-angle=gl", _chromium_base_arguments(platform))
+
+    def test_linux_browser_gpu_arguments_keep_native_vulkan_path(self) -> None:
+        arguments = _chromium_backend_arguments("linux", "webgpu-wgsl", False)
+        self.assertIn("--use-angle=vulkan", arguments)
+        self.assertIn("--use-angle=gl", _chromium_base_arguments("linux"))
+
+    def test_browser_process_session_arguments_are_platform_safe(self) -> None:
+        self.assertEqual(_subprocess_session_arguments("win32"), {})
+        self.assertEqual(_subprocess_session_arguments("linux"), {"start_new_session": True})
+        self.assertEqual(_subprocess_session_arguments("darwin"), {"start_new_session": True})
+
     def test_unknown_backend_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "webgpu-wgsl"):
             ICGNWebGL(backend="unknown")
@@ -170,7 +216,7 @@ class RuntimeAssetTests(unittest.TestCase):
     def test_three_webgl_fallback_is_explicitly_testable(self) -> None:
         engine = ICGNWebGL(backend="three-tsl", force_three_webgl=True)
         self.assertTrue(engine.force_three_webgl)
-        self.assertNotIn("--use-angle=vulkan", engine.chromium_args)
+        self.assertFalse(any("webgpu" in argument.lower() for argument in engine.chromium_args))
         with self.assertRaisesRegex(ValueError, "only.*three-tsl"):
             ICGNWebGL(backend="gpuio", force_three_webgl=True)
 
