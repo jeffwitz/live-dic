@@ -44,8 +44,8 @@ The native backend also offers opt-in selective pyramid recovery for subsets
 that fail the initial fine solve. One scale remains the default fast path. A
 separate ``ICGNWGPUFullPyramid`` backend now keeps the normal coarse-to-fine
 path entirely GPU-resident and defaults to two levels. On the controlled
-``(+4, -2)`` validation pair it
-measured 14.811 ms at 4K with two levels and 15.458 ms with three levels after
+``(+4, -2)`` validation pair the current 30-run campaign
+measured 14.548 ms at 4K with two levels and 16.118 ms with three levels after
 reducing the three-level iteration ceilings. A later audit retained a 4K60 p95
 margin for two levels, while the three-level median remained above 60 FPS but
 its p95 did not. These figures qualify offline compute on that pair, not

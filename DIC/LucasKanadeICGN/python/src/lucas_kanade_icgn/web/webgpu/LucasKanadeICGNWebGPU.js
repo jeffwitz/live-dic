@@ -226,13 +226,17 @@ const createRuntime = async (width, height) => {
       {
         binding: 1,
         visibility: GPUShaderStage.COMPUTE,
-        storageTexture: { access: 'write-only', format: 'rgba16float' },
+        storageTexture: { access: 'write-only', format: 'r32float' },
       },
     ],
   });
   reduceYBindGroupLayout = device.createBindGroupLayout({
     entries: [
-      { binding: 0, visibility: GPUShaderStage.COMPUTE, texture: { sampleType: 'float' } },
+      {
+        binding: 0,
+        visibility: GPUShaderStage.COMPUTE,
+        texture: { sampleType: 'unfilterable-float' },
+      },
       {
         binding: 1,
         visibility: GPUShaderStage.COMPUTE,
@@ -421,7 +425,7 @@ const createRuntime = async (width, height) => {
     const intermediate = device.createTexture({
       label: `DIC-RT horizontal pyramid level ${levelIndex}`,
       size: [destination.width, source.height, 1],
-      format: 'rgba16float',
+      format: 'r32float',
       usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING,
     });
     reductionEdges.push({

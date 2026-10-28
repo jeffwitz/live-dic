@@ -172,6 +172,20 @@ from coarse to fine. Three levels use the robust ``(6, 8, 20)`` schedule.
 Setting one level creates only the original fine-level resources and
 dispatches; no reduction or seed transfer is encoded.
 
+The separable five-tap reduction stores its horizontal intermediate in a
+single-channel ``r32float`` texture. This preserves the CPU reference builder's
+float32 arithmetic before the final 8-bit quantization and uses four bytes per
+intermediate pixel. The earlier ``rgba16float`` intermediate used eight bytes
+per pixel and could move a constant value by one gray level because of half
+precision rounding. Both the native and browser adapters bind ``r32float`` as
+unfilterable and access it with exact ``textureLoad`` operations.
+
+Every dispatched subset writes an explicit state, including disabled boundary
+workgroups, so an untouched zero-filled buffer cannot masquerade as a valid
+status-0 partial estimate. Seed interpolation ignores unavailable coarse
+subsets. If none of the four coarse neighbours provides an estimate, the finer
+subset is still executed from a zero affine seed instead of being suppressed.
+
 Iteration limits are ceilings rather than fixed costs: each subset exits as
 soon as its corner-change and ZNCC criteria converge. On the measured 4K
 three-level case, accepted fine subsets required only 2.45 iterations on

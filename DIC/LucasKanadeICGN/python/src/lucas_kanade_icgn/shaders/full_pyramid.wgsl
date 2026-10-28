@@ -23,7 +23,7 @@ struct SeedConfig {
 }
 
 @group(0) @binding(0) var reduce_x_source: texture_2d<f32>;
-@group(0) @binding(1) var reduce_x_destination: texture_storage_2d<rgba16float, write>;
+@group(0) @binding(1) var reduce_x_destination: texture_storage_2d<r32float, write>;
 
 @group(1) @binding(0) var reduce_y_source: texture_2d<f32>;
 @group(1) @binding(1) var reduce_y_destination: texture_storage_2d<rgba8unorm, write>;
@@ -176,8 +176,8 @@ fn transfer_seed(@builtin(global_invocation_id) global_id: vec3<u32>) {
             &weight_sum,
         );
     }
-    let is_active = weight_sum > 0.0;
-    if is_active {
+    let has_seed = weight_sum > 0.0;
+    if has_seed {
         accumulated_a /= weight_sum;
         accumulated_b /= weight_sum;
     }
@@ -187,5 +187,7 @@ fn transfer_seed(@builtin(global_invocation_id) global_id: vec3<u32>) {
         0.0,
         0.0,
     );
-    destination_active.values[destination_index] = select(0u, 1u, is_active);
+    // A missing coarse estimate is not a reason to suppress a potentially
+    // valid finer subset. Run it from the zero seed instead.
+    destination_active.values[destination_index] = 1u;
 }

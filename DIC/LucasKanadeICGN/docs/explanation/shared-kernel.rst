@@ -169,12 +169,21 @@ Change policy
 A formula change that preserves the buffer contract belongs in the canonical
 WGSL and, while Three.js remains specialized, in its corresponding named TSL
 helper. The Three.js WebGPU and WebGL2 solvers call those same TSL helpers but
-keep different accumulation organizations. A buffer-layout change must update
-both WebGPU hosts and the contract tests. Transfer, allocation, browser, and
-NumPy conversion changes remain local to their adapters. GPU-IO changes remain
-independently qualified against the same image pairs until its retirement.
+keep different accumulation organizations. The native subgroup solver is also
+a specialized implementation: its ``icgn_subgroup.comp`` source and packaged
+SPIR-V binary must be rebuilt and qualified whenever an LK formula changes. A
+buffer-layout change must update both WebGPU hosts and the contract tests.
+Transfer, allocation, browser, and NumPy conversion changes remain local to
+their adapters. GPU-IO changes remain independently qualified against the same
+image pairs until its retirement.
 
 The comparison scripts report status equality, jointly accepted subsets,
 translation RMSE, and maximum absolute disagreement. Matching output types is
 not considered sufficient: numerical agreement is part of the backend
 contract.
+
+The native autotuner applies that rule before considering timings. It executes
+the portable and subgroup solvers on the same shifted reference, rejects
+non-finite results, incompatible accepted-subset masks, or affine fields beyond
+the documented tolerance, and times only the remaining candidates. This check
+is performed during reference preparation and adds no work to registration.

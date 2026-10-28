@@ -354,7 +354,9 @@ fn solve_subset(
         workgroupBarrier();
     }
 
-    if lane == 0u && enabled {
+    // Always overwrite the state. Disabled workgroups must not leave a zeroed
+    // status that could be mistaken for a valid, partially converged estimate.
+    if lane == 0u {
         state.values[subset_index * 2u] = vec4<f32>(
             shared_translation.x,
             shared_linear.x,

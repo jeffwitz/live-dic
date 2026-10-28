@@ -159,7 +159,7 @@ class ICGNWGPUFullPyramid:
                     "visibility": wgpu.ShaderStage.COMPUTE,
                     "storage_texture": {
                         "access": wgpu.StorageTextureAccess.write_only,
-                        "format": wgpu.TextureFormat.rgba16float,
+                        "format": wgpu.TextureFormat.r32float,
                         "view_dimension": wgpu.TextureViewDimension.d2,
                     },
                 },
@@ -171,7 +171,7 @@ class ICGNWGPUFullPyramid:
                     "binding": 0,
                     "visibility": wgpu.ShaderStage.COMPUTE,
                     "texture": {
-                        "sample_type": wgpu.TextureSampleType.float,
+                        "sample_type": wgpu.TextureSampleType.unfilterable_float,
                         "view_dimension": wgpu.TextureViewDimension.d2,
                         "multisampled": False,
                     },
@@ -260,7 +260,7 @@ class ICGNWGPUFullPyramid:
                 size=(destination.width, source.height, 1),
                 usage=wgpu.TextureUsage.STORAGE_BINDING | wgpu.TextureUsage.TEXTURE_BINDING,
                 dimension=wgpu.TextureDimension.d2,
-                format=wgpu.TextureFormat.rgba16float,
+                format=wgpu.TextureFormat.r32float,
                 mip_level_count=1,
                 sample_count=1,
             )
@@ -341,6 +341,7 @@ class ICGNWGPUFullPyramid:
         """Prepare all scale-specific references and persistent GPU storage."""
 
         started = time.perf_counter()
+        new_iterations = self.iterations_per_level
         if iterations_per_level is not None:
             values = _schedule(
                 iterations_per_level,
@@ -348,7 +349,8 @@ class ICGNWGPUFullPyramid:
                 defaults=_DEFAULT_ITERATION_SCHEDULES[self.pyramid_levels],
                 name="iterations_per_level",
             )
-            self.iterations_per_level = tuple(int(value) for value in values)
+            new_iterations = tuple(int(value) for value in values)
+        new_tolerances = self.tolerance_per_level
         if tolerance_per_level is not None:
             values = _schedule(
                 tolerance_per_level,
@@ -356,20 +358,24 @@ class ICGNWGPUFullPyramid:
                 defaults=_DEFAULT_TOLERANCES,
                 name="tolerance_per_level",
             )
-            self.tolerance_per_level = tuple(float(value) for value in values)
-        self._zncc_min = float(zncc_min)
+            new_tolerances = tuple(float(value) for value in values)
+        new_zncc_min = float(zncc_min)
         for iterations, tolerance in zip(
-            self.iterations_per_level,
-            self.tolerance_per_level,
+            new_iterations,
+            new_tolerances,
             strict=True,
         ):
-            _validated_config(iterations, tolerance, self._zncc_min)
+            _validated_config(iterations, tolerance, new_zncc_min)
 
         reference = _as_uint8_gray(image)
         references = [reference]
         for _ in range(1, self.pyramid_levels):
             references.append(_reduce_half(references[-1]))
 
+        self.iterations_per_level = new_iterations
+        self.tolerance_per_level = new_tolerances
+        self._zncc_min = new_zncc_min
+        self._reference_ready = False
         self._clear_level_resources()
         reference_build_wall_ms = 0.0
         for level_index, level_reference in enumerate(references):

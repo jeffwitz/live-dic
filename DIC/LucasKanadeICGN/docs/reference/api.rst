@@ -37,6 +37,14 @@ The native engine is optional and experimental. It returns the same
 ``ReferenceInfo`` and ``RegistrationResult`` types as the browser engine, but
 does not start Chromium or serialize frames as PNG.
 
+All Python backends normalize inputs to 8-bit grayscale. Floating-point arrays
+in ``[0, 1]`` are scaled to ``[0, 255]``; floating-point arrays already using
+the 8-bit intensity convention are clipped to that range. Integer arrays and
+integer-mode Pillow images must already lie in ``[0, 255]``. Higher-bit-depth
+scientific images are rejected instead of being silently saturated: convert
+the reference and every target explicitly with the same calibrated intensity
+range before calling the API.
+
 ``register_stream`` and ``register_many`` keep at most two images in flight by
 default. The public ``DEFAULT_IN_FLIGHT_FRAMES`` constant records this policy
 in one place. ``pipeline_depth`` refers only to concurrent sequence execution

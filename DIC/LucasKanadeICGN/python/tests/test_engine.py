@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 import numpy as np
+from PIL import Image
 
 from lucas_kanade_icgn.engine import (
     PARAMETER_ORDER,
@@ -29,6 +30,22 @@ from lucas_kanade_icgn.engine import (
 
 
 class ImageConversionTests(unittest.TestCase):
+    def test_higher_bit_depth_array_requires_explicit_conversion(self) -> None:
+        image = np.linspace(0, 4095, 64 * 64, dtype=np.uint16).reshape(64, 64)
+        with self.assertRaisesRegex(ValueError, "Convert higher-bit-depth images explicitly"):
+            _as_uint8_gray(image)
+
+    def test_higher_bit_depth_pillow_image_requires_explicit_conversion(self) -> None:
+        image = Image.fromarray(np.full((64, 64), 1024, dtype=np.uint16))
+        with self.assertRaisesRegex(ValueError, "Convert higher-bit-depth images explicitly"):
+            _as_uint8_gray(image)
+
+    def test_integer_array_in_uint8_range_is_accepted(self) -> None:
+        image = np.full((64, 64), 137, dtype=np.uint16)
+        converted = _as_uint8_gray(image)
+        self.assertEqual(converted.dtype, np.uint8)
+        self.assertTrue(np.all(converted == 137))
+
     def test_float_image_in_unit_interval_is_scaled(self) -> None:
         image = np.full((512, 512), 0.5, dtype=np.float32)
         converted = _as_uint8_gray(image)
@@ -132,6 +149,20 @@ class RuntimeAssetTests(unittest.TestCase):
         ):
             engine = ICGNWebGL()
         self.assertIsNone(engine.chromium)
+
+    def test_missing_browser_does_not_allocate_runtime_resources(self) -> None:
+        engine = ICGNWebGL()
+        with (
+            mock.patch(
+                "lucas_kanade_icgn.engine._find_chromium",
+                side_effect=ICGNError("missing browser"),
+            ),
+            self.assertRaisesRegex(ICGNError, "missing browser"),
+        ):
+            engine.start()
+        self.assertIsNone(engine._server)
+        self.assertIsNone(engine._temporary)
+        self.assertIsNone(engine._log_handle)
 
     def test_browser_candidates_cover_supported_platform_families(self) -> None:
         self.assertIn("chromium", _chromium_candidates("linux"))
@@ -283,6 +314,9 @@ class RuntimeAssetTests(unittest.TestCase):
         page = (assets.root / assets.headless_path).read_text(encoding="utf-8")
         self.assertNotIn("https://", page)
         self.assertNotIn("http://", page)
+        runtime = (assets.root / "web/webgpu/LucasKanadeICGNWebGPU.js").read_text(encoding="utf-8")
+        self.assertIn("format: 'r32float'", runtime)
+        self.assertNotIn("rgba16float", runtime)
 
     def test_checkout_three_entry_point_delegates_to_packaged_source(self) -> None:
         module_root = Path(__file__).resolve().parents[2]

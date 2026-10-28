@@ -56,6 +56,86 @@ class _PendingRegistration:
     frame: npt.NDArray[np.uint8]
 
 
+def _compare_solver_outputs(
+    portable_raw: Any,
+    candidate_raw: Any,
+    *,
+    grid_count: int,
+) -> dict[str, bool | float | int | str]:
+    """Check an optimized solver against the portable result used for tuning.
+
+    The comparison is deliberately limited to the one-off autotuning frame. It
+    therefore protects solver selection without adding work to registrations.
+    """
+
+    expected_values = grid_count * 8
+    portable = np.frombuffer(portable_raw, dtype=np.float32)
+    candidate = np.frombuffer(candidate_raw, dtype=np.float32)
+    diagnostics: dict[str, bool | float | int | str] = {
+        "valid": False,
+        "reason": "invalid result size",
+        "accepted_portable": 0,
+        "accepted_candidate": 0,
+        "accepted_mismatch": grid_count,
+        "parameter_rmse": float("inf"),
+        "parameter_max_abs": float("inf"),
+    }
+    if portable.size != expected_values or candidate.size != expected_values:
+        return diagnostics
+
+    portable = portable.reshape(grid_count, 8)
+    candidate = candidate.reshape(grid_count, 8)
+    if not np.all(np.isfinite(portable)) or not np.all(np.isfinite(candidate)):
+        diagnostics["reason"] = "non-finite solver output"
+        return diagnostics
+
+    portable_accepted = portable[:, 6] > 0.5
+    candidate_accepted = candidate[:, 6] > 0.5
+    accepted_portable = int(np.count_nonzero(portable_accepted))
+    accepted_candidate = int(np.count_nonzero(candidate_accepted))
+    accepted_mismatch = int(np.count_nonzero(portable_accepted != candidate_accepted))
+    diagnostics.update(
+        accepted_portable=accepted_portable,
+        accepted_candidate=accepted_candidate,
+        accepted_mismatch=accepted_mismatch,
+    )
+    mismatch_limit = max(1, int(np.ceil(grid_count * 0.005)))
+    common = portable_accepted & candidate_accepted
+    if accepted_portable == 0:
+        if accepted_mismatch:
+            diagnostics["reason"] = "accepted subset masks disagree"
+            return diagnostics
+        diagnostics.update(
+            valid=True,
+            reason="compatible with no accepted subsets",
+            parameter_rmse=0.0,
+            parameter_max_abs=0.0,
+        )
+        return diagnostics
+    if accepted_mismatch > mismatch_limit:
+        diagnostics["reason"] = "accepted subset masks disagree"
+        return diagnostics
+    common_count = int(np.count_nonzero(common))
+    if common_count == 0 or common_count < accepted_portable - mismatch_limit:
+        diagnostics["reason"] = "insufficient common accepted subsets"
+        return diagnostics
+
+    difference = candidate[common, :6] - portable[common, :6]
+    parameter_rmse = float(np.sqrt(np.mean(np.square(difference), dtype=np.float64)))
+    parameter_max_abs = float(np.max(np.abs(difference)))
+    diagnostics.update(
+        parameter_rmse=parameter_rmse,
+        parameter_max_abs=parameter_max_abs,
+    )
+    if parameter_rmse > 2e-3 or parameter_max_abs > 2e-2:
+        diagnostics["reason"] = "affine parameters disagree"
+        return diagnostics
+
+    diagnostics["valid"] = True
+    diagnostics["reason"] = "compatible"
+    return diagnostics
+
+
 def _reduce_half(image: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
     """Apply the SYSCL five-tap reduction and retain every second sample."""
 
@@ -78,6 +158,7 @@ def _reduce_half(image: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
 def _transfer_pyramid_seed(
     result: RegistrationResult,
     *,
+    source_available: npt.NDArray[np.bool_],
     source_scale: int,
     destination_scale: int,
     destination_grid: tuple[int, int],
@@ -87,8 +168,10 @@ def _transfer_pyramid_seed(
 
     destination_width, destination_height = destination_grid
     seeds = np.zeros((destination_height, destination_width, 8), dtype=np.float32)
-    active = np.zeros((destination_height, destination_width), dtype=np.uint32)
+    active = requested.astype(np.uint32, copy=True)
     source_height, source_width = result.status.shape
+    if source_available.shape != result.status.shape:
+        raise ValueError("source_available must match the source result grid")
     if source_width < 2 or source_height < 2:
         return seeds, active
     source_offset = (1.0 - source_scale) * 0.5
@@ -117,7 +200,7 @@ def _transfer_pyramid_seed(
     for corner in range(4):
         source_x = lower_x + (corner & 1)
         source_y = lower_y + (corner >> 1)
-        valid = result.status[source_y, source_x] >= -0.5
+        valid = (result.status[source_y, source_x] >= -0.5) & source_available[source_y, source_x]
         weight_x = fraction_x if corner & 1 else 1.0 - fraction_x
         weight_y = fraction_y if corner & 2 else 1.0 - fraction_y
         weight = weight_x * weight_y * valid
@@ -142,7 +225,6 @@ def _transfer_pyramid_seed(
     seeds[selected_y, selected_x, :6] = (
         accumulated[valid_destinations] / weight_sum[valid_destinations, None]
     )
-    active[selected_y, selected_x] = 1
     return seeds, active
 
 
@@ -358,6 +440,12 @@ def _reference_arrays(
                     valid[index] = energy[index] > 1e-12
                 except np.linalg.LinAlgError:
                     pass
+        representable = np.max(np.abs(row_inverse), axis=(1, 2)) <= np.finfo(np.float32).max
+        valid &= representable
+        # Invalid subsets are rejected through metadata. Keep their unused
+        # inverse blocks finite as well so conversion and GPU upload never
+        # introduce infinities for flat or nearly singular references.
+        row_inverse[~valid] = 0.0
         inverse[row_offset : row_offset + grid_width] = row_inverse.reshape(grid_width, 36)
         metadata[row_offset : row_offset + grid_width, 0] = np.sqrt(energy)
         metadata[row_offset : row_offset + grid_width, 1] = valid.astype(np.float32)
@@ -440,6 +528,7 @@ class ICGNWGPU:
         )
         self._solver_preference = prefer_subgroups
         self.solver_tuning_ms: dict[str, float] = {}
+        self.solver_validation: dict[str, dict[str, bool | float | int | str]] = {}
         shader_path = files("lucas_kanade_icgn").joinpath("shaders/icgn.wgsl")
         shader_source = shader_path.read_text(encoding="utf-8")
         shader = self.device.create_shader_module(code=shader_source)
@@ -1090,6 +1179,7 @@ class ICGNWGPU:
 
         transferred_result: RegistrationResult | None = None
         transferred_scale = 0
+        transferred_available: npt.NDArray[np.bool_] | None = None
         for level_index in range(len(self._pyramid_engines) - 1, -1, -1):
             engine = self._pyramid_engines[level_index]
             level_scale = 1 << (level_index + 1)
@@ -1101,8 +1191,11 @@ class ICGNWGPU:
                 )
                 active = level_requested.astype(np.uint32)
             else:
+                if transferred_available is None:
+                    raise RuntimeError("Missing source availability for pyramid transfer")
                 seeds, active = _transfer_pyramid_seed(
                     transferred_result,
+                    source_available=transferred_available,
                     source_scale=transferred_scale,
                     destination_scale=level_scale,
                     destination_grid=(engine.grid_width, engine.grid_height),
@@ -1115,11 +1208,13 @@ class ICGNWGPU:
             )
             transferred_result = level_result
             transferred_scale = level_scale
+            transferred_available = level_requested
 
-        if transferred_result is None:
+        if transferred_result is None or transferred_available is None:
             return fine_result
         seeds, active = _transfer_pyramid_seed(
             transferred_result,
+            source_available=transferred_available,
             source_scale=transferred_scale,
             destination_scale=1,
             destination_grid=(self.grid_width, self.grid_height),
@@ -1200,8 +1295,25 @@ class ICGNWGPU:
             "portable-workgroup": self._portable_solver,
             "subgroup": self._subgroup_solver,
         }
-        for pipeline in candidates.values():
-            self._execute_registration(pipeline)
+        validation_raw = {
+            name: self._execute_registration(pipeline) for name, pipeline in candidates.items()
+        }
+        portable_raw = validation_raw["portable-workgroup"]
+        self.solver_validation = {
+            name: _compare_solver_outputs(
+                portable_raw,
+                raw,
+                grid_count=self.grid_width * self.grid_height,
+            )
+            for name, raw in validation_raw.items()
+        }
+        candidates = {
+            name: pipeline
+            for name, pipeline in candidates.items()
+            if self.solver_validation[name]["valid"]
+        }
+        if "portable-workgroup" not in candidates:
+            raise ICGNError("The portable solver failed its autotuning validation frame.")
         samples: dict[str, list[float]] = {name: [] for name in candidates}
         names = tuple(candidates)
         for repetition in range(3):
@@ -1250,16 +1362,26 @@ class ICGNWGPU:
     ) -> ReferenceInfo:
         total_start = time.perf_counter()
         frame = _as_uint8_gray(image)
-        self._close_pyramid_engines()
-        self.height, self.width = frame.shape
-        self.grid_width = self.width // SUBSET_SIZE
-        self.grid_height = self.height // SUBSET_SIZE
-        if self.grid_width < 1 or self.grid_height < 1:
+        height, width = frame.shape
+        grid_width = width // SUBSET_SIZE
+        grid_height = height // SUBSET_SIZE
+        if grid_width < 1 or grid_height < 1:
             raise ValueError("Reference dimensions must each be at least 16 pixels.")
-        self._config = _validated_config(iterations, tolerance, zncc_min)
+        config = _validated_config(iterations, tolerance, zncc_min)
         reference_start = time.perf_counter()
         reference, inverse, metadata = _reference_arrays(frame)
         reference_wall_ms = (time.perf_counter() - reference_start) * 1_000.0
+
+        # All CPU validation is complete. From this point onward a failure may
+        # have replaced GPU resources, so the previous reference must no
+        # longer be advertised as usable.
+        self._reference_ready = False
+        self._close_pyramid_engines()
+        self.height = height
+        self.width = width
+        self.grid_width = grid_width
+        self.grid_height = grid_height
+        self._config = config
         runtime_start = time.perf_counter()
         self._allocate_runtime(reference, inverse, metadata)
         self._update_config()
@@ -1387,6 +1509,7 @@ class ICGNWGPU:
     ) -> _PendingRegistration:
         submitted_at = time.perf_counter()
         upload_wall_ms = self._upload_frame(slot, frame)
+        retained_frame = np.array(frame, copy=True) if self.pyramid_levels > 1 else frame
         submit_started = time.perf_counter()
         command = self._encode_registration(slot, self._solver, copy_to_readback=True)
         self.device.queue.submit([command])
@@ -1397,7 +1520,7 @@ class ICGNWGPU:
             upload_wall_ms=upload_wall_ms,
             submit_wall_ms=submit_wall_ms,
             config=dict(config),
-            frame=frame,
+            frame=retained_frame,
         )
 
     def _retire_slot(self, pending: _PendingRegistration) -> RegistrationResult:

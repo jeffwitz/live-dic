@@ -159,24 +159,22 @@ fine. Three levels are opt-in and use `(6, 8, 20)` by default. The same exact
 
 | Resolution / path | Median | p95 | Accepted | Truth RMSE |
 |---|---:|---:|---:|---:|
-| 512 x 512 / one scale | 3.309 ms | 3.642 ms | 634 | 0.0906 px |
-| 512 x 512 / full pyramid 2 | **1.973 ms** | **2.371 ms** | 900 | 0.000027 px |
-| 512 x 512 / full pyramid 3 | 2.420 ms | 3.229 ms | 897 | 0.000025 px |
-| 3840 x 2160 / one scale | 32.177 ms | 32.679 ms | 22,401 | 0.0964 px |
-| 3840 x 2160 / full pyramid 2 | **14.811 ms** | **15.163 ms** | 31,692 | 0.00123 px |
-| 3840 x 2160 / full pyramid 3 | **15.458 ms** | **16.210 ms** | 31,681 | 0.00124 px |
+| 512 x 512 / one scale | 2.581 ms | 3.823 ms | 634 | 0.0906 px |
+| 512 x 512 / full pyramid 2 | **1.948 ms** | **2.167 ms** | 900 | 0.0000112 px |
+| 512 x 512 / full pyramid 3 | 2.310 ms | 3.299 ms | 900 | 0.0000123 px |
+| 3840 x 2160 / one scale | 34.715 ms | 35.717 ms | 22,401 | 0.0964 px |
+| 3840 x 2160 / full pyramid 2 | **14.548 ms** | **15.532 ms** | 31,719 | 0.00180 px |
+| 3840 x 2160 / full pyramid 3 | **16.118 ms** | 17.019 ms | 31,731 | 0.00194 px |
 
-The published campaign placed both full-pyramid UHD p95 values inside the
-16.667 ms period. A later two-campaign audit reproduced the two-level result at
-14.699--14.939 ms median and 14.917--15.562 ms p95. The same audit measured
-16.331--16.353 ms median and 17.286--17.665 ms p95 for three levels. Two levels
-are therefore the only configuration with a repeated p95 4K60 compute margin.
-Three levels remain above 60 FPS by median and useful for a larger expected
-capture range, but are not documented as a p95 60 Hz path. A one-level
-full-pyramid run matched the portable `ICGNWGPU` packed output bit for bit.
+The current campaign used five warm-ups and 30 measured runs after changing the
+horizontal reduction intermediate from `rgba16float` to `r32float`. Two levels
+retain a p95 4K60 compute margin. Three levels remain above 60 FPS by median and
+useful for a larger expected capture range, but are not documented as a p95
+60 Hz path. A one-level full-pyramid run matched the portable `ICGNWGPU` packed
+output bit for bit.
 
-Reducing the three-level ceilings from `(8, 12, 30)` to `(6, 8, 20)` preserved
-all 31,681 accepted subsets and the measured RMSE. A more aggressive descending
+Reducing the three-level ceilings from `(8, 12, 30)` to `(6, 8, 20)` previously
+preserved the accepted field and remains the default. A more aggressive descending
 schedule `(12, 8, 6)` reduced an alternating campaign median from 15.895 to
 15.345 ms, but accepted only 31,260 subsets. It is therefore available through
 `iterations_per_level` but is not the robust default. Accepted fine subsets
@@ -188,7 +186,7 @@ Reproduce the UHD comparison with:
 ```console
 PYTHONPATH=DIC/LucasKanadeICGN/python/src \
   python3 DIC/LucasKanadeICGN/benchmarks/benchmark_wgpu_full_pyramid.py \
-  --width 3840 --height 2160 --levels 2 3 --warmups 2 --repeats 7
+  --width 3840 --height 2160 --levels 2 3 --warmups 5 --repeats 30
 ```
 
 ## Ported SYCL operations

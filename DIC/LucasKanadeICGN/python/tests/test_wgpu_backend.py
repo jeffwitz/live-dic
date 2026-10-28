@@ -3,6 +3,8 @@ from __future__ import annotations
 import unittest
 from importlib.resources import files
 from inspect import signature
+from types import SimpleNamespace
+from unittest import mock
 
 import numpy as np
 
@@ -16,6 +18,7 @@ from lucas_kanade_icgn import (
 from lucas_kanade_icgn.full_pyramid_backend import _DEFAULT_ITERATION_SCHEDULES, _schedule
 from lucas_kanade_icgn.wgpu_backend import (
     ICGNWGPU,
+    _compare_solver_outputs,
     _fir_weights,
     _pyramid_dependency_mask,
     _reduce_half,
@@ -26,6 +29,52 @@ from lucas_kanade_icgn.wgpu_backend import (
 
 
 class NativeReferenceTests(unittest.TestCase):
+    def test_solver_autotuning_accepts_numerically_equivalent_output(self) -> None:
+        portable = np.zeros((200, 8), dtype=np.float32)
+        portable[:, 0] = 2.0
+        portable[:, 3] = -1.0
+        portable[:, 6] = 1.0
+        candidate = portable.copy()
+        candidate[:, :6] += np.float32(5e-4)
+
+        diagnostics = _compare_solver_outputs(
+            portable,
+            candidate,
+            grid_count=portable.shape[0],
+        )
+
+        self.assertTrue(diagnostics["valid"])
+        self.assertEqual(diagnostics["reason"], "compatible")
+
+    def test_solver_autotuning_rejects_incompatible_output(self) -> None:
+        portable = np.zeros((200, 8), dtype=np.float32)
+        portable[:, 6] = 1.0
+        candidate = portable.copy()
+        candidate[:10, 6] = -1.0
+
+        diagnostics = _compare_solver_outputs(
+            portable,
+            candidate,
+            grid_count=portable.shape[0],
+        )
+
+        self.assertFalse(diagnostics["valid"])
+        self.assertEqual(diagnostics["reason"], "accepted subset masks disagree")
+
+    def test_solver_autotuning_accepts_matching_rejected_output(self) -> None:
+        portable = np.zeros((4, 8), dtype=np.float32)
+        portable[:, 6] = -2.0
+        candidate = portable.copy()
+
+        diagnostics = _compare_solver_outputs(
+            portable,
+            candidate,
+            grid_count=portable.shape[0],
+        )
+
+        self.assertTrue(diagnostics["valid"])
+        self.assertEqual(diagnostics["reason"], "compatible with no accepted subsets")
+
     def test_full_pyramid_has_explicit_coarse_to_fine_defaults(self) -> None:
         default = signature(ICGNWGPUFullPyramid).parameters["pyramid_levels"].default
         self.assertEqual(default, DEFAULT_FULL_PYRAMID_LEVELS)
@@ -41,6 +90,27 @@ class NativeReferenceTests(unittest.TestCase):
     def test_full_pyramid_schedule_requires_one_value_per_level(self) -> None:
         with self.assertRaisesRegex(ValueError, "one value per pyramid level"):
             _schedule((8, 12), level_count=3, defaults=(8, 12, 30), name="iterations")
+
+    def test_invalid_full_pyramid_reference_config_preserves_state(self) -> None:
+        engine = object.__new__(ICGNWGPUFullPyramid)
+        engine.pyramid_levels = 2
+        engine.iterations_per_level = (12, 30)
+        engine.tolerance_per_level = (0.005, 0.001)
+        engine._zncc_min = 0.8
+        engine._reference_ready = True
+        engine._clear_level_resources = mock.Mock()
+
+        with self.assertRaisesRegex(ValueError, "between 1 and 30"):
+            engine.set_reference(
+                np.zeros((64, 64), dtype=np.uint8),
+                iterations_per_level=(0, 30),
+            )
+
+        self.assertEqual(engine.iterations_per_level, (12, 30))
+        self.assertEqual(engine.tolerance_per_level, (0.005, 0.001))
+        self.assertEqual(engine._zncc_min, 0.8)
+        self.assertTrue(engine._reference_ready)
+        engine._clear_level_resources.assert_not_called()
 
     def test_native_engine_defaults_to_one_image_scale(self) -> None:
         default = signature(ICGNWGPU).parameters["pyramid_levels"].default
@@ -108,6 +178,7 @@ class NativeReferenceTests(unittest.TestCase):
         requested[0, 1] = True
         seeds, active = _transfer_pyramid_seed(
             result,
+            source_available=np.ones((2, 2), dtype=np.bool_),
             source_scale=2,
             destination_scale=1,
             destination_grid=(2, 2),
@@ -115,6 +186,66 @@ class NativeReferenceTests(unittest.TestCase):
         )
         self.assertEqual(int(active.sum()), 1)
         np.testing.assert_allclose(seeds[0, 1, [0, 3]], (4.0, -2.0))
+
+    def test_pyramid_transfer_ignores_uncomputed_zero_status(self) -> None:
+        parameters = np.zeros((2, 2, 6), dtype=np.float32)
+        parameters[0, 0, 0] = 4.0
+        result = RegistrationResult(
+            parameters=parameters,
+            status=np.zeros((2, 2), dtype=np.float32),
+            iterations=np.zeros((2, 2), dtype=np.float32),
+            accepted=0,
+            replaced=0,
+            mean_translation=None,
+            mean_iterations=None,
+            timing={},
+            config={},
+            width=32,
+            height=32,
+            subset_size=16,
+        )
+        requested = np.zeros((2, 2), dtype=np.bool_)
+        requested[0, 0] = True
+        available = np.zeros((2, 2), dtype=np.bool_)
+        available[0, 0] = True
+        seeds, active = _transfer_pyramid_seed(
+            result,
+            source_available=available,
+            source_scale=2,
+            destination_scale=1,
+            destination_grid=(2, 2),
+            requested=requested,
+        )
+        self.assertEqual(int(active[0, 0]), 1)
+        self.assertEqual(float(seeds[0, 0, 0]), 8.0)
+
+    def test_pyramid_transfer_falls_back_to_zero_seed(self) -> None:
+        result = RegistrationResult(
+            parameters=np.zeros((2, 2, 6), dtype=np.float32),
+            status=np.zeros((2, 2), dtype=np.float32),
+            iterations=np.zeros((2, 2), dtype=np.float32),
+            accepted=0,
+            replaced=0,
+            mean_translation=None,
+            mean_iterations=None,
+            timing={},
+            config={},
+            width=32,
+            height=32,
+            subset_size=16,
+        )
+        requested = np.zeros((2, 2), dtype=np.bool_)
+        requested[1, 1] = True
+        seeds, active = _transfer_pyramid_seed(
+            result,
+            source_available=np.zeros((2, 2), dtype=np.bool_),
+            source_scale=2,
+            destination_scale=1,
+            destination_grid=(2, 2),
+            requested=requested,
+        )
+        self.assertEqual(int(active[1, 1]), 1)
+        np.testing.assert_array_equal(seeds[1, 1], 0.0)
 
     def test_pyramid_dependency_mask_keeps_four_interpolation_sources(self) -> None:
         requested = np.zeros((4, 4), dtype=np.bool_)
@@ -147,6 +278,34 @@ class NativeReferenceTests(unittest.TestCase):
             ):
                 next(engine.register_stream((), pipeline_depth=depth))
 
+    def test_stream_retains_recovery_frame_when_input_buffer_is_reused(self) -> None:
+        engine = object.__new__(ICGNWGPU)
+        engine.pyramid_levels = 2
+        engine._solver = object()
+        engine._upload_frame = mock.Mock(return_value=0.1)
+        engine._encode_registration = mock.Mock(return_value="command")
+        engine.device = SimpleNamespace(queue=SimpleNamespace(submit=mock.Mock()))
+        frame = np.full((16, 16), 7, dtype=np.uint8)
+        pending = engine._submit_slot(object(), frame, {"iterations": 30})
+        frame.fill(9)
+        self.assertFalse(np.shares_memory(pending.frame, frame))
+        np.testing.assert_array_equal(pending.frame, 7)
+
+    def test_invalid_reference_configuration_preserves_prepared_state(self) -> None:
+        engine = object.__new__(ICGNWGPU)
+        engine.height = 64
+        engine.width = 64
+        engine.grid_height = 4
+        engine.grid_width = 4
+        engine._reference_ready = True
+        engine._config = {"iterations": 30, "tolerance": 1e-3, "znccMin": 0.8}
+        engine._close_pyramid_engines = mock.Mock()
+        with self.assertRaisesRegex(ValueError, "iterations"):
+            engine.set_reference(np.zeros((128, 128), dtype=np.uint8), iterations=0)
+        self.assertEqual((engine.height, engine.width), (64, 64))
+        self.assertTrue(engine._reference_ready)
+        engine._close_pyramid_engines.assert_not_called()
+
     def test_shader_is_packaged_as_a_runtime_resource(self) -> None:
         shader = files("lucas_kanade_icgn").joinpath("shaders/icgn.wgsl")
         subgroup_source = files("lucas_kanade_icgn").joinpath("shaders/icgn_subgroup.comp")
@@ -171,6 +330,8 @@ class NativeReferenceTests(unittest.TestCase):
         pyramid_text = pyramid_shader.read_text(encoding="utf-8")
         for entry_point in ("reduce_x", "reduce_y", "transfer_seed"):
             self.assertIn(f"fn {entry_point}", pyramid_text)
+        self.assertIn("texture_storage_2d<r32float, write>", pyramid_text)
+        self.assertNotIn("rgba16float", pyramid_text)
 
     def test_solver_controls_are_validated(self) -> None:
         self.assertEqual(_validated_config(30, 1e-3, 0.8)["iterations"], 30)
@@ -195,6 +356,14 @@ class NativeReferenceTests(unittest.TestCase):
         self.assertTrue(np.isfinite(reference).all())
         self.assertTrue(np.isfinite(inverse).all())
         self.assertTrue(np.all(metadata.reshape(-1, 16)[:, 1] == 1.0))
+
+    def test_flat_reference_has_finite_rejected_inverse_hessians(self) -> None:
+        image = np.full((64, 64), 137, dtype=np.uint8)
+        _, inverse, metadata = _reference_arrays(image)
+
+        self.assertTrue(np.isfinite(inverse).all())
+        self.assertTrue(np.all(inverse == 0.0))
+        self.assertTrue(np.all(metadata.reshape(-1, 16)[:, 1] == 0.0))
 
 
 if __name__ == "__main__":

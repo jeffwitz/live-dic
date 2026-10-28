@@ -104,16 +104,16 @@ the displayed precision. The main timing checks were:
      - 31,654 accepted; same ``3.075e-5`` px RMSE
    * - UHD native full pyramid, two levels
      - 14.811 / 15.163 ms median / p95
-     - 14.699--14.939 / 14.917--15.562 ms
-     - Two repeated campaigns; 31,692 accepted
+     - 14.548 / 15.532 ms
+     - Current ``r32float`` campaign; 31,719 accepted
    * - UHD native full pyramid, three levels
      - 15.458 / 16.210 ms median / p95
-     - 16.331--16.353 / 17.286--17.665 ms
-     - Median remained above 60 FPS; p95 did not
+     - 16.118 / 17.019 ms
+     - Current ``r32float`` campaign; p95 above 60 Hz
    * - UHD raw browser pyramid, two levels, ``(4, -2)``
      - 15.931 / 16.622 ms GPU median / p95
-     - 16.012 / 16.492 ms
-     - 31,692 accepted; same ``0.00123`` px RMSE
+     - 15.145 / 15.824 ms
+     - Current ``r32float`` campaign; 31,722 accepted
    * - UHD Three.js/WebGL2 compatibility path
      - 27.246 / 27.730 ms GPU median / p95
      - 28.511 / 29.328 ms
@@ -571,52 +571,51 @@ configuration is the class default and the recommended native path.
      - Truth RMSE
    * - 512 x 512, one scale
      - 30
-     - 3.309 ms
-     - 3.642 ms
+     - 2.581 ms
+     - 3.823 ms
      - 634 / 1,024
      - 0.0906 px
    * - 512 x 512, full pyramid 2
      - 12, 30
-     - 1.973 ms
-     - 2.371 ms
+     - 1.948 ms
+     - 2.167 ms
      - 900 / 1,024
-     - 0.000027 px
+     - 0.0000112 px
    * - 512 x 512, full pyramid 3
      - 6, 8, 20
-     - 2.420 ms
-     - 3.229 ms
-     - 897 / 1,024
-     - 0.000025 px
+     - 2.310 ms
+     - 3.299 ms
+     - 900 / 1,024
+     - 0.0000123 px
    * - 3840 x 2160, one scale
      - 30
-     - 32.177 ms
-     - 32.679 ms
+     - 34.715 ms
+     - 35.717 ms
      - 22,401 / 32,400
      - 0.0964 px
    * - 3840 x 2160, full pyramid 2
      - 12, 30
-     - **14.811 ms (67.5 FPS)**
-     - 15.163 ms
-     - 31,692 / 32,400
-     - 0.00123 px
+     - **14.548 ms (68.7 FPS)**
+     - 15.532 ms
+     - 31,719 / 32,400
+     - 0.00180 px
    * - 3840 x 2160, full pyramid 3
      - 6, 8, 20
-     - **15.458 ms (64.7 FPS)**
-     - 16.210 ms
-     - 31,681 / 32,400
-     - 0.00124 px
+     - **16.118 ms (62.0 FPS)**
+     - 17.019 ms
+     - 31,731 / 32,400
+     - 0.00194 px
 
-The published campaign placed both medians and p95 values inside the 16.667 ms
-period, but the revalidation above measured a 17.286--17.665 ms p95 for three
-levels. Two levels therefore provide the repeated 4K60 compute margin for this
+This campaign used five warm-ups and 30 measured runs after the horizontal
+reduction intermediate moved from ``rgba16float`` to ``r32float``. Two levels
+provide the repeated 4K60 compute margin for this
 controlled translated texture on this machine. Three levels remained above 60
-FPS by median in the audit, but should be reserved for a larger expected
+FPS by median, but should be reserved for a larger expected
 capture range and are not claimed to meet the 60 Hz p95 boundary. None of
 these measurements is an acquisition-to-result guarantee. The three-level
 iteration ceilings were reduced from ``(8, 12, 30)`` to ``(6, 8, 20)`` after
-an alternating A/B campaign preserved all 31,681 accepted subsets and the
-``0.00124362`` px RMSE.
-The fine level already converged in 2.45 iterations on average, so reducing the
+an earlier alternating A/B campaign preserved its accepted field.
+The fine level converged in 1.39 iterations on average in the current campaign, so reducing the
 ceilings recovered only a fraction of the extra-scale cost; target reduction,
 prefiltering, seed transfer, and additional dispatches remain fixed costs. A
 one-level ``ICGNWGPUFullPyramid`` result matched the portable ``ICGNWGPU``
@@ -635,7 +634,7 @@ Reproduce the campaign with:
 
    $ PYTHONPATH=DIC/LucasKanadeICGN/python/src \
        python3 DIC/LucasKanadeICGN/benchmarks/benchmark_wgpu_full_pyramid.py \
-       --width 3840 --height 2160 --levels 2 3 --warmups 2 --repeats 7
+       --width 3840 --height 2160 --levels 2 3 --warmups 5 --repeats 30
 
 Raw browser full pyramid
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -646,9 +645,8 @@ reduced image and coefficient field on the GPU, and transfers affine seeds
 coarse to fine. Two levels are the browser default; one level keeps the
 original single-scale dispatch path.
 
-The following focused campaigns used three warm-ups on the same Intel GPU. The
-nominal ``(2, -1)`` campaign contains 12 measured runs per depth; the difficult
-``(4, -2)`` campaign contains eight. GPU timestamps include reductions,
+The current focused campaigns used five warm-ups and 20 measured runs per
+depth on the same Intel GPU. GPU timestamps include reductions,
 per-level prefilters and solves, seed transfers, and the final median pass, but
 exclude PNG transport and result readback.
 
@@ -669,16 +667,16 @@ exclude PNG transport and result readback.
      - 0.0000308 px
    * - ``(2, -1)``, two levels
      - 12, 30
-     - 16.873 ms
-     - 20.206 ms
+     - **15.908 ms (62.9 FPS)**
+     - 16.629 ms
      - 31,654 / 32,400
-     - 0.0000295 px
+     - 0.0000299 px
    * - ``(2, -1)``, three levels
      - 6, 8, 20
-     - **16.536 ms (60.5 FPS)**
-     - 16.931 ms
+     - 16.959 ms
+     - 17.755 ms
      - 31,654 / 32,400
-     - 0.0000296 px
+     - 0.0000299 px
    * - ``(4, -2)``, one scale
      - 30
      - 61.393 ms
@@ -687,23 +685,24 @@ exclude PNG transport and result readback.
      - 0.0964 px
    * - ``(4, -2)``, two levels
      - 12, 30
-     - **15.931 ms (62.8 FPS)**
-     - 16.622 ms
-     - 31,692 / 32,400
-     - 0.00123 px
+     - **15.145 ms (66.0 FPS)**
+     - 15.824 ms
+     - 31,722 / 32,400
+     - 0.00185 px
    * - ``(4, -2)``, three levels
      - 6, 8, 20
-     - **16.612 ms (60.2 FPS)**
-     - 16.897 ms
-     - 31,681 / 32,400
-     - 0.00124 px
+     - **15.618 ms (64.0 FPS)**
+     - 16.172 ms
+     - 31,728 / 32,400
+     - 0.00187 px
 
-The difficult pair is the deciding result: two levels recover 9,291 additional
-subsets while reducing the median by 74% because the single-scale failures run
+The difficult pair is the deciding result: two levels recover 9,321 additional
+subsets while reducing the median by 75% because the single-scale failures run
 to their 30-iteration ceiling. Two levels are therefore the robust browser
 default. Three remain useful for a larger expected capture range. The nominal
-two-level p95 exceeded 16.667 ms in this short campaign, so these measurements
-qualify controlled compute throughput rather than a hard real-time deadline.
+two-level p95 is just inside 16.667 ms in this campaign, while three levels are
+not; these measurements qualify controlled compute throughput rather than a
+hard end-to-end real-time deadline.
 
 Reproduce either pair offline with:
 
@@ -712,7 +711,7 @@ Reproduce either pair offline with:
    $ PYTHONPATH=DIC/LucasKanadeICGN/python/src \
        python3 DIC/LucasKanadeICGN/benchmarks/benchmark_4k.py \
        --backend webgpu-wgsl --pyramid-levels 2 \
-       --translation 4 -2 --warmups 3 --repeats 8
+       --translation 4 -2 --warmups 5 --repeats 20
 
 Browser validation
 ~~~~~~~~~~~~~~~~~~

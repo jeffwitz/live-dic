@@ -429,11 +429,17 @@ def _as_uint8_gray(image: ImageInput) -> np.ndarray:
 
     if isinstance(image, (str, os.PathLike)):
         with Image.open(image) as opened:
+            if opened.mode == "F" or opened.mode.startswith("I"):
+                return _as_uint8_gray(np.asarray(opened))
             array = np.asarray(opened.convert("L"), dtype=np.uint8)
     elif isinstance(image, bytes):
         with Image.open(io.BytesIO(image)) as opened:
+            if opened.mode == "F" or opened.mode.startswith("I"):
+                return _as_uint8_gray(np.asarray(opened))
             array = np.asarray(opened.convert("L"), dtype=np.uint8)
     elif isinstance(image, Image.Image):
+        if image.mode == "F" or image.mode.startswith("I"):
+            return _as_uint8_gray(np.asarray(image))
         array = np.asarray(image.convert("L"), dtype=np.uint8)
     else:
         source = np.asarray(image)
@@ -446,7 +452,15 @@ def _as_uint8_gray(image: ImageInput) -> np.ndarray:
             scale = 255.0 if source.size and float(np.max(source)) <= 1.0 else 1.0
             source = np.clip(source * scale, 0, 255).astype(np.uint8)
         elif source.dtype != np.uint8:
-            source = np.clip(source, 0, 255).astype(np.uint8)
+            if not np.issubdtype(source.dtype, np.integer):
+                raise ValueError(f"Unsupported image dtype {source.dtype}.")
+            if source.size and (int(np.min(source)) < 0 or int(np.max(source)) > 255):
+                raise ValueError(
+                    "Integer image values must be in [0, 255]. Convert higher-bit-depth "
+                    "images explicitly to uint8 with the same calibrated intensity range "
+                    "for the reference and every target."
+                )
+            source = source.astype(np.uint8)
         if source.ndim == 2:
             # Camera frames normally arrive in this form. Avoid a redundant
             # Pillow image construction and grayscale copy on every frame.
@@ -615,6 +629,10 @@ class ICGNWebGL:
             if self._process.poll() is None:
                 return self
             self.close()
+        # Resolve the external executable before allocating any local server,
+        # log, or temporary profile so a missing browser cannot leak them.
+        chromium = _find_chromium(self.chromium)
+        self.chromium = chromium
         self._server = _StaticServer(self.repo_root)
         self._server.start()
         devtools_port = _free_port()
@@ -628,8 +646,6 @@ class ICGNWebGL:
         if self.backend == "gpuio" and self._requested_dimensions is not None:
             width, height = self._requested_dimensions
             page_url += f"&width={width}&height={height}"
-        chromium = _find_chromium(self.chromium)
-        self.chromium = chromium
         command = [
             chromium,
             "--headless=new",
