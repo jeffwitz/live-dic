@@ -125,8 +125,8 @@ coarse-to-fine affine seeds, and solver states on one GPU. It encodes all
 levels in one command buffer and performs one final readback. Iterations and
 tolerances are configurable per scale from coarse to fine. Two levels are the
 recommended native default. On the validation machine, the current 30-run
-campaign measured 14.548 ms (68.7 FPS) at 3840 x 2160 for the controlled
-``(+4, -2)`` translation while accepting 31,719 of 32,400 subsets. Three levels remain
+campaign measured 14.580 ms (68.6 FPS) at 3840 x 2160 for the controlled
+``(+4, -2)`` translation while accepting 31,724 of 32,400 subsets. Three levels remain
 available explicitly for larger expected displacements, but a repeated audit
 found that their p95 exceeded the 16.667 ms period even though their median
 remained above 60 FPS. See the performance reference for the exact boundary,

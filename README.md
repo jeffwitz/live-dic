@@ -10,16 +10,15 @@
 
 The project goal is sustained digital image correlation on 3840 x 2160 frames
 at 60 frames per second, measured across the complete acquisition-to-result
-pipeline. The published campaign at
-[`01c9e03`](https://github.com/jeffwitz/tests_gpuio/commit/01c9e031b233c6caa45be7fca2145ecda249182e)
-processed the reproducible UHD test pair with a two-level GPU-resident pyramid
-in a **14.548 ms median complete Python call** with a **15.532 ms p95**.
+pipeline. The GPU-qualified consolidation campaign processed the reproducible
+UHD test pair with a two-level GPU-resident pyramid in a **14.580 ms median
+complete Python call** with a **15.478 ms p95**.
 This boundary includes direct target upload,
 GPU pyramid construction, coarse-to-fine IC-GN computation, packed readback,
 and NumPy result construction. Both measurements are below the 16.667 ms
-period on the validation machine. Subsequent changes to reduction arithmetic
-and selective recovery require a new GPU validation and timing campaign;
-these recorded figures do not qualify the changed kernels.
+period on the validation machine. The reduction and selective-recovery shaders
+were compiled and exercised by the opt-in hardware regressions before this
+campaign.
 
 This is an encouraging compute result, not yet a 4K60 system qualification.
 Camera acquisition and downstream consumers are still excluded. The browser
@@ -345,10 +344,10 @@ available from [`index.html`](./index.html).
 - soft real-time behavior only, with no operating-system deadline guarantee.
 
 The direct `t=0 -> 20` displacement of `(4, -2)` pixels is outside the robust
-local basin for many single-scale subsets. The published two-level native
-full-pyramid campaign at `01c9e03` returned 31,719 accepted subsets out of
-32,400 at UHD with a translation RMSE of 0.00180 pixel. These values refer to
-that campaign's accepted population. Larger motions can select three levels
+local basin for many single-scale subsets. The current two-level native
+full-pyramid campaign returned 31,724 accepted subsets out of 32,400 at UHD
+with a translation RMSE of 0.00182 pixel. These values refer to that campaign's
+accepted population. Larger motions can select three levels
 or provide a better initial estimate.
 
 ## Verification
