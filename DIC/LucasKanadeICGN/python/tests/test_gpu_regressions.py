@@ -29,10 +29,14 @@ def _integer_reduction(image: np.ndarray) -> np.ndarray:
     taps = (1, 4, 6, 4, 1)
     for row, weight_y in enumerate(taps):
         for column, weight_x in enumerate(taps):
-            total += weight_y * weight_x * padded[
-                row : row + 2 * reduced_height : 2,
-                column : column + 2 * reduced_width : 2,
-            ]
+            total += (
+                weight_y
+                * weight_x
+                * padded[
+                    row : row + 2 * reduced_height : 2,
+                    column : column + 2 * reduced_width : 2,
+                ]
+            )
     return (total // 256).astype(np.uint8)
 
 
