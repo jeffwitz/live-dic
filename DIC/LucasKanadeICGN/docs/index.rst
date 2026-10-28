@@ -1,5 +1,5 @@
-Real-Time DIC in Python
-=======================
+Real-Time DIC in Python toward 4K60
+===================================
 
 .. important:: Foundational work by Pierre Margerit
 
@@ -8,6 +8,16 @@ Real-Time DIC in Python
    experiments, repository structure, and WebGL groundwork are the foundation
    on which this Python real-time DIC implementation is built. The work
    documented here is a continuation of that foundation.
+
+.. admonition:: Long-term target: qualified 4K at 60 FPS
+
+   The engineering objective is sustained DIC on 3840 x 2160 frames at 60
+   frames per second over the complete acquisition-to-result pipeline. The
+   current Three.js/WebGPU compute boundary is 13.341 ms median and 14.405 ms
+   p95 on the validation machine, below the 16.667 ms frame period. Camera
+   acquisition, upload, Python transport, readback, and downstream consumers
+   are not included in that timer, so 4K60 is a target rather than a current
+   end-to-end qualification.
 
 This documentation describes a Python workflow for GPU-accelerated digital
 image correlation (DIC). The current implementation performs affine

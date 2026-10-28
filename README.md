@@ -1,10 +1,24 @@
-# Real-Time DIC in Python with WebGPU and GPU-IO
+# Toward 4K60 Real-Time DIC in Python with WebGPU
 
 > **Foundational work by [Pierre Margerit](https://github.com/MargeritPierre).**
 > This fork and its real-time Python DIC work would not exist without Pierre's
 > original [`tests_gpuio`](https://github.com/MargeritPierre/tests_gpuio)
 > project. His GPU-IO experiments, repository structure, and WebGL groundwork
 > are the foundation on which the work presented here is built.
+
+## Long-term target: qualified 4K at 60 FPS
+
+The project goal is sustained digital image correlation on 3840 x 2160 frames
+at 60 frames per second, measured across the complete acquisition-to-result
+pipeline. The current Three.js/WebGPU milestone processes the reproducible UHD
+test pair in **13.341 ms median GPU time** with a **14.405 ms p95**, below the
+16.667 ms compute budget of 60 FPS on the validation machine.
+
+This is an encouraging compute result, not yet a 4K60 system qualification.
+The GPU timer excludes camera acquisition, input upload, Python and DevTools
+transport, result readback, and downstream consumers. Those stages must all be
+integrated and measured without growing queues before the 4K60 objective can be
+claimed.
 
 This fork adds a Python-accessible, GPU-accelerated digital image correlation
 (DIC) implementation to `tests_gpuio`. It performs affine

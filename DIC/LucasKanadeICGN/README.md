@@ -1,4 +1,4 @@
-# Affine Lucas-Kanade IC-GN browser backends
+# Affine IC-GN browser backends toward 4K60
 
 > **Foundational acknowledgement — Pierre Margerit.** This work would not exist
 > without [Pierre Margerit's original `tests_gpuio`
@@ -6,6 +6,15 @@
 > experiments, repository structure, and WebGL groundwork made this Python
 > real-time DIC implementation possible. The implementation presented here is a
 > continuation of that foundation.
+
+## 4K60 engineering objective
+
+The long-term objective is sustained 3840 x 2160 DIC at 60 FPS over the full
+acquisition-to-result path. The current optimized Three.js compute boundary is
+13.341 ms median and 14.405 ms p95 on the validation machine, inside a 16.667 ms
+frame period. Acquisition, upload, Python transport, readback, and downstream
+processing are excluded, so this repository does not yet claim a qualified
+4K60 application.
 
 This implementation ports the affine inverse-compositional Gauss-Newton
 (IC-GN) registration core from the SYCL prototype in
