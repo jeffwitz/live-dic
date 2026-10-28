@@ -69,6 +69,13 @@ Complete Python call
    the Python-to-browser and browser-to-Python path and is the correct boundary
    for a Python application.
 
+Native timing fields
+   ``ICGNWGPU.register`` reports ``uploadWallMs``,
+   ``executeReadbackWallMs``, and ``totalWallMs`` in
+   ``RegistrationResult.timing``. The execute/readback field is synchronized;
+   the total includes validation, upload, GPU work, packed readback, and NumPy
+   result statistics.
+
 Acquisition-to-result latency
    Timestamp frames at acquisition and results after DIC processing. This is the
    relevant metric for the complete real-time system.
@@ -81,9 +88,10 @@ Benchmark the expected motion and image quality, not only the analytical test
 pair. Report at least median and p95 latency, accepted-subset count, and mean
 iteration count.
 
-For the measured Three.js, GPU-IO, and SYCL results on the validation machine,
-see :doc:`../reference/performance`. For the interpretation of timing
-boundaries, see :doc:`../explanation/realtime-performance`.
+For the measured native wgpu-py, Three.js, GPU-IO, PyO3, and SYCL results on
+the validation machine, see :doc:`../reference/performance`. For the
+interpretation of timing boundaries, see
+:doc:`../explanation/realtime-performance`.
 
 From a repository checkout, reproduce the UHD campaign for either browser
 backend with:
@@ -95,3 +103,4 @@ backend with:
        --backend three-tsl --repeats 30 --warmups 5
 
 Use ``--backend gpuio`` for the WebGL2 path.
+Use ``--backend wgpu-native`` for the browser-free complete Python-call path.

@@ -1,10 +1,12 @@
 Pipeline architecture
 =====================
 
-The Python API controls either a persistent GPU-IO/WebGL2 backend or an
-independent Three.js/TSL WebGPU backend. Chromium is an execution environment,
-not a user interface: each headless page loads only its numerical runtime,
-creates no controls, and never attaches a canvas to the visible document.
+The Python API controls a persistent GPU-IO/WebGL2 backend, an independent
+Three.js/TSL WebGPU backend, or the experimental native wgpu-py backend.
+Chromium is an execution environment for the first two, not a user interface:
+each headless page loads only its numerical runtime, creates no controls, and
+never attaches a canvas to the visible document. The native path does not
+start Chromium.
 
 Data flow
 ---------
@@ -43,6 +45,16 @@ Data flow
                                       v
                                NumPy result arrays
 
+The native path replaces the PNG and DevTools stages with a direct buffer-
+protocol upload:
+
+.. code-block:: text
+
+   contiguous NumPy uint8 --> r8unorm texture --> WGSL compute
+             ^                                      |
+             |                                      v
+             +-------- packed binary readback -- NumPy views
+
 Reference stage
 ---------------
 
@@ -61,10 +73,11 @@ Every target is converted to grayscale, uploaded, and filtered into cubic
 B-spline coefficients. Three.js runs up to 30 affine IC-GN iterations inside
 one compute dispatch and groups 16 active lanes per subset. GPU-IO fuses the
 same iteration loop into one fragment per subset and scans the 16 x 16 tile
-serially. In both cases, converged or rejected subsets stop expensive target
-sampling. A final GPU pass detects spatial outliers and can replace them with
-neighbor medians. :doc:`gpu-optimization` describes both mappings and their
-reduction strategies in detail.
+serially. The native WGSL backend uses one 16-lane workgroup per subset and the
+same fused iteration structure. In every case, converged or rejected subsets
+stop expensive target sampling. A final GPU pass detects spatial outliers and
+can replace them with neighbor medians. :doc:`gpu-optimization` describes the
+browser mappings; :doc:`native-backend` describes the native path.
 
 Control path
 ------------
@@ -75,10 +88,15 @@ to NumPy without changing their floating-point values. This design preserves
 the existing browser implementations, but PNG serialization and DevTools transfer
 are visible costs in the complete Python latency.
 
+``ICGNWGPU`` calls wgpu-native in-process. It uploads the grayscale NumPy
+buffer to a texture and reads one packed binary state buffer. This removes PNG,
+WebSocket, JavaScript-array, and JSON boundaries, while retaining the required
+GPU resource copy.
+
 Concurrency model
 -----------------
 
-One ``ICGNWebGL`` instance owns one browser process and is not thread-safe. A
-real-time application should keep GPU calls on one processing thread and use a
-bounded queue to exchange frames and results with acquisition and persistence
-workers.
+One engine instance owns one browser process or native device/queue and is not
+thread-safe. A real-time application should keep GPU calls on one processing
+thread and use a bounded queue to exchange frames and results with acquisition
+and persistence workers.

@@ -97,5 +97,21 @@ A normal Three.js ``register`` call reports these timing keys:
    * - ``pythonCallWallMs``
      - complete Python ``register`` call, including transport and readback
 
-GPU-IO returns its more detailed legacy stage keys. In both backends, inspect
-the reported boundary before comparing values.
+GPU-IO returns its more detailed legacy stage keys. In both browser backends,
+inspect the reported boundary before comparing values.
+
+The native ``ICGNWGPU`` engine reports:
+
+.. list-table:: Native registration timing keys
+   :header-rows: 1
+
+   * - Key
+     - Included work
+   * - ``uploadWallMs``
+     - direct NumPy buffer to ``r8unorm`` texture submission
+   * - ``executeReadbackWallMs``
+     - FIR, IC-GN, median replacement, synchronization, and packed readback
+   * - ``totalWallMs``
+     - complete native Python call, including validation and result statistics
+
+These are host wall-clock boundaries, not WebGPU timestamp-query durations.

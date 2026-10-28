@@ -1,4 +1,4 @@
-"""Headless Python interface for the browser-GPU affine IC-GN solver."""
+"""Headless Python interface for GPU-accelerated affine IC-GN solvers."""
 
 from .engine import (
     PARAMETER_ORDER,
@@ -11,6 +11,7 @@ from .engine import (
     RegistrationResult,
     register_pair,
 )
+from .wgpu_backend import ICGNWGPU
 
 __all__ = [
     "BenchmarkResult",
@@ -18,6 +19,7 @@ __all__ = [
     "ImageInput",
     "ICGNError",
     "ICGNWebGL",
+    "ICGNWGPU",
     "PARAMETER_ORDER",
     "ReferenceInfo",
     "RegistrationResult",

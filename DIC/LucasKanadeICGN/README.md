@@ -1,4 +1,4 @@
-# Affine IC-GN browser backends toward 4K60
+# Affine IC-GN GPU backends toward 4K60
 
 > **Foundational acknowledgement — Pierre Margerit.** This work would not exist
 > without [Pierre Margerit's original `tests_gpuio`
@@ -10,16 +10,17 @@
 ## 4K60 engineering objective
 
 The long-term objective is sustained 3840 x 2160 DIC at 60 FPS over the full
-acquisition-to-result path. The current optimized Three.js compute boundary is
-13.629 ms median and 15.352 ms p95 on the validation machine, inside a 16.667 ms
-frame period. Acquisition, upload, Python transport, readback, and downstream
-processing are excluded, so this repository does not yet claim a qualified
-4K60 application.
+acquisition-to-result path. The experimental native wgpu-py backend currently
+measures 16.160 ms median and 16.569 ms p95 for the complete Python registration
+call on the validation machine. Direct upload, computation, packed readback,
+and NumPy result construction are included. Acquisition and downstream work
+are excluded, so this repository does not yet claim a qualified 4K60
+application.
 
 This implementation ports the affine inverse-compositional Gauss-Newton
 (IC-GN) registration core from the SYCL prototype in
-`DIC_CODEC/DIC_FROM_H264` to two browser GPU backends: the original
-WebGL2/GPU-IO path and an independent Three.js/TSL WebGPU path. It runs on
+`DIC_CODEC/DIC_FROM_H264` to the original WebGL2/GPU-IO path, an independent
+Three.js/TSL WebGPU path, and an experimental native wgpu-py path. It runs on
 offline test images and does not require a camera or an H.264 pipeline.
 
 The implementation retains the main algorithmic choices of the SYCL version:
@@ -50,12 +51,20 @@ implementation of the DIC-RT equations in this repository, not a copy of
 Strobox. Three.js r186 and its licence are vendored locally under
 [`three/vendor/`](./three/vendor/) for offline execution.
 
-Both runtimes derive their buffers or textures and subset grid from the
+All runtimes derive their buffers or textures and subset grid from the
 reference dimensions. They have been validated at both 512 × 512 and UHD 3840
 × 2160; GPU-IO dimensions must be multiples of 16. The one-time reference
 construction is exposed by `set_reference()`, while `register()` and
 `benchmark_target()` operate against that prepared state so reference
 construction and optical-flow timings remain separate.
+
+The native ``ICGNWGPU`` host submits a shared WGSL implementation in-process
+through wgpu-native. A contiguous NumPy ``uint8`` frame is uploaded directly to
+an ``r8unorm`` texture and one packed state buffer is read back. This removes
+PNG, Chromium, DevTools, JSON, and JavaScript-array conversions. The
+``native/`` Rust wgpu/PyO3 crate already qualifies adapter creation, shared
+shader compilation, and the same direct texture-upload boundary; full solver
+orchestration remains in wgpu-py for this milestone.
 
 The remaining differences are platform constraints: the browser backends use
 single precision and do not expose the same register controls or queue model as
@@ -93,7 +102,8 @@ See [`python/README.md`](./python/README.md) for installation and API examples.
 
 Three.js/TSL is the default Python and command-line backend. Select the previous
 implementation explicitly with `ICGNWebGL(backend="gpuio")` or
-`--backend gpuio`. Both return the same NumPy result schema.
+`--backend gpuio`. Select the experimental browser-free path with
+`ICGNWGPU()`. All return the same NumPy result schema.
 
 ## Optional browser demo
 
@@ -127,10 +137,15 @@ on the validation machine.
 the 16-lane WebGPU subgroup/workgroup reductions and the fused one-fragment-per-
 subset WebGL2 strategy with execution diagrams.
 
+[`Native WebGPU and PyO3`](./docs/explanation/native-backend.rst) explains the
+direct NumPy transfer path, shared WGSL layout, current measurements, and the
+remaining Rust migration work.
+
 The reproducible offline UHD campaign is
 [`benchmarks/benchmark_4k.py`](./benchmarks/benchmark_4k.py). It constructs a
 known `(2, -1)` pixel translation, reports preparation separately, and measures
-only the warmed optical-flow phase.
+the warmed optical-flow phase. Use `--backend wgpu-native` for the complete
+native Python-call boundary.
 
 ## Documentation
 

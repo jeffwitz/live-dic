@@ -6,9 +6,10 @@
 > experiments and WebGL foundation made this real-time DIC path possible.
 
 This package exposes the affine IC-GN solver in the parent directory to Python
-without opening a browser window or loading graphical controls. Chromium is
-used as an invisible runtime for either the WebGL2/GPU-IO backend or the
-Three.js/TSL WebGPU backend.
+without opening a visible browser window or loading graphical controls.
+Chromium is used as an invisible runtime for the WebGL2/GPU-IO and
+Three.js/TSL backends. The optional `ICGNWGPU` backend runs in-process and
+does not start Chromium.
 
 ## Requirements and installation
 
@@ -23,8 +24,16 @@ python3 -m venv .venv-icgn
 .venv-icgn/bin/pip install -e DIC/LucasKanadeICGN/python
 ```
 
-The wheel embeds the GPU-IO runtime and Three.js r186 runtime. The
-installed runtime therefore needs neither a source checkout nor network access.
+For the experimental native WebGPU path, use Python 3.11 or newer and install
+the optional dependency group:
+
+```bash
+.venv-icgn/bin/pip install -e 'DIC/LucasKanadeICGN/python[native]'
+```
+
+The wheel embeds the GPU-IO runtime, Three.js r186 runtime, and native WGSL.
+The installed runtime therefore needs neither a source checkout nor network
+access.
 `repo_root=...` remains available as an explicit development override for a
 backend-specific runtime directory or for a complete `tests_gpuio` checkout.
 
@@ -32,11 +41,11 @@ For a fully offline installation on another machine, prepare a wheelhouse on a
 connected machine with the same operating system and Python version:
 
 ```bash
-python3 -m pip wheel DIC/LucasKanadeICGN/python --wheel-dir wheelhouse
+python3 -m pip wheel 'DIC/LucasKanadeICGN/python[native]' --wheel-dir wheelhouse
 ```
 
-Copy `wheelhouse/` to the offline machine, where Chromium must already be
-installed, then run:
+Copy `wheelhouse/` to the offline machine, where Chromium is required only for
+the browser backends, then run:
 
 ```bash
 python3 -m pip install --no-index --find-links wheelhouse \
@@ -107,6 +116,29 @@ native headless Vulkan flags and `engine.info().device` identifies the selected
 adapter; check that it does not report SwiftShader before interpreting GPU
 benchmarks. `engine.info().solver` reports either `subgroup` or
 `portable-workgroup`, and `subgroup_width` records the measured hardware width.
+
+## Native WebGPU engine
+
+Use `ICGNWGPU` when the input already exists as a NumPy array and browser
+transport would dominate the latency:
+
+```python
+from lucas_kanade_icgn import ICGNWGPU
+
+with ICGNWGPU() as engine:
+    reference_info = engine.set_reference(reference_frame)
+    result = engine.register(target_frame)
+
+print(reference_info.total_wall_ms)
+print(result.timing)
+print(result.displacement)
+```
+
+The engine uploads contiguous grayscale bytes directly to an `r8unorm`
+texture and returns NumPy views backed by one packed result readback. The FIR,
+affine IC-GN solver, and median replacement all run on the native GPU. The
+result schema and parameter order are identical to `ICGNWebGL`. This backend
+is experimental and must be selected explicitly.
 
 ## One-shot function
 

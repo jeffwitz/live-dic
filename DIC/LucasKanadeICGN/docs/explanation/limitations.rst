@@ -4,8 +4,8 @@ Current limitations
 Geometry and input
 ------------------
 
-* Both backends support dynamic frame dimensions and have been validated at
-  3840 x 2160. Reference and target dimensions must match.
+* All three backends support dynamic frame dimensions and have been validated
+  at 3840 x 2160. Reference and target dimensions must match.
 * GPU-IO dimensions must be exact multiples of 16 because its texture grid is
   allocated when the private headless page starts. A dimension change rebuilds
   that page automatically.
@@ -13,7 +13,8 @@ Geometry and input
 * Grid dimensions are ``floor(width / 16)`` by ``floor(height / 16)``;
   uncovered right or bottom pixels are not assigned to a subset.
 * Inputs are converted to 8-bit grayscale.
-* Every Python frame is currently encoded as PNG before browser transfer.
+* Every Python frame is encoded as PNG before browser transfer. The native
+  ``ICGNWGPU`` path instead uploads contiguous 8-bit grayscale bytes directly.
 
 Registration range
 ------------------
@@ -31,9 +32,11 @@ faster motion.
 Runtime
 -------
 
-* Chromium is required as the WebGL2 or WebGPU execution environment.
-* Chromium itself is a system dependency and is not distributed in the Python
-  wheel.
+* Browser backends require Chromium as their WebGL2 or WebGPU execution
+  environment. Chromium is a system dependency and is not distributed in the
+  Python wheel.
+* Chromium is not required by ``ICGNWGPU``, but that optional backend requires
+  Python 3.11 or newer and a wgpu-native-supported graphics driver.
 * One engine instance is not thread-safe.
 * Browser GPU shader arithmetic is single precision.
 * The fastest Three.js solver requires a WebGPU subgroup containing all 16
@@ -41,6 +44,11 @@ Runtime
 * Maximum image size depends on the adapter's WebGPU storage-buffer or WebGL2
   texture limits.
 * Full parameter and status fields are read back for every ``register`` call.
+* The native WGSL solver currently uses the portable workgroup-memory
+  reduction even when the adapter exposes subgroup operations.
+* The PyO3 module currently qualifies adapter creation, shared-shader
+  compilation, and direct texture upload. Full solver orchestration still
+  lives in the wgpu-py host.
 * Current timing is soft real-time and provides no operating-system deadline
   guarantee.
 

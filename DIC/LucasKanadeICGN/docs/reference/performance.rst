@@ -32,6 +32,8 @@ Validation machine
      - ANGLE, Mesa Intel OpenGL 4.6
    * - WebGPU path
      - Three.js r186, Intel Xe2-LPG Vulkan adapter
+   * - Native WebGPU path
+     - wgpu-py 0.32.0, wgpu-native Vulkan, same physical GPU
    * - SYCL path
      - DPC++ ``-O2``, Level Zero, same physical GPU
 
@@ -136,6 +138,54 @@ difference. It is not an acquisition-to-result latency comparison. Use
 :doc:`../explanation/realtime-performance` for the timing boundaries required
 to qualify a complete application.
 
+Native wgpu-py comparison
+-------------------------
+
+The experimental ``ICGNWGPU`` backend was measured on the same 512 x 512
+``t=0 -> 10`` pair with five warm-ups and 30 runs. Unlike the browser rows, its
+complete-call boundary includes input validation, direct texture upload, FIR,
+IC-GN, median replacement, packed readback, and NumPy result construction.
+There is no PNG encoding, Chromium process, DevTools transfer, or JavaScript
+array conversion.
+
+.. list-table:: Complete Python-call comparison at 512 x 512
+   :header-rows: 1
+
+   * - Backend
+     - Median
+     - p95
+     - Accepted
+     - Truth RMSE
+   * - native wgpu-py
+     - **1.882 ms**
+     - **2.382 ms**
+     - 900 / 1,024
+     - 2.693e-5 px
+   * - Three.js/TSL through Chromium
+     - 56.203 ms
+     - 59.117 ms
+     - 900 / 1,024
+     - 2.749e-5 px
+   * - GPU-IO through Chromium
+     - 61.877 ms
+     - 65.655 ms
+     - 900 / 1,024
+     - 3.873e-5 px
+
+The browser complete-call values are dominated by PNG and DevTools transport;
+they are not the browser GPU values in the earlier table. Within the native
+call, target upload measured 0.038 ms median and compute plus packed readback
+measured 1.726 ms median. Native and Three.js produced equal status values for
+all 1,024 subsets. Their jointly accepted translation fields differed by
+``6.766e-6 px`` RMS, with a maximum absolute component difference of
+``6.068e-5 px``.
+
+The separate Rust/PyO3 upload milestone compiles the same WGSL and borrows the
+NumPy frame directly. Its initial synchronized UHD texture-upload probe
+measured 1.783 ms median and 6.029 ms p95. Because the complete solver is not
+yet hosted by Rust, this result is reported as an integration baseline, not as
+a faster backend. See :doc:`../explanation/native-backend`.
+
 Provenance and reproduction
 ---------------------------
 
@@ -145,6 +195,14 @@ The Three.js and GPU-IO comparison can be rerun from the repository root:
 
    $ PYTHONPATH=DIC/LucasKanadeICGN/python/src \
        python3 DIC/LucasKanadeICGN/benchmarks/compare_backends.py \
+       --repeats 30 --warmups 5
+
+Run the native and browser complete-call comparison with:
+
+.. code-block:: console
+
+   $ PYTHONPATH=DIC/LucasKanadeICGN/python/src \
+       python3 DIC/LucasKanadeICGN/benchmarks/compare_native_wgpu.py \
        --repeats 30 --warmups 5
 
 Detailed browser campaign results and the four-target numerical comparison are
@@ -157,8 +215,45 @@ referenced checkout is commit
 and the standalone comparison source is
 `icgn_sycl.cpp <https://github.com/jeffwitz/DIC_FROM_H264/blob/77267f92920ea8984533371cc6a62fef149ff6e2/experiments/codec_observation_closure/sycl_probe/icgn_sycl.cpp>`_.
 
-UHD browser validation
-----------------------
+UHD validation
+--------------
+
+The native backend was also measured on the same reproducible 3840 x 2160
+pair. One campaign used five warm-ups and 30 measured complete Python calls.
+
+.. list-table:: Native UHD complete-call breakdown
+   :header-rows: 1
+
+   * - Measurement
+     - Median
+     - p95
+   * - Complete ``register`` call
+     - **16.160 ms**
+     - **16.569 ms**
+   * - Direct target upload
+     - 0.395 ms
+     - not recorded
+   * - Compute plus packed readback
+     - 15.448 ms
+     - not recorded
+
+Reference preparation measured 1,016.6 ms and remained outside the per-frame
+loop. The final registration accepted 31,654 subsets and produced a
+``3.080e-5 px`` truth RMSE. This one campaign fits inside the 16.667 ms period
+at p95, but with only 0.098 ms of p95 margin. It excludes acquisition and
+downstream work and is therefore evidence for the transport design, not a
+qualified 4K60 application.
+
+Reproduce this native campaign with:
+
+.. code-block:: console
+
+   $ PYTHONPATH=DIC/LucasKanadeICGN/python/src \
+       python3 DIC/LucasKanadeICGN/benchmarks/benchmark_4k.py \
+       --backend wgpu-native --repeats 30 --warmups 5
+
+Browser validation
+~~~~~~~~~~~~~~~~~~
 
 Both dynamic-resolution browser paths were also validated at 3840 x 2160 on
 the same machine. The offline reference tiles the shipped speckle texture and

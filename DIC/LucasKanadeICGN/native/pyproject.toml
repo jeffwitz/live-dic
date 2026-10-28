@@ -1,0 +1,13 @@
+[build-system]
+requires = ["maturin>=1.15,<2"]
+build-backend = "maturin"
+
+[project]
+name = "dic-rt-wgpu-native"
+version = "0.1.0"
+requires-python = ">=3.11"
+description = "Experimental Rust wgpu/PyO3 host for DIC-RT"
+
+[tool.maturin]
+module-name = "_wgpu_native"
+features = ["pyo3/extension-module"]

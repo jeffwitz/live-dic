@@ -10,23 +10,25 @@
 
 The project goal is sustained digital image correlation on 3840 x 2160 frames
 at 60 frames per second, measured across the complete acquisition-to-result
-pipeline. The current Three.js/WebGPU milestone processes the reproducible UHD
-test pair in **13.629 ms median GPU time** with a **15.352 ms p95**, below the
-16.667 ms compute budget of 60 FPS on the validation machine.
+pipeline. The new native wgpu-py path processes the reproducible UHD test pair
+in a **16.160 ms median complete Python call** with a **16.569 ms p95**. This
+boundary includes direct target upload, GPU computation, packed readback, and
+NumPy result construction, and is just below the 16.667 ms period on the
+validation machine.
 
 This is an encouraging compute result, not yet a 4K60 system qualification.
-The GPU timer excludes camera acquisition, input upload, Python and DevTools
-transport, result readback, and downstream consumers. Those stages must all be
-integrated and measured without growing queues before the 4K60 objective can be
-claimed.
+Camera acquisition and downstream consumers are still excluded. The browser
+GPU timer also excludes input upload, Python/DevTools transport, and readback.
+Those stages must all be integrated and measured without growing queues before
+the 4K60 objective can be claimed.
 
 This fork adds a Python-accessible, GPU-accelerated digital image correlation
 (DIC) implementation to `tests_gpuio`. It performs affine
 inverse-compositional Gauss-Newton registration through a default Three.js/TSL
-WebGPU backend and an optional GPU-IO/WebGL2 backend. Both paths now accept
-dynamic dimensions and have been validated from 512 x 512 through UHD 3840 x
-2160; Three.js remains the performance-oriented numerical core of the soft
-real-time Python pipeline.
+WebGPU backend, an optional GPU-IO/WebGL2 backend, and an experimental native
+wgpu-py backend. All paths accept dynamic dimensions and have been validated
+from 512 x 512 through UHD 3840 x 2160. Three.js remains the default while the
+native path evaluates an in-process transport suitable for live NumPy frames.
 
 The current implementation deliberately starts with deterministic images from
 the validation dataset. It does **not** include camera acquisition or the H.264
@@ -47,6 +49,10 @@ The implementation in [`DIC/LucasKanadeICGN/`](./DIC/LucasKanadeICGN/) adds:
 - target prefiltering and registration on Three.js/TSL WebGPU by default;
 - a fused, dynamically sized GPU-IO/WebGL2 implementation as an optional
   backend;
+- an experimental in-process wgpu-py backend with direct NumPy texture upload,
+  shared WGSL compute kernels, and one packed binary readback;
+- a compiling Rust wgpu/PyO3 host milestone that shares the WGSL source and
+  measures the NumPy-to-texture boundary;
 - a persistent, headless Python API with no visible browser interface;
 - NumPy displacement, affine-parameter, status, and iteration fields;
 - sequence processing, benchmarking, `.npz` export, and a command-line tool;
@@ -61,9 +67,10 @@ The parameter order is compatible with the SYCL prototype:
 
 ## Architecture
 
-The Python package drives either browser implementation through the same
-headless contract. Three.js/TSL is the default; GPU-IO remains selectable for
-regression comparisons:
+The Python package exposes the browser implementations through one headless
+contract and the native implementation through the same result schema.
+Three.js/TSL is the default; GPU-IO remains selectable for regression
+comparisons, and `ICGNWGPU` selects the browser-free path:
 
 ```text
 Python reference image
@@ -94,6 +101,10 @@ median consistency pass
 GPU readback --> NumPy arrays
 ```
 
+The native path is shorter: `NumPy uint8 → r8unorm texture → WGSL FIR/IC-GN/
+median → packed readback → NumPy views`. Its detailed resource and workgroup
+layout is documented in the [native backend explanation](./DIC/LucasKanadeICGN/docs/explanation/native-backend.rst).
+
 The Three.js solver fuses the IC-GN iterations into one compute dispatch and
 uses 16 cooperating lanes per subset. A startup probe selects hardware subgroup
 reductions when all lanes fit in one subgroup and otherwise selects the
@@ -105,11 +116,12 @@ the affine state and reference atlases stay in registers, and three result
 attachments are written once. The complete tiling and grouping diagrams are in
 the [GPU optimization documentation](./DIC/LucasKanadeICGN/docs/explanation/gpu-optimization.rst).
 
-Chromium is used only as an invisible WebGPU or WebGL2 execution environment.
-The Python entry point does not load Tweakpane, attach the canvas to the visible
-page, or open a browser window. One persistent engine should be reused for a
-sequence so that browser startup and reference preparation are not repeated
-for every frame.
+Chromium is used only as an invisible WebGPU or WebGL2 execution environment
+for browser backends. The native backend does not start it. The browser Python
+entry point does not load Tweakpane, attach the canvas to the visible page, or
+open a browser window. One persistent engine should be reused for a sequence
+so that runtime startup and reference preparation are not repeated for every
+frame.
 
 ## Validated numerical result
 
@@ -141,6 +153,12 @@ five warm-ups. At 512 x 512, the median campaign summaries are:
 | Three.js/TSL WebGPU | **0.675 ms** | **1.227 ms** | **2.7 ms** |
 | GPU-IO/WebGL2 | 3.301 ms | 4.210 ms | 10.3 ms |
 
+At the complete Python-call boundary on the same 512 x 512 pair, native
+wgpu-py measured **1.882 ms median / 2.382 ms p95**, versus 56.203 / 59.117 ms
+for Three.js through Chromium and 61.877 / 65.655 ms for GPU-IO. The browser
+calls include their PNG and DevTools transport, so this comparison measures the
+architectural transport change rather than kernel speed alone.
+
 The reproducible UHD pair contains 32,400 subsets and an exact `(2, -1)` pixel
 translation:
 
@@ -150,6 +168,11 @@ translation:
 | GPU-IO/WebGL2 | 80.738 ms | 82.522 ms | 31,654 | `4.182e-5` px |
 | SYCL mixed/double reduction | 19.099 ms | 19.863 ms | 31,654 | `2.555e-5` px |
 | SYCL `--float-reduce` | 18.111 ms | 19.062 ms | 31,654 | `2.712e-5` px |
+
+The native wgpu-py **complete Python call** measured 16.160 ms median and
+16.569 ms p95, with 31,654 accepted subsets and `3.080e-5 px` RMSE. It uses a
+stricter boundary than the browser GPU rows because upload and packed readback
+are included.
 
 At the comparable UHD compute boundary, Three.js is 28.6% faster than the
 mixed/double-reduction SYCL configuration and 24.7% faster than the numerically
@@ -174,6 +197,9 @@ Requirements:
 - Chromium or Google Chrome with WebGPU and WebGL2 support;
 - a compatible GPU and driver.
 
+The optional native path requires Python 3.11 or newer and does not require
+Chromium.
+
 Install the local Python package:
 
 ```bash
@@ -181,11 +207,17 @@ python3 -m venv .venv-icgn
 .venv-icgn/bin/pip install -e DIC/LucasKanadeICGN/python
 ```
 
-The Python package embeds GPU-IO, Three.js r186, both IC-GN solvers, and their
-headless HTML entry points. After Python dependencies and Chromium have been
-installed, the runtime performs no network requests and does not require the
-repository checkout. The optional browser demonstration also uses only
-vendored scripts; see
+Install wgpu-py and the packaged WGSL runtime with:
+
+```bash
+.venv-icgn/bin/pip install -e 'DIC/LucasKanadeICGN/python[native]'
+```
+
+The Python package embeds GPU-IO, Three.js r186, both browser solvers, the
+native WGSL kernels, and the headless HTML entry points. After dependencies
+have been installed, the runtime performs no network requests and does not
+require the repository checkout. The optional browser demonstration also uses
+only vendored scripts; see
 [`THIRD_PARTY.md`](./DIC/LucasKanadeICGN/THIRD_PARTY.md).
 
 ## First Python registration
@@ -210,6 +242,16 @@ print(result.rmse((2.0, -1.0)))
 
 For a sequence, keep the same context open and call `register` for every target,
 or use `engine.register_many(reference, targets)`.
+
+Select the experimental browser-free path explicitly:
+
+```python
+from lucas_kanade_icgn import ICGNWGPU
+
+with ICGNWGPU() as engine:
+    engine.set_reference(reference)
+    result = engine.register(target)
+```
 
 ## Command-line usage
 
@@ -266,6 +308,7 @@ DIC/LucasKanadeICGN/
 ├── index.html              optional interactive browser benchmark
 ├── assets/                 traceable raw-YUV validation frames
 ├── python/                 typed package, CLI, and tests
+├── native/                 experimental Rust wgpu/PyO3 host
 ├── benchmarks/             reproducible backend and UHD campaigns
 ├── docs/                   Sphinx/Diátaxis documentation
 ├── BENCHMARK.md            measurement protocol and SYCL comparison
@@ -277,14 +320,15 @@ available from [`index.html`](./index.html).
 
 ## Current limitations
 
-- dynamic grayscale frame dimensions in both backends; GPU-IO requires width
+- dynamic grayscale frame dimensions in all backends; GPU-IO requires width
   and height to be multiples of 16;
 - fixed 16 x 16 subsets on a 16-pixel grid;
 - single-scale registration with no pyramid;
 - no temporal or extrapolated initialization;
 - no Aitken acceleration or predictive-tolerance guard;
 - no camera, trigger, synchronization, or codec ownership;
-- PNG and DevTools transport between Python and the browser GPU runtime;
+- PNG and DevTools transport between Python and browser GPU runtimes; the
+  native path removes both;
 - full result-field readback for every `register` call;
 - soft real-time behavior only, with no operating-system deadline guarantee.
 
@@ -297,8 +341,10 @@ better initial estimate.
 
 The current code has been verified with:
 
-- 15 Python unit tests;
+- 20 Python unit tests;
 - Ruff linting and formatting checks;
+- offline Cargo check, rustfmt, Clippy with warnings denied, release wheel
+  build, and installed PyO3 smoke test;
 - JavaScript syntax checking;
 - wheel build and installation;
 - real GPU execution through the installed package;
@@ -312,6 +358,11 @@ ruff check DIC/LucasKanadeICGN/python
 ruff format --check DIC/LucasKanadeICGN/python
 PYTHONPATH=DIC/LucasKanadeICGN/python/src \
   python3 -m unittest discover -s DIC/LucasKanadeICGN/python/tests -v
+cargo fmt --check --manifest-path DIC/LucasKanadeICGN/native/Cargo.toml
+cargo check --release --offline \
+  --manifest-path DIC/LucasKanadeICGN/native/Cargo.toml
+cargo clippy --release --offline \
+  --manifest-path DIC/LucasKanadeICGN/native/Cargo.toml -- -D warnings
 node --check DIC/LucasKanadeICGN/LucasKanadeICGN.js
 node --check DIC/LucasKanadeICGN/three/LucasKanadeICGNThree.js
 ```

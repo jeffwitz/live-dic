@@ -13,18 +13,19 @@ Real-Time DIC in Python toward 4K60
 
    The engineering objective is sustained DIC on 3840 x 2160 frames at 60
    frames per second over the complete acquisition-to-result pipeline. The
-   current Three.js/WebGPU compute boundary is 13.629 ms median and 15.352 ms
-   p95 on the validation machine, below the 16.667 ms frame period. Camera
-   acquisition, upload, Python transport, readback, and downstream consumers
-   are not included in that timer, so 4K60 is a target rather than a current
-   end-to-end qualification.
+   native wgpu-py complete Python-call boundary is 16.160 ms median and 16.569
+   ms p95 on the validation machine, just below the 16.667 ms frame period.
+   Direct upload, GPU computation, packed readback, and NumPy result
+   construction are included; camera acquisition and downstream consumers are
+   not. 4K60 is therefore still a target rather than an end-to-end
+   qualification.
 
 This documentation describes a Python workflow for GPU-accelerated digital
 image correlation (DIC). The current implementation performs affine
 inverse-compositional Gauss-Newton registration on grayscale frames through
-interchangeable GPU-IO/WebGL2 and Three.js/TSL WebGPU backends. The default
-Three.js backend derives its storage and subset grid from the reference image
-and has been validated at 3840 x 2160 pixels.
+GPU-IO/WebGL2, Three.js/TSL WebGPU, and experimental native wgpu-py backends.
+The default remains Three.js. All three paths have been validated at 3840 x
+2160 pixels.
 
 The engineering objective is sustained, measurable DIC processing from Python.
 That means keeping the GPU runtime alive, preparing the reference only once,
@@ -39,10 +40,12 @@ Choose the section that matches your task:
 * :doc:`how-to/process-live-frames` for NumPy frames from an acquisition source;
 * :doc:`how-to/benchmark` to measure throughput and latency correctly;
 * :doc:`reference/api` for the exact Python interface;
-* :doc:`reference/performance` for measured Three.js, GPU-IO, and SYCL results
-  on the validation machine;
+* :doc:`reference/performance` for measured native wgpu-py, Three.js, GPU-IO,
+  PyO3, and SYCL results on the validation machine;
 * :doc:`explanation/gpu-optimization` for the backend tiling, lane grouping,
   and reduction strategies;
+* :doc:`explanation/native-backend` for the direct NumPy-to-WebGPU path and
+  the Rust/PyO3 milestone;
 * :doc:`explanation/realtime-performance` to understand what "real time" means
   for this pipeline.
 
@@ -94,6 +97,7 @@ path.
    explanation/pipeline
    explanation/icgn
    explanation/gpu-optimization
+   explanation/native-backend
    explanation/realtime-performance
    explanation/limitations
    explanation/acknowledgements

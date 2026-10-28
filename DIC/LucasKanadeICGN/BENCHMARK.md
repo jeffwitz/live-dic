@@ -18,6 +18,52 @@ Date: October 28, 2026.
 - median consistency test and replacement enabled;
 - no H.264 decoding or processing.
 
+## Native wgpu-py and PyO3 milestone
+
+The new `ICGNWGPU` engine executes the same FIR, affine IC-GN, and median
+replacement stages directly through wgpu-native/Vulkan. It accepts a
+contiguous NumPy `uint8` frame, uploads it to an `r8unorm` texture, and reads
+one packed binary subset-state buffer. No PNG, Chromium, DevTools, JSON, or
+JavaScript-array conversion is present in this path.
+
+One five-warm-up, 30-run campaign on the 512 x 512 `t=0 -> 10` pair measured:
+
+| Native complete-call measurement | Median | p95 |
+|---|---:|---:|
+| complete `ICGNWGPU.register` | **1.882 ms** | **2.382 ms** |
+| direct target upload | 0.038 ms | — |
+| compute plus packed readback | 1.726 ms | — |
+
+The result accepted 900 subsets, recovered
+`(1.9999932, -0.9999966) px`, and produced a `2.693e-5 px` truth RMSE.
+Against Three.js, all 1,024 statuses were equal; jointly accepted translations
+differed by `6.766e-6 px` RMS with a `6.068e-5 px` maximum component
+difference. The same browser campaign measured 56.203 ms median / 59.117 ms
+p95 for its complete Python call because that boundary includes PNG and
+DevTools transport.
+
+The reproducible UHD pair was then measured with five warm-ups and 30 complete
+native Python calls:
+
+| Native UHD measurement | Median | p95 |
+|---|---:|---:|
+| complete `ICGNWGPU.register` | **16.160 ms** | **16.569 ms** |
+| direct target upload | 0.395 ms | — |
+| compute plus packed readback | 15.448 ms | — |
+
+Reference preparation measured 1,016.6 ms and is outside the per-target loop.
+The UHD result accepted 31,654 subsets and produced a `3.080e-5 px` truth
+RMSE. The complete-call p95 is 0.098 ms below one 60 Hz period. This excludes
+acquisition and downstream consumers and is not an end-to-end 4K60 claim.
+
+The Rust wgpu/PyO3 crate is a parallel host milestone that embeds the exact
+same WGSL source and borrows the NumPy frame without a Python byte-string
+copy. Its initial 30-run UHD texture-upload probe measured 1.783 ms median and
+6.029 ms p95 at the synchronized boundary. The full solver is not hosted in
+Rust yet, so this number is an integration baseline rather than a performance
+claim. The next migration should be retained only if it improves the complete
+call, not merely a microbenchmark.
+
 ## Ported SYCL operations
 
 The reference is prepared once using the same Gaussian filter and cubic

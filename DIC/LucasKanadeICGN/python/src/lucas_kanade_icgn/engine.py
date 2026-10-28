@@ -340,8 +340,13 @@ def _as_uint8_gray(image: ImageInput) -> np.ndarray:
             source = np.clip(source * scale, 0, 255).astype(np.uint8)
         elif source.dtype != np.uint8:
             source = np.clip(source, 0, 255).astype(np.uint8)
-        pil = Image.fromarray(source)
-        array = np.asarray(pil.convert("L"), dtype=np.uint8)
+        if source.ndim == 2:
+            # Camera frames normally arrive in this form. Avoid a redundant
+            # Pillow image construction and grayscale copy on every frame.
+            array = source
+        else:
+            pil = Image.fromarray(source)
+            array = np.asarray(pil.convert("L"), dtype=np.uint8)
     height, width = array.shape
     if height < MIN_FRAME_DIMENSION or width < MIN_FRAME_DIMENSION:
         raise ValueError(

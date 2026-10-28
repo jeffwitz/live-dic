@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "lucas-kanade-icgn-webgl"
 version = "0.1.0"
-description = "Headless Python interface for affine IC-GN browser GPU solvers"
+description = "Headless Python interface for affine IC-GN GPU solvers"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -16,6 +16,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["ruff>=0.8"]
+native = ["wgpu>=0.32,<0.33; python_version >= '3.11'"]
 
 [project.scripts]
 icgn-webgl = "lucas_kanade_icgn.cli:main"
@@ -33,6 +34,7 @@ where = ["src"]
 [tool.setuptools.package-data]
 lucas_kanade_icgn = [
   "py.typed",
+  "shaders/*.wgsl",
   "web/*.html",
   "web/*.js",
   "web/LICENSES/*.txt",

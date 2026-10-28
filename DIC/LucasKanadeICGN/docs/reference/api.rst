@@ -12,6 +12,16 @@ Engine
 .. autoclass:: lucas_kanade_icgn.ICGNWebGL
    :members: start, info, set_reference, register, register_pair, register_many, benchmark, close
 
+Native engine
+-------------
+
+.. autoclass:: lucas_kanade_icgn.ICGNWGPU
+   :members: set_reference, register, close
+
+The native engine is optional and experimental. It returns the same
+``ReferenceInfo`` and ``RegistrationResult`` types as the browser engine, but
+does not start Chromium or serialize frames as PNG.
+
 One-shot registration
 ---------------------
 
