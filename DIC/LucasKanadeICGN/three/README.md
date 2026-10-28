@@ -23,7 +23,7 @@ runtime. The supported entry points are `info`, `configure`, `setReference`,
 ```python
 from lucas_kanade_icgn import ICGNWebGL
 
-with ICGNWebGL(backend="three-tsl") as engine:
+with ICGNWebGL() as engine:
     result = engine.register_pair(reference, target)
 ```
 

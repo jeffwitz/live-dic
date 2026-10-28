@@ -67,14 +67,14 @@ provides:
 - compatibility with scripts and Jupyter notebooks.
 
 Chromium is used only as an invisible GPU runtime. The headless entry points
-does not load Tweakpane, attach the canvas to the DOM, or render a visible UI.
+do not load Tweakpane, attach a canvas to the DOM, or render a visible UI.
 All HTML and JavaScript runtime assets are embedded in the Python wheel, so an
 installed package does not need this repository or network access at runtime.
 See [`python/README.md`](./python/README.md) for installation and API examples.
 
-Select the new backend from Python with
-`ICGNWebGL(backend="three-tsl")`. The default remains `"gpuio"` for backwards
-compatibility. Both return the same NumPy result schema.
+Three.js/TSL is the default Python and command-line backend. Select the previous
+implementation explicitly with `ICGNWebGL(backend="gpuio")` or
+`--backend gpuio`. Both return the same NumPy result schema.
 
 ## Optional browser demo
 

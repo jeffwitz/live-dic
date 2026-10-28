@@ -57,7 +57,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--backend",
         choices=("gpuio", "three-tsl"),
-        default="gpuio",
+        default="three-tsl",
         help="browser compute backend",
     )
     parser.add_argument(

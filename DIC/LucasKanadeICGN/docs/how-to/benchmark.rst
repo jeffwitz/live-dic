@@ -12,7 +12,7 @@ stable workload:
    reference = "DIC/LucasKanadeICGN/assets/frame_000.png"
    target = "DIC/LucasKanadeICGN/assets/frame_010.png"
 
-   with ICGNWebGL(backend="three-tsl") as engine:
+   with ICGNWebGL() as engine:
        benchmark = engine.benchmark(reference, target, repeats=30, warmups=3)
 
    print(f"GPU median: {benchmark.gpu_median_ms:.3f} ms")
@@ -25,7 +25,7 @@ The command-line equivalent is:
 .. code-block:: console
 
    $ icgn-webgl reference.png target.png \
-       --backend three-tsl --benchmark --repeats 30 --warmups 3
+       --benchmark --repeats 30 --warmups 3
 
 Interpret the timers
 --------------------

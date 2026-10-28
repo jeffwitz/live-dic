@@ -223,7 +223,7 @@ class _RuntimeAssets:
     headless_path: str
 
 
-def _direct_runtime_assets(root: Path, backend: str = "gpuio") -> _RuntimeAssets | None:
+def _direct_runtime_assets(root: Path, backend: str = "three-tsl") -> _RuntimeAssets | None:
     """Return a runtime layout rooted directly at one browser backend."""
 
     if backend == "gpuio":
@@ -241,7 +241,7 @@ def _direct_runtime_assets(root: Path, backend: str = "gpuio") -> _RuntimeAssets
     return None
 
 
-def _checkout_runtime_assets(root: Path, backend: str = "gpuio") -> _RuntimeAssets | None:
+def _checkout_runtime_assets(root: Path, backend: str = "three-tsl") -> _RuntimeAssets | None:
     """Return a source-checkout runtime layout for the selected backend."""
 
     relative = Path("DIC/LucasKanadeICGN")
@@ -262,7 +262,7 @@ def _checkout_runtime_assets(root: Path, backend: str = "gpuio") -> _RuntimeAsse
 
 def _find_runtime_assets(
     explicit: str | os.PathLike[str] | None,
-    backend: str = "gpuio",
+    backend: str = "three-tsl",
 ) -> _RuntimeAssets:
     """Locate self-contained package assets or an explicitly selected checkout."""
 
@@ -391,7 +391,7 @@ class ICGNWebGL:
         call_timeout: float = 120.0,
         no_sandbox: bool = True,
         chromium_args: Iterable[str] = (),
-        backend: str = "gpuio",
+        backend: str = "three-tsl",
     ) -> None:
         if startup_timeout <= 0:
             raise ValueError("startup_timeout must be greater than zero")
@@ -757,7 +757,7 @@ def register_pair(
     *,
     repo_root: str | os.PathLike[str] | None = None,
     chromium: str | os.PathLike[str] | None = None,
-    backend: str = "gpuio",
+    backend: str = "three-tsl",
     iterations: int | None = None,
     tolerance: float | None = None,
     zncc_min: float | None = None,

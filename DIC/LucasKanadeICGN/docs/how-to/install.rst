@@ -44,17 +44,17 @@ accepted subsets for this test pair.
 Select a compute backend
 ------------------------
 
-GPU-IO remains the default for backwards compatibility. Select the independent
-Three.js/TSL implementation explicitly:
+Three.js/TSL is the default backend. A standard engine therefore selects it:
 
 .. code-block:: python
 
-   engine = ICGNWebGL(backend="three-tsl")
+   engine = ICGNWebGL()
 
-The command-line equivalent is ``--backend three-tsl``. On Linux, the Python
-driver supplies the native headless Vulkan flags required by Chromium. Confirm
-that ``engine.info().device`` names the physical adapter rather than
-``swiftshader`` before reporting performance.
+Select the previous implementation with ``ICGNWebGL(backend="gpuio")`` or the
+command-line option ``--backend gpuio``. On Linux, the default Python driver
+supplies the native headless Vulkan flags required by Chromium. Confirm that
+``engine.info().device`` names the physical adapter rather than ``swiftshader``
+before reporting performance.
 
 Prepare an offline installation
 -------------------------------

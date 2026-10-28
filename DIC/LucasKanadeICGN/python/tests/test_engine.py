@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import tempfile
 import unittest
 from pathlib import Path
@@ -10,10 +11,12 @@ import numpy as np
 from lucas_kanade_icgn.engine import (
     PARAMETER_ORDER,
     BenchmarkResult,
+    ICGNWebGL,
     RegistrationResult,
     _as_uint8_gray,
     _find_runtime_assets,
     _run_async_blocking,
+    register_pair,
 )
 
 
@@ -101,8 +104,14 @@ class NotebookLoopTests(unittest.TestCase):
 
 
 class RuntimeAssetTests(unittest.TestCase):
+    def test_public_api_defaults_to_three_tsl(self) -> None:
+        engine_default = inspect.signature(ICGNWebGL).parameters["backend"].default
+        one_shot_default = inspect.signature(register_pair).parameters["backend"].default
+        self.assertEqual(engine_default, "three-tsl")
+        self.assertEqual(one_shot_default, "three-tsl")
+
     def test_packaged_runtime_is_complete(self) -> None:
-        assets = _find_runtime_assets(None)
+        assets = _find_runtime_assets(None, "gpuio")
         self.assertEqual(assets.headless_path, "headless.html")
         for filename in ("headless.html", "gpu-io.js", "LucasKanadeICGN.js"):
             self.assertTrue((assets.root / filename).is_file(), filename)
@@ -115,7 +124,7 @@ class RuntimeAssetTests(unittest.TestCase):
             root = Path(temporary)
             for filename in ("headless.html", "gpu-io.js", "LucasKanadeICGN.js"):
                 (root / filename).touch()
-            assets = _find_runtime_assets(root)
+            assets = _find_runtime_assets(root, "gpuio")
         self.assertEqual(assets.root, root)
         self.assertEqual(assets.headless_path, "headless.html")
 
@@ -134,6 +143,11 @@ class RuntimeAssetTests(unittest.TestCase):
         page = (assets.root / "headless.html").read_text(encoding="utf-8")
         self.assertNotIn("https://", page)
         self.assertNotIn("http://", page)
+
+    def test_default_runtime_is_three_tsl(self) -> None:
+        assets = _find_runtime_assets(None)
+        self.assertEqual(assets.root.name, "three")
+        self.assertTrue((assets.root / "LucasKanadeICGNThree.js").is_file())
 
     def test_browser_demo_uses_local_script_dependencies(self) -> None:
         module_root = Path(__file__).resolve().parents[2]
