@@ -27,7 +27,7 @@ import numpy.typing as npt
 import websockets
 from PIL import Image
 
-FRAME_SHAPE: Final = (512, 512)
+MIN_FRAME_DIMENSION: Final = 16
 PARAMETER_ORDER: Final = ("tx", "du_dx", "du_dy", "ty", "dv_dx", "dv_dy")
 ImageInput: TypeAlias = str | os.PathLike[str] | bytes | Image.Image | npt.ArrayLike
 _MAX_CDP_MESSAGE_BYTES: Final = 128 * 1024 * 1024
@@ -43,7 +43,7 @@ class ICGNError(RuntimeError):
 
 @dataclass(frozen=True, slots=True)
 class EngineInfo:
-    """Static properties of the active browser GPU runtime."""
+    """Properties of the active browser GPU runtime."""
 
     width: int
     height: int
@@ -55,12 +55,19 @@ class EngineInfo:
 
 @dataclass(frozen=True, slots=True)
 class ReferenceInfo:
-    """Metadata returned after preparing a reference image."""
+    """Dimensions and separated timings for reference-image preparation."""
 
     preparation_wall_ms: float
+    runtime_build_wall_ms: float
+    reference_build_wall_ms: float
+    encoding_wall_ms: float
+    total_wall_ms: float
     config: Mapping[str, float | int]
     device: str
     grid: tuple[int, int]
+    width: int
+    height: int
+    subset_size: int
 
 
 @dataclass(slots=True)
@@ -333,8 +340,12 @@ def _as_uint8_gray(image: ImageInput) -> np.ndarray:
             source = np.clip(source, 0, 255).astype(np.uint8)
         pil = Image.fromarray(source)
         array = np.asarray(pil.convert("L"), dtype=np.uint8)
-    if array.shape != FRAME_SHAPE:
-        raise ValueError(f"Image shape must be {FRAME_SHAPE}; received {array.shape}.")
+    height, width = array.shape
+    if height < MIN_FRAME_DIMENSION or width < MIN_FRAME_DIMENSION:
+        raise ValueError(
+            f"Image dimensions must each be at least {MIN_FRAME_DIMENSION} pixels; "
+            f"received {array.shape}."
+        )
     return np.ascontiguousarray(array)
 
 
@@ -372,7 +383,7 @@ def _run_async_blocking(coroutine: Coroutine[Any, Any, _T]) -> _T:
 
 
 class ICGNWebGL:
-    """Persistent affine IC-GN WebGL2 backend with no visible browser UI.
+    """Persistent affine IC-GN browser GPU backend with no visible UI.
 
     The object owns a loopback HTTP server and one headless Chromium process.
     Reuse the same instance for a sequence so the reference preparation and
@@ -606,18 +617,29 @@ class ICGNWebGL:
     ) -> ReferenceInfo:
         """Upload and precompute all target-independent reference data."""
 
+        total_start = time.perf_counter()
+        encoding_start = time.perf_counter()
         data_url = _data_url(image)
+        encoding_wall_ms = (time.perf_counter() - encoding_start) * 1_000.0
         options = self._options(iterations=iterations, tolerance=tolerance, zncc_min=zncc_min)
         expression = (
             f"window.ICGNHeadless.setReference({json.dumps(data_url)}, {json.dumps(options)})"
         )
         payload = self._evaluate(expression)
+        total_wall_ms = (time.perf_counter() - total_start) * 1_000.0
         self._reference_ready = True
         return ReferenceInfo(
             preparation_wall_ms=float(payload["preparationWallMs"]),
+            runtime_build_wall_ms=float(payload["runtimeBuildWallMs"]),
+            reference_build_wall_ms=float(payload["referenceBuildWallMs"]),
+            encoding_wall_ms=encoding_wall_ms,
+            total_wall_ms=total_wall_ms,
             config=dict(payload["config"]),
             device=str(payload["device"]),
             grid=tuple(map(int, payload["grid"])),
+            width=int(payload["width"]),
+            height=int(payload["height"]),
+            subset_size=int(payload["subsetSize"]),
         )
 
     def register(
@@ -632,10 +654,20 @@ class ICGNWebGL:
 
         if not self._reference_ready:
             raise ICGNError("Call set_reference() before register().")
+        total_start = time.perf_counter()
+        encoding_start = time.perf_counter()
         data_url = _data_url(target)
+        encoding_wall_ms = (time.perf_counter() - encoding_start) * 1_000.0
         options = self._options(iterations=iterations, tolerance=tolerance, zncc_min=zncc_min)
         expression = f"window.ICGNHeadless.register({json.dumps(data_url)}, {json.dumps(options)})"
-        return RegistrationResult.from_payload(self._evaluate(expression))
+        result = RegistrationResult.from_payload(self._evaluate(expression))
+        total_wall_ms = (time.perf_counter() - total_start) * 1_000.0
+        result.timing = {
+            **result.timing,
+            "encodingWallMs": encoding_wall_ms,
+            "pythonCallWallMs": total_wall_ms,
+        }
+        return result
 
     def register_pair(
         self,
@@ -699,15 +731,46 @@ class ICGNWebGL:
         tolerance: float | None = None,
         zncc_min: float | None = None,
     ) -> BenchmarkResult:
-        """Benchmark prefiltering plus registration on one image pair."""
+        """Prepare one reference, then benchmark registration of one target."""
 
-        options = self._options(iterations=iterations, tolerance=tolerance, zncc_min=zncc_min)
         self.set_reference(
             reference,
             iterations=iterations,
             tolerance=tolerance,
             zncc_min=zncc_min,
         )
+        return self.benchmark_target(
+            target,
+            repeats=repeats,
+            warmups=warmups,
+            iterations=iterations,
+            tolerance=tolerance,
+            zncc_min=zncc_min,
+        )
+
+    def benchmark_target(
+        self,
+        target: ImageInput,
+        *,
+        repeats: int = 30,
+        warmups: int = 3,
+        iterations: int | None = None,
+        tolerance: float | None = None,
+        zncc_min: float | None = None,
+    ) -> BenchmarkResult:
+        """Benchmark registration against the already prepared reference.
+
+        Reference construction is deliberately excluded. Use :meth:`set_reference`
+        first and retain its :class:`ReferenceInfo` to report preparation time.
+        """
+
+        if not self._reference_ready:
+            raise ICGNError("Call set_reference() before benchmark_target().")
+        if repeats < 1:
+            raise ValueError("repeats must be greater than zero")
+        if warmups < 0:
+            raise ValueError("warmups must not be negative")
+        options = self._options(iterations=iterations, tolerance=tolerance, zncc_min=zncc_min)
         data_url = _data_url(target)
         expression = (
             f"window.ICGNHeadless.benchmark({json.dumps(data_url)}, {int(repeats)}, "

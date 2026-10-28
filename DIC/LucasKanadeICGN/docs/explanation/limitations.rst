@@ -4,9 +4,12 @@ Current limitations
 Geometry and input
 ------------------
 
-* Frame size is fixed at 512 x 512 pixels.
+* The Three.js/TSL backend supports dynamic frame dimensions, including the
+  validated 3840 x 2160 path. Reference and target dimensions must match.
+* The optional GPU-IO backend remains fixed at 512 x 512 pixels.
 * Grid spacing and subset size are fixed at 16 pixels.
-* The grid is fixed at 32 x 32 subsets.
+* Grid dimensions are ``floor(width / 16)`` by ``floor(height / 16)``;
+  uncovered right or bottom pixels are not assigned to a subset.
 * Inputs are converted to 8-bit grayscale.
 * Every Python frame is currently encoded as PNG before browser transfer.
 
@@ -26,11 +29,12 @@ faster motion.
 Runtime
 -------
 
-* Chromium is required as the WebGL2 execution environment.
+* Chromium is required as the WebGL2 or WebGPU execution environment.
 * Chromium itself is a system dependency and is not distributed in the Python
   wheel.
 * One engine instance is not thread-safe.
-* WebGL2 shader arithmetic is single precision.
+* Browser GPU shader arithmetic is single precision.
+* Maximum image size depends on the adapter's WebGPU storage-buffer limits.
 * Full parameter and status fields are read back for every ``register`` call.
 * Current timing is soft real-time and provides no operating-system deadline
   guarantee.

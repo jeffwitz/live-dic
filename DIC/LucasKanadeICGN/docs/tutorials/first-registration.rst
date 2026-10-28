@@ -27,7 +27,9 @@ Create a script named ``first_registration.py``:
        result = engine.register(target)
 
    print(f"GPU: {engine_info.device}")
-   print(f"Reference preparation: {reference_info.preparation_wall_ms:.3f} ms")
+   print(f"Runtime construction: {reference_info.runtime_build_wall_ms:.3f} ms")
+   print(f"Reference construction: {reference_info.reference_build_wall_ms:.3f} ms")
+   print(f"Complete preparation: {reference_info.total_wall_ms:.3f} ms")
    print(f"Mean translation: {result.mean_translation}")
    print(f"Accepted subsets: {result.accepted}")
    print(f"Mean iterations: {result.mean_iterations:.3f}")

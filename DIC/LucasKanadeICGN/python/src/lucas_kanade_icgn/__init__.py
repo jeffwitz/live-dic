@@ -1,4 +1,4 @@
-"""Headless Python interface for the affine IC-GN WebGL2 solver."""
+"""Headless Python interface for the browser-GPU affine IC-GN solver."""
 
 from .engine import (
     PARAMETER_ORDER,

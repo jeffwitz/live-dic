@@ -12,10 +12,11 @@ Positional arguments
 --------------------
 
 ``reference``
-   One 512 x 512 reference image.
+   One reference image. Its dimensions define the Three.js subset grid.
 
 ``targets``
-   One or more 512 x 512 target images. ``--benchmark`` requires exactly one.
+   One or more target images with the same dimensions as the reference.
+   ``--benchmark`` requires exactly one.
 
 Solver options
 --------------
@@ -74,5 +75,6 @@ Output
 
 Standard output is JSON containing the device name, timer availability,
 configuration, accepted and replaced counts, mean translation, iteration
-statistics, and timing summary. Errors are written to standard error and return
-exit status 2.
+statistics, and timing summary. Reference construction is reported separately
+under ``reference_preparation``. Errors are written to standard error and
+return exit status 2.

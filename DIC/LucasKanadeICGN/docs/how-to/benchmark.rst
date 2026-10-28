@@ -13,12 +13,26 @@ stable workload:
    target = "DIC/LucasKanadeICGN/assets/frame_010.png"
 
    with ICGNWebGL() as engine:
-       benchmark = engine.benchmark(reference, target, repeats=30, warmups=3)
+       preparation = engine.set_reference(reference)
+       benchmark = engine.benchmark_target(target, repeats=30, warmups=3)
 
+   print(f"Reference construction: {preparation.reference_build_wall_ms:.3f} ms")
+   print(f"Complete preparation call: {preparation.total_wall_ms:.3f} ms")
    print(f"GPU median: {benchmark.gpu_median_ms:.3f} ms")
    print(f"GPU p95: {benchmark.gpu_p95_ms:.3f} ms")
    print(f"Browser wall median: {benchmark.wall_median_ms:.3f} ms")
    print(f"Browser wall p95: {benchmark.wall_p95_ms:.3f} ms")
+
+This form deliberately keeps the one-time reference construction outside the
+warm-ups and measured optical-flow runs. ``engine.benchmark(reference, target)``
+remains available as a convenience wrapper, but does not return its
+``ReferenceInfo`` object.
+
+WebGPU buffer upload and pipeline compilation are lazy. The first warm-up may
+therefore be much slower than steady registration even after
+``set_reference``. Keep at least one warm-up, report its count, and do not fold
+that first-use cost into either the reference-construction number or the
+steady optical-flow distribution.
 
 The command-line equivalent is:
 
@@ -40,6 +54,13 @@ Interpret the timers
    includes synchronization while waiting for the GPU query, but excludes
    Python image conversion, DevTools transport, target decoding, and result
    readback.
+
+``ReferenceInfo``
+   ``runtime_build_wall_ms`` measures resolution-dependent host storage and TSL
+   graph construction. ``reference_build_wall_ms`` measures gradients,
+   Hessians, and metadata derived from the reference. ``preparation_wall_ms``
+   covers both in the browser, while ``total_wall_ms`` is the complete Python
+   preparation call.
 
 Complete Python call
    Measure ``engine.register(frame)`` with ``time.perf_counter``. This includes

@@ -39,6 +39,13 @@ the DIC-RT equations in this repository, not a copy of Strobox. Three.js r186
 and its licence are vendored locally under [`three/vendor/`](./three/vendor/)
 for offline execution.
 
+The Three.js runtime derives its buffers and subset grid from the reference
+dimensions. It has been validated at both 512 × 512 and UHD 3840 × 2160. The
+one-time reference construction is exposed by `set_reference()`, while
+`register()` and `benchmark_target()` operate against that prepared state so
+reference construction and optical-flow timings remain separate. GPU-IO is
+kept as the optional fixed-512 backend.
+
 The remaining differences are platform constraints: WebGL2 uses single
 precision and exposes neither SYCL subgroups nor the same register resources.
 This version does not implement Aitken acceleration, predictive tolerance,
@@ -103,6 +110,11 @@ Measured accuracy and performance are recorded in
 GPU-IO, and the external
 [`DIC_FROM_H264` SYCL implementation](https://github.com/jeffwitz/DIC_FROM_H264)
 on the validation machine.
+
+The reproducible offline UHD campaign is
+[`benchmarks/benchmark_4k.py`](./benchmarks/benchmark_4k.py). It constructs a
+known `(2, -1)` pixel translation, reports preparation separately, and measures
+only the warmed optical-flow phase.
 
 ## Documentation
 

@@ -7,15 +7,19 @@ instance. The engine is intentionally not thread-safe.
 Frame contract
 --------------
 
-Each frame must be exactly 512 x 512 pixels. Accepted inputs are:
+With the default Three.js backend, frame dimensions are established by the
+reference image and every target must match them. Accepted inputs are:
 
 * a two-dimensional grayscale array;
-* an RGB array with shape ``(512, 512, 3)``;
-* an RGBA array with shape ``(512, 512, 4)``;
+* an RGB array with shape ``(height, width, 3)``;
+* an RGBA array with shape ``(height, width, 4)``;
 * ``uint8`` or another numeric dtype convertible to ``uint8``.
 
 Floating-point arrays with maximum value at or below 1 are treated as normalized
 images and scaled to 8-bit grayscale.
+
+The optional GPU-IO backend remains limited to 512 x 512 frames. Maximum
+Three.js dimensions also depend on the WebGPU adapter's storage-buffer limits.
 
 Use a frame iterator
 --------------------

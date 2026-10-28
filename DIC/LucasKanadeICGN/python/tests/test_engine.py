@@ -11,6 +11,7 @@ import numpy as np
 from lucas_kanade_icgn.engine import (
     PARAMETER_ORDER,
     BenchmarkResult,
+    ICGNError,
     ICGNWebGL,
     RegistrationResult,
     _as_uint8_gray,
@@ -27,9 +28,17 @@ class ImageConversionTests(unittest.TestCase):
         self.assertEqual(converted.dtype, np.uint8)
         self.assertEqual(int(converted[0, 0]), 127)
 
-    def test_wrong_shape_is_rejected(self) -> None:
-        with self.assertRaisesRegex(ValueError, "512"):
-            _as_uint8_gray(np.zeros((64, 64), dtype=np.uint8))
+    def test_arbitrary_frame_dimensions_are_preserved(self) -> None:
+        image = np.zeros((64, 96), dtype=np.uint8)
+        self.assertEqual(_as_uint8_gray(image).shape, (64, 96))
+
+    def test_uhd_frame_is_accepted(self) -> None:
+        image = np.zeros((2160, 3840), dtype=np.uint8)
+        self.assertEqual(_as_uint8_gray(image).shape, (2160, 3840))
+
+    def test_too_small_frame_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ValueError, "at least 16"):
+            _as_uint8_gray(np.zeros((15, 64), dtype=np.uint8))
 
     def test_unsupported_channel_count_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "3 or 4 channels"):
@@ -104,6 +113,11 @@ class NotebookLoopTests(unittest.TestCase):
 
 
 class RuntimeAssetTests(unittest.TestCase):
+    def test_benchmark_target_requires_prepared_reference(self) -> None:
+        engine = ICGNWebGL()
+        with self.assertRaisesRegex(ICGNError, "set_reference"):
+            engine.benchmark_target(np.zeros((64, 64), dtype=np.uint8))
+
     def test_public_api_defaults_to_three_tsl(self) -> None:
         engine_default = inspect.signature(ICGNWebGL).parameters["backend"].default
         one_shot_default = inspect.signature(register_pair).parameters["backend"].default

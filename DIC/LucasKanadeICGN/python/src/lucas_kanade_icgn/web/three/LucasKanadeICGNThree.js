@@ -28,14 +28,10 @@ import {
   instanceIndex,
 } from 'three/tsl';
 
-const FRAME_WIDTH = 512;
-const FRAME_HEIGHT = 512;
-const PIXEL_COUNT = FRAME_WIDTH * FRAME_HEIGHT;
+const DEFAULT_FRAME_WIDTH = 512;
+const DEFAULT_FRAME_HEIGHT = 512;
 const SUBSET_SIZE = 16;
 const SUBSET_HALF_EXTENT = (SUBSET_SIZE - 1) / 2;
-const GRID_WIDTH = FRAME_WIDTH / SUBSET_SIZE;
-const GRID_HEIGHT = FRAME_HEIGHT / SUBSET_SIZE;
-const GRID_COUNT = GRID_WIDTH * GRID_HEIGHT;
 const SUBSET_PIXELS = SUBSET_SIZE * SUBSET_SIZE;
 const DEFAULT_MAX_ITERATIONS = 30;
 const DEFAULT_TOLERANCE = 1e-3;
@@ -55,34 +51,86 @@ let renderer = null;
 let rendererPromise = null;
 let referenceReady = false;
 let kernels = null;
+let FRAME_WIDTH = DEFAULT_FRAME_WIDTH;
+let FRAME_HEIGHT = DEFAULT_FRAME_HEIGHT;
+let PIXEL_COUNT = FRAME_WIDTH * FRAME_HEIGHT;
+let GRID_WIDTH = Math.floor(FRAME_WIDTH / SUBSET_SIZE);
+let GRID_HEIGHT = Math.floor(FRAME_HEIGHT / SUBSET_SIZE);
+let GRID_COUNT = GRID_WIDTH * GRID_HEIGHT;
+let attributes = null;
+let sourceNode = null;
+let temporaryNode = null;
+let coefficientsNode = null;
+let referenceNode = null;
+let hessianInverseNode = null;
+let metadataNode = null;
+let translationNode = null;
+let linearNode = null;
+let statusNode = null;
+let filteredTranslationNode = null;
+let filteredLinearNode = null;
+let filteredStatusNode = null;
 
-const attributes = {
-  source: new THREE.StorageBufferAttribute(new Float32Array(PIXEL_COUNT), 1),
-  temporary: new THREE.StorageBufferAttribute(new Float32Array(PIXEL_COUNT), 1),
-  coefficients: new THREE.StorageBufferAttribute(new Float32Array(PIXEL_COUNT), 1),
-  reference: new THREE.StorageBufferAttribute(new Float32Array(PIXEL_COUNT * 4), 4),
-  hessianInverse: new THREE.StorageBufferAttribute(new Float32Array(GRID_COUNT * 9 * 4), 4),
-  metadata: new THREE.StorageBufferAttribute(new Float32Array(GRID_COUNT * 4 * 4), 4),
-  translation: new THREE.StorageBufferAttribute(new Float32Array(GRID_COUNT * 2), 2),
-  linear: new THREE.StorageBufferAttribute(new Float32Array(GRID_COUNT * 4), 4),
-  status: new THREE.StorageBufferAttribute(new Float32Array(GRID_COUNT * 2), 2),
-  filteredTranslation: new THREE.StorageBufferAttribute(new Float32Array(GRID_COUNT * 2), 2),
-  filteredLinear: new THREE.StorageBufferAttribute(new Float32Array(GRID_COUNT * 4), 4),
-  filteredStatus: new THREE.StorageBufferAttribute(new Float32Array(GRID_COUNT * 2), 2),
+/** Allocate all resolution-dependent storage and rebuild the TSL compute graph. */
+const initializeRuntime = (width, height) => {
+  if (!Number.isInteger(width) || !Number.isInteger(height)
+      || width < SUBSET_SIZE || height < SUBSET_SIZE) {
+    throw new Error(`Image dimensions must be integers of at least ${SUBSET_SIZE} pixels`);
+  }
+  if (attributes && width === FRAME_WIDTH && height === FRAME_HEIGHT) return false;
+
+  FRAME_WIDTH = width;
+  FRAME_HEIGHT = height;
+  PIXEL_COUNT = FRAME_WIDTH * FRAME_HEIGHT;
+  GRID_WIDTH = Math.floor(FRAME_WIDTH / SUBSET_SIZE);
+  GRID_HEIGHT = Math.floor(FRAME_HEIGHT / SUBSET_SIZE);
+  GRID_COUNT = GRID_WIDTH * GRID_HEIGHT;
+
+  const largestBufferBytes = PIXEL_COUNT * 4 * Float32Array.BYTES_PER_ELEMENT;
+  const limits = renderer.backend.device.limits;
+  if (largestBufferBytes > limits.maxStorageBufferBindingSize) {
+    throw new Error(
+      `The ${FRAME_WIDTH}x${FRAME_HEIGHT} reference buffer needs ${largestBufferBytes} bytes, `
+      + `but this WebGPU adapter allows ${limits.maxStorageBufferBindingSize}`,
+    );
+  }
+  if (largestBufferBytes > limits.maxBufferSize) {
+    throw new Error(
+      `The ${FRAME_WIDTH}x${FRAME_HEIGHT} reference buffer exceeds the adapter's maximum buffer size`,
+    );
+  }
+
+  attributes = {
+    source: new THREE.StorageBufferAttribute(new Float32Array(PIXEL_COUNT), 1),
+    temporary: new THREE.StorageBufferAttribute(new Float32Array(PIXEL_COUNT), 1),
+    coefficients: new THREE.StorageBufferAttribute(new Float32Array(PIXEL_COUNT), 1),
+    reference: new THREE.StorageBufferAttribute(new Float32Array(PIXEL_COUNT * 4), 4),
+    hessianInverse: new THREE.StorageBufferAttribute(new Float32Array(GRID_COUNT * 9 * 4), 4),
+    metadata: new THREE.StorageBufferAttribute(new Float32Array(GRID_COUNT * 4 * 4), 4),
+    translation: new THREE.StorageBufferAttribute(new Float32Array(GRID_COUNT * 2), 2),
+    linear: new THREE.StorageBufferAttribute(new Float32Array(GRID_COUNT * 4), 4),
+    status: new THREE.StorageBufferAttribute(new Float32Array(GRID_COUNT * 2), 2),
+    filteredTranslation: new THREE.StorageBufferAttribute(new Float32Array(GRID_COUNT * 2), 2),
+    filteredLinear: new THREE.StorageBufferAttribute(new Float32Array(GRID_COUNT * 4), 4),
+    filteredStatus: new THREE.StorageBufferAttribute(new Float32Array(GRID_COUNT * 2), 2),
+  };
+
+  sourceNode = storage(attributes.source, 'float', PIXEL_COUNT);
+  temporaryNode = storage(attributes.temporary, 'float', PIXEL_COUNT);
+  coefficientsNode = storage(attributes.coefficients, 'float', PIXEL_COUNT);
+  referenceNode = storage(attributes.reference, 'vec4', PIXEL_COUNT).toReadOnly();
+  hessianInverseNode = storage(attributes.hessianInverse, 'vec4', GRID_COUNT * 9).toReadOnly();
+  metadataNode = storage(attributes.metadata, 'vec4', GRID_COUNT * 4).toReadOnly();
+  translationNode = storage(attributes.translation, 'vec2', GRID_COUNT);
+  linearNode = storage(attributes.linear, 'vec4', GRID_COUNT);
+  statusNode = storage(attributes.status, 'vec2', GRID_COUNT);
+  filteredTranslationNode = storage(attributes.filteredTranslation, 'vec2', GRID_COUNT);
+  filteredLinearNode = storage(attributes.filteredLinear, 'vec4', GRID_COUNT);
+  filteredStatusNode = storage(attributes.filteredStatus, 'vec2', GRID_COUNT);
+  kernels = buildKernels();
+  referenceReady = false;
+  return true;
 };
-
-const sourceNode = storage(attributes.source, 'float', PIXEL_COUNT);
-const temporaryNode = storage(attributes.temporary, 'float', PIXEL_COUNT);
-const coefficientsNode = storage(attributes.coefficients, 'float', PIXEL_COUNT);
-const referenceNode = storage(attributes.reference, 'vec4', PIXEL_COUNT).toReadOnly();
-const hessianInverseNode = storage(attributes.hessianInverse, 'vec4', GRID_COUNT * 9).toReadOnly();
-const metadataNode = storage(attributes.metadata, 'vec4', GRID_COUNT * 4).toReadOnly();
-const translationNode = storage(attributes.translation, 'vec2', GRID_COUNT);
-const linearNode = storage(attributes.linear, 'vec4', GRID_COUNT);
-const statusNode = storage(attributes.status, 'vec2', GRID_COUNT);
-const filteredTranslationNode = storage(attributes.filteredTranslation, 'vec2', GRID_COUNT);
-const filteredLinearNode = storage(attributes.filteredLinear, 'vec4', GRID_COUNT);
-const filteredStatusNode = storage(attributes.filteredStatus, 'vec2', GRID_COUNT);
 
 /** Mirror a coordinate around image boundaries, matching the GPU-IO backend. */
 const mirror = (coordinate, size) => {
@@ -619,7 +667,6 @@ const ensureRenderer = async () => {
     if (!renderer.backend.device?.queue) {
       throw new Error('WebGPU is unavailable; Three.js fell back to a non-compute backend');
     }
-    kernels = buildKernels();
     return renderer;
   })();
   return rendererPromise;
@@ -632,6 +679,7 @@ const loadImage = async (dataUrl) => {
 };
 
 const setTarget = (image) => {
+  if (!attributes) throw new Error('A reference image must be configured first');
   const gray = imageToGray(image);
   for (let index = 0; index < PIXEL_COUNT; ++index) attributes.source.array[index] = gray[index];
   attributes.source.needsUpdate = true;
@@ -728,8 +776,11 @@ const register = async (dataUrl, options = {}) => {
   if (!referenceReady) throw new Error('A reference image must be configured first');
   configure(options);
   const image = await loadImage(dataUrl);
-  setTarget(image);
-  image.close();
+  try {
+    setTarget(image);
+  } finally {
+    image.close();
+  }
   const wallStart = performance.now();
   const gpuMs = await executePipeline({ measureGpu: true });
   const wallMs = performance.now() - wallStart;
@@ -741,8 +792,11 @@ const benchmark = async (dataUrl, repeats = 20, warmups = 3, options = {}) => {
   if (!referenceReady) throw new Error('A reference image must be configured first');
   configure(options);
   const image = await loadImage(dataUrl);
-  setTarget(image);
-  image.close();
+  try {
+    setTarget(image);
+  } finally {
+    image.close();
+  }
   for (let index = 0; index < warmups; ++index) await executePipeline();
   // Discard warm-up timestamp queries so the first sample contains one
   // pipeline execution, not the accumulated warm-up command buffers.
@@ -801,12 +855,25 @@ const setReference = async (dataUrl, options = {}) => {
   configure(options);
   const image = await loadImage(dataUrl);
   const start = performance.now();
-  prepareReference(image);
+  const runtimeStart = performance.now();
+  initializeRuntime(image.width, image.height);
+  const runtimeBuildWallMs = performance.now() - runtimeStart;
+  const referenceStart = performance.now();
+  try {
+    prepareReference(image);
+  } finally {
+    image.close();
+  }
+  const referenceBuildWallMs = performance.now() - referenceStart;
   const preparationWallMs = performance.now() - start;
-  image.close();
   const details = await info();
   return {
     preparationWallMs,
+    runtimeBuildWallMs,
+    referenceBuildWallMs,
+    width: FRAME_WIDTH,
+    height: FRAME_HEIGHT,
+    subsetSize: SUBSET_SIZE,
     grid: [GRID_WIDTH, GRID_HEIGHT],
     config: { ...configuration },
     device: details.device,

@@ -153,3 +153,52 @@ referenced checkout is commit
 and the standalone comparison source is
 `icgn_sycl.cpp <https://github.com/jeffwitz/DIC_FROM_H264/blob/77267f92920ea8984533371cc6a62fef149ff6e2/experiments/codec_observation_closure/sycl_probe/icgn_sycl.cpp>`_.
 
+UHD Three.js validation
+-----------------------
+
+The dynamic-resolution Three.js path was also validated at 3840 x 2160 on the
+same machine. The offline reference tiles the shipped speckle texture and the
+target applies an exact ``(2, -1)`` pixel translation. This produces a 240 x
+135 grid, or 32,400 subsets. Five warm-ups precede 30 measured optical-flow
+runs.
+
+.. list-table:: UHD preparation and optical-flow measurements
+   :header-rows: 1
+
+   * - Phase
+     - Boundary
+     - Result
+   * - Runtime construction
+     - storage allocation and TSL graph construction
+     - 3.9 ms
+   * - Reference construction
+     - grayscale filtering, gradients, Hessians, and metadata
+     - 971.8 ms
+   * - Browser preparation
+     - runtime plus reference construction
+     - 975.7 ms
+   * - Complete Python preparation
+     - conversion, PNG transport, and browser preparation
+     - 1,270.2 ms
+   * - Optical flow median
+     - WebGPU prefilter, IC-GN, and median pass
+     - 81.817 ms GPU; 84.0 ms browser wall
+   * - Optical flow p95
+     - same boundary
+     - 86.246 ms GPU; 88.8 ms browser wall
+
+The final registration accepted 31,654 subsets, recovered a mean translation
+of ``(1.999991, -0.999996)`` pixels, and produced a vector RMSE of
+``4.121e-5`` pixel. These values demonstrate functional UHD support, not a
+real-time 4K frame-rate claim. WebGPU upload and pipeline compilation are lazy;
+the five unreported warm-ups absorb that first-use work before the optical-flow
+distribution is measured.
+
+Reproduce the campaign offline with:
+
+.. code-block:: console
+
+   $ PYTHONPATH=DIC/LucasKanadeICGN/python/src \
+       python3 DIC/LucasKanadeICGN/benchmarks/benchmark_4k.py \
+       --repeats 30 --warmups 5
+

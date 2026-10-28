@@ -18,6 +18,7 @@ from .engine import (
     EngineInfo,
     ICGNError,
     ICGNWebGL,
+    ReferenceInfo,
     RegistrationResult,
 )
 
@@ -28,8 +29,13 @@ def _parser() -> argparse.ArgumentParser:
         description="Run affine IC-GN registration through a headless browser GPU backend.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("reference", type=Path, help="512 x 512 reference image")
-    parser.add_argument("targets", nargs="+", type=Path, help="one or more target images")
+    parser.add_argument("reference", type=Path, help="reference image")
+    parser.add_argument(
+        "targets",
+        nargs="+",
+        type=Path,
+        help="one or more target images with the same dimensions as the reference",
+    )
     parser.add_argument("--iterations", type=int, help="maximum IC-GN iteration count")
     parser.add_argument("--tolerance", type=float, help="convergence tolerance in pixels")
     parser.add_argument("--zncc-min", type=float, help="minimum accepted ZNCC")
@@ -130,6 +136,21 @@ def _registration_summary(
     return summary
 
 
+def _reference_summary(reference: ReferenceInfo) -> dict[str, Any]:
+    """Return separately labelled reference-construction timing boundaries."""
+
+    return {
+        "width": reference.width,
+        "height": reference.height,
+        "grid": list(reference.grid),
+        "runtime_build_wall_ms": reference.runtime_build_wall_ms,
+        "reference_build_wall_ms": reference.reference_build_wall_ms,
+        "browser_preparation_wall_ms": reference.preparation_wall_ms,
+        "encoding_wall_ms": reference.encoding_wall_ms,
+        "python_call_wall_ms": reference.total_wall_ms,
+    }
+
+
 def _save_registrations(
     path: Path,
     targets: Sequence[Path],
@@ -184,17 +205,19 @@ def _run_benchmark(
     args: argparse.Namespace,
 ) -> dict[str, Any]:
     target = args.targets[0]
-    benchmark = engine.benchmark(
-        args.reference,
+    options = _algorithm_options(args)
+    reference_info = engine.set_reference(args.reference, **options)
+    benchmark = engine.benchmark_target(
         target,
         repeats=args.repeats,
         warmups=args.warmups,
-        **_algorithm_options(args),
+        **options,
     )
     payload: dict[str, Any] = {
-        "backend": "WebGL2 headless",
+        "backend": args.backend,
         "device": benchmark.device,
         "timer_query": info.timer_query,
+        "reference_preparation": _reference_summary(reference_info),
         "benchmark": {
             "repeats": benchmark.repeats,
             "warmups": benchmark.warmups,
@@ -224,11 +247,12 @@ def _run_sequence(
     reference_info = engine.set_reference(args.reference, **options)
     results = [engine.register(target, **options) for target in args.targets]
     payload: dict[str, Any] = {
-        "backend": "WebGL2 headless",
+        "backend": args.backend,
         "device": reference_info.device,
         "timer_query": info.timer_query,
         "reference": str(args.reference),
         "reference_preparation_ms": reference_info.preparation_wall_ms,
+        "reference_preparation": _reference_summary(reference_info),
         "results": [
             _registration_summary(result, target=target, truth=args.truth)
             for target, result in zip(args.targets, results, strict=True)

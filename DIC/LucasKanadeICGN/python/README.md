@@ -64,7 +64,8 @@ with ICGNWebGL() as engine:
 
 result = results[-1]
 print(engine_info.device)
-print(reference_info.preparation_wall_ms)
+print(reference_info.reference_build_wall_ms)
+print(reference_info.total_wall_ms)
 print(result.parameters.shape)       # (32, 32, 6)
 print(result.displacement.shape)     # (32, 32, 2)
 print(result.mean_translation)
@@ -87,9 +88,11 @@ The affine parameter order is:
 - negative: rejected.
 
 Accepted image inputs are file paths, encoded PNG/JPEG bytes, Pillow images,
-and 2D/RGB/RGBA NumPy-compatible arrays. Every input must be exactly 512 x 512
-pixels. Floating-point arrays with a maximum value at or below 1 are interpreted
-as normalized images and scaled to 8-bit grayscale.
+and 2D/RGB/RGBA NumPy-compatible arrays. The default Three.js backend derives
+its dimensions from the reference; all targets must match. The optional GPU-IO
+backend remains fixed at 512 x 512 pixels. Floating-point arrays with a maximum
+value at or below 1 are interpreted as normalized images and scaled to 8-bit
+grayscale.
 
 `engine.register_many(reference, targets)` is a convenience method that also
 prepares the reference once. The synchronous API works inside Jupyter notebooks
@@ -118,8 +121,8 @@ persistent engine when processing more than one target.
 
 ## Algorithm parameters
 
-`set_reference`, `register`, `register_pair`, `register_many`, and `benchmark`
-accept these keyword arguments:
+`set_reference`, `register`, `register_pair`, `register_many`, `benchmark`, and
+`benchmark_target` accept these keyword arguments:
 
 - `iterations`: integer from 1 to 30, default 30;
 - `tolerance`: positive convergence threshold in pixels, default `1e-3`;
@@ -131,8 +134,10 @@ The runtime validates these values before launching the GPU calculation.
 
 ```python
 with ICGNWebGL() as engine:
-    benchmark = engine.benchmark(reference, targets[-1], repeats=30, warmups=3)
+    preparation = engine.set_reference(reference)
+    benchmark = engine.benchmark_target(targets[-1], repeats=30, warmups=3)
 
+print(preparation.reference_build_wall_ms, preparation.total_wall_ms)
 print(benchmark.gpu_median_ms, benchmark.gpu_p95_ms)
 print(benchmark.wall_median_ms, benchmark.wall_p95_ms)
 ```
@@ -141,6 +146,10 @@ GPU time uses WebGL timer queries for GPU-IO and WebGPU timestamp queries for
 Three.js/TSL. It includes target prefiltering, IC-GN, and median replacement.
 Wall time excludes PNG conversion in Python, DevTools transport, and result
 readback.
+
+This explicit two-step form keeps reference construction out of the measured
+optical-flow runs. `benchmark(reference, target, ...)` remains a convenience
+wrapper when the preparation breakdown is not needed.
 
 ## Command-line interface
 

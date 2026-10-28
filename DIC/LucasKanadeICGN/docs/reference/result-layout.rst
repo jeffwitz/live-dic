@@ -4,15 +4,17 @@ Result layout and status values
 Grid geometry
 -------------
 
-The fixed 512 x 512 frame is divided into a 32 x 32 grid with 16-pixel spacing.
-Each grid point owns a 16 x 16 subset centered at coordinates
+The frame is divided into ``floor(width / 16)`` by ``floor(height / 16)``
+subsets. Each grid point owns a 16 x 16 subset centered at coordinates
 ``(8 + 16i, 8 + 16j)``. Border subsets that cannot support cubic interpolation
-are rejected.
+are rejected. A 512 x 512 frame produces a 32 x 32 grid; a 3840 x 2160 frame
+produces a 240 x 135 grid.
 
 Affine parameters
 -----------------
 
-``RegistrationResult.parameters`` has shape ``(32, 32, 6)``. The final axis is:
+``RegistrationResult.parameters`` has shape ``(grid_height, grid_width, 6)``.
+The final axis is:
 
 .. list-table:: Affine parameter order
    :header-rows: 1
@@ -40,12 +42,12 @@ Affine parameters
      - vertical displacement gradient in y
 
 ``RegistrationResult.displacement`` selects indices 0 and 3 and has shape
-``(32, 32, 2)``.
+``(grid_height, grid_width, 2)``.
 
 Status field
 ------------
 
-``RegistrationResult.status`` has shape ``(32, 32)``.
+``RegistrationResult.status`` has shape ``(grid_height, grid_width)``.
 
 .. list-table:: Status values
    :header-rows: 1
@@ -79,24 +81,21 @@ accepted subsets only.
 Timing dictionary
 -----------------
 
-A normal ``register`` call reports browser-side stage timings:
+A normal Three.js ``register`` call reports these timing keys:
 
 .. list-table:: Registration timing keys
    :header-rows: 1
 
    * - Key
      - Included work
-   * - ``prefilterWallMs``
-     - target upload synchronization and cubic-coefficient prefilter
-   * - ``solveWallMs``
-     - IC-GN solve and median replacement, including GPU wait
-   * - ``solveGpuMs``
-     - GPU timer query for the solve
-   * - ``readbackMs``
-     - result texture readback inside JavaScript
-   * - ``totalWallMs``
-     - browser-side upload, prefilter, solve, and readback after image decoding
+   * - ``gpuMs``
+     - WebGPU timestamp for target prefiltering, IC-GN, and median replacement
+   * - ``wallMs``
+     - browser-side synchronization around the same GPU pipeline
+   * - ``encodingWallMs``
+     - Python grayscale conversion and PNG encoding
+   * - ``pythonCallWallMs``
+     - complete Python ``register`` call, including transport and readback
 
-These values exclude Python preprocessing, PNG encoding, DevTools transport,
-and JavaScript image decoding. Measure the outer Python call for application
-latency.
+GPU-IO returns its more detailed legacy stage keys. In both backends, inspect
+the reported boundary before comparing values.

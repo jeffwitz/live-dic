@@ -1357,8 +1357,14 @@ const headlessSetReference = async (dataUrl, options = {}) => {
   const image = await decodeExternalImage(dataUrl);
   const start = performance.now();
   setReferenceImage(image);
+  const preparationWallMs = performance.now() - start;
   return {
-    preparationWallMs: performance.now() - start,
+    preparationWallMs,
+    runtimeBuildWallMs: 0,
+    referenceBuildWallMs: preparationWallMs,
+    width: FRAME_WIDTH,
+    height: FRAME_HEIGHT,
+    subsetSize: SUBSET_SIZE,
     config,
     device: rendererName(),
     grid: gridDimensions(),
