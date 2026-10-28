@@ -16,7 +16,7 @@ from typing import Any
 import numpy as np
 
 from lucas_kanade_icgn import ICGNWGPUFullPyramid
-from lucas_kanade_icgn.wgpu_backend import _reduce_half
+from lucas_kanade_icgn.wgpu_backend import _fir_weights, _reduce_half
 
 
 def _integer_reduction(image: np.ndarray) -> np.ndarray:
@@ -38,6 +38,22 @@ def _integer_reduction(image: np.ndarray) -> np.ndarray:
                 ]
             )
     return (total // 256).astype(np.uint8)
+
+
+def _cpu_prefilter(image: np.ndarray) -> np.ndarray:
+    """Mirror the shader's separable float32 FIR accumulation order."""
+
+    weights = _fir_weights()
+    radius = weights.size // 2
+    horizontal = np.zeros(image.shape, dtype=np.float32)
+    padded_x = np.pad(image.astype(np.float32), ((0, 0), (radius, radius)), mode="reflect")
+    for tap, weight in enumerate(weights):
+        horizontal += weight * padded_x[:, tap : tap + image.shape[1]]
+    result = np.zeros(image.shape, dtype=np.float32)
+    padded_y = np.pad(horizontal, ((radius, radius), (0, 0)), mode="reflect")
+    for tap, weight in enumerate(weights):
+        result += weight * padded_y[tap : tap + image.shape[0], :]
+    return result
 
 
 @unittest.skipUnless(
@@ -156,6 +172,29 @@ class GPURegressionTests(unittest.TestCase):
                     actual = self._gpu_reduce(gpu_image)
                     np.testing.assert_array_equal(actual, expected)
                     cpu_image, gpu_image = expected, actual
+
+    def test_tiled_prefilter_matches_cpu_on_partial_workgroups(self) -> None:
+        # Deliberately avoid multiples of 16 so both right and bottom workgroup
+        # boundaries exercise the cooperative halo loads.
+        image = np.random.default_rng(20261029).integers(0, 256, (35, 37), dtype=np.uint8)
+        root = self.runtime._root
+        root.set_reference(image)
+        slot = root._pipeline_slots[0]
+        root._upload_frame(slot, image)
+        encoder = root.device.create_command_encoder(label="GPU tiled-prefilter regression")
+        workgroups = ((image.shape[1] + 15) // 16, (image.shape[0] + 15) // 16, 1)
+        for pipeline in (root._prefilter_x, root._prefilter_y):
+            compute_pass = encoder.begin_compute_pass()
+            compute_pass.set_pipeline(pipeline)
+            compute_pass.set_bind_group(0, slot.bind_group)
+            compute_pass.dispatch_workgroups(*workgroups)
+            compute_pass.end()
+        root.device.queue.submit([encoder.finish()])
+        actual = np.frombuffer(
+            root.device.queue.read_buffer(slot.buffers["coefficients"]),
+            dtype=np.float32,
+        ).reshape(image.shape)
+        np.testing.assert_allclose(actual, _cpu_prefilter(image), rtol=2e-6, atol=2e-5)
 
     def _seeded_state(self, *, retry: bool) -> tuple[np.ndarray, ...]:
         """Read solver state directly, before median filtering can hide a loss.

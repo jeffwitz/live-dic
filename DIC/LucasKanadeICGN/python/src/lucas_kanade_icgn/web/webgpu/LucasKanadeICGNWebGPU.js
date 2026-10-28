@@ -618,13 +618,13 @@ const executePipeline = async ({ measureGpu = false } = {}) => {
         pipeline: pipelines.prefilterX,
         bindGroup: level.bindGroup,
         group: 0,
-        workgroups: [Math.ceil(level.pixelCount / 256), 1, 1],
+        workgroups: [Math.ceil(level.width / 16), Math.ceil(level.height / 16), 1],
       },
       {
         pipeline: pipelines.prefilterY,
         bindGroup: level.bindGroup,
         group: 0,
-        workgroups: [Math.ceil(level.pixelCount / 256), 1, 1],
+        workgroups: [Math.ceil(level.width / 16), Math.ceil(level.height / 16), 1],
       },
       {
         pipeline: seeded ? pipelines.seededSolver : pipelines.solver,
