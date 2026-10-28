@@ -38,6 +38,8 @@ Runtime
 * Chromium is not required by ``ICGNWGPU``, but that optional backend requires
   Python 3.11 or newer and a wgpu-native-supported graphics driver.
 * One engine instance is not thread-safe.
+* Native sequence pipelining improves throughput by keeping bounded work in
+  flight; depth two adds approximately one processed frame of result latency.
 * Browser GPU shader arithmetic is single precision.
 * The fastest Three.js solver requires a WebGPU subgroup containing all 16
   active lanes. Other adapters use the validated workgroup-memory fallback.

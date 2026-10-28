@@ -107,6 +107,13 @@ median campaign of 14.621 ms median and 15.748 ms p95. Both are inside a 60 Hz
 period, but acquisition and downstream consumers are still excluded; this is
 a promising integration result, not a sustained system claim.
 
+For a saturated sequence, the bounded two-slot native path measured a 13.380
+ms median campaign period, equivalent to 74.7 FPS, with 26.617 ms median result
+latency. This distinction is important: pipelining increases throughput by
+keeping the GPU queue occupied, but it deliberately allows one additional
+frame to remain in flight. It does not make an individual result arrive in
+13.380 ms.
+
 Frame-rate budgets
 ------------------
 

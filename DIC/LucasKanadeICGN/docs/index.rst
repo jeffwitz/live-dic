@@ -18,8 +18,10 @@ Real-Time DIC in Python toward 4K60
    with 0.919 ms of p95 margin.
    Direct upload, GPU computation, packed readback, and NumPy result
    construction are included; camera acquisition and downstream consumers are
-   not. 4K60 is therefore still a target rather than an end-to-end
-   qualification.
+   not. A bounded two-slot sequence reaches a 13.380 ms median period (74.7
+   FPS) but 26.617 ms median result latency. 4K60 processing throughput is
+   therefore demonstrated offline, while end-to-end acquisition remains to be
+   qualified.
 
 This documentation describes a Python workflow for GPU-accelerated digital
 image correlation (DIC). The current implementation performs affine

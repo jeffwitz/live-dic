@@ -6,6 +6,7 @@ from importlib.resources import files
 import numpy as np
 
 from lucas_kanade_icgn.wgpu_backend import (
+    ICGNWGPU,
     _fir_weights,
     _reference_arrays,
     _validated_config,
@@ -13,6 +14,19 @@ from lucas_kanade_icgn.wgpu_backend import (
 
 
 class NativeReferenceTests(unittest.TestCase):
+    def test_pipeline_depth_is_a_positive_integer(self) -> None:
+        engine = object.__new__(ICGNWGPU)
+        engine._reference_ready = True
+        for depth in (0, -1, 1.5, True):
+            with (
+                self.subTest(depth=depth),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "pipeline_depth",
+                ),
+            ):
+                next(engine.register_stream((), pipeline_depth=depth))
+
     def test_shader_is_packaged_as_a_runtime_resource(self) -> None:
         shader = files("lucas_kanade_icgn").joinpath("shaders/icgn.wgsl")
         subgroup_source = files("lucas_kanade_icgn").joinpath("shaders/icgn_subgroup.comp")

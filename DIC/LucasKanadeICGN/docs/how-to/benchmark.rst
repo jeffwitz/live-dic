@@ -111,3 +111,16 @@ or ``--backend gpuio`` for the WebGL2 path.
 Use ``--backend wgpu-native`` for the browser-free complete Python-call path.
 Add ``--native-solver portable`` or ``--native-solver subgroup`` to bypass
 automatic selection during a diagnostic campaign.
+
+To distinguish native sequence throughput from per-result latency, compare
+bounded pipeline depths explicitly:
+
+.. code-block:: console
+
+   $ PYTHONPATH=DIC/LucasKanadeICGN/python/src \
+       python3 DIC/LucasKanadeICGN/benchmarks/benchmark_wgpu_pipeline.py \
+       --repeats 30 --warmups 5 --campaigns 4 --depths 1 2 3
+
+The reported period is total sequence wall time divided by the number of
+frames. It must not be presented as result latency when more than one slot is
+in flight.

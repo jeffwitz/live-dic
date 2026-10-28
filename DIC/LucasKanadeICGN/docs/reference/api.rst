@@ -16,7 +16,7 @@ Native engine
 -------------
 
 .. autoclass:: lucas_kanade_icgn.ICGNWGPU
-   :members: set_reference, register, close
+   :members: set_reference, register, register_stream, register_many, close
 
 The native engine is optional and experimental. It returns the same
 ``ReferenceInfo`` and ``RegistrationResult`` types as the browser engine, but

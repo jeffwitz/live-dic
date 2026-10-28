@@ -8,8 +8,12 @@ JSON result conversion, and any visible user interface.
 
 from __future__ import annotations
 
+import operator
 import struct
 import time
+from collections import deque
+from collections.abc import Iterable, Iterator
+from dataclasses import dataclass
 from importlib.resources import files
 from statistics import median
 from typing import Any
@@ -23,6 +27,27 @@ SUBSET_SIZE = 16
 SUBSET_HALF_EXTENT = 7.5
 FIR_RADIUS = 15
 MAX_ITERATIONS = 30
+
+
+@dataclass(slots=True)
+class _RegistrationSlot:
+    """Per-frame resources that may be in flight independently."""
+
+    source_texture: Any
+    buffers: dict[str, Any]
+    bind_group: Any
+    readback: Any
+
+
+@dataclass(slots=True)
+class _PendingRegistration:
+    """CPU timing and configuration retained until one slot is retired."""
+
+    slot: _RegistrationSlot
+    submitted_at: float
+    upload_wall_ms: float
+    submit_wall_ms: float
+    config: dict[str, float | int]
 
 
 def _validated_config(
@@ -306,9 +331,7 @@ class ICGNWGPU:
                 compute={"module": subgroup_shader, "entry_point": "main"},
             )
         if prefer_subgroups is True and self._subgroup_solver is None:
-            raise ICGNError(
-                "The subgroup solver was requested but is unavailable on this adapter."
-            )
+            raise ICGNError("The subgroup solver was requested but is unavailable on this adapter.")
         if prefer_subgroups is True and self._subgroup_solver is not None:
             self.solver = "subgroup"
             self._solver = self._subgroup_solver
@@ -323,6 +346,7 @@ class ICGNWGPU:
         self._buffers: dict[str, Any] = {}
         self._source_texture: Any = None
         self._bind_group: Any = None
+        self._pipeline_slots: list[_RegistrationSlot] = []
         self.width = 0
         self.height = 0
         self.grid_width = 0
@@ -427,10 +451,29 @@ class ICGNWGPU:
         inverse: npt.NDArray[np.float32],
         metadata: npt.NDArray[np.float32],
     ) -> None:
+        self._destroy_runtime()
+        shared_buffers = {
+            "reference": self._storage_buffer(reference),
+            "inverse": self._storage_buffer(inverse),
+            "metadata": self._storage_buffer(metadata),
+            "fir": self._storage_buffer(_fir_weights()),
+        }
+        primary = self._create_registration_slot(shared_buffers)
+        self._pipeline_slots = [primary]
+        self._source_texture = primary.source_texture
+        self._buffers = primary.buffers
+        self._bind_group = primary.bind_group
+
+    def _create_registration_slot(
+        self,
+        shared_buffers: dict[str, Any],
+    ) -> _RegistrationSlot:
+        """Allocate one independent target, solver state, and readback set."""
+
         wgpu = self._wgpu
         pixel_count = self.width * self.height
         grid_count = self.grid_width * self.grid_height
-        self._source_texture = self.device.create_texture(
+        source_texture = self.device.create_texture(
             size=(self.width, self.height, 1),
             usage=wgpu.TextureUsage.COPY_DST | wgpu.TextureUsage.TEXTURE_BINDING,
             dimension=wgpu.TextureDimension.d2,
@@ -438,7 +481,8 @@ class ICGNWGPU:
             mip_level_count=1,
             sample_count=1,
         )
-        self._buffers = {
+        buffers = {
+            **shared_buffers,
             "config": self.device.create_buffer(
                 size=32, usage=wgpu.BufferUsage.UNIFORM | wgpu.BufferUsage.COPY_DST
             ),
@@ -449,9 +493,6 @@ class ICGNWGPU:
                 size=pixel_count * 4,
                 usage=wgpu.BufferUsage.STORAGE,
             ),
-            "reference": self._storage_buffer(reference),
-            "inverse": self._storage_buffer(inverse),
-            "metadata": self._storage_buffer(metadata),
             "state": self.device.create_buffer(
                 size=grid_count * 8 * 4,
                 usage=wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_DST,
@@ -462,51 +503,113 @@ class ICGNWGPU:
                     wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_SRC | wgpu.BufferUsage.COPY_DST
                 ),
             ),
-            "fir": self._storage_buffer(_fir_weights()),
         }
         resources = [
-            {"binding": 0, "resource": self._source_texture.create_view()},
-            self._buffer_entry(1, "config"),
-            self._buffer_entry(2, "temporary"),
-            self._buffer_entry(3, "coefficients"),
-            self._buffer_entry(4, "reference"),
-            self._buffer_entry(5, "inverse"),
-            self._buffer_entry(6, "metadata"),
-            self._buffer_entry(7, "state"),
-            self._buffer_entry(8, "fir"),
-            self._buffer_entry(9, "filtered_state"),
+            {"binding": 0, "resource": source_texture.create_view()},
+            *(
+                self._buffer_resource(binding, buffers[name])
+                for binding, name in enumerate(
+                    (
+                        "config",
+                        "temporary",
+                        "coefficients",
+                        "reference",
+                        "inverse",
+                        "metadata",
+                        "state",
+                        "fir",
+                        "filtered_state",
+                    ),
+                    start=1,
+                )
+            ),
         ]
-        self._bind_group = self.device.create_bind_group(
+        bind_group = self.device.create_bind_group(
             layout=self._bind_group_layout, entries=resources
         )
+        readback = self.device.create_buffer(
+            size=grid_count * 8 * 4,
+            usage=wgpu.BufferUsage.COPY_DST | wgpu.BufferUsage.MAP_READ,
+        )
+        return _RegistrationSlot(
+            source_texture=source_texture,
+            buffers=buffers,
+            bind_group=bind_group,
+            readback=readback,
+        )
 
-    def _buffer_entry(self, binding: int, name: str) -> dict[str, Any]:
-        buffer = self._buffers[name]
+    @staticmethod
+    def _buffer_resource(binding: int, buffer: Any) -> dict[str, Any]:
         return {
             "binding": binding,
             "resource": {"buffer": buffer, "offset": 0, "size": buffer.size},
         }
 
-    def _update_config(self) -> None:
-        values = struct.pack(
+    def _packed_config(self, config: dict[str, float | int]) -> bytes:
+        return struct.pack(
             "<6I2f",
             self.width,
             self.height,
             self.grid_width,
             self.grid_width * self.grid_height,
-            int(self._config["iterations"]),
+            int(config["iterations"]),
             self.width * self.height,
-            float(self._config["tolerance"]),
-            float(self._config["znccMin"]),
+            float(config["tolerance"]),
+            float(config["znccMin"]),
         )
-        self.device.queue.write_buffer(self._buffers["config"], 0, values)
 
-    def _execute_registration(self, solver_pipeline: Any) -> memoryview:
-        """Execute the GPU pipeline and return the synchronized state readback."""
+    def _update_slot_config(
+        self,
+        slot: _RegistrationSlot,
+        config: dict[str, float | int],
+    ) -> None:
+        self.device.queue.write_buffer(slot.buffers["config"], 0, self._packed_config(config))
+
+    def _update_config(self) -> None:
+        self._update_slot_config(self._pipeline_slots[0], self._config)
+
+    def _ensure_pipeline_slots(self, depth: int) -> list[_RegistrationSlot]:
+        if depth < 1:
+            raise ValueError("pipeline_depth must be at least 1")
+        shared_buffers = {
+            name: self._buffers[name] for name in ("reference", "inverse", "metadata", "fir")
+        }
+        while len(self._pipeline_slots) < depth:
+            slot = self._create_registration_slot(shared_buffers)
+            self._update_slot_config(slot, self._config)
+            self._pipeline_slots.append(slot)
+        return self._pipeline_slots[:depth]
+
+    def _destroy_runtime(self) -> None:
+        """Release dimension-dependent resources without destroying the device."""
+
+        dynamic_names = ("config", "temporary", "coefficients", "state", "filtered_state")
+        for slot in self._pipeline_slots:
+            slot.source_texture.destroy()
+            slot.readback.destroy()
+            for name in dynamic_names:
+                slot.buffers[name].destroy()
+        for name in ("reference", "inverse", "metadata", "fir"):
+            buffer = self._buffers.get(name)
+            if buffer is not None:
+                buffer.destroy()
+        self._pipeline_slots.clear()
+        self._buffers.clear()
+        self._source_texture = None
+        self._bind_group = None
+
+    def _encode_registration(
+        self,
+        slot: _RegistrationSlot,
+        solver_pipeline: Any,
+        *,
+        copy_to_readback: bool,
+    ) -> Any:
+        """Encode one registration without imposing a CPU/GPU synchronization."""
 
         encoder = self.device.create_command_encoder(label="DIC-RT native registration")
-        encoder.clear_buffer(self._buffers["state"])
-        encoder.clear_buffer(self._buffers["filtered_state"])
+        encoder.clear_buffer(slot.buffers["state"])
+        encoder.clear_buffer(slot.buffers["filtered_state"])
         pixel_workgroups = (self.width * self.height + 255) // 256
         for pipeline, workgroups in (
             (self._prefilter_x, pixel_workgroups),
@@ -516,11 +619,40 @@ class ICGNWGPU:
         ):
             compute_pass = encoder.begin_compute_pass()
             compute_pass.set_pipeline(pipeline)
-            compute_pass.set_bind_group(0, self._bind_group)
+            compute_pass.set_bind_group(0, slot.bind_group)
             compute_pass.dispatch_workgroups(workgroups, 1, 1)
             compute_pass.end()
-        self.device.queue.submit([encoder.finish()])
+        if copy_to_readback:
+            encoder.copy_buffer_to_buffer(
+                slot.buffers["filtered_state"],
+                0,
+                slot.readback,
+                0,
+                slot.readback.size,
+            )
+        return encoder.finish()
+
+    def _execute_registration(self, solver_pipeline: Any) -> memoryview:
+        """Execute the primary slot and return its synchronized state readback."""
+
+        slot = self._pipeline_slots[0]
+        command = self._encode_registration(slot, solver_pipeline, copy_to_readback=False)
+        self.device.queue.submit([command])
         return self.device.queue.read_buffer(self._buffers["filtered_state"])
+
+    def _upload_frame(
+        self,
+        slot: _RegistrationSlot,
+        frame: npt.NDArray[np.uint8],
+    ) -> float:
+        started = time.perf_counter()
+        self.device.queue.write_texture(
+            {"texture": slot.source_texture, "mip_level": 0, "origin": (0, 0, 0)},
+            frame,
+            {"offset": 0, "bytes_per_row": frame.strides[0], "rows_per_image": self.height},
+            (self.width, self.height, 1),
+        )
+        return (time.perf_counter() - started) * 1_000.0
 
     def _autotune_solver(self, reference: npt.NDArray[np.uint8]) -> None:
         """Select the fastest valid solver on a representative shifted frame."""
@@ -592,46 +724,41 @@ class ICGNWGPU:
             subset_size=SUBSET_SIZE,
         )
 
-    def register(
-        self,
-        target: ImageInput,
-        *,
-        iterations: int | None = None,
-        tolerance: float | None = None,
-        zncc_min: float | None = None,
-    ) -> RegistrationResult:
-        if not self._reference_ready:
-            raise ICGNError("Call set_reference() before register().")
-        total_start = time.perf_counter()
+    def _prepare_target(self, target: ImageInput) -> npt.NDArray[np.uint8]:
         frame = _as_uint8_gray(target)
         if frame.shape != (self.height, self.width):
             raise ValueError(
                 f"Target dimensions must be {self.width}x{self.height}; "
                 f"received {frame.shape[1]}x{frame.shape[0]}."
             )
-        self._config = _validated_config(
+        return frame
+
+    def _resolve_config(
+        self,
+        iterations: int | None,
+        tolerance: float | None,
+        zncc_min: float | None,
+    ) -> dict[str, float | int]:
+        return _validated_config(
             int(self._config["iterations"]) if iterations is None else iterations,
             float(self._config["tolerance"]) if tolerance is None else tolerance,
             float(self._config["znccMin"]) if zncc_min is None else zncc_min,
         )
-        self._update_config()
 
-        upload_start = time.perf_counter()
-        self.device.queue.write_texture(
-            {"texture": self._source_texture, "mip_level": 0, "origin": (0, 0, 0)},
-            frame,
-            {"offset": 0, "bytes_per_row": frame.strides[0], "rows_per_image": self.height},
-            (self.width, self.height, 1),
+    def _result_from_raw(
+        self,
+        raw: Any,
+        *,
+        timing: dict[str, float],
+        config: dict[str, float | int],
+    ) -> RegistrationResult:
+        # The NumPy views retain the copied readback memory as their base. No
+        # additional full-field copy is made while building the public result.
+        packed = np.frombuffer(raw, dtype=np.float32).reshape(
+            self.grid_height,
+            self.grid_width,
+            8,
         )
-        upload_wall_ms = (time.perf_counter() - upload_start) * 1_000.0
-
-        execution_start = time.perf_counter()
-        raw = self._execute_registration(self._solver)
-        execution_readback_wall_ms = (time.perf_counter() - execution_start) * 1_000.0
-
-        # The NumPy views retain the readback memoryview as their base. Keeping
-        # that ownership avoids another full-field copy on every frame.
-        packed = np.frombuffer(raw, dtype=np.float32).reshape(self.grid_height, self.grid_width, 8)
         parameters = packed[..., :6]
         status = packed[..., 6]
         iteration_field = packed[..., 7]
@@ -645,7 +772,6 @@ class ICGNWGPU:
                 float(np.mean(parameters[..., 3][accepted_mask], dtype=np.float64)),
             )
             mean_iterations = float(np.mean(iteration_field[accepted_mask], dtype=np.float64))
-        total_wall_ms = (time.perf_counter() - total_start) * 1_000.0
         return RegistrationResult(
             parameters=parameters,
             status=status,
@@ -654,22 +780,156 @@ class ICGNWGPU:
             replaced=int(np.count_nonzero(status > 1.5)),
             mean_translation=mean_translation,
             mean_iterations=mean_iterations,
-            timing={
-                "uploadWallMs": upload_wall_ms,
-                "executeReadbackWallMs": execution_readback_wall_ms,
-                "totalWallMs": total_wall_ms,
-            },
-            config=dict(self._config),
+            timing=timing,
+            config=dict(config),
             width=self.width,
             height=self.height,
             subset_size=SUBSET_SIZE,
         )
 
+    def register(
+        self,
+        target: ImageInput,
+        *,
+        iterations: int | None = None,
+        tolerance: float | None = None,
+        zncc_min: float | None = None,
+    ) -> RegistrationResult:
+        if not self._reference_ready:
+            raise ICGNError("Call set_reference() before register().")
+        total_start = time.perf_counter()
+        frame = self._prepare_target(target)
+        self._config = self._resolve_config(iterations, tolerance, zncc_min)
+        self._update_config()
+
+        upload_wall_ms = self._upload_frame(self._pipeline_slots[0], frame)
+
+        execution_start = time.perf_counter()
+        raw = self._execute_registration(self._solver)
+        execution_readback_wall_ms = (time.perf_counter() - execution_start) * 1_000.0
+        total_wall_ms = (time.perf_counter() - total_start) * 1_000.0
+        return self._result_from_raw(
+            raw,
+            timing={
+                "uploadWallMs": upload_wall_ms,
+                "executeReadbackWallMs": execution_readback_wall_ms,
+                "totalWallMs": total_wall_ms,
+            },
+            config=self._config,
+        )
+
+    def _submit_slot(
+        self,
+        slot: _RegistrationSlot,
+        frame: npt.NDArray[np.uint8],
+        config: dict[str, float | int],
+    ) -> _PendingRegistration:
+        submitted_at = time.perf_counter()
+        upload_wall_ms = self._upload_frame(slot, frame)
+        submit_started = time.perf_counter()
+        command = self._encode_registration(slot, self._solver, copy_to_readback=True)
+        self.device.queue.submit([command])
+        submit_wall_ms = (time.perf_counter() - submit_started) * 1_000.0
+        return _PendingRegistration(
+            slot=slot,
+            submitted_at=submitted_at,
+            upload_wall_ms=upload_wall_ms,
+            submit_wall_ms=submit_wall_ms,
+            config=dict(config),
+        )
+
+    def _retire_slot(self, pending: _PendingRegistration) -> RegistrationResult:
+        wait_started = time.perf_counter()
+        pending.slot.readback.map_sync(self._wgpu.MapMode.READ)
+        readback_wait_wall_ms = (time.perf_counter() - wait_started) * 1_000.0
+        raw = pending.slot.readback.read_mapped(copy=True)
+        pending.slot.readback.unmap()
+        mapped_at = time.perf_counter()
+        pipeline_latency_wall_ms = (mapped_at - pending.submitted_at) * 1_000.0
+        timing = {
+            "uploadWallMs": pending.upload_wall_ms,
+            "submitWallMs": pending.submit_wall_ms,
+            "readbackWaitWallMs": readback_wait_wall_ms,
+            "executeReadbackWallMs": pipeline_latency_wall_ms - pending.upload_wall_ms,
+            "pipelineLatencyWallMs": pipeline_latency_wall_ms,
+            "totalWallMs": pipeline_latency_wall_ms,
+        }
+        result = self._result_from_raw(raw, timing=timing, config=pending.config)
+        result.timing["totalWallMs"] = (time.perf_counter() - pending.submitted_at) * 1_000.0
+        return result
+
+    def register_stream(
+        self,
+        targets: Iterable[ImageInput],
+        *,
+        pipeline_depth: int = 2,
+        iterations: int | None = None,
+        tolerance: float | None = None,
+        zncc_min: float | None = None,
+    ) -> Iterator[RegistrationResult]:
+        """Register a sequence with bounded GPU work and readback in flight.
+
+        A depth of two lets the GPU execute the next target while Python
+        converts the previous packed readback into result arrays. Results are
+        yielded in input order. The extra in-flight frame improves steady-state
+        throughput at the cost of approximately one frame of latency.
+        """
+
+        if not self._reference_ready:
+            raise ICGNError("Call set_reference() before register_stream().")
+        try:
+            depth = operator.index(pipeline_depth)
+        except TypeError as error:
+            raise ValueError("pipeline_depth must be a positive integer") from error
+        if isinstance(pipeline_depth, bool) or depth < 1:
+            raise ValueError("pipeline_depth must be a positive integer")
+        self._config = self._resolve_config(iterations, tolerance, zncc_min)
+        slots = self._ensure_pipeline_slots(depth)
+        for slot in slots:
+            self._update_slot_config(slot, self._config)
+
+        available = deque(slots)
+        pending: deque[_PendingRegistration] = deque()
+        for target in targets:
+            if not available:
+                completed = pending.popleft()
+                result = self._retire_slot(completed)
+                available.append(completed.slot)
+                yield result
+            slot = available.popleft()
+            frame = self._prepare_target(target)
+            pending.append(self._submit_slot(slot, frame, self._config))
+
+        while pending:
+            completed = pending.popleft()
+            result = self._retire_slot(completed)
+            available.append(completed.slot)
+            yield result
+
+    def register_many(
+        self,
+        targets: Iterable[ImageInput],
+        *,
+        pipeline_depth: int = 2,
+        iterations: int | None = None,
+        tolerance: float | None = None,
+        zncc_min: float | None = None,
+    ) -> list[RegistrationResult]:
+        """Return all results from :meth:`register_stream` as a list."""
+
+        return list(
+            self.register_stream(
+                targets,
+                pipeline_depth=pipeline_depth,
+                iterations=iterations,
+                tolerance=tolerance,
+                zncc_min=zncc_min,
+            )
+        )
+
     def close(self) -> None:
         self._reference_ready = False
-        self._bind_group = None
-        self._source_texture = None
-        self._buffers.clear()
+        self._destroy_runtime()
 
     def __enter__(self) -> ICGNWGPU:
         return self

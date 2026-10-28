@@ -147,6 +147,21 @@ the default `prefer_subgroups=None` policy times both available native solvers
 and retains the faster one. Use `prefer_subgroups=False` to force portable
 WGSL or `prefer_subgroups=True` to force SPIR-V subgroup reductions.
 
+For a sustained sequence, keep two frames bounded in flight so Python can
+retire one packed readback while the GPU processes the next target:
+
+```python
+with ICGNWGPU(prefer_subgroups=False) as engine:
+    engine.set_reference(reference_frame)
+    for result in engine.register_stream(frame_source, pipeline_depth=2):
+        consume(result)
+```
+
+Results are yielded in input order. ``pipeline_depth=2`` improves throughput
+but adds approximately one processed frame of latency. Keep ``register()`` for
+the lowest latency on isolated pairs. ``register_many()`` exposes the same
+bounded pipeline and returns a list when all results must be retained.
+
 ## One-shot function
 
 ```python

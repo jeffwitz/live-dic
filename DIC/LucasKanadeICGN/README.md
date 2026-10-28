@@ -79,6 +79,14 @@ This removes PNG, Chromium, DevTools, JSON, and JavaScript-array conversions. Th
 shader compilation, and the same direct texture-upload boundary; full solver
 orchestration remains in wgpu-py for this milestone.
 
+For sustained native sequences, ``ICGNWGPU.register_stream`` uses a bounded
+ring of independent target, solver-state, and readback resources. Two slots
+allow Python to retire one packed result while the GPU processes the next
+frame. On the validation machine this reduced the median UHD sequence period
+from 14.792 ms to 13.380 ms (74.7 FPS), while preserving bit-for-bit output;
+median result latency increased to 26.617 ms. The ordinary ``register`` method
+remains the lowest-latency path.
+
 The remaining differences are platform constraints: the browser backends use
 single precision and do not expose the same register controls or queue model as
 SYCL/Level Zero. This version does not implement Aitken acceleration,
@@ -165,6 +173,10 @@ The reproducible offline UHD campaign is
 known `(2, -1)` pixel translation, reports preparation separately, and measures
 the warmed optical-flow phase. Use `--backend wgpu-native` for the complete
 native Python-call boundary.
+
+[`benchmarks/benchmark_wgpu_pipeline.py`](./benchmarks/benchmark_wgpu_pipeline.py)
+compares synchronous native registration with bounded pipeline depths and
+reports sequence period separately from result latency.
 
 ## Documentation
 

@@ -280,6 +280,66 @@ Reproduce this native campaign with:
        python3 DIC/LucasKanadeICGN/benchmarks/benchmark_4k.py \
        --backend wgpu-native --repeats 30 --warmups 5
 
+Native sequence pipeline
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+``register`` minimizes the latency of one isolated frame but synchronizes its
+packed readback before Python can submit the next target. The bounded
+``register_stream`` API assigns independent target, intermediate, state, and
+readback resources to each in-flight slot. Reference buffers remain shared.
+
+Four balanced campaigns used five warm-ups and 30 UHD targets per method. The
+campaign order was rotated to limit warm-up and frequency bias. Period
+percentiles below are computed across the four campaign-average periods;
+latency percentiles are first computed across frames within each campaign.
+
+.. list-table:: UHD native sequence throughput and result latency
+   :header-rows: 1
+
+   * - Method
+     - Median period
+     - Period p95
+     - Throughput
+     - Median result latency
+   * - synchronous ``register``
+     - 14.792 ms
+     - 15.149 ms
+     - 67.6 FPS
+     - 14.671 ms
+   * - one mapped slot
+     - 14.493 ms
+     - 14.802 ms
+     - 69.0 FPS
+     - 14.447 ms
+   * - **two slots**
+     - **13.380 ms**
+     - **14.203 ms**
+     - **74.7 FPS**
+     - 26.617 ms
+   * - three slots
+     - 13.077 ms
+     - 14.008 ms
+     - 76.5 FPS
+     - 38.921 ms
+
+Every method accepted 31,654 subsets, produced the same ``3.075e-5 px`` truth
+RMSE, and returned bit-for-bit identical parameter and status fields. Two
+slots are the recommended throughput setting: the third slot adds only 2.3%
+throughput while adding another 12.3 ms of median result latency.
+
+This demonstrates offline 4K60 *processing throughput*. It does not include a
+camera, frame arrival jitter, or downstream consumers. The period is total
+sequence wall time divided by frame count; result latency is measured from
+target upload until its packed field has been converted to NumPy.
+
+Reproduce the comparison with:
+
+.. code-block:: console
+
+   $ PYTHONPATH=DIC/LucasKanadeICGN/python/src \
+       python3 DIC/LucasKanadeICGN/benchmarks/benchmark_wgpu_pipeline.py \
+       --repeats 30 --warmups 5 --campaigns 4 --depths 1 2 3
+
 Browser validation
 ~~~~~~~~~~~~~~~~~~
 

@@ -74,3 +74,25 @@ a Python processing loop.
 
 The next step is to replace the file list with NumPy frames produced by an
 acquisition source. See :doc:`../how-to/process-live-frames`.
+
+Pipeline native frames for throughput
+-------------------------------------
+
+When the input is already a NumPy array, ``ICGNWGPU.register_stream`` can keep
+a bounded number of registrations in flight. A depth of two lets GPU work on
+the next frame overlap Python handling of the previous packed readback:
+
+.. code-block:: python
+
+   from lucas_kanade_icgn import ICGNWGPU
+
+   with ICGNWGPU(prefer_subgroups=False) as engine:
+       engine.set_reference(reference_frame)
+       for result in engine.register_stream(frame_source, pipeline_depth=2):
+           consume(result)
+
+Backpressure is automatic: the iterator never has more than
+``pipeline_depth`` submissions outstanding, and results remain in input order.
+Depth two improves sustained throughput at the cost of approximately one extra
+frame of result latency. Use ordinary ``register`` when minimum single-frame
+latency matters more than sequence throughput.

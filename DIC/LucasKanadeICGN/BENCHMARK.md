@@ -88,6 +88,35 @@ Rust yet, so this number is an integration baseline rather than a performance
 claim. The next migration should be retained only if it improves the complete
 call, not merely a microbenchmark.
 
+## Native bounded sequence pipeline
+
+The synchronous `register()` path waits for one packed readback before Python
+submits the next target. The new `register_stream()` path maintains a bounded
+ring of per-frame target textures, FIR intermediates, solver state, and mapped
+readback buffers while sharing the reference data. This removes avoidable GPU
+idle gaps without permitting an unbounded queue.
+
+Four balanced UHD campaigns rotated the order of synchronous registration and
+pipeline depths 1, 2, and 3. Each method used five warm-ups and 30 measured
+targets. Period percentiles refer to the four campaign-average periods.
+
+| Method | Period median | Period p95 | Throughput | Result latency median | Result latency p95 |
+|---|---:|---:|---:|---:|---:|
+| synchronous `register()` | 14.792 ms | 15.149 ms | 67.6 FPS | 14.671 ms | 15.647 ms |
+| mapped pipeline, depth 1 | 14.493 ms | 14.802 ms | 69.0 FPS | 14.447 ms | 14.950 ms |
+| **bounded pipeline, depth 2** | **13.380 ms** | **14.203 ms** | **74.7 FPS** | 26.617 ms | 27.883 ms |
+| bounded pipeline, depth 3 | 13.077 ms | 14.008 ms | 76.5 FPS | 38.921 ms | 39.939 ms |
+
+All paths accepted 31,654 subsets, produced the same `3.075e-5 px` truth RMSE,
+and returned bit-for-bit identical parameter and status fields. Depth two is
+the recommended throughput setting. A third slot improves throughput by only
+2.3% while adding another 12.3 ms of median latency.
+
+This establishes offline 4K60 processing throughput, not an end-to-end camera
+qualification. The two-slot median period leaves 3.287 ms inside a 16.667 ms
+frame interval for acquisition handoff and downstream work, but its result is
+available roughly one processed frame later.
+
 ## Ported SYCL operations
 
 The reference is prepared once using the same Gaussian filter and cubic

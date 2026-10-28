@@ -90,6 +90,21 @@ Install the optional dependency and select the native engine explicitly:
 iteration fields as the browser API. The native backend is experimental and
 is not yet the package default.
 
+Bounded sequence execution
+--------------------------
+
+``register`` uses one target resource set and synchronizes its readback before
+returning. ``register_stream`` instead keeps a bounded ring of independent
+target textures, FIR intermediates, solver state, and mapped readback buffers.
+Reference, inverse-Hessian, metadata, and FIR-weight buffers remain shared.
+
+With ``pipeline_depth=2``, Python retires the oldest packed result while the GPU
+can process the next submitted target. Queue ordering preserves input order,
+and the iterator applies backpressure whenever both slots are occupied. The
+design improves steady-state period rather than the latency of an individual
+registration. See :doc:`../reference/performance` for the measured throughput
+and latency trade-off.
+
 Rust/PyO3 milestone
 -------------------
 
