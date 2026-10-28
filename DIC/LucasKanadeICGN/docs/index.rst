@@ -13,8 +13,9 @@ Real-Time DIC in Python toward 4K60
 
    The engineering objective is sustained DIC on 3840 x 2160 frames at 60
    frames per second over the complete acquisition-to-result pipeline. The
-   native wgpu-py complete Python-call boundary is 16.160 ms median and 16.569
-   ms p95 on the validation machine, just below the 16.667 ms frame period.
+   native wgpu-py complete Python-call boundary is 15.612 ms median and 16.577
+   ms p95 on the validation machine. Both are below the 16.667 ms frame period,
+   with only 0.090 ms of p95 margin.
    Direct upload, GPU computation, packed readback, and NumPy result
    construction are included; camera acquisition and downstream consumers are
    not. 4K60 is therefore still a target rather than an end-to-end

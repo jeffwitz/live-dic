@@ -11,7 +11,7 @@
 
 The long-term objective is sustained 3840 x 2160 DIC at 60 FPS over the full
 acquisition-to-result path. The experimental native wgpu-py backend currently
-measures 16.160 ms median and 16.569 ms p95 for the complete Python registration
+measures 15.612 ms median and 16.577 ms p95 for the complete Python registration
 call on the validation machine. Direct upload, computation, packed readback,
 and NumPy result construction are included. Acquisition and downstream work
 are excluded, so this repository does not yet claim a qualified 4K60
@@ -58,10 +58,12 @@ construction is exposed by `set_reference()`, while `register()` and
 `benchmark_target()` operate against that prepared state so reference
 construction and optical-flow timings remain separate.
 
-The native ``ICGNWGPU`` host submits a shared WGSL implementation in-process
-through wgpu-native. A contiguous NumPy ``uint8`` frame is uploaded directly to
-an ``r8unorm`` texture and one packed state buffer is read back. This removes
-PNG, Chromium, DevTools, JSON, and JavaScript-array conversions. The
+The native ``ICGNWGPU`` host submits vectorized WGSL kernels in-process through
+wgpu-native. A contiguous NumPy ``uint8`` frame is uploaded directly to an
+``r8unorm`` texture and one packed state buffer is read back. At reference
+preparation it benchmarks the portable workgroup solver against an optional
+SPIR-V subgroup solver and retains the faster path for the current adapter.
+This removes PNG, Chromium, DevTools, JSON, and JavaScript-array conversions. The
 ``native/`` Rust wgpu/PyO3 crate already qualifies adapter creation, shared
 shader compilation, and the same direct texture-upload boundary; full solver
 orchestration remains in wgpu-py for this milestone.

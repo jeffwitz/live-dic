@@ -26,35 +26,60 @@ contiguous NumPy `uint8` frame, uploads it to an `r8unorm` texture, and reads
 one packed binary subset-state buffer. No PNG, Chromium, DevTools, JSON, or
 JavaScript-array conversion is present in this path.
 
-One five-warm-up, 30-run campaign on the 512 x 512 `t=0 -> 10` pair measured:
+The storage buffers now use aligned `vec4` records for reference values,
+inverse Hessians, metadata, and output state. When native subgroup support is
+available, reference preparation times both the portable WGSL reduction and a
+SPIR-V subgroup reduction on a representative shifted frame. The faster
+pipeline becomes the per-frame default; either path can still be forced for
+qualification. On this Intel driver the portable path won decisively.
+
+Three five-warm-up, 30-run campaigns on the 512 x 512 `t=0 -> 10` pair
+measured the following median campaign:
 
 | Native complete-call measurement | Median | p95 |
 |---|---:|---:|
-| complete `ICGNWGPU.register` | **1.882 ms** | **2.382 ms** |
-| direct target upload | 0.038 ms | — |
-| compute plus packed readback | 1.726 ms | — |
+| complete `ICGNWGPU.register` | **1.662 ms** | **2.136 ms** |
+| direct target upload | 0.047 ms | — |
+| compute plus packed readback | 1.561 ms | — |
 
 The result accepted 900 subsets, recovered
 `(1.9999932, -0.9999966) px`, and produced a `2.693e-5 px` truth RMSE.
-Against Three.js, all 1,024 statuses were equal; jointly accepted translations
-differed by `6.766e-6 px` RMS with a `6.068e-5 px` maximum component
-difference. The same browser campaign measured 56.203 ms median / 59.117 ms
-p95 for its complete Python call because that boundary includes PNG and
-DevTools transport.
+The automatic preparation probe measured 1.993 ms for the portable pipeline
+and 3.109 ms for the subgroup pipeline, so subsequent calls used the portable
+solver. The same browser campaign measured 56.203 ms median / 59.117 ms p95
+for its complete Python call because that boundary includes PNG and DevTools
+transport.
 
-The reproducible UHD pair was then measured with five warm-ups and 30 complete
-native Python calls:
+The reproducible UHD pair was then measured in three campaigns of five
+warm-ups and 30 complete native Python calls. The table reports the median
+campaign summary:
 
 | Native UHD measurement | Median | p95 |
 |---|---:|---:|
-| complete `ICGNWGPU.register` | **16.160 ms** | **16.569 ms** |
-| direct target upload | 0.395 ms | — |
-| compute plus packed readback | 15.448 ms | — |
+| complete `ICGNWGPU.register` | **15.612 ms** | **16.577 ms** |
+| direct target upload | 0.424 ms | — |
+| compute plus packed readback | 14.806 ms | — |
 
-Reference preparation measured 1,016.6 ms and is outside the per-target loop.
+Reference preparation measured 1,173.2 ms, including automatic solver tuning,
+and is outside the per-target loop. The probe measured 13.681 ms for the
+portable pipeline and 26.028 ms for the subgroup pipeline.
 The UHD result accepted 31,654 subsets and produced a `3.080e-5 px` truth
-RMSE. The complete-call p95 is 0.098 ms below one 60 Hz period. This excludes
-acquisition and downstream consumers and is not an end-to-end 4K60 claim.
+RMSE. Both the median and p95 remain inside one 60 Hz period, with only 0.090
+ms of p95 margin. This excludes acquisition and downstream consumers and is not an
+end-to-end 4K60 claim.
+
+Forced portable and subgroup runs were compared on all four shipped targets.
+All 1,024 statuses were identical for every target, including the t=20 median
+replacement. Their jointly accepted displacement fields differed by only
+`5.71e-6` to `8.76e-6 px` RMS; the largest component difference was
+`1.57e-4 px`.
+
+A follow-up Three.js UHD campaign on the same machine measured 13.525 ms GPU
+median and 15.0 ms synchronized browser-wall median. The native 15.612 ms
+complete-call median is 4.1% above that browser-wall value while also including
+a fresh target upload, packed result readback, and NumPy statistics on every
+sample. The boundaries are therefore informative but not identical; the
+native compute-plus-readback median alone was 14.806 ms.
 
 The Rust wgpu/PyO3 crate is a parallel host milestone that embeds the exact
 same WGSL source and borrows the NumPy frame without a Python byte-string

@@ -75,6 +75,10 @@ Native timing fields
    ``RegistrationResult.timing``. The execute/readback field is synchronized;
    the total includes validation, upload, GPU work, packed readback, and NumPy
    result statistics.
+   With the default automatic policy, ``set_reference`` also records median
+   candidate times in ``engine.solver_tuning_ms`` and assigns the selected
+   pipeline name to ``engine.solver``. That tuning cost remains in reference
+   preparation rather than the per-frame loop.
 
 Acquisition-to-result latency
    Timestamp frames at acquisition and results after DIC processing. This is the
@@ -104,3 +108,5 @@ backend with:
 
 Use ``--backend gpuio`` for the WebGL2 path.
 Use ``--backend wgpu-native`` for the browser-free complete Python-call path.
+Add ``--native-solver portable`` or ``--native-solver subgroup`` to bypass
+automatic selection during a diagnostic campaign.

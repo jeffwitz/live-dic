@@ -40,6 +40,12 @@ def _arguments() -> argparse.Namespace:
         default="three-tsl",
         help="GPU implementation to measure",
     )
+    parser.add_argument(
+        "--native-solver",
+        choices=("auto", "portable", "subgroup"),
+        default="auto",
+        help="native solver selection policy",
+    )
     return parser.parse_args()
 
 
@@ -106,13 +112,18 @@ def _native_report(
     target: np.ndarray,
     repeats: int,
     warmups: int,
+    *,
+    prefer_subgroups: bool | None,
 ) -> dict[str, Any]:
-    with ICGNWGPU() as engine:
+    with ICGNWGPU(prefer_subgroups=prefer_subgroups) as engine:
         preparation = engine.set_reference(reference)
         for _ in range(warmups):
             engine.register(target)
         results = [engine.register(target) for _ in range(repeats)]
         device = engine.device_name
+        solver = engine.solver
+        subgroup_width = engine.subgroup_width
+        solver_tuning_ms = engine.solver_tuning_ms
 
     registration = results[-1]
     total_times = np.asarray(
@@ -127,8 +138,9 @@ def _native_report(
     return {
         "backend": "wgpu-native",
         "device": device,
-        "solver": "portable-workgroup",
-        "subgroup_width": None,
+        "solver": solver,
+        "subgroup_width": subgroup_width or None,
+        "solver_tuning_ms": solver_tuning_ms,
         "resolution": [preparation.width, preparation.height],
         "grid": list(preparation.grid),
         "truth": list(TRUTH),
@@ -159,7 +171,15 @@ def main() -> int:
     args = _arguments()
     reference, target = _make_pair(args.texture)
     if args.backend == "wgpu-native":
-        report = _native_report(reference, target, args.repeats, args.warmups)
+        report = _native_report(
+            reference,
+            target,
+            args.repeats,
+            args.warmups,
+            prefer_subgroups={"auto": None, "portable": False, "subgroup": True}[
+                args.native_solver
+            ],
+        )
     else:
         report = _browser_report(
             args.backend, reference, target, args.repeats, args.warmups

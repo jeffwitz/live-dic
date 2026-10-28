@@ -93,7 +93,7 @@ Python version as the offline machine, build a local wheelhouse:
        --wheel-dir wheelhouse
 
 This downloads wheels for NumPy, Pillow, websockets, and wgpu-py and builds the
-IC-GN wheel with its HTML, JavaScript, and WGSL resources. The wgpu-py wheel
+IC-GN wheel with its HTML, JavaScript, WGSL, GLSL, and SPIR-V resources. The wgpu-py wheel
 contains its wgpu-native runtime. Copy ``wheelhouse/`` to the offline machine,
 where Chromium is needed only for browser backends, then run:
 

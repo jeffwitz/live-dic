@@ -31,9 +31,9 @@ the optional dependency group:
 .venv-icgn/bin/pip install -e 'DIC/LucasKanadeICGN/python[native]'
 ```
 
-The wheel embeds the GPU-IO runtime, Three.js r186 runtime, and native WGSL.
-The installed runtime therefore needs neither a source checkout nor network
-access.
+The wheel embeds the GPU-IO runtime, Three.js r186 runtime, native WGSL, and
+the first-party subgroup GLSL/SPIR-V shaders. The installed runtime therefore
+needs neither a source checkout, shader compiler, nor network access.
 `repo_root=...` remains available as an explicit development override for a
 backend-specific runtime directory or for a complete `tests_gpuio` checkout.
 
@@ -130,6 +130,7 @@ with ICGNWGPU() as engine:
     result = engine.register(target_frame)
 
 print(reference_info.total_wall_ms)
+print(engine.solver, engine.subgroup_width, engine.solver_tuning_ms)
 print(result.timing)
 print(result.displacement)
 ```
@@ -138,7 +139,10 @@ The engine uploads contiguous grayscale bytes directly to an `r8unorm`
 texture and returns NumPy views backed by one packed result readback. The FIR,
 affine IC-GN solver, and median replacement all run on the native GPU. The
 result schema and parameter order are identical to `ICGNWebGL`. This backend
-is experimental and must be selected explicitly.
+is experimental and must be selected explicitly. At reference preparation,
+the default `prefer_subgroups=None` policy times both available native solvers
+and retains the faster one. Use `prefer_subgroups=False` to force portable
+WGSL or `prefer_subgroups=True` to force SPIR-V subgroup reductions.
 
 ## One-shot function
 

@@ -1,0 +1,276 @@
+#version 450
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+
+layout(local_size_x = 16, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 1, std140) uniform Config {
+    uint width;
+    uint height;
+    uint grid_width;
+    uint grid_count;
+    uint iterations;
+    uint pixel_count;
+    float tolerance;
+    float zncc_min;
+} config;
+
+layout(set = 0, binding = 3, std430) buffer Coefficients {
+    float values[];
+} coefficients;
+
+layout(set = 0, binding = 4, std430) readonly buffer ReferenceData {
+    vec4 values[];
+} reference_data;
+
+layout(set = 0, binding = 5, std430) readonly buffer InverseHessian {
+    vec4 values[];
+} inverse_hessian;
+
+layout(set = 0, binding = 6, std430) readonly buffer Metadata {
+    vec4 values[];
+} metadata;
+
+layout(set = 0, binding = 7, std430) buffer State {
+    vec4 values[];
+} state;
+
+const int SUBSET_SIZE = 16;
+const float SUBSET_PIXELS = 256.0;
+const float SUBSET_HALF_EXTENT = 7.5;
+
+float metadata_value(uint subset_index, uint component) {
+    return metadata.values[subset_index * 4u + component / 4u][component % 4u];
+}
+
+float hessian_value(uint subset_index, uint component) {
+    return inverse_hessian.values[subset_index * 9u + component / 4u][component % 4u];
+}
+
+vec4 cubic_weights(float value) {
+    float value2 = value * value;
+    float value3 = value2 * value;
+    float inverse = 1.0 - value;
+    return vec4(
+        inverse * inverse * inverse / 6.0,
+        (3.0 * value3 - 6.0 * value2 + 4.0) / 6.0,
+        (-3.0 * value3 + 3.0 * value2 + 3.0 * value + 1.0) / 6.0,
+        value3 / 6.0
+    );
+}
+
+float sample_cubic(vec2 position) {
+    vec2 floored = floor(position);
+    ivec2 base = ivec2(floored) - ivec2(1);
+    vec2 fraction = position - floored;
+    vec4 weight_x = cubic_weights(fraction.x);
+    vec4 weight_y = cubic_weights(fraction.y);
+    float result = 0.0;
+    for (int iy = 0; iy < 4; ++iy) {
+        for (int ix = 0; ix < 4; ++ix) {
+            int x = base.x + ix;
+            int y = base.y + iy;
+            uint index = uint(y * int(config.width) + x);
+            result += coefficients.values[index] * weight_x[ix] * weight_y[iy];
+        }
+    }
+    return result;
+}
+
+void main() {
+    uint subset_index = gl_WorkGroupID.x;
+    uint lane = gl_LocalInvocationID.x;
+    if (subset_index >= config.grid_count) {
+        return;
+    }
+
+    vec2 current_translation = vec2(0.0);
+    vec4 current_linear = vec4(0.0);
+    float current_status = metadata_value(subset_index, 1u) >= 0.5 ? 0.0 : -1.0;
+    float current_iterations = 0.0;
+    int grid_x = int(subset_index % config.grid_width);
+    int grid_y = int(subset_index / config.grid_width);
+    vec2 center = (vec2(grid_x, grid_y) + vec2(0.5)) * 16.0;
+
+    for (uint iteration = 0u; iteration < 30u; ++iteration) {
+        if (iteration >= config.iterations || abs(current_status) > 0.5) {
+            break;
+        }
+
+        bool inside = true;
+        for (int corner = 0; corner < 4; ++corner) {
+            float local_x = corner == 1 || corner == 3
+                ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
+            float local_y = corner >= 2 ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
+            vec2 local = vec2(local_x, local_y);
+            vec2 position = center - vec2(0.5) + local + current_translation + vec2(
+                current_linear.x * local_x + current_linear.y * local_y,
+                current_linear.z * local_x + current_linear.w * local_y
+            );
+            inside = inside
+                && position.x >= 2.0
+                && position.y >= 2.0
+                && position.x <= float(config.width) - 3.0
+                && position.y <= float(config.height) - 3.0;
+        }
+        if (!inside) {
+            current_status = -1.0;
+            break;
+        }
+
+        float sum_current = 0.0;
+        float sum_current2 = 0.0;
+        float sum_reference_current = 0.0;
+        float sum_j_current[6] = float[6](0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        float local_x = float(lane) - SUBSET_HALF_EXTENT;
+        for (int row = 0; row < SUBSET_SIZE; ++row) {
+            float local_y = float(row) - SUBSET_HALF_EXTENT;
+            vec2 displacement = current_translation + vec2(
+                current_linear.x * local_x + current_linear.y * local_y,
+                current_linear.z * local_x + current_linear.w * local_y
+            );
+            float current = sample_cubic(
+                center - vec2(0.5) + vec2(local_x, local_y) + displacement
+            );
+            int pixel_x = grid_x * SUBSET_SIZE + int(lane);
+            int pixel_y = grid_y * SUBSET_SIZE + row;
+            vec4 reference_value = reference_data.values[
+                uint(pixel_y * int(config.width) + pixel_x)
+            ];
+            float reference = reference_value.x;
+            float gradient_x = reference_value.y;
+            float gradient_y = reference_value.z;
+            float gxg = gradient_x * current;
+            float gyg = gradient_y * current;
+            sum_current += current;
+            sum_current2 += current * current;
+            sum_reference_current += reference * current;
+            sum_j_current[0] += gxg;
+            sum_j_current[1] += gxg * local_x;
+            sum_j_current[2] += gxg * local_y;
+            sum_j_current[3] += gyg;
+            sum_j_current[4] += gyg * local_x;
+            sum_j_current[5] += gyg * local_y;
+        }
+
+        vec4 totals_a = subgroupAdd(vec4(
+            sum_current,
+            sum_current2,
+            sum_reference_current,
+            sum_j_current[0]
+        ));
+        vec4 totals_b = subgroupAdd(vec4(
+            sum_j_current[1],
+            sum_j_current[2],
+            sum_j_current[3],
+            sum_j_current[4]
+        ));
+        vec4 totals_c = subgroupAdd(vec4(sum_j_current[5], 0.0, 0.0, 0.0));
+        float reduced_j[6] = float[6](
+            totals_a.w,
+            totals_b.x,
+            totals_b.y,
+            totals_b.z,
+            totals_b.w,
+            totals_c.x
+        );
+
+        float current_mean = totals_a.x / SUBSET_PIXELS;
+        float current_norm = sqrt(max(0.0, totals_a.y - totals_a.x * current_mean));
+        float reference_norm = metadata_value(subset_index, 0u);
+        current_iterations = float(iteration + 1u);
+        if (current_norm < 1e-9 || reference_norm < 1e-9) {
+            current_status = -2.0;
+            break;
+        }
+
+        float ratio = reference_norm / current_norm;
+        float residual[6];
+        for (uint component = 0u; component < 6u; ++component) {
+            residual[component] = metadata_value(subset_index, 2u + component)
+                - ratio * (
+                    reduced_j[component]
+                    - current_mean * metadata_value(subset_index, 8u + component)
+                );
+        }
+
+        float delta[6];
+        for (uint hessian_row = 0u; hessian_row < 6u; ++hessian_row) {
+            float value = 0.0;
+            for (uint column = 0u; column < 6u; ++column) {
+                value += hessian_value(subset_index, 6u * hessian_row + column)
+                    * residual[column];
+            }
+            delta[hessian_row] = -value;
+        }
+
+        float da11 = 1.0 + delta[1];
+        float da12 = delta[2];
+        float da21 = delta[4];
+        float da22 = 1.0 + delta[5];
+        float determinant = da11 * da22 - da12 * da21;
+        if (abs(determinant) < 1e-8) {
+            current_status = -1.0;
+            break;
+        }
+
+        float inverse11 = da22 / determinant;
+        float inverse12 = -da12 / determinant;
+        float inverse21 = -da21 / determinant;
+        float inverse22 = da11 / determinant;
+        float warp11 = 1.0 + current_linear.x;
+        float warp12 = current_linear.y;
+        float warp21 = current_linear.z;
+        float warp22 = 1.0 + current_linear.w;
+        float inverse_translation_x = -(inverse11 * delta[0] + inverse12 * delta[3]);
+        float inverse_translation_y = -(inverse21 * delta[0] + inverse22 * delta[3]);
+        vec2 updated_translation = current_translation + vec2(
+            warp11 * inverse_translation_x + warp12 * inverse_translation_y,
+            warp21 * inverse_translation_x + warp22 * inverse_translation_y
+        );
+        float updated11 = warp11 * inverse11 + warp12 * inverse21;
+        float updated12 = warp11 * inverse12 + warp12 * inverse22;
+        float updated21 = warp21 * inverse11 + warp22 * inverse21;
+        float updated22 = warp21 * inverse12 + warp22 * inverse22;
+
+        float corner_change = 0.0;
+        for (int corner = 0; corner < 4; ++corner) {
+            float x = corner == 1 || corner == 3
+                ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
+            float y = corner >= 2 ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
+            float change = length(vec2(
+                delta[0] + delta[1] * x + delta[2] * y,
+                delta[3] + delta[4] * x + delta[5] * y
+            ));
+            corner_change = max(corner_change, change);
+        }
+
+        current_translation = updated_translation;
+        current_linear = vec4(
+            updated11 - 1.0,
+            updated12,
+            updated21,
+            updated22 - 1.0
+        );
+        if (corner_change < config.tolerance) {
+            float zncc = totals_a.z / (reference_norm * current_norm);
+            current_status = zncc >= config.zncc_min ? 1.0 : -2.0;
+        }
+    }
+
+    if (lane == 0u) {
+        uint state_index = subset_index * 2u;
+        state.values[state_index] = vec4(
+            current_translation.x,
+            current_linear.x,
+            current_linear.y,
+            current_translation.y
+        );
+        state.values[state_index + 1u] = vec4(
+            current_linear.z,
+            current_linear.w,
+            current_status,
+            current_iterations
+        );
+    }
+}

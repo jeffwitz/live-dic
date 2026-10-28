@@ -11,6 +11,7 @@ from __future__ import annotations
 import struct
 import time
 from importlib.resources import files
+from statistics import median
 from typing import Any
 
 import numpy as np
@@ -214,10 +215,18 @@ class ICGNWGPU:
     """Persistent native WebGPU IC-GN engine with direct NumPy transfers.
 
     The target prefilter, affine solver, and spatial median replacement all run
-    on the native GPU adapter.
+    on the native GPU adapter. By default, reference preparation benchmarks
+    the portable and subgroup solvers when both are available. Set
+    ``prefer_subgroups`` to ``False`` or ``True`` to force either path for
+    qualification.
     """
 
-    def __init__(self, *, power_preference: str = "high-performance") -> None:
+    def __init__(
+        self,
+        *,
+        power_preference: str = "high-performance",
+        prefer_subgroups: bool | None = None,
+    ) -> None:
         try:
             import wgpu
         except ImportError as error:
@@ -241,10 +250,39 @@ class ICGNWGPU:
 
         self._wgpu = wgpu
         self.adapter = adapter
-        self.device = adapter.request_device_sync(label="DIC-RT native WebGPU")
+        required_features = []
+        if prefer_subgroups is not False and "subgroup" in adapter.features:
+            required_features.append("subgroup")
+        try:
+            self.device = adapter.request_device_sync(
+                label="DIC-RT native WebGPU",
+                required_features=required_features,
+            )
+        except Exception as error:
+            if not required_features:
+                raise
+            if prefer_subgroups is True:
+                raise ICGNError(
+                    "The adapter advertises subgroups but the feature could not be enabled."
+                ) from error
+            required_features.clear()
+            self.device = adapter.request_device_sync(label="DIC-RT native WebGPU")
         self.device_name = f"wgpu-native {adapter.info['backend_type']} ({adapter.info['device']})"
+        self.subgroup_width = (
+            self._measure_subgroup_width() if "subgroup" in self.device.features else 0
+        )
+        self._solver_preference = prefer_subgroups
+        self.solver_tuning_ms: dict[str, float] = {}
         shader_path = files("lucas_kanade_icgn").joinpath("shaders/icgn.wgsl")
-        shader = self.device.create_shader_module(code=shader_path.read_text(encoding="utf-8"))
+        shader_source = shader_path.read_text(encoding="utf-8")
+        shader = self.device.create_shader_module(code=shader_source)
+        subgroup_shader = None
+        if self.subgroup_width >= SUBSET_SIZE:
+            subgroup_path = files("lucas_kanade_icgn").joinpath("shaders/icgn_subgroup.spv")
+            subgroup_shader = self.device.create_shader_module(
+                label="DIC-RT subgroup compute solver",
+                code=subgroup_path.read_bytes(),
+            )
         self._bind_group_layout = self._create_bind_group_layout()
         pipeline_layout = self.device.create_pipeline_layout(
             bind_group_layouts=[self._bind_group_layout]
@@ -257,10 +295,26 @@ class ICGNWGPU:
             layout=pipeline_layout,
             compute={"module": shader, "entry_point": "prefilter_y"},
         )
-        self._solver = self.device.create_compute_pipeline(
+        self._portable_solver = self.device.create_compute_pipeline(
             layout=pipeline_layout,
             compute={"module": shader, "entry_point": "solve"},
         )
+        self._subgroup_solver = None
+        if subgroup_shader is not None:
+            self._subgroup_solver = self.device.create_compute_pipeline(
+                layout=pipeline_layout,
+                compute={"module": subgroup_shader, "entry_point": "main"},
+            )
+        if prefer_subgroups is True and self._subgroup_solver is None:
+            raise ICGNError(
+                "The subgroup solver was requested but is unavailable on this adapter."
+            )
+        if prefer_subgroups is True and self._subgroup_solver is not None:
+            self.solver = "subgroup"
+            self._solver = self._subgroup_solver
+        else:
+            self.solver = "portable-workgroup"
+            self._solver = self._portable_solver
         self._median_filter = self.device.create_compute_pipeline(
             layout=pipeline_layout,
             compute={"module": shader, "entry_point": "median_filter"},
@@ -274,6 +328,57 @@ class ICGNWGPU:
         self.grid_width = 0
         self.grid_height = 0
         self._config = {"iterations": 30, "tolerance": 1e-3, "znccMin": 0.8}
+
+    def _measure_subgroup_width(self) -> int:
+        """Return the hardware subgroup width for a 16-lane workgroup."""
+
+        wgpu = self._wgpu
+        try:
+            probe_path = files("lucas_kanade_icgn").joinpath("shaders/subgroup_probe.spv")
+            shader = self.device.create_shader_module(
+                label="DIC-RT subgroup width compute probe",
+                code=probe_path.read_bytes(),
+            )
+            bind_group_layout = self.device.create_bind_group_layout(
+                entries=[
+                    {
+                        "binding": 0,
+                        "visibility": wgpu.ShaderStage.COMPUTE,
+                        "buffer": {"type": wgpu.BufferBindingType.storage},
+                    }
+                ]
+            )
+            pipeline_layout = self.device.create_pipeline_layout(
+                bind_group_layouts=[bind_group_layout]
+            )
+            pipeline = self.device.create_compute_pipeline(
+                layout=pipeline_layout,
+                compute={"module": shader, "entry_point": "main"},
+            )
+            output = self.device.create_buffer(
+                size=4,
+                usage=wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_SRC,
+            )
+            bind_group = self.device.create_bind_group(
+                layout=bind_group_layout,
+                entries=[
+                    {
+                        "binding": 0,
+                        "resource": {"buffer": output, "offset": 0, "size": 4},
+                    }
+                ],
+            )
+            encoder = self.device.create_command_encoder(label="DIC-RT subgroup probe")
+            compute_pass = encoder.begin_compute_pass()
+            compute_pass.set_pipeline(pipeline)
+            compute_pass.set_bind_group(0, bind_group)
+            compute_pass.dispatch_workgroups(1, 1, 1)
+            compute_pass.end()
+            self.device.queue.submit([encoder.finish()])
+            raw = self.device.queue.read_buffer(output)
+            return int(struct.unpack_from("<I", raw)[0])
+        except Exception:
+            return 0
 
     def _create_bind_group_layout(self) -> Any:
         wgpu = self._wgpu
@@ -396,6 +501,57 @@ class ICGNWGPU:
         )
         self.device.queue.write_buffer(self._buffers["config"], 0, values)
 
+    def _execute_registration(self, solver_pipeline: Any) -> memoryview:
+        """Execute the GPU pipeline and return the synchronized state readback."""
+
+        encoder = self.device.create_command_encoder(label="DIC-RT native registration")
+        encoder.clear_buffer(self._buffers["state"])
+        encoder.clear_buffer(self._buffers["filtered_state"])
+        pixel_workgroups = (self.width * self.height + 255) // 256
+        for pipeline, workgroups in (
+            (self._prefilter_x, pixel_workgroups),
+            (self._prefilter_y, pixel_workgroups),
+            (solver_pipeline, self.grid_width * self.grid_height),
+            (self._median_filter, (self.grid_width * self.grid_height + 255) // 256),
+        ):
+            compute_pass = encoder.begin_compute_pass()
+            compute_pass.set_pipeline(pipeline)
+            compute_pass.set_bind_group(0, self._bind_group)
+            compute_pass.dispatch_workgroups(workgroups, 1, 1)
+            compute_pass.end()
+        self.device.queue.submit([encoder.finish()])
+        return self.device.queue.read_buffer(self._buffers["filtered_state"])
+
+    def _autotune_solver(self, reference: npt.NDArray[np.uint8]) -> None:
+        """Select the fastest valid solver on a representative shifted frame."""
+
+        if self._solver_preference is not None or self._subgroup_solver is None:
+            return
+        target = np.ascontiguousarray(np.roll(reference, shift=(-1, 2), axis=(0, 1)))
+        self.device.queue.write_texture(
+            {"texture": self._source_texture, "mip_level": 0, "origin": (0, 0, 0)},
+            target,
+            {"offset": 0, "bytes_per_row": target.strides[0], "rows_per_image": self.height},
+            (self.width, self.height, 1),
+        )
+        candidates = {
+            "portable-workgroup": self._portable_solver,
+            "subgroup": self._subgroup_solver,
+        }
+        for pipeline in candidates.values():
+            self._execute_registration(pipeline)
+        samples: dict[str, list[float]] = {name: [] for name in candidates}
+        names = tuple(candidates)
+        for repetition in range(3):
+            order = names if repetition % 2 == 0 else tuple(reversed(names))
+            for name in order:
+                started = time.perf_counter()
+                self._execute_registration(candidates[name])
+                samples[name].append((time.perf_counter() - started) * 1_000.0)
+        self.solver_tuning_ms = {name: float(median(timings)) for name, timings in samples.items()}
+        self.solver = min(self.solver_tuning_ms, key=self.solver_tuning_ms.__getitem__)
+        self._solver = candidates[self.solver]
+
     def set_reference(
         self,
         image: ImageInput,
@@ -418,6 +574,7 @@ class ICGNWGPU:
         runtime_start = time.perf_counter()
         self._allocate_runtime(reference, inverse, metadata)
         self._update_config()
+        self._autotune_solver(frame)
         runtime_wall_ms = (time.perf_counter() - runtime_start) * 1_000.0
         self._reference_ready = True
         total_wall_ms = (time.perf_counter() - total_start) * 1_000.0
@@ -469,23 +626,7 @@ class ICGNWGPU:
         upload_wall_ms = (time.perf_counter() - upload_start) * 1_000.0
 
         execution_start = time.perf_counter()
-        encoder = self.device.create_command_encoder(label="DIC-RT native registration")
-        encoder.clear_buffer(self._buffers["state"])
-        encoder.clear_buffer(self._buffers["filtered_state"])
-        pixel_workgroups = (self.width * self.height + 255) // 256
-        for pipeline, workgroups in (
-            (self._prefilter_x, pixel_workgroups),
-            (self._prefilter_y, pixel_workgroups),
-            (self._solver, self.grid_width * self.grid_height),
-            (self._median_filter, (self.grid_width * self.grid_height + 255) // 256),
-        ):
-            compute_pass = encoder.begin_compute_pass()
-            compute_pass.set_pipeline(pipeline)
-            compute_pass.set_bind_group(0, self._bind_group)
-            compute_pass.dispatch_workgroups(workgroups, 1, 1)
-            compute_pass.end()
-        self.device.queue.submit([encoder.finish()])
-        raw = self.device.queue.read_buffer(self._buffers["filtered_state"])
+        raw = self._execute_registration(self._solver)
         execution_readback_wall_ms = (time.perf_counter() - execution_start) * 1_000.0
 
         # The NumPy views retain the readback memoryview as their base. Keeping

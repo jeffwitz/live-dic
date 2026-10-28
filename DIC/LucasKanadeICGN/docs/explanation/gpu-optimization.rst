@@ -1,7 +1,7 @@
 GPU tiling and grouping strategies
 ==================================
 
-Both backends evaluate the same affine IC-GN equations, but WebGPU and WebGL2
+All backends evaluate the same affine IC-GN equations, but WebGPU and WebGL2
 offer different synchronization models. This page explains how the 16 x 16
 image subsets are tiled, how work is grouped, and why the two implementations
 have different scaling at UHD resolution.
@@ -40,8 +40,8 @@ intermediate image and a vertical radius-15 pass produces the cubic coefficient
 image. This avoids a 31 x 31 two-dimensional convolution and gives both
 backends the same interpolation input.
 
-Three.js/WebGPU: one cooperative group per subset
--------------------------------------------------
+WebGPU: one cooperative group per subset
+----------------------------------------
 
 The WebGPU solver assigns one workgroup of 16 active invocations to one subset.
 Lane ``x`` owns column ``x`` and loops over the 16 rows. The 256 pixels are
@@ -115,8 +115,16 @@ workgroup barriers between its four stages:
 
 The barriers are executed uniformly even when a subset has converged. An
 active flag prevents further interpolation and update work while preserving
-legal workgroup synchronization. This path is slower than hardware subgroup
-collectives but does not depend on a particular subgroup width.
+legal workgroup synchronization. This path does not depend on a particular
+subgroup width.
+
+Three.js selects the subgroup path when the width probe permits it. Native
+``ICGNWGPU`` goes one step further: during reference preparation it measures
+the complete portable and subgroup pipelines on a representative shifted
+frame, then retains the faster one. This matters because subgroup availability
+is a capability result, not a performance guarantee. On the validation Intel
+driver the native SPIR-V subgroup pipeline was slower, while the Three.js WGSL
+subgroup pipeline remained the browser's faster implementation.
 
 GPU-IO/WebGL2: one fused fragment per subset
 --------------------------------------------

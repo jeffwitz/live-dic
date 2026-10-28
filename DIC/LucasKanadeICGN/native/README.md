@@ -3,7 +3,7 @@
 This crate is the second native-backend milestone. It currently:
 
 - creates a persistent native `wgpu` Vulkan device;
-- compiles the exact WGSL source used by the `wgpu-py` backend;
+- compiles the portable WGSL source used by the `wgpu-py` backend;
 - exposes adapter provenance to Python;
 - borrows contiguous NumPy `uint8` frames through PyO3 and measures direct
   `r8unorm` texture uploads without PNG, JSON, or a browser;
@@ -14,6 +14,18 @@ The complete IC-GN dispatch currently lives in `ICGNWGPU` while this crate
 qualifies the Rust/Python boundary. The next step is moving the already
 validated buffer allocation, dispatch, timestamp, and readback host code from
 Python into `NativeRuntime` without changing `shaders/icgn.wgsl`.
+
+The native Python backend also ships a subgroup-specialized SPIR-V solver.
+Regenerate its binary artifacts from the canonical GLSL sources with:
+
+```bash
+cargo run --release --offline \
+  --manifest-path DIC/LucasKanadeICGN/native/Cargo.toml \
+  --example compile_subgroup_shaders
+```
+
+`shaderc` is a development-only dependency. Installed Python and Rust wheels
+use the committed SPIR-V and do not require a shader compiler.
 
 Build and install in a virtual environment:
 

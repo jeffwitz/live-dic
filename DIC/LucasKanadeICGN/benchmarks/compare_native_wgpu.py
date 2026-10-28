@@ -29,6 +29,12 @@ def _arguments() -> argparse.Namespace:
         action="store_true",
         help="skip Chromium backends",
     )
+    parser.add_argument(
+        "--native-solver",
+        choices=("auto", "portable", "subgroup"),
+        default="auto",
+        help="native solver selection policy",
+    )
     return parser.parse_args()
 
 
@@ -84,7 +90,10 @@ def main() -> int:
         "warmups": args.warmups,
     }
 
-    with ICGNWGPU() as engine:
+    solver_preference = {"auto": None, "portable": False, "subgroup": True}[
+        args.native_solver
+    ]
+    with ICGNWGPU(prefer_subgroups=solver_preference) as engine:
         preparation = engine.set_reference(reference)
         for _ in range(args.warmups):
             engine.register(target)
@@ -94,6 +103,9 @@ def main() -> int:
         native_summary.update(
             {
                 "device": engine.device_name,
+                "solver": engine.solver,
+                "subgroup_width": engine.subgroup_width or None,
+                "solver_tuning_ms": engine.solver_tuning_ms,
                 "preparation_wall_ms": preparation.total_wall_ms,
                 "upload_median_ms": _percentile(
                     [result.timing["uploadWallMs"] for result in native_results], 50

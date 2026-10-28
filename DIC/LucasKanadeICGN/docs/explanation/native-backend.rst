@@ -8,8 +8,8 @@ The browser backends preserve the original GPU-IO implementation and provide
 portable WebGPU execution, but a Python frame crosses several representation
 boundaries: NumPy, PNG, the DevTools protocol, JavaScript, and finally a GPU
 resource. ``ICGNWGPU`` removes that browser transport. It uses `wgpu-py
-<https://wgpu-py.readthedocs.io/>`_ to submit the project's WGSL kernels
-directly through wgpu-native.
+<https://wgpu-py.readthedocs.io/>`_ to submit the project's WGSL and SPIR-V
+kernels directly through wgpu-native.
 
 The native data path is:
 
@@ -49,11 +49,23 @@ radius-15 target prefilter, inverse-compositional update, ZNCC test, and median
 replacement as the browser implementations. Reference-dependent values are
 prepared once by ``set_reference`` and uploaded as persistent buffers.
 
-The current WGSL solver is the portable workgroup-memory implementation. Each
-subset owns one workgroup with 16 active lanes. A lane processes one 16-pixel
-row and the lanes reduce their partial sums through shared memory. All
-iterations remain fused in one dispatch. A subgroup-specialized native kernel
-is a future optimization; numerical qualification does not depend on it.
+The portable solver assigns one 16-lane workgroup to each subset. A lane
+processes one 16-pixel row and the lanes reduce their partial sums through
+shared memory. Its reference, inverse-Hessian, metadata, and state buffers use
+aligned ``vec4`` records. All iterations remain fused in one dispatch.
+
+An optional first-party GLSL solver performs the same reductions with subgroup
+collectives. It is compiled to SPIR-V at build time because the Naga frontend
+bundled with wgpu-py 0.32 cannot parse the WGSL subgroup extension. Both the
+GLSL source and generated SPIR-V are included in the wheel; no shader compiler
+or network access is needed at runtime.
+
+By default, ``set_reference`` benchmarks both valid solver pipelines on a
+representative shifted frame and retains the faster one. This tuning belongs
+to preparation, not the per-target loop. Pass ``prefer_subgroups=False`` to
+force the portable path or ``prefer_subgroups=True`` to force the subgroup
+path for qualification. On the validation Intel driver, native subgroup
+collectives were slower, so automatic selection correctly retained WGSL.
 
 Python use
 ----------
@@ -83,7 +95,7 @@ Rust/PyO3 milestone
 <https://docs.rs/wgpu/>`_, `PyO3 <https://pyo3.rs/>`_, and Maturin. It already:
 
 * creates and retains a native adapter, device, and queue;
-* embeds and validates the exact WGSL source used by ``ICGNWGPU``;
+* embeds and validates the portable WGSL source used by ``ICGNWGPU``;
 * borrows a contiguous NumPy ``uint8`` array without an intermediate Python
   byte string;
 * uploads it to an ``r8unorm`` texture; and
@@ -98,13 +110,14 @@ without forking the WGSL kernels.
 Measured effect
 ---------------
 
-On the validation machine, the 512 x 512 native complete Python call measured
-1.882 ms median and 2.382 ms p95 over 30 runs. At 3840 x 2160 it measured
-16.160 ms median and 16.569 ms p95, including direct target upload, computation,
-packed result readback, and NumPy result construction. The UHD campaign is just
-inside one 60 Hz period, but it excludes camera acquisition and downstream
-consumers. See :doc:`../reference/performance` for the exact boundaries and
-the browser/SYCL comparison.
+On the validation machine, the median of three 512 x 512 campaigns measured a
+native complete Python call of 1.662 ms median and 2.136 ms p95. At 3840 x
+2160 the median campaign measured 15.612 ms median and 16.577 ms p95, including direct target upload,
+computation, packed result readback, and NumPy result construction. The UHD
+median and p95 are inside one 60 Hz period, but both exclude
+camera acquisition and downstream consumers. See
+:doc:`../reference/performance` for the exact boundaries and the browser/SYCL
+comparison.
 
 The initial PyO3-only UHD upload probe measured 1.783 ms median. It does not
 yet demonstrate an advantage over the wgpu-py upload in the complete solver.

@@ -44,8 +44,9 @@ Runtime
 * Maximum image size depends on the adapter's WebGPU storage-buffer or WebGL2
   texture limits.
 * Full parameter and status fields are read back for every ``register`` call.
-* The native WGSL solver currently uses the portable workgroup-memory
-  reduction even when the adapter exposes subgroup operations.
+* The native backend includes portable and subgroup solvers, but subgroup
+  support does not imply higher performance. Reference preparation benchmarks
+  both and selects the faster valid pipeline for the current adapter.
 * The PyO3 module currently qualifies adapter creation, shared-shader
   compilation, and direct texture upload. Full solver orchestration still
   lives in the wgpu-py host.

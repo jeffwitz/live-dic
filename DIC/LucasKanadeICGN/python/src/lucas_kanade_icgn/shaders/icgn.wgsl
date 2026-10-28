@@ -13,16 +13,20 @@ struct FloatBuffer {
     values: array<f32>,
 }
 
+struct Float4Buffer {
+    values: array<vec4<f32>>,
+}
+
 @group(0) @binding(0) var source_image: texture_2d<f32>;
 @group(0) @binding(1) var<uniform> config: Config;
 @group(0) @binding(2) var<storage, read_write> temporary: FloatBuffer;
 @group(0) @binding(3) var<storage, read_write> coefficients: FloatBuffer;
-@group(0) @binding(4) var<storage, read> reference_data: FloatBuffer;
-@group(0) @binding(5) var<storage, read> inverse_hessian: FloatBuffer;
-@group(0) @binding(6) var<storage, read> metadata: FloatBuffer;
-@group(0) @binding(7) var<storage, read_write> state: FloatBuffer;
+@group(0) @binding(4) var<storage, read> reference_data: Float4Buffer;
+@group(0) @binding(5) var<storage, read> inverse_hessian: Float4Buffer;
+@group(0) @binding(6) var<storage, read> metadata: Float4Buffer;
+@group(0) @binding(7) var<storage, read_write> state: Float4Buffer;
 @group(0) @binding(8) var<storage, read> fir_weights: FloatBuffer;
-@group(0) @binding(9) var<storage, read_write> filtered_state: FloatBuffer;
+@group(0) @binding(9) var<storage, read_write> filtered_state: Float4Buffer;
 
 const SUBSET_SIZE: i32 = 16;
 const SUBSET_PIXELS: f32 = 256.0;
@@ -84,11 +88,11 @@ fn prefilter_y(@builtin(global_invocation_id) global_id: vec3<u32>) {
 }
 
 fn metadata_value(subset_index: u32, component: u32) -> f32 {
-    return metadata.values[subset_index * 16u + component];
+    return metadata.values[subset_index * 4u + component / 4u][component % 4u];
 }
 
 fn hessian_value(subset_index: u32, component: u32) -> f32 {
-    return inverse_hessian.values[subset_index * 36u + component];
+    return inverse_hessian.values[subset_index * 9u + component / 4u][component % 4u];
 }
 
 fn cubic_weights(t: f32) -> array<f32, 4> {
@@ -191,10 +195,10 @@ fn solve(
             );
             let pixel_x = grid_x * SUBSET_SIZE + i32(lane);
             let pixel_y = grid_y * SUBSET_SIZE + row;
-            let reference_offset = u32(pixel_y * i32(config.width) + pixel_x) * 4u;
-            let f = reference_data.values[reference_offset];
-            let gradient_x = reference_data.values[reference_offset + 1u];
-            let gradient_y = reference_data.values[reference_offset + 2u];
+            let reference_value = reference_data.values[u32(pixel_y * i32(config.width) + pixel_x)];
+            let f = reference_value.x;
+            let gradient_x = reference_value.y;
+            let gradient_y = reference_value.z;
             let gxg = gradient_x * current;
             let gyg = gradient_y * current;
             sum_current = sum_current + current;
@@ -315,14 +319,18 @@ fn solve(
     }
 
     if lane == 0u {
-        state.values[state_offset] = shared_translation.x;
-        state.values[state_offset + 1u] = shared_linear.x;
-        state.values[state_offset + 2u] = shared_linear.y;
-        state.values[state_offset + 3u] = shared_translation.y;
-        state.values[state_offset + 4u] = shared_linear.z;
-        state.values[state_offset + 5u] = shared_linear.w;
-        state.values[state_offset + 6u] = shared_status.x;
-        state.values[state_offset + 7u] = shared_status.y;
+        state.values[subset_index * 2u] = vec4<f32>(
+            shared_translation.x,
+            shared_linear.x,
+            shared_linear.y,
+            shared_translation.y,
+        );
+        state.values[subset_index * 2u + 1u] = vec4<f32>(
+            shared_linear.z,
+            shared_linear.w,
+            shared_status.x,
+            shared_status.y,
+        );
     }
 }
 
@@ -348,11 +356,12 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
     if subset_index >= config.grid_count {
         return;
     }
-    let offset = subset_index * 8u;
-    for (var component = 0u; component < 8u; component = component + 1u) {
-        filtered_state.values[offset + component] = state.values[offset + component];
-    }
-    if state.values[offset + 6u] < 0.5 {
+    let state_index = subset_index * 2u;
+    let own_a = state.values[state_index];
+    let own_b = state.values[state_index + 1u];
+    filtered_state.values[state_index] = own_a;
+    filtered_state.values[state_index + 1u] = own_b;
+    if own_b.z < 0.5 {
         return;
     }
 
@@ -378,18 +387,20 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
                 continue;
             }
             let neighbor_index = u32(neighbor_y) * config.grid_width + u32(neighbor_x);
-            let neighbor_offset = neighbor_index * 8u;
-            if state.values[neighbor_offset + 6u] < 0.5 {
+            let neighbor_state_index = neighbor_index * 2u;
+            let neighbor_a = state.values[neighbor_state_index];
+            let neighbor_b = state.values[neighbor_state_index + 1u];
+            if neighbor_b.z < 0.5 {
                 continue;
             }
             let delta_x = -16.0 * f32(dx);
             let delta_y = -16.0 * f32(dy);
-            let p1 = state.values[neighbor_offset + 1u];
-            let p2 = state.values[neighbor_offset + 2u];
-            let p4 = state.values[neighbor_offset + 4u];
-            let p5 = state.values[neighbor_offset + 5u];
-            predicted_x[count] = state.values[neighbor_offset] + p1 * delta_x + p2 * delta_y;
-            predicted_y[count] = state.values[neighbor_offset + 3u] + p4 * delta_x + p5 * delta_y;
+            let p1 = neighbor_a.y;
+            let p2 = neighbor_a.z;
+            let p4 = neighbor_b.x;
+            let p5 = neighbor_b.y;
+            predicted_x[count] = neighbor_a.x + p1 * delta_x + p2 * delta_y;
+            predicted_y[count] = neighbor_a.w + p4 * delta_x + p5 * delta_y;
             parameter_1[count] = p1;
             parameter_2[count] = p2;
             parameter_4[count] = p4;
@@ -411,17 +422,22 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
     let spread_x = median_eight(&values_x, count);
     let spread_y = median_eight(&values_y, count);
-    let flagged = abs(state.values[offset] - median_x) / (spread_x + 0.1) > 2.0
-        || abs(state.values[offset + 3u] - median_y) / (spread_y + 0.1) > 2.0;
+    let flagged = abs(own_a.x - median_x) / (spread_x + 0.1) > 2.0
+        || abs(own_a.w - median_y) / (spread_y + 0.1) > 2.0;
     if !flagged {
         return;
     }
 
-    filtered_state.values[offset] = median_x;
-    filtered_state.values[offset + 1u] = median_eight(&parameter_1, count);
-    filtered_state.values[offset + 2u] = median_eight(&parameter_2, count);
-    filtered_state.values[offset + 3u] = median_y;
-    filtered_state.values[offset + 4u] = median_eight(&parameter_4, count);
-    filtered_state.values[offset + 5u] = median_eight(&parameter_5, count);
-    filtered_state.values[offset + 6u] = 2.0;
+    filtered_state.values[state_index] = vec4<f32>(
+        median_x,
+        median_eight(&parameter_1, count),
+        median_eight(&parameter_2, count),
+        median_y,
+    );
+    filtered_state.values[state_index + 1u] = vec4<f32>(
+        median_eight(&parameter_4, count),
+        median_eight(&parameter_5, count),
+        2.0,
+        own_b.w,
+    );
 }

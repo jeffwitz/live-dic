@@ -142,7 +142,7 @@ Native wgpu-py comparison
 -------------------------
 
 The experimental ``ICGNWGPU`` backend was measured on the same 512 x 512
-``t=0 -> 10`` pair with five warm-ups and 30 runs. Unlike the browser rows, its
+``t=0 -> 10`` pair in three campaigns with five warm-ups and 30 runs. Unlike the browser rows, its
 complete-call boundary includes input validation, direct texture upload, FIR,
 IC-GN, median replacement, packed readback, and NumPy result construction.
 There is no PNG encoding, Chromium process, DevTools transfer, or JavaScript
@@ -157,8 +157,8 @@ array conversion.
      - Accepted
      - Truth RMSE
    * - native wgpu-py
-     - **1.882 ms**
-     - **2.382 ms**
+     - **1.662 ms**
+     - **2.136 ms**
      - 900 / 1,024
      - 2.693e-5 px
    * - Three.js/TSL through Chromium
@@ -174,11 +174,10 @@ array conversion.
 
 The browser complete-call values are dominated by PNG and DevTools transport;
 they are not the browser GPU values in the earlier table. Within the native
-call, target upload measured 0.038 ms median and compute plus packed readback
-measured 1.726 ms median. Native and Three.js produced equal status values for
-all 1,024 subsets. Their jointly accepted translation fields differed by
-``6.766e-6 px`` RMS, with a maximum absolute component difference of
-``6.068e-5 px``.
+call, target upload measured 0.047 ms median and compute plus packed readback
+measured 1.561 ms median. Native solver preparation measured 1.993 ms for the
+portable pipeline and 3.109 ms for the subgroup pipeline, then selected the
+portable path.
 
 The separate Rust/PyO3 upload milestone compiles the same WGSL and borrows the
 NumPy frame directly. Its initial synchronized UHD texture-upload probe
@@ -219,7 +218,8 @@ UHD validation
 --------------
 
 The native backend was also measured on the same reproducible 3840 x 2160
-pair. One campaign used five warm-ups and 30 measured complete Python calls.
+pair. Three campaigns used five warm-ups and 30 measured complete Python calls;
+the table reports the median campaign summary.
 
 .. list-table:: Native UHD complete-call breakdown
    :header-rows: 1
@@ -228,21 +228,28 @@ pair. One campaign used five warm-ups and 30 measured complete Python calls.
      - Median
      - p95
    * - Complete ``register`` call
-     - **16.160 ms**
-     - **16.569 ms**
+     - **15.612 ms**
+     - **16.577 ms**
    * - Direct target upload
-     - 0.395 ms
+     - 0.424 ms
      - not recorded
    * - Compute plus packed readback
-     - 15.448 ms
+     - 14.806 ms
      - not recorded
 
-Reference preparation measured 1,016.6 ms and remained outside the per-frame
-loop. The final registration accepted 31,654 subsets and produced a
-``3.080e-5 px`` truth RMSE. This one campaign fits inside the 16.667 ms period
-at p95, but with only 0.098 ms of p95 margin. It excludes acquisition and
-downstream work and is therefore evidence for the transport design, not a
+Reference preparation measured 1,173.2 ms and remained outside the per-frame
+loop. It includes solver tuning: 13.681 ms for the portable pipeline versus
+26.028 ms for the subgroup pipeline. The final registration accepted 31,654
+subsets and produced a ``3.080e-5 px`` truth RMSE. The median fits inside the
+16.667 ms period, with 0.090 ms of p95 margin. It excludes acquisition
+and downstream work and is therefore evidence for the transport design, not a
 qualified 4K60 application.
+
+A follow-up Three.js campaign measured 13.525 ms GPU median and 15.0 ms
+synchronized browser-wall median. The native complete-call median is 4.1%
+higher than that browser-wall value while including per-sample target upload,
+packed readback, and NumPy statistics. These boundaries are deliberately shown
+separately rather than presented as an exact compute-only comparison.
 
 Reproduce this native campaign with:
 

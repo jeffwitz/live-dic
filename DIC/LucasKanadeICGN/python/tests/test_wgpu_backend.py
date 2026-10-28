@@ -15,7 +15,15 @@ from lucas_kanade_icgn.wgpu_backend import (
 class NativeReferenceTests(unittest.TestCase):
     def test_shader_is_packaged_as_a_runtime_resource(self) -> None:
         shader = files("lucas_kanade_icgn").joinpath("shaders/icgn.wgsl")
-        self.assertIn("fn solve", shader.read_text(encoding="utf-8"))
+        subgroup_source = files("lucas_kanade_icgn").joinpath("shaders/icgn_subgroup.comp")
+        subgroup_binary = files("lucas_kanade_icgn").joinpath("shaders/icgn_subgroup.spv")
+        probe_binary = files("lucas_kanade_icgn").joinpath("shaders/subgroup_probe.spv")
+        shader_text = shader.read_text(encoding="utf-8")
+        self.assertIn("fn solve", shader_text)
+        self.assertIn("array<vec4<f32>>", shader_text)
+        self.assertIn("subgroupAdd", subgroup_source.read_text(encoding="utf-8"))
+        self.assertEqual(subgroup_binary.read_bytes()[:4], b"\x03\x02#\x07")
+        self.assertEqual(probe_binary.read_bytes()[:4], b"\x03\x02#\x07")
 
     def test_solver_controls_are_validated(self) -> None:
         self.assertEqual(_validated_config(30, 1e-3, 0.8)["iterations"], 30)

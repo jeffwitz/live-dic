@@ -66,11 +66,11 @@ For the ``t=0 -> 10`` analytical translation on Intel Lunar Lake, the current
    * - median complete Python call
      - 61.877 ms
      - 56.203 ms
-     - **1.882 ms**
+     - **1.662 ms**
    * - p95 complete Python call
      - 65.655 ms
      - 59.117 ms
-     - **2.382 ms**
+     - **2.136 ms**
    * - accepted subsets
      - 900 / 1,024
      - 900 / 1,024
@@ -92,9 +92,10 @@ Python frame encoding, DevTools transport, decoding, and result transfer.
 Neither therefore proves a sustained 60 Hz Python application.
 
 The native complete-call values include direct input upload and packed result
-readback but exclude acquisition. At UHD, one 30-run campaign measured 16.160
-ms median and 16.569 ms p95. That is inside a 60 Hz period with very little
-margin; it is a promising integration result, not a sustained system claim.
+readback but exclude acquisition. At UHD, three 30-run campaigns measured a
+median campaign of 15.612 ms median and 16.577 ms p95. Both are inside a 60 Hz
+period, but with little p95 margin; this is a promising integration result, not a sustained
+system claim.
 
 Frame-rate budgets
 ------------------

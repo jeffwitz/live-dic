@@ -16,6 +16,9 @@ pollster = "0.4"
 pyo3 = { version = "0.30", features = ["extension-module"] }
 wgpu = "30.0.1"
 
+[dev-dependencies]
+shaderc = "0.10.1"
+
 [profile.release]
 lto = "thin"
 codegen-units = 1
