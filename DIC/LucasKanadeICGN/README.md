@@ -111,10 +111,12 @@ For sustained native sequences, ``ICGNWGPU.register_stream`` uses a bounded
 ring of independent target, solver-state, and readback resources. Two slots
 are the default and allow Python to retire one packed result while the GPU
 processes the next frame. This slot count is unrelated to an image pyramid. On
-the validation machine this reduced the median UHD sequence period
-from 14.792 ms to 13.380 ms (74.7 FPS), while preserving bit-for-bit output;
-median result latency increased to 26.617 ms. The ordinary ``register`` method
-remains the lowest-latency path.
+the validation machine after FIR tiling, the four-campaign median UHD period
+was 11.539 ms synchronously (86.7 FPS), 11.026 ms with the default two slots
+(90.7 FPS), and 10.780 ms with three slots (92.8 FPS), while preserving the
+same accepted count and RMSE. Median result latency was 21.963 ms for two slots
+and 32.093 ms for three. The ordinary ``register`` method remains the
+lowest-latency path.
 
 The remaining differences are platform constraints: the browser backends use
 single precision and do not expose the same register controls or queue model as

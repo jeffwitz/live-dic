@@ -111,6 +111,13 @@ on this machine. This supersedes the older three-level 60 Hz warning in the
 historical revalidation table below. Browser wall time remains higher than its
 GPU timestamp because it also includes synchronization and result transport.
 
+The same optimized shader was exercised through the bounded single-scale
+sequence API in four campaigns of 30 UHD frames. The synchronous median period
+was 11.539 ms (86.7 FPS). Two in-flight slots reduced it to 11.026 ms (90.7
+FPS) with 21.963 ms median result latency; three slots reached 10.780 ms (92.8
+FPS) with 32.093 ms latency. All configurations accepted 31,654 subsets and
+reported ``3.066e-5`` px RMSE.
+
 The published tables below are campaign snapshots, not constants of the
 hardware. On 2026-10-28, after the Three.js/WebGL2 fallback and browser pyramid
 changes, the documented commands were rerun on the same machine. All accepted

@@ -23,6 +23,13 @@ The native two-level result corresponds to 98.1 calls/s from the median and
 frames/s from the median. These are repeated-target measurements, not hard
 real-time guarantees.
 
+The single-scale sequence benchmark used four campaigns of 30 UHD frames. Its
+median period was 11.539 ms synchronously (86.7 FPS), 11.026 ms with the
+default two in-flight slots (90.7 FPS), and 10.780 ms with three slots (92.8
+FPS). Two slots keep the lower 21.963 ms median result latency; three slots
+raise it to 32.093 ms. Every configuration accepted 31,654 subsets with the
+same ``3.066e-5`` px RMSE.
+
 The gain comes from cooperative, axis-oriented FIR tiles in the shared WGSL,
 plus a numerically bounded removal of six negligible tail weights. Three.js
 uses a separate conservative FIR tile and now fills the measured 32-lane
