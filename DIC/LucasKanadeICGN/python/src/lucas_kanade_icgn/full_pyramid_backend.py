@@ -488,19 +488,22 @@ class ICGNWGPUFullPyramid:
         raw = fine_slot.readback.read_mapped(copy=True)
         fine_slot.readback.unmap()
         execution_readback_wall_ms = (time.perf_counter() - execution_started) * 1_000.0
-        total_wall_ms = (time.perf_counter() - total_started) * 1_000.0
-        return self._root._result_from_raw(
+        result = self._root._result_from_raw(
             raw,
             timing={
                 "uploadWallMs": upload_wall_ms,
                 "encodingWallMs": encoding_wall_ms,
                 "executeReadbackWallMs": execution_readback_wall_ms,
-                "totalWallMs": total_wall_ms,
                 "pyramidLevels": float(self.pyramid_levels),
                 "queueSubmissions": 1.0,
             },
             config=self._root._config,
         )
+        result.timing = {
+            **result.timing,
+            "totalWallMs": (time.perf_counter() - total_started) * 1_000.0,
+        }
+        return result
 
     def close(self) -> None:
         self._reference_ready = False

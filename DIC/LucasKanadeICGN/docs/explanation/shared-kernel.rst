@@ -155,7 +155,12 @@ with bindings 10 and 11. The ordinary ``solve`` entry point does not reference
 those bindings, so one-scale browser and native pipelines retain their original
 ten-entry bind-group layout. Selective native recovery allocates seed resources
 lazily; the full-pyramid browser and native adapters allocate them once for
-every finer level.
+every finer level. The ``retry_seeded`` entry point uses the same equations
+and seed bindings, but preserves the existing state of disabled subsets.
+Selective recovery needs those already accepted neighbours during the median
+pass. Fresh ``solve_seeded`` dispatches instead write an explicit invalid state
+for a disabled subset, so a cleared buffer cannot be mistaken for a computed
+partial estimate.
 
 ``full_pyramid.wgsl`` adds three orchestration entry points without duplicating
 the IC-GN equations: ``reduce_x`` and ``reduce_y`` construct reduced targets,
@@ -187,3 +192,12 @@ the portable and subgroup solvers on the same shifted reference, rejects
 non-finite results, incompatible accepted-subset masks, or affine fields beyond
 the documented tolerance, and times only the remaining candidates. This check
 is performed during reference preparation and adds no work to registration.
+
+The current guard permits at most ``max(1, ceil(0.005 * grid_count))`` differing
+accepted-subset flags. On jointly accepted subsets, the aggregate RMSE over
+the six affine parameters must not exceed ``2e-3`` and the maximum absolute
+difference must not exceed ``2e-2``. Translation and gradient components have
+different units: these are implementation-compatibility thresholds, not a
+displacement accuracy specification. If the portable path accepts no subsets,
+the candidate must also accept none. Independent known-motion validation is
+still required.

@@ -101,7 +101,7 @@ class RegistrationResult:
     def displacement(self) -> np.ndarray:
         """Return the ``(tx, ty)`` displacement field as a zero-copy view."""
 
-        return self.parameters[..., (0, 3)]
+        return self.parameters[..., 0:4:3]
 
     @property
     def accepted_mask(self) -> np.ndarray:

@@ -6,6 +6,12 @@ reference results for regression detection, not portable performance claims.
 Driver versions, browser versions, power policy, and thermal state can change
 the result on otherwise identical hardware.
 
+.. note::
+
+   The current pyramid campaign was run after the opt-in hardware regressions
+   passed on the validation GPU. It therefore includes the corrected reduction
+   arithmetic and selective-retry state-preservation shaders.
+
 ``gpuio`` results are retained as historical baselines. GPU-IO is deprecated
 for application use; current WebGL2 compatibility measurements should use
 ``three-tsl`` with ``force_three_webgl=True``.
@@ -104,16 +110,16 @@ the displayed precision. The main timing checks were:
      - 31,654 accepted; same ``3.075e-5`` px RMSE
    * - UHD native full pyramid, two levels
      - 14.811 / 15.163 ms median / p95
-     - 14.548 / 15.532 ms
-     - Current ``r32float`` campaign; 31,719 accepted
+     - 14.580 / 15.478 ms
+     - Corrected-reduction campaign; 31,724 accepted
    * - UHD native full pyramid, three levels
      - 15.458 / 16.210 ms median / p95
-     - 16.118 / 17.019 ms
+     - 16.012 / 16.813 ms
      - Current ``r32float`` campaign; p95 above 60 Hz
    * - UHD raw browser pyramid, two levels, ``(4, -2)``
      - 15.931 / 16.622 ms GPU median / p95
-     - 15.145 / 15.824 ms
-     - Current ``r32float`` campaign; 31,722 accepted
+     - 14.961 / 15.587 ms
+     - Corrected-reduction campaign; 31,720 accepted
    * - UHD Three.js/WebGL2 compatibility path
      - 27.246 / 27.730 ms GPU median / p95
      - 28.511 / 29.328 ms
@@ -571,43 +577,43 @@ configuration is the class default and the recommended native path.
      - Truth RMSE
    * - 512 x 512, one scale
      - 30
-     - 2.581 ms
-     - 3.823 ms
+     - 2.641 ms
+     - 3.548 ms
      - 634 / 1,024
      - 0.0906 px
    * - 512 x 512, full pyramid 2
      - 12, 30
-     - 1.948 ms
-     - 2.167 ms
+     - 1.740 ms
+     - 2.242 ms
      - 900 / 1,024
-     - 0.0000112 px
+     - 0.00000955 px
    * - 512 x 512, full pyramid 3
      - 6, 8, 20
-     - 2.310 ms
-     - 3.299 ms
+     - 2.073 ms
+     - 2.625 ms
      - 900 / 1,024
-     - 0.0000123 px
+     - 0.0000102 px
    * - 3840 x 2160, one scale
      - 30
-     - 34.715 ms
-     - 35.717 ms
+     - 33.238 ms
+     - 35.125 ms
      - 22,401 / 32,400
      - 0.0964 px
    * - 3840 x 2160, full pyramid 2
      - 12, 30
-     - **14.548 ms (68.7 FPS)**
-     - 15.532 ms
-     - 31,719 / 32,400
-     - 0.00180 px
+     - **14.580 ms (68.6 FPS)**
+     - 15.478 ms
+     - 31,724 / 32,400
+     - 0.00182 px
    * - 3840 x 2160, full pyramid 3
      - 6, 8, 20
-     - **16.118 ms (62.0 FPS)**
-     - 17.019 ms
-     - 31,731 / 32,400
+     - **16.012 ms (62.5 FPS)**
+     - 16.813 ms
+     - 31,734 / 32,400
      - 0.00194 px
 
-This campaign used five warm-ups and 30 measured runs after the horizontal
-reduction intermediate moved from ``rgba16float`` to ``r32float``. Two levels
+This campaign used five warm-ups and 30 measured runs after the hardware
+regressions qualified the corrected integer-scale reduction. Two levels
 provide the repeated 4K60 compute margin for this
 controlled translated texture on this machine. Three levels remained above 60
 FPS by median, but should be reserved for a larger expected
@@ -667,16 +673,16 @@ exclude PNG transport and result readback.
      - 0.0000308 px
    * - ``(2, -1)``, two levels
      - 12, 30
-     - **15.908 ms (62.9 FPS)**
-     - 16.629 ms
+     - **16.299 ms (61.4 FPS)**
+     - 16.981 ms
      - 31,654 / 32,400
-     - 0.0000299 px
+     - 0.0000301 px
    * - ``(2, -1)``, three levels
      - 6, 8, 20
-     - 16.959 ms
-     - 17.755 ms
+     - **16.540 ms (60.5 FPS)**
+     - 17.608 ms
      - 31,654 / 32,400
-     - 0.0000299 px
+     - 0.0000298 px
    * - ``(4, -2)``, one scale
      - 30
      - 61.393 ms
@@ -685,24 +691,24 @@ exclude PNG transport and result readback.
      - 0.0964 px
    * - ``(4, -2)``, two levels
      - 12, 30
-     - **15.145 ms (66.0 FPS)**
-     - 15.824 ms
-     - 31,722 / 32,400
-     - 0.00185 px
+     - **14.961 ms (66.8 FPS)**
+     - 15.587 ms
+     - 31,720 / 32,400
+     - 0.00184 px
    * - ``(4, -2)``, three levels
      - 6, 8, 20
-     - **15.618 ms (64.0 FPS)**
-     - 16.172 ms
-     - 31,728 / 32,400
-     - 0.00187 px
+     - **15.269 ms (65.5 FPS)**
+     - 15.568 ms
+     - 31,734 / 32,400
+     - 0.00194 px
 
-The difficult pair is the deciding result: two levels recover 9,321 additional
+The difficult pair is the deciding result: two levels recover 9,319 additional
 subsets while reducing the median by 75% because the single-scale failures run
 to their 30-iteration ceiling. Two levels are therefore the robust browser
 default. Three remain useful for a larger expected capture range. The nominal
-two-level p95 is just inside 16.667 ms in this campaign, while three levels are
-not; these measurements qualify controlled compute throughput rather than a
-hard end-to-end real-time deadline.
+two-level p95 is slightly above 16.667 ms in this campaign, as is the
+three-level p95. These measurements qualify controlled compute throughput
+rather than a hard end-to-end real-time deadline.
 
 Reproduce either pair offline with:
 

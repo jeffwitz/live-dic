@@ -222,6 +222,7 @@ fn solve_subset(
     initial_translation: vec2<f32>,
     initial_linear: vec4<f32>,
     enabled: bool,
+    preserve_disabled: bool,
 ) {
     if lane == 0u {
         shared_translation = initial_translation;
@@ -354,9 +355,10 @@ fn solve_subset(
         workgroupBarrier();
     }
 
-    // Always overwrite the state. Disabled workgroups must not leave a zeroed
-    // status that could be mistaken for a valid, partially converged estimate.
-    if lane == 0u {
+    // New fields need an explicit invalid status for disabled workgroups.
+    // A selective retry instead retains their existing results so the median
+    // pass can still use neighbours that already converged.
+    if lane == 0u && (enabled || !preserve_disabled) {
         state.values[subset_index * 2u] = vec4<f32>(
             shared_translation.x,
             shared_linear.x,
@@ -383,6 +385,24 @@ fn solve(
         vec2<f32>(0.0),
         vec4<f32>(0.0),
         true,
+        false,
+    );
+}
+
+fn solve_from_seed(
+    subset_index: u32,
+    lane: u32,
+    preserve_disabled: bool,
+) {
+    let seed_a = seed_state.values[subset_index * 2u];
+    let seed_b = seed_state.values[subset_index * 2u + 1u];
+    solve_subset(
+        subset_index,
+        lane,
+        vec2<f32>(seed_a.x, seed_a.w),
+        vec4<f32>(seed_a.y, seed_a.z, seed_b.x, seed_b.y),
+        active_mask.values[subset_index] != 0u,
+        preserve_disabled,
     );
 }
 
@@ -391,16 +411,15 @@ fn solve_seeded(
     @builtin(workgroup_id) workgroup_id: vec3<u32>,
     @builtin(local_invocation_id) local_id: vec3<u32>,
 ) {
-    let subset_index = workgroup_id.x;
-    let seed_a = seed_state.values[subset_index * 2u];
-    let seed_b = seed_state.values[subset_index * 2u + 1u];
-    solve_subset(
-        subset_index,
-        local_id.x,
-        vec2<f32>(seed_a.x, seed_a.w),
-        vec4<f32>(seed_a.y, seed_a.z, seed_b.x, seed_b.y),
-        active_mask.values[subset_index] != 0u,
-    );
+    solve_from_seed(workgroup_id.x, local_id.x, false);
+}
+
+@compute @workgroup_size(16)
+fn retry_seeded(
+    @builtin(workgroup_id) workgroup_id: vec3<u32>,
+    @builtin(local_invocation_id) local_id: vec3<u32>,
+) {
+    solve_from_seed(workgroup_id.x, local_id.x, true);
 }
 
 fn median_eight(values: ptr<function, array<f32, 8>>, count: u32) -> f32 {

@@ -2,6 +2,11 @@
 
 Date: October 28, 2026.
 
+The current campaign was recorded from the consolidation branch after all
+three opt-in GPU regression tests passed on the validation GPU. It therefore
+qualifies the corrected reduction arithmetic and selective-retry state
+preservation at the timing boundaries stated below.
+
 ## Common configuration
 
 - GPU: Intel Lunar Lake `[8086:64a0]`, `xe` kernel driver;
@@ -159,12 +164,12 @@ fine. Three levels are opt-in and use `(6, 8, 20)` by default. The same exact
 
 | Resolution / path | Median | p95 | Accepted | Truth RMSE |
 |---|---:|---:|---:|---:|
-| 512 x 512 / one scale | 2.581 ms | 3.823 ms | 634 | 0.0906 px |
-| 512 x 512 / full pyramid 2 | **1.948 ms** | **2.167 ms** | 900 | 0.0000112 px |
-| 512 x 512 / full pyramid 3 | 2.310 ms | 3.299 ms | 900 | 0.0000123 px |
-| 3840 x 2160 / one scale | 34.715 ms | 35.717 ms | 22,401 | 0.0964 px |
-| 3840 x 2160 / full pyramid 2 | **14.548 ms** | **15.532 ms** | 31,719 | 0.00180 px |
-| 3840 x 2160 / full pyramid 3 | **16.118 ms** | 17.019 ms | 31,731 | 0.00194 px |
+| 512 x 512 / one scale | 2.641 ms | 3.548 ms | 634 | 0.0906 px |
+| 512 x 512 / full pyramid 2 | **1.740 ms** | **2.242 ms** | 900 | 0.00000955 px |
+| 512 x 512 / full pyramid 3 | 2.073 ms | 2.625 ms | 900 | 0.0000102 px |
+| 3840 x 2160 / one scale | 33.238 ms | 35.125 ms | 22,401 | 0.0964 px |
+| 3840 x 2160 / full pyramid 2 | **14.580 ms** | **15.478 ms** | 31,724 | 0.00182 px |
+| 3840 x 2160 / full pyramid 3 | **16.012 ms** | 16.813 ms | 31,734 | 0.00194 px |
 
 The current campaign used five warm-ups and 30 measured runs after changing the
 horizontal reduction intermediate from `rgba16float` to `r32float`. Two levels

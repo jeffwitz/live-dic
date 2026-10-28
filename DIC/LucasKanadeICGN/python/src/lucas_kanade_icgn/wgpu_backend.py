@@ -576,6 +576,7 @@ class ICGNWGPU:
         )
         self._seeded_bind_group_layout: Any = None
         self._seeded_solver: Any = None
+        self._retry_solver: Any = None
         self._reference_ready = False
         self._source_texture_format = wgpu.TextureFormat.r8unorm
         self._source_texture_extra_usage = 0
@@ -623,6 +624,7 @@ class ICGNWGPU:
         level._solver = level._portable_solver
         level._seeded_bind_group_layout = self._seeded_bind_group_layout
         level._seeded_solver = self._seeded_solver
+        level._retry_solver = self._retry_solver
         level._reference_ready = False
         level._source_texture_format = (
             self._wgpu.TextureFormat.rgba8unorm
@@ -741,18 +743,24 @@ class ICGNWGPU:
         return self.device.create_bind_group_layout(entries=entries)
 
     def _ensure_seeded_solver(self) -> None:
-        """Create retry-only resources without changing the one-scale path."""
+        """Create fresh seeded and preserving retry pipelines on one layout."""
 
-        if self._seeded_solver is not None:
+        if self._seeded_solver is not None and self._retry_solver is not None:
             return
         self._seeded_bind_group_layout = self._create_bind_group_layout(seeded=True)
         layout = self.device.create_pipeline_layout(
             bind_group_layouts=[self._seeded_bind_group_layout]
         )
-        self._seeded_solver = self.device.create_compute_pipeline(
+        seeded_solver = self.device.create_compute_pipeline(
             layout=layout,
             compute={"module": self._shader, "entry_point": "solve_seeded"},
         )
+        retry_solver = self.device.create_compute_pipeline(
+            layout=layout,
+            compute={"module": self._shader, "entry_point": "retry_seeded"},
+        )
+        self._seeded_solver = seeded_solver
+        self._retry_solver = retry_solver
 
     def _storage_buffer(self, data: npt.NDArray[np.float32], *, output: bool = False) -> Any:
         usage = self._wgpu.BufferUsage.STORAGE
@@ -1044,6 +1052,7 @@ class ICGNWGPU:
 
         if not np.any(active):
             return previous
+        started = time.perf_counter()
         self._ensure_seed_resources(slot)
         self.device.queue.write_buffer(
             slot.buffers["seed_state"],
@@ -1055,11 +1064,10 @@ class ICGNWGPU:
             0,
             np.ascontiguousarray(active, dtype=np.uint32),
         )
-        started = time.perf_counter()
         encoder = self.device.create_command_encoder(label="DIC-RT seeded pyramid retry")
         encoder.clear_buffer(slot.buffers["filtered_state"])
         compute_pass = encoder.begin_compute_pass()
-        compute_pass.set_pipeline(self._seeded_solver)
+        compute_pass.set_pipeline(self._retry_solver)
         compute_pass.set_bind_group(0, slot.seeded_bind_group)
         compute_pass.dispatch_workgroups(self.grid_width * self.grid_height, 1, 1)
         compute_pass.end()
@@ -1074,11 +1082,12 @@ class ICGNWGPU:
         compute_pass.end()
         self.device.queue.submit([encoder.finish()])
         raw = self.device.queue.read_buffer(slot.buffers["filtered_state"])
-        elapsed_ms = (time.perf_counter() - started) * 1_000.0
         timing = dict(previous.timing)
+        result = self._result_from_raw(raw, timing=timing, config=self._config)
+        elapsed_ms = (time.perf_counter() - started) * 1_000.0
         timing["seededRetryWallMs"] = elapsed_ms
         timing["totalWallMs"] = timing.get("totalWallMs", 0.0) + elapsed_ms
-        return self._result_from_raw(raw, timing=timing, config=self._config)
+        return result
 
     def _register_seeded_frame(
         self,
@@ -1129,15 +1138,19 @@ class ICGNWGPU:
         self.device.queue.submit([encoder.finish()])
         raw = self.device.queue.read_buffer(slot.buffers["filtered_state"])
         execution_ms = (time.perf_counter() - execution_started) * 1_000.0
-        return self._result_from_raw(
+        result = self._result_from_raw(
             raw,
             timing={
                 "uploadWallMs": upload_wall_ms,
                 "executeReadbackWallMs": execution_ms,
-                "totalWallMs": (time.perf_counter() - total_started) * 1_000.0,
             },
             config=self._config,
         )
+        result.timing = {
+            **result.timing,
+            "totalWallMs": (time.perf_counter() - total_started) * 1_000.0,
+        }
+        return result
 
     def _recover_pyramid(
         self,
@@ -1239,18 +1252,15 @@ class ICGNWGPU:
                 float(np.mean(parameters[..., 3][accepted_mask], dtype=np.float64)),
             )
             mean_iterations = float(np.mean(iteration_field[accepted_mask], dtype=np.float64))
-        pyramid_wall_ms = (time.perf_counter() - started) * 1_000.0
         timing = dict(recovered.timing)
         timing.update(
             {
-                "pyramidWallMs": pyramid_wall_ms,
                 "pyramidFailedBefore": float(failed_count),
                 "pyramidRecovered": float(recovered_count),
                 "pyramidLevels": float(self.pyramid_levels),
             }
         )
-        timing["totalWallMs"] = fine_result.timing["totalWallMs"] + pyramid_wall_ms
-        return RegistrationResult(
+        result = RegistrationResult(
             parameters=parameters,
             status=status,
             iterations=iteration_field,
@@ -1264,6 +1274,10 @@ class ICGNWGPU:
             height=self.height,
             subset_size=SUBSET_SIZE,
         )
+        pyramid_wall_ms = (time.perf_counter() - started) * 1_000.0
+        timing["pyramidWallMs"] = pyramid_wall_ms
+        timing["totalWallMs"] = fine_result.timing["totalWallMs"] + pyramid_wall_ms
+        return result
 
     def _upload_frame(
         self,
@@ -1487,19 +1501,25 @@ class ICGNWGPU:
         execution_start = time.perf_counter()
         raw = self._execute_registration(self._solver)
         execution_readback_wall_ms = (time.perf_counter() - execution_start) * 1_000.0
-        total_wall_ms = (time.perf_counter() - total_start) * 1_000.0
         result = self._result_from_raw(
             raw,
             timing={
                 "uploadWallMs": upload_wall_ms,
                 "executeReadbackWallMs": execution_readback_wall_ms,
-                "totalWallMs": total_wall_ms,
             },
             config=self._config,
         )
-        if self.pyramid_levels == 1:
-            return result
-        return self._recover_pyramid(self._pipeline_slots[0], frame, result)
+        result.timing = {
+            **result.timing,
+            "totalWallMs": (time.perf_counter() - total_start) * 1_000.0,
+        }
+        if self.pyramid_levels > 1:
+            result = self._recover_pyramid(self._pipeline_slots[0], frame, result)
+            result.timing = {
+                **result.timing,
+                "totalWallMs": (time.perf_counter() - total_start) * 1_000.0,
+            }
+        return result
 
     def _submit_slot(
         self,
@@ -1540,9 +1560,15 @@ class ICGNWGPU:
             "totalWallMs": pipeline_latency_wall_ms,
         }
         result = self._result_from_raw(raw, timing=timing, config=pending.config)
-        result.timing["totalWallMs"] = (time.perf_counter() - pending.submitted_at) * 1_000.0
+        timing["totalWallMs"] = (time.perf_counter() - pending.submitted_at) * 1_000.0
         if self.pyramid_levels > 1:
             result = self._recover_pyramid(pending.slot, pending.frame, result)
+        # Streaming latency starts immediately before upload, after target
+        # normalization, and includes readback, result construction and recovery.
+        result.timing = {
+            **result.timing,
+            "totalWallMs": (time.perf_counter() - pending.submitted_at) * 1_000.0,
+        }
         return result
 
     def register_stream(
