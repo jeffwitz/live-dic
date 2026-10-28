@@ -50,52 +50,62 @@ For the ``t=0 -> 10`` analytical translation on Intel Lunar Lake, the current
    * - Metric
      - GPU-IO
      - Three.js/TSL
+     - shared WGSL
      - native wgpu-py
    * - median GPU prefilter + solver
      - 3.301 ms
      - 0.675 ms
+     - 0.817 ms
      - not timestamped
    * - p95 GPU prefilter + solver
      - 4.210 ms
      - 1.227 ms
+     - 1.298 ms
      - not timestamped
    * - median browser benchmark wall time
      - 10.3 ms
      - 2.7 ms
+     - 2.6 ms
      - not applicable
    * - median complete Python call
      - 61.877 ms
      - 56.203 ms
-     - **1.662 ms**
+     - 55.916 ms
+     - **1.812 ms**
    * - p95 complete Python call
      - 65.655 ms
      - 59.117 ms
-     - **2.136 ms**
+     - 59.555 ms
+     - **2.187 ms**
    * - accepted subsets
+     - 900 / 1,024
      - 900 / 1,024
      - 900 / 1,024
      - 900 / 1,024
    * - mean iterations over accepted subsets
      - 5.957
      - 5.959
-     - 5.952
+     - 5.954
+     - 5.953
    * - vector RMSE
      - 3.873e-5 pixel
      - 2.749e-5 pixel
-     - 2.693e-5 pixel
+     - 2.700e-5 pixel
+     - 2.696e-5 pixel
 
-The 512 x 512 GPU work is below a 16.7 ms budget for both backends. The
+The 512 x 512 GPU work is below a 16.7 ms budget for all browser backends. The
 Three.js/TSL boundary is substantially lower on this machine. The Three.js
 runtime measured a 32-lane subgroup and
-selected its fused 16-lane solver for these campaigns. Both benchmarks exclude
-Python frame encoding, DevTools transport, decoding, and result transfer.
-Neither therefore proves a sustained 60 Hz Python application.
+selected its fused 16-lane solver for these campaigns. The browser GPU and
+browser-wall benchmarks exclude Python frame encoding, DevTools transport,
+decoding, and result transfer. They therefore do not prove a sustained 60 Hz
+Python application.
 
 The native complete-call values include direct input upload and packed result
 readback but exclude acquisition. At UHD, three 30-run campaigns measured a
-median campaign of 15.612 ms median and 16.577 ms p95. Both are inside a 60 Hz
-period, but with little p95 margin; this is a promising integration result, not a sustained
-system claim.
+median campaign of 14.621 ms median and 15.748 ms p95. Both are inside a 60 Hz
+period, but acquisition and downstream consumers are still excluded; this is
+a promising integration result, not a sustained system claim.
 
 Frame-rate budgets
 ------------------

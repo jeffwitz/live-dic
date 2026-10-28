@@ -123,7 +123,7 @@ def main() -> int:
 
     if not args.native_only:
         browser_results: dict[str, RegistrationResult] = {}
-        for backend in ("three-tsl", "gpuio"):
+        for backend in ("three-tsl", "webgpu-wgsl", "gpuio"):
             with ICGNWebGL(
                 backend=backend, startup_timeout=120, call_timeout=600
             ) as engine:
@@ -142,6 +142,9 @@ def main() -> int:
                 report[backend] = summary
         report["native_vs_three_agreement"] = _agreement(
             native, browser_results["three-tsl"]
+        )
+        report["native_vs_shared_wgsl_agreement"] = _agreement(
+            native, browser_results["webgpu-wgsl"]
         )
         report["native_vs_gpuio_agreement"] = _agreement(
             native, browser_results["gpuio"]

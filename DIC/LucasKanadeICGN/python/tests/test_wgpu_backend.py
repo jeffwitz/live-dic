@@ -21,6 +21,14 @@ class NativeReferenceTests(unittest.TestCase):
         shader_text = shader.read_text(encoding="utf-8")
         self.assertIn("fn solve", shader_text)
         self.assertIn("array<vec4<f32>>", shader_text)
+        for helper in (
+            "solve_increment",
+            "compose_inverse_update",
+            "corner_change",
+            "convergence_status",
+        ):
+            self.assertIn(f"fn {helper}", shader_text)
+        self.assertIn("workgroupUniformLoad", shader_text)
         self.assertIn("subgroupAdd", subgroup_source.read_text(encoding="utf-8"))
         self.assertEqual(subgroup_binary.read_bytes()[:4], b"\x03\x02#\x07")
         self.assertEqual(probe_binary.read_bytes()[:4], b"\x03\x02#\x07")

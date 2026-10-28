@@ -237,7 +237,7 @@ def _direct_runtime_assets(root: Path, backend: str = "three-tsl") -> _RuntimeAs
 
     if backend == "gpuio":
         required = ("headless.html", "gpu-io.js", "LucasKanadeICGN.js")
-    else:
+    elif backend == "three-tsl":
         required = (
             "headless.html",
             "LucasKanadeICGNThree.js",
@@ -245,7 +245,27 @@ def _direct_runtime_assets(root: Path, backend: str = "three-tsl") -> _RuntimeAs
             "vendor/three.tsl.js",
             "vendor/three.core.js",
         )
+    else:
+        required = ("headless.html", "LucasKanadeICGNWebGPU.js")
     if all((root / filename).is_file() for filename in required):
+        if backend == "three-tsl":
+            packaged_common = root.parent / "common/ReferencePreparation.js"
+            checkout_common = (
+                root.parent / "python/src/lucas_kanade_icgn/web/common/ReferencePreparation.js"
+            )
+            if packaged_common.is_file() or checkout_common.is_file():
+                return _RuntimeAssets(root=root.parent, headless_path="three/headless.html")
+        if backend == "webgpu-wgsl":
+            package_root = root.parent.parent
+            shared_assets = (
+                root.parent / "common/ReferencePreparation.js",
+                package_root / "shaders/icgn.wgsl",
+            )
+            if all(path.is_file() for path in shared_assets):
+                return _RuntimeAssets(
+                    root=package_root,
+                    headless_path="web/webgpu/headless.html",
+                )
         return _RuntimeAssets(root=root, headless_path="headless.html")
     return None
 
@@ -262,10 +282,17 @@ def _checkout_runtime_assets(root: Path, backend: str = "three-tsl") -> _Runtime
         )
         if all(path.is_file() for path in required):
             return _RuntimeAssets(root=root, headless_path=str(relative / "headless.html"))
-    else:
+    elif backend == "three-tsl":
         relative /= "three"
         if _direct_runtime_assets(root / relative, backend) is not None:
             return _RuntimeAssets(root=root, headless_path=str(relative / "headless.html"))
+    else:
+        package_root = relative / "python/src/lucas_kanade_icgn"
+        runtime = package_root / "web/webgpu"
+        if _direct_runtime_assets(root / runtime, backend) is not None:
+            return _RuntimeAssets(
+                root=root / package_root, headless_path="web/webgpu/headless.html"
+            )
     return None
 
 
@@ -286,11 +313,15 @@ def _find_runtime_assets(
 
     # Wheels install package data as ordinary files. Prefer that stable layout
     # so execution never depends on the current directory or a source checkout.
-    packaged_root = Path(__file__).resolve().parent / "web"
-    if backend == "three-tsl":
-        packaged_root /= "three"
+    package_root = Path(__file__).resolve().parent
+    packaged_base = package_root / "web"
+    packaged_root = packaged_base
+    if backend in {"three-tsl", "webgpu-wgsl"}:
+        packaged_root /= "three" if backend == "three-tsl" else "webgpu"
     packaged = _direct_runtime_assets(packaged_root, backend)
     if packaged is not None:
+        if backend == "three-tsl":
+            return _RuntimeAssets(root=packaged_base, headless_path="three/headless.html")
         return packaged
 
     # Keep a source-tree fallback for incomplete editable installations and for
@@ -420,8 +451,8 @@ class ICGNWebGL:
             raise ValueError("startup_timeout must be greater than zero")
         if call_timeout <= 0:
             raise ValueError("call_timeout must be greater than zero")
-        if backend not in {"gpuio", "three-tsl"}:
-            raise ValueError("backend must be 'gpuio' or 'three-tsl'")
+        if backend not in {"gpuio", "three-tsl", "webgpu-wgsl"}:
+            raise ValueError("backend must be 'gpuio', 'three-tsl', or 'webgpu-wgsl'")
         assets = _find_runtime_assets(repo_root, backend)
         self.repo_root = assets.root
         self._headless_path = assets.headless_path
@@ -431,7 +462,7 @@ class ICGNWebGL:
         self.call_timeout = float(call_timeout)
         self.no_sandbox = bool(no_sandbox)
         backend_arguments: tuple[str, ...] = ()
-        if backend == "three-tsl":
+        if backend in {"three-tsl", "webgpu-wgsl"}:
             # Chromium on Linux needs all four switches to expose the native
             # Vulkan WebGPU adapter in new-headless mode. Without the surface
             # switch it silently falls back to SwiftShader on this platform.

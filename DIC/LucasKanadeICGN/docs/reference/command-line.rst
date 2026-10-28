@@ -12,7 +12,7 @@ Positional arguments
 --------------------
 
 ``reference``
-   One reference image. Its dimensions define the subset grid for either
+   One reference image. Its dimensions define the subset grid for every
    backend; GPU-IO requires both dimensions to be multiples of 16.
 
 ``targets``
@@ -52,6 +52,10 @@ Benchmark and output options
 
 Runtime options
 ---------------
+
+``--backend {three-tsl,webgpu-wgsl,gpuio}``
+   Select the optimized Three.js WebGPU path, the canonical shared WGSL in raw
+   browser WebGPU, or the WebGL2 compatibility path. Default: ``three-tsl``.
 
 ``--repo-root PATH``
    Override automatic repository discovery.

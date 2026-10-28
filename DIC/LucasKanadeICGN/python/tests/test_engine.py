@@ -118,6 +118,10 @@ class NotebookLoopTests(unittest.TestCase):
 
 
 class RuntimeAssetTests(unittest.TestCase):
+    def test_unknown_backend_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ValueError, "webgpu-wgsl"):
+            ICGNWebGL(backend="unknown")
+
     def test_benchmark_target_requires_prepared_reference(self) -> None:
         engine = ICGNWebGL()
         with self.assertRaisesRegex(ICGNError, "set_reference"):
@@ -149,24 +153,52 @@ class RuntimeAssetTests(unittest.TestCase):
 
     def test_packaged_three_tsl_runtime_is_complete_and_offline(self) -> None:
         assets = _find_runtime_assets(None, "three-tsl")
-        self.assertEqual(assets.headless_path, "headless.html")
+        self.assertEqual(assets.headless_path, "three/headless.html")
         for filename in (
-            "headless.html",
-            "LucasKanadeICGNThree.js",
-            "vendor/three.core.js",
-            "vendor/three.webgpu.js",
-            "vendor/three.tsl.js",
-            "vendor/THREE-LICENSE.txt",
+            "three/headless.html",
+            "three/LucasKanadeICGNThree.js",
+            "three/vendor/three.core.js",
+            "three/vendor/three.webgpu.js",
+            "three/vendor/three.tsl.js",
+            "three/vendor/THREE-LICENSE.txt",
+            "common/ReferencePreparation.js",
         ):
             self.assertTrue((assets.root / filename).is_file(), filename)
-        page = (assets.root / "headless.html").read_text(encoding="utf-8")
+        page = (assets.root / assets.headless_path).read_text(encoding="utf-8")
         self.assertNotIn("https://", page)
         self.assertNotIn("http://", page)
 
+    def test_explicit_checkout_three_directory_resolves_canonical_source(self) -> None:
+        module_root = Path(__file__).resolve().parents[2]
+        assets = _find_runtime_assets(module_root / "three", "three-tsl")
+        self.assertEqual(assets.root, module_root)
+        self.assertEqual(assets.headless_path, "three/headless.html")
+
     def test_default_runtime_is_three_tsl(self) -> None:
         assets = _find_runtime_assets(None)
-        self.assertEqual(assets.root.name, "three")
-        self.assertTrue((assets.root / "LucasKanadeICGNThree.js").is_file())
+        self.assertEqual(assets.root.name, "web")
+        self.assertTrue((assets.root / "three/LucasKanadeICGNThree.js").is_file())
+
+    def test_shared_wgsl_runtime_is_complete_and_offline(self) -> None:
+        assets = _find_runtime_assets(None, "webgpu-wgsl")
+        self.assertEqual(assets.headless_path, "web/webgpu/headless.html")
+        for filename in (
+            "web/webgpu/headless.html",
+            "web/webgpu/LucasKanadeICGNWebGPU.js",
+            "web/common/ReferencePreparation.js",
+            "shaders/icgn.wgsl",
+        ):
+            self.assertTrue((assets.root / filename).is_file(), filename)
+        page = (assets.root / assets.headless_path).read_text(encoding="utf-8")
+        self.assertNotIn("https://", page)
+        self.assertNotIn("http://", page)
+
+    def test_checkout_three_entry_point_delegates_to_packaged_source(self) -> None:
+        module_root = Path(__file__).resolve().parents[2]
+        entry_point = module_root / "three/LucasKanadeICGNThree.js"
+        source = entry_point.read_text(encoding="utf-8")
+        self.assertIn("python/src/lucas_kanade_icgn/web/three", source)
+        self.assertEqual(source.count("import "), 1)
 
     def test_browser_demo_uses_local_script_dependencies(self) -> None:
         module_root = Path(__file__).resolve().parents[2]

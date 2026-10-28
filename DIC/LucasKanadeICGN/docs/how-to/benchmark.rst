@@ -106,7 +106,8 @@ backend with:
        python3 DIC/LucasKanadeICGN/benchmarks/benchmark_4k.py \
        --backend three-tsl --repeats 30 --warmups 5
 
-Use ``--backend gpuio`` for the WebGL2 path.
+Use ``--backend webgpu-wgsl`` for the canonical portable shader in Chromium,
+or ``--backend gpuio`` for the WebGL2 path.
 Use ``--backend wgpu-native`` for the browser-free complete Python-call path.
 Add ``--native-solver portable`` or ``--native-solver subgroup`` to bypass
 automatic selection during a diagnostic campaign.

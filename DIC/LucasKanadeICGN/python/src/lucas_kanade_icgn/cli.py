@@ -62,7 +62,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--chromium", type=Path, help="Chromium or Chrome executable")
     parser.add_argument(
         "--backend",
-        choices=("gpuio", "three-tsl"),
+        choices=("gpuio", "three-tsl", "webgpu-wgsl"),
         default="three-tsl",
         help="browser compute backend",
     )

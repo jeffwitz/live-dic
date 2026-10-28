@@ -49,10 +49,12 @@ radius-15 target prefilter, inverse-compositional update, ZNCC test, and median
 replacement as the browser implementations. Reference-dependent values are
 prepared once by ``set_reference`` and uploaded as persistent buffers.
 
-The portable solver assigns one 16-lane workgroup to each subset. A lane
-processes one 16-pixel row and the lanes reduce their partial sums through
-shared memory. Its reference, inverse-Hessian, metadata, and state buffers use
-aligned ``vec4`` records. All iterations remain fused in one dispatch.
+The portable solver assigns one 16-lane workgroup to each subset. A lane owns
+one column and processes its 16 pixels; the lanes reduce their partial sums
+through shared memory. Its reference, inverse-Hessian, metadata, and state
+buffers use aligned ``vec4`` records. All iterations remain fused in one
+dispatch. Raw browser WebGPU loads this same source; see
+:doc:`shared-kernel` for the binding contract.
 
 An optional first-party GLSL solver performs the same reductions with subgroup
 collectives. It is compiled to SPIR-V at build time because the Naga frontend
@@ -111,8 +113,8 @@ Measured effect
 ---------------
 
 On the validation machine, the median of three 512 x 512 campaigns measured a
-native complete Python call of 1.662 ms median and 2.136 ms p95. At 3840 x
-2160 the median campaign measured 15.612 ms median and 16.577 ms p95, including direct target upload,
+native complete Python call of 1.812 ms median and 2.187 ms p95. At 3840 x
+2160 the median campaign measured 14.621 ms median and 15.748 ms p95, including direct target upload,
 computation, packed result readback, and NumPy result construction. The UHD
 median and p95 are inside one 60 Hz period, but both exclude
 camera acquisition and downstream consumers. See

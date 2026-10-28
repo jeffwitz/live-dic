@@ -4,7 +4,7 @@ Current limitations
 Geometry and input
 ------------------
 
-* All three backends support dynamic frame dimensions and have been validated
+* All four backends support dynamic frame dimensions and have been validated
   at 3840 x 2160. Reference and target dimensions must match.
 * GPU-IO dimensions must be exact multiples of 16 because its texture grid is
   allocated when the private headless page starts. A dimension change rebuilds
@@ -41,6 +41,9 @@ Runtime
 * Browser GPU shader arithmetic is single precision.
 * The fastest Three.js solver requires a WebGPU subgroup containing all 16
   active lanes. Other adapters use the validated workgroup-memory fallback.
+* The raw ``webgpu-wgsl`` browser backend prioritizes source sharing and uses
+  only the portable workgroup kernel; it is slower than the specialized
+  Three.js subgroup solver on the validation machine.
 * Maximum image size depends on the adapter's WebGPU storage-buffer or WebGL2
   texture limits.
 * Full parameter and status fields are read back for every ``register`` call.

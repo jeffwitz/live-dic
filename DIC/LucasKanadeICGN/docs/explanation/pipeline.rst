@@ -1,9 +1,10 @@
 Pipeline architecture
 =====================
 
-The Python API controls a persistent GPU-IO/WebGL2 backend, an independent
-Three.js/TSL WebGPU backend, or the experimental native wgpu-py backend.
-Chromium is an execution environment for the first two, not a user interface:
+The Python API controls a persistent GPU-IO/WebGL2 backend, an optimized
+Three.js/TSL WebGPU backend, a raw WebGPU adapter using the canonical WGSL, or
+the experimental native wgpu-py backend. Chromium is an execution environment
+for the first three, not a user interface:
 each headless page loads only its numerical runtime, creates no controls, and
 never attaches a canvas to the visible document. The native path does not
 start Chromium.
@@ -73,11 +74,13 @@ Every target is converted to grayscale, uploaded, and filtered into cubic
 B-spline coefficients. Three.js runs up to 30 affine IC-GN iterations inside
 one compute dispatch and groups 16 active lanes per subset. GPU-IO fuses the
 same iteration loop into one fragment per subset and scans the 16 x 16 tile
-serially. The native WGSL backend uses one 16-lane workgroup per subset and the
-same fused iteration structure. In every case, converged or rejected subsets
-stop expensive target sampling. A final GPU pass detects spatial outliers and
-can replace them with neighbor medians. :doc:`gpu-optimization` describes the
-browser mappings; :doc:`native-backend` describes the native path.
+serially. Raw browser WebGPU and native wgpu-py load the same WGSL solver, with
+one 16-lane workgroup per subset and the same fused iteration structure. In
+every case, converged or rejected subsets stop expensive target sampling. A
+final GPU pass detects spatial outliers and can replace them with neighbor
+medians. :doc:`gpu-optimization` describes the GPU mappings,
+:doc:`shared-kernel` defines the common numerical contract, and
+:doc:`native-backend` describes the native path.
 
 Control path
 ------------

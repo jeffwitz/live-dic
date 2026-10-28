@@ -17,6 +17,11 @@ struct Float4Buffer {
     values: array<vec4<f32>>,
 }
 
+struct WarpUpdate {
+    translation: vec2<f32>,
+    linear: vec4<f32>,
+}
+
 @group(0) @binding(0) var source_image: texture_2d<f32>;
 @group(0) @binding(1) var<uniform> config: Config;
 @group(0) @binding(2) var<storage, read_write> temporary: FloatBuffer;
@@ -127,6 +132,84 @@ fn sample_cubic(position: vec2<f32>) -> f32 {
     return value;
 }
 
+fn solve_increment(
+    subset_index: u32,
+    reduced_j: array<f32, 6>,
+    current_mean: f32,
+    ratio: f32,
+) -> array<f32, 6> {
+    var residual: array<f32, 6>;
+    for (var component = 0u; component < 6u; component = component + 1u) {
+        residual[component] = metadata_value(subset_index, 2u + component)
+            - ratio * (reduced_j[component]
+            - current_mean * metadata_value(subset_index, 8u + component));
+    }
+    var delta: array<f32, 6>;
+    for (var row = 0u; row < 6u; row = row + 1u) {
+        var value = 0.0;
+        for (var column = 0u; column < 6u; column = column + 1u) {
+            value = value + hessian_value(subset_index, 6u * row + column) * residual[column];
+        }
+        delta[row] = -value;
+    }
+    return delta;
+}
+
+fn increment_determinant(delta: array<f32, 6>) -> f32 {
+    return (1.0 + delta[1]) * (1.0 + delta[5]) - delta[2] * delta[4];
+}
+
+fn compose_inverse_update(
+    translation: vec2<f32>,
+    linear: vec4<f32>,
+    delta: array<f32, 6>,
+    determinant: f32,
+) -> WarpUpdate {
+    let inverse11 = (1.0 + delta[5]) / determinant;
+    let inverse12 = -delta[2] / determinant;
+    let inverse21 = -delta[4] / determinant;
+    let inverse22 = (1.0 + delta[1]) / determinant;
+    let warp11 = 1.0 + linear.x;
+    let warp12 = linear.y;
+    let warp21 = linear.z;
+    let warp22 = 1.0 + linear.w;
+    let inverse_translation_x = -(inverse11 * delta[0] + inverse12 * delta[3]);
+    let inverse_translation_y = -(inverse21 * delta[0] + inverse22 * delta[3]);
+    let updated_translation = translation + vec2<f32>(
+        warp11 * inverse_translation_x + warp12 * inverse_translation_y,
+        warp21 * inverse_translation_x + warp22 * inverse_translation_y,
+    );
+    let updated11 = warp11 * inverse11 + warp12 * inverse21;
+    let updated12 = warp11 * inverse12 + warp12 * inverse22;
+    let updated21 = warp21 * inverse11 + warp22 * inverse21;
+    let updated22 = warp21 * inverse12 + warp22 * inverse22;
+    return WarpUpdate(
+        updated_translation,
+        vec4<f32>(updated11 - 1.0, updated12, updated21, updated22 - 1.0),
+    );
+}
+
+fn corner_change(delta: array<f32, 6>) -> f32 {
+    var maximum = 0.0;
+    for (var corner = 0; corner < 4; corner = corner + 1) {
+        let x = select(-SUBSET_HALF_EXTENT, SUBSET_HALF_EXTENT, corner == 1 || corner == 3);
+        let y = select(-SUBSET_HALF_EXTENT, SUBSET_HALF_EXTENT, corner >= 2);
+        let change = length(vec2<f32>(
+            delta[0] + delta[1] * x + delta[2] * y,
+            delta[3] + delta[4] * x + delta[5] * y,
+        ));
+        maximum = max(maximum, change);
+    }
+    return maximum;
+}
+
+fn convergence_status(change: f32, zncc: f32) -> f32 {
+    if change >= config.tolerance {
+        return 0.0;
+    }
+    return select(-2.0, 1.0, zncc >= config.zncc_min);
+}
+
 @compute @workgroup_size(16)
 fn solve(
     @builtin(workgroup_id) workgroup_id: vec3<u32>,
@@ -134,11 +217,6 @@ fn solve(
 ) {
     let subset_index = workgroup_id.x;
     let lane = local_id.x;
-    if subset_index >= config.grid_count {
-        return;
-    }
-
-    let state_offset = subset_index * 8u;
     if lane == 0u {
         shared_translation = vec2<f32>(0.0);
         shared_linear = vec4<f32>(0.0);
@@ -152,10 +230,6 @@ fn solve(
     let center = (vec2<f32>(f32(grid_x), f32(grid_y)) + vec2<f32>(0.5)) * 16.0;
 
     for (var iteration = 0u; iteration < 30u; iteration = iteration + 1u) {
-        if iteration >= config.iterations || abs(shared_status.x) > 0.5 {
-            break;
-        }
-
         if lane == 0u {
             var inside = true;
             for (var corner = 0; corner < 4; corner = corner + 1) {
@@ -175,7 +249,8 @@ fn solve(
             }
         }
         workgroupBarrier();
-        if abs(shared_status.x) > 0.5 {
+        let iteration_status = workgroupUniformLoad(&shared_status);
+        if iteration >= config.iterations || abs(iteration_status.x) > 0.5 {
             break;
         }
 
@@ -252,66 +327,21 @@ fn solve(
                 shared_status.x = -2.0;
             } else {
                 let ratio = reference_norm / current_norm;
-                var residual: array<f32, 6>;
-                for (var component = 0u; component < 6u; component = component + 1u) {
-                    residual[component] = metadata_value(subset_index, 2u + component)
-                        - ratio * (reduced_j[component]
-                        - current_mean * metadata_value(subset_index, 8u + component));
-                }
-
-                var delta: array<f32, 6>;
-                for (var row = 0u; row < 6u; row = row + 1u) {
-                    var value = 0.0;
-                    for (var column = 0u; column < 6u; column = column + 1u) {
-                        value = value + hessian_value(subset_index, 6u * row + column) * residual[column];
-                    }
-                    delta[row] = -value;
-                }
-
-                let da11 = 1.0 + delta[1];
-                let da12 = delta[2];
-                let da21 = delta[4];
-                let da22 = 1.0 + delta[5];
-                let determinant = da11 * da22 - da12 * da21;
+                let delta = solve_increment(subset_index, reduced_j, current_mean, ratio);
+                let determinant = increment_determinant(delta);
                 if abs(determinant) < 1e-8 {
                     shared_status.x = -1.0;
                 } else {
-                    let inverse11 = da22 / determinant;
-                    let inverse12 = -da12 / determinant;
-                    let inverse21 = -da21 / determinant;
-                    let inverse22 = da11 / determinant;
-                    let warp11 = 1.0 + shared_linear.x;
-                    let warp12 = shared_linear.y;
-                    let warp21 = shared_linear.z;
-                    let warp22 = 1.0 + shared_linear.w;
-                    let inverse_translation_x = -(inverse11 * delta[0] + inverse12 * delta[3]);
-                    let inverse_translation_y = -(inverse21 * delta[0] + inverse22 * delta[3]);
-                    let updated_translation = shared_translation + vec2<f32>(
-                        warp11 * inverse_translation_x + warp12 * inverse_translation_y,
-                        warp21 * inverse_translation_x + warp22 * inverse_translation_y,
+                    let update = compose_inverse_update(
+                        shared_translation,
+                        shared_linear,
+                        delta,
+                        determinant,
                     );
-                    let updated11 = warp11 * inverse11 + warp12 * inverse21;
-                    let updated12 = warp11 * inverse12 + warp12 * inverse22;
-                    let updated21 = warp21 * inverse11 + warp22 * inverse21;
-                    let updated22 = warp21 * inverse12 + warp22 * inverse22;
-
-                    var corner_change = 0.0;
-                    for (var corner = 0; corner < 4; corner = corner + 1) {
-                        let x = select(-SUBSET_HALF_EXTENT, SUBSET_HALF_EXTENT, corner == 1 || corner == 3);
-                        let y = select(-SUBSET_HALF_EXTENT, SUBSET_HALF_EXTENT, corner >= 2);
-                        let change = length(vec2<f32>(
-                            delta[0] + delta[1] * x + delta[2] * y,
-                            delta[3] + delta[4] * x + delta[5] * y,
-                        ));
-                        corner_change = max(corner_change, change);
-                    }
-
-                    shared_translation = updated_translation;
-                    shared_linear = vec4<f32>(updated11 - 1.0, updated12, updated21, updated22 - 1.0);
-                    if corner_change < config.tolerance {
-                        let zncc = totals_a.z / (reference_norm * current_norm);
-                        shared_status.x = select(-2.0, 1.0, zncc >= config.zncc_min);
-                    }
+                    shared_translation = update.translation;
+                    shared_linear = update.linear;
+                    let zncc = totals_a.z / (reference_norm * current_norm);
+                    shared_status.x = convergence_status(corner_change(delta), zncc);
                 }
             }
         }

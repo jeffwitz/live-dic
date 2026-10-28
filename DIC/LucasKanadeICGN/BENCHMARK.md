@@ -38,12 +38,12 @@ measured the following median campaign:
 
 | Native complete-call measurement | Median | p95 |
 |---|---:|---:|
-| complete `ICGNWGPU.register` | **1.662 ms** | **2.136 ms** |
-| direct target upload | 0.047 ms | — |
-| compute plus packed readback | 1.561 ms | — |
+| complete `ICGNWGPU.register` | **1.812 ms** | **2.187 ms** |
+| direct target upload | 0.044 ms | — |
+| compute plus packed readback | 1.647 ms | — |
 
 The result accepted 900 subsets, recovered
-`(1.9999932, -0.9999966) px`, and produced a `2.693e-5 px` truth RMSE.
+`(1.9999933, -0.9999965) px`, and produced a `2.696e-5 px` truth RMSE.
 The automatic preparation probe measured 1.993 ms for the portable pipeline
 and 3.109 ms for the subgroup pipeline, so subsequent calls used the portable
 solver. The same browser campaign measured 56.203 ms median / 59.117 ms p95
@@ -56,17 +56,16 @@ campaign summary:
 
 | Native UHD measurement | Median | p95 |
 |---|---:|---:|
-| complete `ICGNWGPU.register` | **15.612 ms** | **16.577 ms** |
-| direct target upload | 0.424 ms | — |
-| compute plus packed readback | 14.806 ms | — |
+| complete `ICGNWGPU.register` | **14.621 ms** | **15.748 ms** |
+| direct target upload | 0.403 ms | — |
+| compute plus packed readback | 13.876 ms | — |
 
-Reference preparation measured 1,173.2 ms, including automatic solver tuning,
-and is outside the per-target loop. The probe measured 13.681 ms for the
-portable pipeline and 26.028 ms for the subgroup pipeline.
-The UHD result accepted 31,654 subsets and produced a `3.080e-5 px` truth
-RMSE. Both the median and p95 remain inside one 60 Hz period, with only 0.090
-ms of p95 margin. This excludes acquisition and downstream consumers and is not an
-end-to-end 4K60 claim.
+Reference preparation measured 1,036.5 ms and is outside the per-target loop.
+The portable solver was forced so this campaign directly qualifies the source
+shared with the browser adapter. The UHD result accepted 31,654 subsets and
+produced a `3.075e-5 px` truth RMSE. Both the median and p95 remain inside one
+60 Hz period, with 0.919 ms of p95 margin. This excludes acquisition and
+downstream consumers and is not an end-to-end 4K60 claim.
 
 Forced portable and subgroup runs were compared on all four shipped targets.
 All 1,024 statuses were identical for every target, including the t=20 median
@@ -74,12 +73,12 @@ replacement. Their jointly accepted displacement fields differed by only
 `5.71e-6` to `8.76e-6 px` RMS; the largest component difference was
 `1.57e-4 px`.
 
-A follow-up Three.js UHD campaign on the same machine measured 13.525 ms GPU
-median and 15.0 ms synchronized browser-wall median. The native 15.612 ms
-complete-call median is 4.1% above that browser-wall value while also including
+A follow-up Three.js UHD campaign on the same machine measured 14.462 ms GPU
+median and 15.9 ms synchronized browser-wall median. The native 14.621 ms
+complete-call median is 8.0% below that browser-wall value while also including
 a fresh target upload, packed result readback, and NumPy statistics on every
 sample. The boundaries are therefore informative but not identical; the
-native compute-plus-readback median alone was 14.806 ms.
+native compute-plus-readback median alone was 13.876 ms.
 
 The Rust wgpu/PyO3 crate is a parallel host milestone that embeds the exact
 same WGSL source and borrows the NumPy frame without a Python byte-string
@@ -201,6 +200,34 @@ All four offline targets were also checked after one reference preparation:
 The four comparisons have identical status fields and exercise small motion,
 nominal motion, large motion, rejection, and the median-replacement path.
 
+## Shared WGSL browser backend
+
+The `webgpu-wgsl` adapter is a host-only browser WebGPU implementation. It
+loads the exact `shaders/icgn.wgsl` file used by wgpu-py, while Three.js keeps
+its faster subgroup-specialized TSL kernel. Both browser WebGPU paths use the
+same `ReferencePreparation.js` module and return the same packed result
+contract.
+
+Three five-warm-up, 30-run campaigns at 512 × 512 measured a median campaign
+of **0.817 ms GPU** (**1.298 ms p95**) and **2.6 ms synchronized browser wall**
+(**3.1 ms p95**). The result accepted 900 subsets with a `2.700e-5 px` truth
+RMSE. Against wgpu-py on all jointly accepted `t=0 -> 10` subsets, the
+translation disagreement was `7.36e-6 px` RMS with a `6.46e-5 px` maximum
+component difference; all 1,024 statuses were identical.
+
+All four shipped targets were then compared with the final wheel. Shared WGSL
+and wgpu-py had identical status fields for every target, including 634
+accepted subsets and one median replacement at `t=20`. Translation differences
+ranged from `6.22e-6` to `9.02e-6 px` RMS; the largest component difference
+over all targets was `1.39e-4 px`.
+
+At UHD the shared shader measured **16.490 ms GPU median**, **17.068 ms GPU
+p95**, **17.9 ms browser-wall median**, and **18.8 ms browser-wall p95**. It
+accepted 31,654 subsets with a `3.078e-5 px` truth RMSE. The raw portable
+kernel is 14.0% slower than the Three.js subgroup kernel at the median GPU
+boundary on this adapter. Source sharing therefore works and remains close to
+the 60 Hz compute budget, but Three.js remains the default performance backend.
+
 Chromium must use the native Vulkan adapter for a meaningful comparison. With
 only `--enable-unsafe-webgpu`, Chromium selected Google SwiftShader and the
 same Three.js pipeline took 29.38 ms median GPU time. The Python engine supplies
@@ -209,27 +236,28 @@ adapter through `ICGNWebGL.info()`.
 
 ## UHD browser validation and SYCL comparison
 
-Both browser paths were validated at 3840 × 2160 with a reproducible
+All three browser paths were validated at 3840 × 2160 with a reproducible
 offline pair generated by `benchmarks/benchmark_4k.py`. The shipped reference
 texture is tiled to UHD and shifted by exactly `(2, -1)` pixels. Reference
 construction is performed once. Each of three campaigns used five warm-ups
 followed by 30 measured optical-flow runs; the table reports the median of the
 three campaign summaries.
 
-| Phase | Three.js/TSL | GPU-IO |
-|---|---:|---:|
-| Runtime graph/shader construction | 4.4 ms | page startup |
-| Reference-dependent construction | 1,073.9 ms | 1,261.1 ms |
-| Complete browser preparation | 1,078.3 ms | 1,261.1 ms |
-| Complete Python preparation call | 1,382.3 ms | 2,583.3 ms |
-| Optical-flow GPU median / p95 | **13.629 / 15.352 ms** | 80.738 / 82.522 ms |
-| Optical-flow browser wall median / p95 | **15.3 / 17.5 ms** | 85.9 / 90.2 ms |
+| Phase | Three.js/TSL | Shared WGSL | GPU-IO |
+|---|---:|---:|---:|
+| Runtime graph/shader construction | 4.3 ms | 37.9 ms | page startup |
+| Reference-dependent construction | 1,144.3 ms | 1,094.7 ms | 1,261.1 ms |
+| Complete browser preparation | 1,148.8 ms | 1,132.6 ms | 1,261.1 ms |
+| Complete Python preparation call | 1,456.9 ms | 1,451.9 ms | 2,583.3 ms |
+| Optical-flow GPU median / p95 | **14.462 / 17.097 ms** | 16.490 / 17.068 ms | 80.738 / 82.522 ms |
+| Optical-flow browser wall median / p95 | **15.9 / 18.1 ms** | 17.9 / 18.8 ms | 85.9 / 90.2 ms |
 
-The 240 × 135 grid contains 32,400 subsets. Both solvers accepted
-31,654, recovered `(1.999991, -0.999997)` pixels, required 5.943 iterations on
-average, and produced a vector RMSE of `3.076e-5 px`. The startup probe measured
-a 32-lane hardware subgroup, so the 16-lane fast path was active. Compared with
-GPU-IO, the fused cooperative Three.js kernel is **5.92× faster**. GPU-IO
+The 240 × 135 grid contains 32,400 subsets. All three solvers accepted 31,654.
+Three.js recovered `(1.999991, -0.999997)` pixels in 5.943 iterations with a
+`3.076e-5 px` RMSE; shared WGSL returned the same rounded translation in 5.942
+iterations with a `3.078e-5 px` RMSE. The startup probe measured a 32-lane
+hardware subgroup, so the Three.js 16-lane fast path was active. Compared with
+GPU-IO, the fused cooperative Three.js kernel is **5.58× faster**. GPU-IO
 recovered `(1.999991, -0.999996)` with 5.947 iterations and a `4.182e-5 px`
 RMSE, establishing functional UHD support but not a 4K60 performance path.
 
@@ -238,19 +266,19 @@ mixed-precision mode, column layout, FIR prefilter, inverse Hessian, and median
 replacement settings. Thirty independent measured processes followed five
 warm-ups.
 
-| UHD measurement | Three.js/TSL | GPU-IO | SYCL mixed/double reduction | SYCL `--float-reduce` |
-|---|---:|---:|---:|---:|
-| Prefilter + registration GPU median | **13.629 ms** | 80.738 ms | 19.099 ms | 18.111 ms |
-| Prefilter + registration p95 | **15.352 ms** | 82.522 ms | 19.863 ms | 19.062 ms |
-| Upload + compute + download median | not included | not included | 19.573 ms | 18.509 ms |
-| Accepted subsets | 31,654 | 31,654 | 31,654 | 31,654 |
-| Mean iterations | 5.943 | 5.947 | 5.944 | 5.940 |
-| Truth RMSE | `3.076e-5 px` | `4.182e-5 px` | `2.555e-5 px` | `2.712e-5 px` |
+| UHD measurement | Three.js/TSL | Shared WGSL | GPU-IO | SYCL mixed/double reduction | SYCL `--float-reduce` |
+|---|---:|---:|---:|---:|---:|
+| Prefilter + registration GPU median | **14.462 ms** | 16.490 ms | 80.738 ms | 19.099 ms | 18.111 ms |
+| Prefilter + registration p95 | **17.097 ms** | 17.068 ms | 82.522 ms | 19.863 ms | 19.062 ms |
+| Upload + compute + download median | not included | not included | not included | 19.573 ms | 18.509 ms |
+| Accepted subsets | 31,654 | 31,654 | 31,654 | 31,654 | 31,654 |
+| Mean iterations | 5.943 | 5.942 | 5.947 | 5.944 | 5.940 |
+| Truth RMSE | `3.076e-5 px` | `3.078e-5 px` | `4.182e-5 px` | `2.555e-5 px` | `2.712e-5 px` |
 
-At the comparable compute boundary, optimized Three.js is **28.6% faster**
-than the mixed/double-reduction SYCL configuration (1.40× the throughput). It
-is still **24.7% faster** than the numerically closer float-reduction variant
-(1.33× the throughput). Browser GPU timing excludes input upload and output
+At the comparable compute boundary, optimized Three.js is **24.3% faster**
+than the mixed/double-reduction SYCL configuration (1.32× the throughput). It
+is still **20.1% faster** than the numerically closer float-reduction variant
+(1.25× the throughput). Browser GPU timing excludes input upload and output
 readback; the separate SYCL total row includes both. This is a backend compute
 comparison, not an acquisition-to-result or 4K60 claim. WebGPU upload and
 pipeline compilation are lazy and are absorbed by the five unreported warm-ups
@@ -296,7 +324,9 @@ The implementations are not bit-for-bit equivalent. The Three.js path uses
 single-precision WebGPU arithmetic and WebGPU subgroup collectives, while SYCL
 uses mixed precision, Intel's larger-register-file extension, and Level Zero
 queues. The portable Three.js fallback uses workgroup memory when a subgroup of
-at least 16 lanes is unavailable. This port does not implement Aitken
+at least 16 lanes is unavailable. Raw browser WebGPU and wgpu-py instead load
+one canonical portable WGSL file, so formula corrections propagate directly
+between those two hosts. This port does not implement Aitken
 acceleration, predictive tolerance, temporal/extrapolated initialization,
 retry from the last accepted state, a pyramid, or the H.264 pipeline. These
 features do not change the uniform `t=0 -> 10` result used here, but matter for

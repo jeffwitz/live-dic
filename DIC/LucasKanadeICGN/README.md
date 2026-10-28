@@ -11,7 +11,7 @@
 
 The long-term objective is sustained 3840 x 2160 DIC at 60 FPS over the full
 acquisition-to-result path. The experimental native wgpu-py backend currently
-measures 15.612 ms median and 16.577 ms p95 for the complete Python registration
+measures 14.621 ms median and 15.748 ms p95 for the complete Python registration
 call on the validation machine. Direct upload, computation, packed readback,
 and NumPy result construction are included. Acquisition and downstream work
 are excluded, so this repository does not yet claim a qualified 4K60
@@ -20,8 +20,9 @@ application.
 This implementation ports the affine inverse-compositional Gauss-Newton
 (IC-GN) registration core from the SYCL prototype in
 `DIC_CODEC/DIC_FROM_H264` to the original WebGL2/GPU-IO path, an independent
-Three.js/TSL WebGPU path, and an experimental native wgpu-py path. It runs on
-offline test images and does not require a camera or an H.264 pipeline.
+Three.js/TSL WebGPU path, a raw browser WebGPU adapter, and an experimental
+native wgpu-py path. It runs on offline test images and does not require a
+camera or an H.264 pipeline.
 
 The implementation retains the main algorithmic choices of the SYCL version:
 
@@ -50,6 +51,16 @@ workgroup-memory solver remains available automatically. It is an
 implementation of the DIC-RT equations in this repository, not a copy of
 Strobox. Three.js r186 and its licence are vendored locally under
 [`three/vendor/`](./three/vendor/) for offline execution.
+
+The raw browser adapter and wgpu-py load the same canonical
+[`icgn.wgsl`](./python/src/lucas_kanade_icgn/shaders/icgn.wgsl) source. It owns
+the FIR prefilter, increment solve, inverse affine composition, convergence,
+and spatial median rules. Their host adapters only allocate resources,
+transfer frames, dispatch kernels, and convert the common packed result. The
+optimized Three.js path keeps its TSL implementation because subgroup
+collectives are faster on the validation GPU, but it now shares named
+mathematical helpers and browser reference preparation instead of duplicating
+those operations between its workgroup and subgroup variants.
 
 All runtimes derive their buffers or textures and subset grid from the
 reference dimensions. They have been validated at both 512 × 512 and UHD 3840
@@ -104,8 +115,9 @@ See [`python/README.md`](./python/README.md) for installation and API examples.
 
 Three.js/TSL is the default Python and command-line backend. Select the previous
 implementation explicitly with `ICGNWebGL(backend="gpuio")` or
-`--backend gpuio`. Select the experimental browser-free path with
-`ICGNWGPU()`. All return the same NumPy result schema.
+`--backend gpuio`. Select the canonical shared shader in Chromium with
+`ICGNWebGL(backend="webgpu-wgsl")`, or the browser-free path with `ICGNWGPU()`.
+All return the same NumPy result schema.
 
 ## Optional browser demo
 
@@ -142,6 +154,11 @@ subset WebGL2 strategy with execution diagrams.
 [`Native WebGPU and PyO3`](./docs/explanation/native-backend.rst) explains the
 direct NumPy transfer path, shared WGSL layout, current measurements, and the
 remaining Rust migration work.
+
+[`Shared kernel and adapter contract`](./docs/explanation/shared-kernel.rst)
+defines the canonical WGSL functions, buffer bindings, parameter order, status
+values, and the boundary between common mathematics and backend-specific host
+code.
 
 The reproducible offline UHD campaign is
 [`benchmarks/benchmark_4k.py`](./benchmarks/benchmark_4k.py). It constructs a

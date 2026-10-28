@@ -13,8 +13,9 @@ The browser backends require:
 The optional native backend requires Python 3.11 or newer and a platform
 supported by ``wgpu-py``. It does not require Chromium.
 
-The package embeds GPU-IO, Three.js r186, the IC-GN solvers, and both headless pages.
-It does not require a repository checkout or a network connection at runtime.
+The package embeds GPU-IO, Three.js r186, the raw WebGPU adapter, all IC-GN
+shaders, and their headless pages. It does not require a repository checkout
+or a network connection at runtime.
 
 Install the package
 -------------------
@@ -54,10 +55,13 @@ Three.js/TSL is the default backend. A standard engine therefore selects it:
    engine = ICGNWebGL()
 
 Select the previous implementation with ``ICGNWebGL(backend="gpuio")`` or the
-command-line option ``--backend gpuio``. On Linux, the default Python driver
-supplies the native headless Vulkan flags required by Chromium. Confirm that
-``engine.info().device`` names the physical adapter rather than ``swiftshader``
-before reporting performance.
+command-line option ``--backend gpuio``. Select the canonical portable WGSL
+with ``ICGNWebGL(backend="webgpu-wgsl")`` or ``--backend webgpu-wgsl``. This
+raw WebGPU adapter executes the same shader file as wgpu-py, while Three.js
+keeps the faster subgroup-specialized path. On Linux, the default Python
+driver supplies the native headless Vulkan flags required by Chromium.
+Confirm that ``engine.info().device`` names the physical adapter rather than
+``swiftshader`` before reporting performance.
 
 Install and select native WebGPU
 ---------------------------------

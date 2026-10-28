@@ -113,18 +113,21 @@ workgroup barriers between its four stages:
       ...       ...         ...                   v
                                                lane 0
 
-The barriers are executed uniformly even when a subset has converged. An
-active flag prevents further interpolation and update work while preserving
-legal workgroup synchronization. This path does not depend on a particular
-subgroup width.
+The canonical WGSL uses ``workgroupUniformLoad`` to make the shared status a
+provably uniform loop condition. A converged subset can therefore leave the
+iteration loop early while every barrier that is reached remains in uniform
+control flow. This path does not depend on a particular subgroup width and is
+executed unchanged by raw browser WebGPU and wgpu-py.
 
-Three.js selects the subgroup path when the width probe permits it. Native
+Three.js selects the subgroup path when the width probe permits it. The raw
+browser adapter deliberately selects the portable shared WGSL. Native
 ``ICGNWGPU`` goes one step further: during reference preparation it measures
-the complete portable and subgroup pipelines on a representative shifted
-frame, then retains the faster one. This matters because subgroup availability
-is a capability result, not a performance guarantee. On the validation Intel
-driver the native SPIR-V subgroup pipeline was slower, while the Three.js WGSL
-subgroup pipeline remained the browser's faster implementation.
+the complete portable shared-WGSL and subgroup SPIR-V pipelines on a
+representative shifted frame, then retains the faster one. This matters
+because subgroup availability is a capability result, not a performance
+guarantee. On the validation Intel driver the native SPIR-V subgroup pipeline
+was slower, while the Three.js WGSL subgroup pipeline remained the browser's
+faster implementation.
 
 GPU-IO/WebGL2: one fused fragment per subset
 --------------------------------------------

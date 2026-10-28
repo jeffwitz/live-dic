@@ -33,6 +33,11 @@ import {
   workgroupId,
   instanceIndex,
 } from 'three/tsl';
+import {
+  imageToGray,
+  makeFIRWeights,
+  prepareReferenceData,
+} from '../common/ReferencePreparation.js';
 
 const DEFAULT_FRAME_WIDTH = 512;
 const DEFAULT_FRAME_HEIGHT = 512;
@@ -141,224 +146,20 @@ const initializeRuntime = (width, height) => {
   return true;
 };
 
-/** Mirror a coordinate around image boundaries, matching the GPU-IO backend. */
-const mirror = (coordinate, size) => {
-  if (coordinate < 0) return -coordinate;
-  if (coordinate >= size) return 2 * size - 2 - coordinate;
-  return coordinate;
-};
-
-const imageToGray = (image) => {
-  if (image.width !== FRAME_WIDTH || image.height !== FRAME_HEIGHT) {
-    throw new Error(`Expected ${FRAME_WIDTH}x${FRAME_HEIGHT}, got ${image.width}x${image.height}`);
-  }
-  const canvas = new OffscreenCanvas(FRAME_WIDTH, FRAME_HEIGHT);
-  const context = canvas.getContext('2d', { willReadFrequently: true });
-  context.drawImage(image, 0, 0);
-  const rgba = context.getImageData(0, 0, FRAME_WIDTH, FRAME_HEIGHT).data;
-  const gray = new Float64Array(PIXEL_COUNT);
-  for (let index = 0; index < PIXEL_COUNT; ++index) gray[index] = rgba[4 * index] / 255;
-  return gray;
-};
-
-const gaussianSigmaOne = (source) => {
-  const radius = 3;
-  const weights = new Float64Array(2 * radius + 1);
-  let total = 0;
-  for (let offset = -radius; offset <= radius; ++offset) {
-    const weight = Math.exp(-0.5 * offset * offset);
-    weights[offset + radius] = weight;
-    total += weight;
-  }
-  for (let index = 0; index < weights.length; ++index) weights[index] /= total;
-
-  const horizontal = new Float64Array(PIXEL_COUNT);
-  const filtered = new Float64Array(PIXEL_COUNT);
-  for (let y = 0; y < FRAME_HEIGHT; ++y) {
-    for (let x = 0; x < FRAME_WIDTH; ++x) {
-      let value = 0;
-      for (let offset = -radius; offset <= radius; ++offset) {
-        value += weights[offset + radius] * source[y * FRAME_WIDTH + mirror(x + offset, FRAME_WIDTH)];
-      }
-      horizontal[y * FRAME_WIDTH + x] = value;
-    }
-  }
-  for (let y = 0; y < FRAME_HEIGHT; ++y) {
-    for (let x = 0; x < FRAME_WIDTH; ++x) {
-      let value = 0;
-      for (let offset = -radius; offset <= radius; ++offset) {
-        value += weights[offset + radius] * horizontal[mirror(y + offset, FRAME_HEIGHT) * FRAME_WIDTH + x];
-      }
-      filtered[y * FRAME_WIDTH + x] = value;
-    }
-  }
-  return filtered;
-};
-
-/** Compute exact cubic B-spline coefficients with mirror boundary conditions. */
-const cubicBSplinePrefilter = (source) => {
-  const coefficients = new Float64Array(source);
-  const pole = Math.sqrt(3) - 2;
-  const gain = (1 - pole) * (1 - 1 / pole);
-  const filterLine = (offset, count, stride) => {
-    for (let index = 0; index < count; ++index) coefficients[offset + index * stride] *= gain;
-    const horizon = Math.min(count, Math.ceil(Math.log(1e-12) / Math.log(Math.abs(pole))));
-    let sum = coefficients[offset];
-    let power = pole;
-    for (let index = 1; index < horizon; ++index) {
-      sum += power * coefficients[offset + index * stride];
-      power *= pole;
-    }
-    coefficients[offset] = sum;
-    for (let index = 1; index < count; ++index) {
-      coefficients[offset + index * stride] += pole * coefficients[offset + (index - 1) * stride];
-    }
-    const last = offset + (count - 1) * stride;
-    coefficients[last] = pole / (pole * pole - 1) * (pole * coefficients[last - stride] + coefficients[last]);
-    for (let index = count - 2; index >= 0; --index) {
-      const position = offset + index * stride;
-      coefficients[position] = pole * (coefficients[position + stride] - coefficients[position]);
-    }
-  };
-  for (let y = 0; y < FRAME_HEIGHT; ++y) filterLine(y * FRAME_WIDTH, FRAME_WIDTH, 1);
-  for (let x = 0; x < FRAME_WIDTH; ++x) filterLine(x, FRAME_HEIGHT, FRAME_WIDTH);
-  return coefficients;
-};
-
-const atMirror = (values, x, y) => values[mirror(y, FRAME_HEIGHT) * FRAME_WIDTH + mirror(x, FRAME_WIDTH)];
-
-/** Invert a 6x6 matrix using pivoted Gauss-Jordan elimination. */
-const invert6 = (matrix) => {
-  const augmented = new Float64Array(6 * 12);
-  for (let row = 0; row < 6; ++row) {
-    for (let column = 0; column < 6; ++column) {
-      augmented[row * 12 + column] = matrix[row * 6 + column];
-      augmented[row * 12 + 6 + column] = row === column ? 1 : 0;
-    }
-  }
-  for (let column = 0; column < 6; ++column) {
-    let pivotRow = column;
-    for (let row = column + 1; row < 6; ++row) {
-      if (Math.abs(augmented[row * 12 + column]) > Math.abs(augmented[pivotRow * 12 + column])) {
-        pivotRow = row;
-      }
-    }
-    if (Math.abs(augmented[pivotRow * 12 + column]) < 1e-14) return null;
-    if (pivotRow !== column) {
-      for (let entry = 0; entry < 12; ++entry) {
-        const saved = augmented[column * 12 + entry];
-        augmented[column * 12 + entry] = augmented[pivotRow * 12 + entry];
-        augmented[pivotRow * 12 + entry] = saved;
-      }
-    }
-    const pivot = augmented[column * 12 + column];
-    for (let entry = 0; entry < 12; ++entry) augmented[column * 12 + entry] /= pivot;
-    for (let row = 0; row < 6; ++row) {
-      if (row === column) continue;
-      const factor = augmented[row * 12 + column];
-      for (let entry = 0; entry < 12; ++entry) {
-        augmented[row * 12 + entry] -= factor * augmented[column * 12 + entry];
-      }
-    }
-  }
-  const inverse = new Float64Array(36);
-  for (let row = 0; row < 6; ++row) {
-    for (let column = 0; column < 6; ++column) inverse[row * 6 + column] = augmented[row * 12 + 6 + column];
-  }
-  return inverse;
-};
-
 /** Prepare all reference-dependent IC-GN quantities once on the CPU. */
 const prepareReference = (image) => {
-  const filtered = gaussianSigmaOne(imageToGray(image));
-  const coefficients = cubicBSplinePrefilter(filtered);
-  const template = new Float32Array(PIXEL_COUNT * 4);
-  const inversePacked = new Float32Array(GRID_COUNT * 9 * 4);
-  const metadata = new Float32Array(GRID_COUNT * 4 * 4);
-
-  for (let gridY = 0; gridY < GRID_HEIGHT; ++gridY) {
-    for (let gridX = 0; gridX < GRID_WIDTH; ++gridX) {
-      const subsetIndex = gridY * GRID_WIDTH + gridX;
-      const x0 = gridX * SUBSET_SIZE;
-      const y0 = gridY * SUBSET_SIZE;
-      let mean = 0;
-      for (let yy = 0; yy < SUBSET_SIZE; ++yy) {
-        for (let xx = 0; xx < SUBSET_SIZE; ++xx) mean += filtered[(y0 + yy) * FRAME_WIDTH + x0 + xx];
-      }
-      mean /= SUBSET_PIXELS;
-
-      const hessian = new Float64Array(36);
-      const jtReference = new Float64Array(6);
-      const sumJ = new Float64Array(6);
-      let referenceEnergy = 0;
-      for (let yy = 0; yy < SUBSET_SIZE; ++yy) {
-        for (let xx = 0; xx < SUBSET_SIZE; ++xx) {
-          const x = x0 + xx;
-          const y = y0 + yy;
-          const localX = xx - SUBSET_HALF_EXTENT;
-          const localY = yy - SUBSET_HALF_EXTENT;
-          const f = filtered[y * FRAME_WIDTH + x] - mean;
-          let gx = 0.5 * (atMirror(coefficients, x + 1, y) - atMirror(coefficients, x - 1, y));
-          let gy = 0.5 * (atMirror(coefficients, x, y + 1) - atMirror(coefficients, x, y - 1));
-          const gxSouth = 0.5 * (atMirror(coefficients, x + 1, y - 1) - atMirror(coefficients, x - 1, y - 1));
-          const gxNorth = 0.5 * (atMirror(coefficients, x + 1, y + 1) - atMirror(coefficients, x - 1, y + 1));
-          const gyWest = 0.5 * (atMirror(coefficients, x - 1, y + 1) - atMirror(coefficients, x - 1, y - 1));
-          const gyEast = 0.5 * (atMirror(coefficients, x + 1, y + 1) - atMirror(coefficients, x + 1, y - 1));
-          gx = (gxSouth + 4 * gx + gxNorth) / 6;
-          gy = (gyWest + 4 * gy + gyEast) / 6;
-
-          const pixel = 4 * (y * FRAME_WIDTH + x);
-          template[pixel] = f;
-          template[pixel + 1] = gx;
-          template[pixel + 2] = gy;
-          const jacobian = [gx, gx * localX, gx * localY, gy, gy * localX, gy * localY];
-          referenceEnergy += f * f;
-          for (let row = 0; row < 6; ++row) {
-            jtReference[row] += jacobian[row] * f;
-            sumJ[row] += jacobian[row];
-            for (let column = 0; column < 6; ++column) hessian[6 * row + column] += jacobian[row] * jacobian[column];
-          }
-        }
-      }
-
-      const inverse = invert6(hessian);
-      if (inverse) inversePacked.set(inverse, subsetIndex * 36);
-      const metaOffset = subsetIndex * 16;
-      metadata[metaOffset] = Math.sqrt(referenceEnergy);
-      metadata[metaOffset + 1] = inverse && referenceEnergy > 1e-12 ? 1 : 0;
-      metadata.set(jtReference, metaOffset + 2);
-      metadata.set(sumJ, metaOffset + 8);
-    }
-  }
-
-  attributes.reference.array.set(template);
-  attributes.hessianInverse.array.set(inversePacked);
-  attributes.metadata.array.set(metadata);
+  const prepared = prepareReferenceData(image, {
+    width: FRAME_WIDTH,
+    height: FRAME_HEIGHT,
+    subsetSize: SUBSET_SIZE,
+  });
+  attributes.reference.array.set(prepared.reference);
+  attributes.hessianInverse.array.set(prepared.inverseHessian);
+  attributes.metadata.array.set(prepared.metadata);
   attributes.reference.needsUpdate = true;
   attributes.hessianInverse.needsUpdate = true;
   attributes.metadata.needsUpdate = true;
   referenceReady = true;
-};
-
-/** FIR approximation used by the current target-image GPU prefilter. */
-const makeFIRWeights = () => {
-  const gaussian = new Float64Array(7);
-  let gaussianSum = 0;
-  for (let offset = -3; offset <= 3; ++offset) {
-    gaussian[offset + 3] = Math.exp(-0.5 * offset * offset);
-    gaussianSum += gaussian[offset + 3];
-  }
-  for (let index = 0; index < gaussian.length; ++index) gaussian[index] /= gaussianSum;
-  const pole = Math.sqrt(3) - 2;
-  const weights = new Float32Array(FIR_TAPS);
-  for (let offset = -FIR_RADIUS; offset <= FIR_RADIUS; ++offset) {
-    let value = 0;
-    for (let gaussianOffset = -3; gaussianOffset <= 3; ++gaussianOffset) {
-      value += gaussian[gaussianOffset + 3] * Math.sqrt(3) * Math.pow(pole, Math.abs(offset - gaussianOffset));
-    }
-    weights[offset + FIR_RADIUS] = value;
-  }
-  return weights;
 };
 
 const FIR_WEIGHTS = makeFIRWeights();
@@ -430,7 +231,70 @@ const sampleCubic = (position) => {
   return value;
 };
 
-/** Build one affine IC-GN iteration. JavaScript dispatches this kernel repeatedly. */
+const solveIncrement = (subsetIndex, reducedJ, currentMean, ratio) => {
+  const residual = Array.from({ length: 6 }, (_, component) => metadataValue(
+    subsetIndex,
+    2 + component,
+  ).sub(ratio.mul(
+    reducedJ[component].sub(currentMean.mul(metadataValue(subsetIndex, 8 + component))),
+  )));
+  return Array.from({ length: 6 }, (_, row) => {
+    const value = float(0).toVar();
+    for (let column = 0; column < 6; ++column) {
+      value.addAssign(hessianValue(subsetIndex, 6 * row + column).mul(residual[column]));
+    }
+    return value.negate();
+  });
+};
+
+const incrementDeterminant = (delta) => delta[1].add(1).mul(delta[5].add(1))
+  .sub(delta[2].mul(delta[4]));
+
+const cornerChange = (delta) => {
+  const maximum = float(0).toVar();
+  for (let corner = 0; corner < 4; ++corner) {
+    const x = corner === 1 || corner === 3 ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
+    const y = corner >= 2 ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
+    const change = vec2(
+      delta[0].add(delta[1].mul(x)).add(delta[2].mul(y)),
+      delta[3].add(delta[4].mul(x)).add(delta[5].mul(y)),
+    ).length();
+    maximum.assign(maximum.max(change));
+  }
+  return maximum;
+};
+
+const composeInverseUpdate = (translation, linear, delta, determinant) => {
+  const inverse11 = delta[5].add(1).div(determinant);
+  const inverse12 = delta[2].negate().div(determinant);
+  const inverse21 = delta[4].negate().div(determinant);
+  const inverse22 = delta[1].add(1).div(determinant);
+  const warp11 = linear.x.add(1);
+  const warp12 = linear.y;
+  const warp21 = linear.z;
+  const warp22 = linear.w.add(1);
+  const inverseTranslationX = inverse11.mul(delta[0]).add(inverse12.mul(delta[3])).negate();
+  const inverseTranslationY = inverse21.mul(delta[0]).add(inverse22.mul(delta[3])).negate();
+  const updatedTranslation = translation.add(vec2(
+    warp11.mul(inverseTranslationX).add(warp12.mul(inverseTranslationY)),
+    warp21.mul(inverseTranslationX).add(warp22.mul(inverseTranslationY)),
+  ));
+  const updated11 = warp11.mul(inverse11).add(warp12.mul(inverse21));
+  const updated12 = warp11.mul(inverse12).add(warp12.mul(inverse22));
+  const updated21 = warp21.mul(inverse11).add(warp22.mul(inverse21));
+  const updated22 = warp21.mul(inverse12).add(warp22.mul(inverse22));
+  return {
+    translation: updatedTranslation,
+    linear: vec4(updated11.sub(1), updated12, updated21, updated22.sub(1)),
+    cornerChange: cornerChange(delta),
+  };
+};
+
+const convergenceStatus = (change, zncc) => select(
+  change.lessThan(toleranceNode),
+  select(zncc.greaterThanEqual(znccMinNode), 1, -2),
+  0,
+);
 
 
 /**
@@ -563,67 +427,23 @@ const makeFusedCooperativeSolverKernel = () => Fn(() => {
         sharedState.element(int(1)).assign(vec4(state1.x, state1.y, -2, nextIteration));
       }).Else(() => {
         const ratio = referenceNorm.div(currentNorm);
-        const residual = Array.from({ length: 6 }, (_, component) => metadataValue(subsetIndex, 2 + component)
-          .sub(ratio.mul(reducedJ[component]
-            .sub(currentMean.mul(metadataValue(subsetIndex, 8 + component))))));
-        const delta = Array.from({ length: 6 }, (_, row) => {
-          const value = float(0).toVar();
-          for (let column = 0; column < 6; ++column) {
-            value.addAssign(hessianValue(subsetIndex, 6 * row + column).mul(residual[column]));
-          }
-          return value.negate();
-        });
-
-        const da11 = delta[1].add(1);
-        const da12 = delta[2];
-        const da21 = delta[4];
-        const da22 = delta[5].add(1);
-        const determinant = da11.mul(da22).sub(da12.mul(da21));
+        const delta = solveIncrement(subsetIndex, reducedJ, currentMean, ratio);
+        const determinant = incrementDeterminant(delta);
         If(determinant.abs().lessThan(1e-8), () => {
           sharedState.element(int(1)).assign(vec4(state1.x, state1.y, -1, nextIteration));
         }).Else(() => {
-          const inverse11 = da22.div(determinant);
-          const inverse12 = da12.negate().div(determinant);
-          const inverse21 = da21.negate().div(determinant);
-          const inverse22 = da11.div(determinant);
-          const warp11 = oldLinear.x.add(1);
-          const warp12 = oldLinear.y;
-          const warp21 = oldLinear.z;
-          const warp22 = oldLinear.w.add(1);
-          const inverseTranslationX = inverse11.mul(delta[0]).add(inverse12.mul(delta[3])).negate();
-          const inverseTranslationY = inverse21.mul(delta[0]).add(inverse22.mul(delta[3])).negate();
-          const updatedTranslation = oldTranslation.add(vec2(
-            warp11.mul(inverseTranslationX).add(warp12.mul(inverseTranslationY)),
-            warp21.mul(inverseTranslationX).add(warp22.mul(inverseTranslationY)),
-          ));
-          const updated11 = warp11.mul(inverse11).add(warp12.mul(inverse21));
-          const updated12 = warp11.mul(inverse12).add(warp12.mul(inverse22));
-          const updated21 = warp21.mul(inverse11).add(warp22.mul(inverse21));
-          const updated22 = warp21.mul(inverse12).add(warp22.mul(inverse22));
-
-          const cornerChange = float(0).toVar();
-          for (let corner = 0; corner < 4; ++corner) {
-            const x = corner === 1 || corner === 3 ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
-            const y = corner >= 2 ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
-            const change = vec2(
-              delta[0].add(delta[1].mul(x)).add(delta[2].mul(y)),
-              delta[3].add(delta[4].mul(x)).add(delta[5].mul(y)),
-            ).length();
-            cornerChange.assign(cornerChange.max(change));
-          }
-
+          const update = composeInverseUpdate(oldTranslation, oldLinear, delta, determinant);
           const zncc = totalsA.z.div(referenceNorm.mul(currentNorm));
-          const convergedState = select(zncc.greaterThanEqual(znccMinNode), 1, -2);
-          const nextState = select(cornerChange.lessThan(toleranceNode), convergedState, 0);
+          const nextState = convergenceStatus(update.cornerChange, zncc);
           sharedState.element(int(0)).assign(vec4(
-            updatedTranslation.x,
-            updatedTranslation.y,
-            updated11.sub(1),
-            updated12,
+            update.translation.x,
+            update.translation.y,
+            update.linear.x,
+            update.linear.y,
           ));
           sharedState.element(int(1)).assign(vec4(
-            updated21,
-            updated22.sub(1),
+            update.linear.z,
+            update.linear.w,
             nextState,
             nextIteration,
           ));
@@ -740,60 +560,21 @@ const makeSubgroupSolverKernel = () => Fn(() => {
         currentStatus.assign(-2);
       }).Else(() => {
         const ratio = referenceNorm.div(currentNorm);
-        const residual = Array.from({ length: 6 }, (_, component) => metadataValue(subsetIndex, 2 + component)
-          .sub(ratio.mul(reducedJ[component]
-            .sub(currentMean.mul(metadataValue(subsetIndex, 8 + component))))));
-        const delta = Array.from({ length: 6 }, (_, row) => {
-          const value = float(0).toVar();
-          for (let column = 0; column < 6; ++column) {
-            value.addAssign(hessianValue(subsetIndex, 6 * row + column).mul(residual[column]));
-          }
-          return value.negate();
-        });
-
-        const da11 = delta[1].add(1);
-        const da12 = delta[2];
-        const da21 = delta[4];
-        const da22 = delta[5].add(1);
-        const determinant = da11.mul(da22).sub(da12.mul(da21));
+        const delta = solveIncrement(subsetIndex, reducedJ, currentMean, ratio);
+        const determinant = incrementDeterminant(delta);
         If(determinant.abs().lessThan(1e-8), () => {
           currentStatus.assign(-1);
         }).Else(() => {
-          const inverse11 = da22.div(determinant);
-          const inverse12 = da12.negate().div(determinant);
-          const inverse21 = da21.negate().div(determinant);
-          const inverse22 = da11.div(determinant);
-          const warp11 = currentLinear.x.add(1);
-          const warp12 = currentLinear.y;
-          const warp21 = currentLinear.z;
-          const warp22 = currentLinear.w.add(1);
-          const inverseTranslationX = inverse11.mul(delta[0]).add(inverse12.mul(delta[3])).negate();
-          const inverseTranslationY = inverse21.mul(delta[0]).add(inverse22.mul(delta[3])).negate();
-          const updatedTranslation = currentTranslation.add(vec2(
-            warp11.mul(inverseTranslationX).add(warp12.mul(inverseTranslationY)),
-            warp21.mul(inverseTranslationX).add(warp22.mul(inverseTranslationY)),
-          ));
-          const updated11 = warp11.mul(inverse11).add(warp12.mul(inverse21));
-          const updated12 = warp11.mul(inverse12).add(warp12.mul(inverse22));
-          const updated21 = warp21.mul(inverse11).add(warp22.mul(inverse21));
-          const updated22 = warp21.mul(inverse12).add(warp22.mul(inverse22));
-
-          const cornerChange = float(0).toVar();
-          for (let corner = 0; corner < 4; ++corner) {
-            const x = corner === 1 || corner === 3 ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
-            const y = corner >= 2 ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
-            const change = vec2(
-              delta[0].add(delta[1].mul(x)).add(delta[2].mul(y)),
-              delta[3].add(delta[4].mul(x)).add(delta[5].mul(y)),
-            ).length();
-            cornerChange.assign(cornerChange.max(change));
-          }
-
-          currentTranslation.assign(updatedTranslation);
-          currentLinear.assign(vec4(updated11.sub(1), updated12, updated21, updated22.sub(1)));
+          const update = composeInverseUpdate(
+            currentTranslation,
+            currentLinear,
+            delta,
+            determinant,
+          );
+          currentTranslation.assign(update.translation);
+          currentLinear.assign(update.linear);
           const zncc = totalsA.z.div(referenceNorm.mul(currentNorm));
-          const convergedState = select(zncc.greaterThanEqual(znccMinNode), 1, -2);
-          currentStatus.assign(select(cornerChange.lessThan(toleranceNode), convergedState, 0));
+          currentStatus.assign(convergenceStatus(update.cornerChange, zncc));
         });
       });
     });
@@ -951,7 +732,7 @@ const loadImage = async (dataUrl) => {
 
 const setTarget = (image) => {
   if (!attributes) throw new Error('A reference image must be configured first');
-  const gray = imageToGray(image);
+  const gray = imageToGray(image, FRAME_WIDTH, FRAME_HEIGHT);
   for (let index = 0; index < PIXEL_COUNT; ++index) attributes.source.array[index] = gray[index];
   attributes.source.needsUpdate = true;
 };

@@ -36,7 +36,7 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--warmups", type=int, default=5)
     parser.add_argument(
         "--backend",
-        choices=("three-tsl", "gpuio", "wgpu-native"),
+        choices=("three-tsl", "webgpu-wgsl", "gpuio", "wgpu-native"),
         default="three-tsl",
         help="GPU implementation to measure",
     )

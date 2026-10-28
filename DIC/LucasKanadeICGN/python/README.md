@@ -7,9 +7,9 @@
 
 This package exposes the affine IC-GN solver in the parent directory to Python
 without opening a visible browser window or loading graphical controls.
-Chromium is used as an invisible runtime for the WebGL2/GPU-IO and
-Three.js/TSL backends. The optional `ICGNWGPU` backend runs in-process and
-does not start Chromium.
+Chromium is used as an invisible runtime for WebGL2/GPU-IO, Three.js/TSL, and
+the raw WebGPU shared-WGSL backend. The optional `ICGNWGPU` backend runs
+in-process and does not start Chromium.
 
 ## Requirements and installation
 
@@ -31,9 +31,10 @@ the optional dependency group:
 .venv-icgn/bin/pip install -e 'DIC/LucasKanadeICGN/python[native]'
 ```
 
-The wheel embeds the GPU-IO runtime, Three.js r186 runtime, native WGSL, and
-the first-party subgroup GLSL/SPIR-V shaders. The installed runtime therefore
-needs neither a source checkout, shader compiler, nor network access.
+The wheel embeds the GPU-IO runtime, Three.js r186 runtime, raw WebGPU adapter,
+canonical WGSL, and first-party subgroup GLSL/SPIR-V shaders. The installed
+runtime therefore needs neither a source checkout, shader compiler, nor
+network access.
 `repo_root=...` remains available as an explicit development override for a
 backend-specific runtime directory or for a complete `tests_gpuio` checkout.
 
@@ -111,11 +112,13 @@ that already have an active `asyncio` event loop. An engine instance must not be
 used concurrently from multiple threads.
 
 `backend="three-tsl"` is the default. Use `backend="gpuio"` to select the
-optional fused WebGL2 implementation. On Linux the default engine supplies Chromium's
-native headless Vulkan flags and `engine.info().device` identifies the selected
-adapter; check that it does not report SwiftShader before interpreting GPU
-benchmarks. `engine.info().solver` reports either `subgroup` or
-`portable-workgroup`, and `subgroup_width` records the measured hardware width.
+optional fused WebGL2 implementation. Use `backend="webgpu-wgsl"` to run the
+same portable WGSL file as wgpu-py through raw browser WebGPU. On Linux the
+default engine supplies Chromium's native headless Vulkan flags and
+`engine.info().device` identifies the selected adapter; check that it does not
+report SwiftShader before interpreting GPU benchmarks. `engine.info().solver`
+reports either `subgroup` or `portable-workgroup`, and `subgroup_width` records
+the measured hardware width.
 
 ## Native WebGPU engine
 
@@ -182,7 +185,7 @@ print(benchmark.wall_median_ms, benchmark.wall_p95_ms)
 ```
 
 GPU time uses WebGL timer queries for GPU-IO and WebGPU timestamp queries for
-Three.js/TSL. It includes target prefiltering, IC-GN, and median replacement.
+Three.js/TSL and raw WGSL. It includes target prefiltering, IC-GN, and median replacement.
 Wall time excludes PNG conversion in Python, DevTools transport, and result
 readback.
 
