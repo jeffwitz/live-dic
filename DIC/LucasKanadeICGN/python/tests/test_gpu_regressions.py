@@ -182,8 +182,11 @@ class GPURegressionTests(unittest.TestCase):
         slot = root._pipeline_slots[0]
         root._upload_frame(slot, image)
         encoder = root.device.create_command_encoder(label="GPU tiled-prefilter regression")
-        workgroups = ((image.shape[1] + 15) // 16, (image.shape[0] + 15) // 16, 1)
-        for pipeline in (root._prefilter_x, root._prefilter_y):
+        passes = (
+            (root._prefilter_x, ((image.shape[1] + 31) // 32, (image.shape[0] + 7) // 8, 1)),
+            (root._prefilter_y, ((image.shape[1] + 7) // 8, (image.shape[0] + 31) // 32, 1)),
+        )
+        for pipeline, workgroups in passes:
             compute_pass = encoder.begin_compute_pass()
             compute_pass.set_pipeline(pipeline)
             compute_pass.set_bind_group(0, slot.bind_group)

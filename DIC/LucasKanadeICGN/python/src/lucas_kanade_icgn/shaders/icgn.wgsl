@@ -43,9 +43,12 @@ const SUBSET_SIZE: i32 = 16;
 const SUBSET_PIXELS: f32 = 256.0;
 const SUBSET_HALF_EXTENT: f32 = 7.5;
 const FIR_RADIUS: i32 = 15;
-const PREFILTER_TILE_SIZE: i32 = 16;
-const PREFILTER_TILE_STRIDE: i32 = PREFILTER_TILE_SIZE + 2 * FIR_RADIUS;
-const PREFILTER_TILE_PIXELS: u32 = u32(PREFILTER_TILE_SIZE * PREFILTER_TILE_STRIDE);
+const PREFILTER_X_WIDTH: i32 = 32;
+const PREFILTER_X_HEIGHT: i32 = 8;
+const PREFILTER_X_STRIDE: i32 = PREFILTER_X_WIDTH + 2 * FIR_RADIUS;
+const PREFILTER_Y_WIDTH: i32 = 8;
+const PREFILTER_Y_HEIGHT: i32 = 32;
+const PREFILTER_TILE_PIXELS: u32 = 496u;
 
 var<workgroup> partial_a: array<vec4<f32>, 16>;
 var<workgroup> partial_b: array<vec4<f32>, 16>;
@@ -53,7 +56,7 @@ var<workgroup> partial_c: array<vec4<f32>, 16>;
 var<workgroup> shared_translation: vec2<f32>;
 var<workgroup> shared_linear: vec4<f32>;
 var<workgroup> shared_status: vec2<f32>;
-var<workgroup> prefilter_tile: array<f32, 736>;
+var<workgroup> prefilter_tile: array<f32, 496>;
 
 fn mirror_coordinate(coordinate: i32, size: i32) -> i32 {
     if coordinate < 0 {
@@ -65,7 +68,7 @@ fn mirror_coordinate(coordinate: i32, size: i32) -> i32 {
     return coordinate;
 }
 
-@compute @workgroup_size(16, 16)
+@compute @workgroup_size(32, 8)
 fn prefilter_x(
     @builtin(workgroup_id) workgroup_id: vec3<u32>,
     @builtin(local_invocation_id) local_id: vec3<u32>,
@@ -73,12 +76,12 @@ fn prefilter_x(
 ) {
     let width = i32(config.width);
     let height = i32(config.height);
-    let base_x = i32(workgroup_id.x) * PREFILTER_TILE_SIZE;
-    let base_y = i32(workgroup_id.y) * PREFILTER_TILE_SIZE;
+    let base_x = i32(workgroup_id.x) * PREFILTER_X_WIDTH;
+    let base_y = i32(workgroup_id.y) * PREFILTER_X_HEIGHT;
 
     for (var tile_index = local_index; tile_index < PREFILTER_TILE_PIXELS; tile_index += 256u) {
-        let tile_x = i32(tile_index % u32(PREFILTER_TILE_STRIDE));
-        let tile_y = i32(tile_index / u32(PREFILTER_TILE_STRIDE));
+        let tile_x = i32(tile_index % u32(PREFILTER_X_STRIDE));
+        let tile_y = i32(tile_index / u32(PREFILTER_X_STRIDE));
         let sample_x = mirror_coordinate(base_x + tile_x - FIR_RADIUS, width);
         let sample_y = min(base_y + tile_y, height - 1);
         prefilter_tile[tile_index] =
@@ -93,7 +96,7 @@ fn prefilter_x(
     }
     var result = 0.0;
     for (var tap = -FIR_RADIUS; tap <= FIR_RADIUS; tap = tap + 1) {
-        let tile_index = i32(local_id.y) * PREFILTER_TILE_STRIDE
+        let tile_index = i32(local_id.y) * PREFILTER_X_STRIDE
             + i32(local_id.x) + FIR_RADIUS + tap;
         let sample = prefilter_tile[tile_index];
         result = result + fir_weights.values[u32(tap + FIR_RADIUS)] * sample;
@@ -101,7 +104,7 @@ fn prefilter_x(
     temporary.values[u32(y * width + x)] = result;
 }
 
-@compute @workgroup_size(16, 16)
+@compute @workgroup_size(8, 32)
 fn prefilter_y(
     @builtin(workgroup_id) workgroup_id: vec3<u32>,
     @builtin(local_invocation_id) local_id: vec3<u32>,
@@ -109,12 +112,12 @@ fn prefilter_y(
 ) {
     let width = i32(config.width);
     let height = i32(config.height);
-    let base_x = i32(workgroup_id.x) * PREFILTER_TILE_SIZE;
-    let base_y = i32(workgroup_id.y) * PREFILTER_TILE_SIZE;
+    let base_x = i32(workgroup_id.x) * PREFILTER_Y_WIDTH;
+    let base_y = i32(workgroup_id.y) * PREFILTER_Y_HEIGHT;
 
     for (var tile_index = local_index; tile_index < PREFILTER_TILE_PIXELS; tile_index += 256u) {
-        let tile_x = i32(tile_index % u32(PREFILTER_TILE_SIZE));
-        let tile_y = i32(tile_index / u32(PREFILTER_TILE_SIZE));
+        let tile_x = i32(tile_index % u32(PREFILTER_Y_WIDTH));
+        let tile_y = i32(tile_index / u32(PREFILTER_Y_WIDTH));
         let sample_x = min(base_x + tile_x, width - 1);
         let sample_y = mirror_coordinate(base_y + tile_y - FIR_RADIUS, height);
         prefilter_tile[tile_index] = temporary.values[u32(sample_y * width + sample_x)];
@@ -128,7 +131,7 @@ fn prefilter_y(
     }
     var result = 0.0;
     for (var tap = -FIR_RADIUS; tap <= FIR_RADIUS; tap = tap + 1) {
-        let tile_index = (i32(local_id.y) + FIR_RADIUS + tap) * PREFILTER_TILE_SIZE
+        let tile_index = (i32(local_id.y) + FIR_RADIUS + tap) * PREFILTER_Y_WIDTH
             + i32(local_id.x);
         result = result + fir_weights.values[u32(tap + FIR_RADIUS)]
             * prefilter_tile[tile_index];

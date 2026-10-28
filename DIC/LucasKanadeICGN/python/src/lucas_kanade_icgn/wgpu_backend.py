@@ -1018,10 +1018,11 @@ class ICGNWGPU:
 
         encoder.clear_buffer(slot.buffers["state"])
         encoder.clear_buffer(slot.buffers["filtered_state"])
-        prefilter_workgroups = ((self.width + 15) // 16, (self.height + 15) // 16, 1)
+        prefilter_x_workgroups = ((self.width + 31) // 32, (self.height + 7) // 8, 1)
+        prefilter_y_workgroups = ((self.width + 7) // 8, (self.height + 31) // 32, 1)
         for pipeline, workgroups, bind_group in (
-            (self._prefilter_x, prefilter_workgroups, slot.bind_group),
-            (self._prefilter_y, prefilter_workgroups, slot.bind_group),
+            (self._prefilter_x, prefilter_x_workgroups, slot.bind_group),
+            (self._prefilter_y, prefilter_y_workgroups, slot.bind_group),
             (
                 solver_pipeline,
                 (self.grid_width * self.grid_height, 1, 1),
@@ -1121,10 +1122,11 @@ class ICGNWGPU:
         encoder = self.device.create_command_encoder(label="DIC-RT selective coarse solve")
         encoder.clear_buffer(slot.buffers["state"])
         encoder.clear_buffer(slot.buffers["filtered_state"])
-        prefilter_workgroups = ((self.width + 15) // 16, (self.height + 15) // 16, 1)
+        prefilter_x_workgroups = ((self.width + 31) // 32, (self.height + 7) // 8, 1)
+        prefilter_y_workgroups = ((self.width + 7) // 8, (self.height + 31) // 32, 1)
         for pipeline, workgroups, bind_group in (
-            (self._prefilter_x, prefilter_workgroups, slot.bind_group),
-            (self._prefilter_y, prefilter_workgroups, slot.bind_group),
+            (self._prefilter_x, prefilter_x_workgroups, slot.bind_group),
+            (self._prefilter_y, prefilter_y_workgroups, slot.bind_group),
             (
                 self._seeded_solver,
                 (self.grid_width * self.grid_height, 1, 1),
