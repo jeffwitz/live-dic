@@ -27,6 +27,8 @@ Choose the section that matches your task:
 * :doc:`how-to/process-live-frames` for NumPy frames from an acquisition source;
 * :doc:`how-to/benchmark` to measure throughput and latency correctly;
 * :doc:`reference/api` for the exact Python interface;
+* :doc:`reference/performance` for measured Three.js, GPU-IO, and SYCL results
+  on the validation machine;
 * :doc:`explanation/realtime-performance` to understand what "real time" means
   for this pipeline.
 
@@ -68,6 +70,7 @@ acquisition and codec integration are deliberately outside the current path.
    reference/api
    reference/result-layout
    reference/command-line
+   reference/performance
 
 .. toctree::
    :hidden:

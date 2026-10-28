@@ -58,5 +58,6 @@ Benchmark the expected motion and image quality, not only the analytical test
 pair. Report at least median and p95 latency, accepted-subset count, and mean
 iteration count.
 
-For reference measurements and their exact scope, see
-:doc:`../explanation/realtime-performance`.
+For the measured Three.js, GPU-IO, and SYCL results on the validation machine,
+see :doc:`../reference/performance`. For the interpretation of timing
+boundaries, see :doc:`../explanation/realtime-performance`.

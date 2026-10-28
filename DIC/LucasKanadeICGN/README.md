@@ -98,7 +98,11 @@ subsets centered at `(8 + 16i, 8 + 16j)`, a `1e-3` pixel tolerance, a minimum
 ZNCC of `0.8`, and at most 30 iterations with per-subset early convergence.
 
 Measured accuracy and performance are recorded in
-[`BENCHMARK.md`](./BENCHMARK.md).
+[`BENCHMARK.md`](./BENCHMARK.md). The Sphinx
+[`performance reference`](./docs/reference/performance.rst) compares Three.js,
+GPU-IO, and the external
+[`DIC_FROM_H264` SYCL implementation](https://github.com/jeffwitz/DIC_FROM_H264)
+on the validation machine.
 
 ## Documentation
 

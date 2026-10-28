@@ -35,6 +35,9 @@ This implementation exposes several useful but different boundaries:
 Validated reference result
 --------------------------
 
+The authoritative machine-specific results, including the external SYCL
+implementation, are maintained on the :doc:`../reference/performance` page.
+
 For the ``t=0 -> 10`` analytical translation on Intel Lunar Lake, the current
 30-run campaigns report:
 
