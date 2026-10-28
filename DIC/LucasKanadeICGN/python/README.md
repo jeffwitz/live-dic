@@ -7,8 +7,9 @@
 
 This package exposes the affine IC-GN solver in the parent directory to Python
 without opening a visible browser window or loading graphical controls.
-Chromium is used as an invisible runtime for WebGL2/GPU-IO, Three.js/TSL, and
-the raw WebGPU shared-WGSL backend. The optional `ICGNWGPU` backend runs
+Chromium is used as an invisible runtime for Three.js/TSL on WebGPU or WebGL2,
+the raw WebGPU shared-WGSL backend, and the deprecated GPU-IO compatibility
+backend. The optional `ICGNWGPU` backend runs
 in-process and does not start Chromium.
 
 ## Requirements and installation
@@ -31,10 +32,10 @@ the optional dependency group:
 .venv-icgn/bin/pip install -e 'DIC/LucasKanadeICGN/python[native]'
 ```
 
-The wheel embeds the GPU-IO runtime, Three.js r186 runtime, raw WebGPU adapter,
-canonical WGSL, and first-party subgroup GLSL/SPIR-V shaders. The installed
-runtime therefore needs neither a source checkout, shader compiler, nor
-network access.
+The wheel embeds the Three.js r186 runtime, raw WebGPU adapter, canonical WGSL,
+first-party subgroup GLSL/SPIR-V shaders, and the deprecated GPU-IO runtime.
+The installed runtime therefore needs neither a source checkout, shader
+compiler, nor network access.
 `repo_root=...` remains available as an explicit development override for a
 backend-specific runtime directory or for a complete `tests_gpuio` checkout.
 
@@ -111,11 +112,13 @@ prepares the reference once. The synchronous API works inside Jupyter notebooks
 that already have an active `asyncio` event loop. An engine instance must not be
 used concurrently from multiple threads.
 
-`backend="three-tsl"` is the default. It selects WebGPU when available and
-falls back to a serial Three.js/TSL transform-feedback solver on WebGL2. Use
+`backend="three-tsl"` is the default and supported browser path. It selects
+WebGPU when available and falls back to a serial Three.js/TSL
+transform-feedback solver on WebGL2. Use
 `force_three_webgl=True` to qualify that fallback even on a WebGPU-capable
-machine. Use `backend="gpuio"` to select the historical fused WebGL2
-implementation. Use `backend="webgpu-wgsl"` to run the
+machine. The `backend="gpuio"` option is deprecated and remains available only
+for historical comparisons and migration validation. Use
+`backend="webgpu-wgsl"` to run the
 same portable WGSL file as wgpu-py through raw browser WebGPU. On Linux the
 default engine supplies Chromium's native headless Vulkan flags and
 `engine.info().device` identifies the selected adapter; check that it does not
@@ -151,6 +154,11 @@ with ICGNWebGL(backend="three-tsl", force_three_webgl=True) as engine:
 
 assert engine.info().solver == "serial-webgl2"
 ```
+
+Existing GPU-IO applications should normally remove the explicit
+`backend="gpuio"` selection. Use the form above only when deployment must be
+qualified specifically without WebGPU. The result schema and numerical
+parameter order do not change.
 
 ## Native WebGPU engine
 

@@ -107,11 +107,13 @@ backend with:
        --backend three-tsl --repeats 30 --warmups 5
 
 Use ``--backend webgpu-wgsl`` for the canonical portable shaders and default
-two-level pyramid in Chromium, or ``--backend gpuio`` for the WebGL2 path. Add
+two-level pyramid in Chromium. Add
 ``--pyramid-levels 1`` for a comparable single-scale campaign, or
 ``--pyramid-levels 3`` to measure the larger-capture-range graph.
 Use ``--backend three-tsl --force-three-webgl`` to measure the Three.js WebGL2
 fallback separately from its normal WebGPU path.
+Use the deprecated ``--backend gpuio`` only when reproducing the historical
+WebGL2 baseline or checking replacement regressions.
 Use ``--backend wgpu-native`` for the browser-free complete Python-call path.
 Add ``--native-solver portable`` or ``--native-solver subgroup`` to bypass
 automatic selection during a diagnostic campaign.

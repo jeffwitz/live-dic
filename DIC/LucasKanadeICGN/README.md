@@ -7,6 +7,8 @@
 > real-time DIC implementation possible. The implementation presented here is a
 > continuation of that foundation.
 
+[![Documentation](https://github.com/jeffwitz/tests_gpuio/actions/workflows/docs.yml/badge.svg)](https://github.com/jeffwitz/tests_gpuio/actions/workflows/docs.yml)
+
 ## 4K60 engineering objective
 
 The long-term objective is sustained 3840 x 2160 DIC at 60 FPS over the full
@@ -16,6 +18,19 @@ call on the validation machine. Direct upload, computation, packed readback,
 and NumPy result construction are included. Acquisition and downstream work
 are excluded, so this repository does not yet claim a qualified 4K60
 application.
+
+## Browser backend policy
+
+`three-tsl` is the supported browser backend for new applications. It uses
+WebGPU when available and automatically falls back to Three.js' WebGL2
+transform-feedback implementation when WebGPU is unavailable. Applications
+therefore no longer need GPU-IO to retain WebGL2 compatibility.
+
+The `gpuio` backend is deprecated. It remains packaged temporarily so that
+existing results can be reproduced and the replacement can be qualified on
+additional browsers and GPU vendors. It receives no new algorithmic features
+and should not be selected by new code. See the
+[GPU-IO migration guide](./docs/how-to/migrate-from-gpuio.rst).
 
 This implementation ports the affine inverse-compositional Gauss-Newton
 (IC-GN) registration core from the SYCL prototype in
@@ -119,8 +134,9 @@ full-pyramid graph. It defaults to two levels with schedules ``(12, 30)`` and
 ``(5e-3, 1e-3)`` from coarse to fine. Set ``pyramid_levels=1`` to select the
 unchanged single-scale dispatch path, or choose three levels for a larger
 capture range. Three.js/TSL and GPU-IO remain single-scale implementations.
-GPU-IO is retained temporarily as the historical WebGL2 reference while the
-new Three.js/WebGL2 fallback is qualified on additional adapters.
+The deprecated GPU-IO backend is retained temporarily as a historical WebGL2
+reference while the Three.js/WebGL2 fallback is qualified on additional
+adapters.
 
 ## Test dataset
 
@@ -150,10 +166,11 @@ All HTML and JavaScript runtime assets are embedded in the Python wheel, so an
 installed package does not need this repository or network access at runtime.
 See [`python/README.md`](./python/README.md) for installation and API examples.
 
-Three.js/TSL is the default Python and command-line backend. Select the previous
-implementation explicitly with `ICGNWebGL(backend="gpuio")` or
-`--backend gpuio`. Select the canonical shared shaders and default two-level
-pyramid in Chromium with `ICGNWebGL(backend="webgpu-wgsl")`, or the
+Three.js/TSL is the default and recommended Python and command-line backend.
+The deprecated GPU-IO implementation can still be selected explicitly with
+`ICGNWebGL(backend="gpuio")` or `--backend gpuio` for regression and
+reproducibility work only. Select the canonical shared shaders and default
+two-level pyramid in Chromium with `ICGNWebGL(backend="webgpu-wgsl")`, or the
 browser-free path with `ICGNWGPU()`.
 All return the same NumPy result schema.
 
@@ -174,9 +191,11 @@ synchronous benchmark. Its controls can select another target or rerun the
 campaign. Timings use `gl.finish()` or WebGL timer queries, so GPU completion is
 observed without including video decoding.
 
-GPU-IO, Tweakpane 3.1.2, and Tweakpane Essentials 0.1.0 are loaded from local
-files. The demo makes no CDN request. Versions, hashes, and licence locations
-are recorded in [`THIRD_PARTY.md`](./THIRD_PARTY.md).
+The legacy graphical demo still loads GPU-IO, Tweakpane 3.1.2, and Tweakpane
+Essentials 0.1.0 from local files. It is retained as an historical example and
+is not the recommended Python execution path. The demo makes no CDN request.
+Versions, hashes, and licence locations are recorded in
+[`THIRD_PARTY.md`](./THIRD_PARTY.md).
 
 Default parameters match the SYCL geometry: a 16-pixel grid spacing, 16 x 16
 subsets centered at `(8 + 16i, 8 + 16j)`, a `1e-3` pixel tolerance, a minimum
@@ -218,6 +237,8 @@ The Sphinx documentation follows the Diátaxis structure and focuses on using
 the Python implementation for real-time DIC. It starts at
 [`docs/index.rst`](./docs/index.rst) and includes tutorials, operational
 how-to guides, API reference, and explanations of IC-GN and latency boundaries.
+Every documentation-related push and pull request runs a strict Sphinx build;
+the generated HTML site is retained as a downloadable GitHub Actions artifact.
 
 Build it locally with:
 

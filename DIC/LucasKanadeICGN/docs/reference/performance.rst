@@ -6,6 +6,10 @@ reference results for regression detection, not portable performance claims.
 Driver versions, browser versions, power policy, and thermal state can change
 the result on otherwise identical hardware.
 
+``gpuio`` results are retained as historical baselines. GPU-IO is deprecated
+for application use; current WebGL2 compatibility measurements should use
+``three-tsl`` with ``force_three_webgl=True``.
+
 Validation machine
 ------------------
 

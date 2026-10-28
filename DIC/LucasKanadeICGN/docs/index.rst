@@ -23,12 +23,21 @@ Real-Time DIC in Python toward 4K60
    therefore demonstrated offline, while end-to-end acquisition remains to be
    qualified.
 
+.. important:: Browser backend policy
+
+   ``three-tsl`` is the supported browser backend for new applications. It
+   selects WebGPU first and automatically falls back to Three.js/WebGL2.
+   ``gpuio`` is deprecated and remains available temporarily only for
+   historical reproducibility and replacement qualification. See
+   :doc:`how-to/migrate-from-gpuio`.
+
 This documentation describes a Python workflow for GPU-accelerated digital
 image correlation (DIC). The current implementation performs affine
 inverse-compositional Gauss-Newton registration on grayscale frames through
-GPU-IO/WebGL2, Three.js/TSL with WebGPU and WebGL2 backends, raw browser WebGPU
-with shared WGSL kernels, and native wgpu-py backends. The default remains
-Three.js. All paths have been validated at 3840 x 2160 pixels.
+Three.js/TSL with WebGPU and WebGL2 backends, raw browser WebGPU with shared
+WGSL kernels, and native wgpu-py backends. The deprecated GPU-IO/WebGL2 path is
+retained as a historical comparison. Three.js is the default browser backend.
+All paths have been validated at 3840 x 2160 pixels.
 
 The native backend also offers opt-in selective pyramid recovery for subsets
 that fail the initial fine solve. One scale remains the default fast path. A
@@ -91,6 +100,7 @@ path.
    :caption: How-to guides
 
    how-to/install
+   how-to/migrate-from-gpuio
    how-to/process-live-frames
    how-to/benchmark
    how-to/export-results

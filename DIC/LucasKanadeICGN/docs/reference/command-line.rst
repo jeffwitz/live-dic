@@ -67,7 +67,8 @@ Runtime options
 
 ``--backend {three-tsl,webgpu-wgsl,gpuio}``
    Select the optimized Three.js WebGPU path, the canonical shared WGSL in raw
-   browser WebGPU, or the historical GPU-IO path. Default: ``three-tsl``.
+   browser WebGPU, or the deprecated historical GPU-IO path. Default:
+   ``three-tsl``. Use ``gpuio`` only to reproduce or compare legacy results.
 
 ``--force-three-webgl``
    Force ``three-tsl`` to use its serial WebGL2 transform-feedback solver. Use

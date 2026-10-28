@@ -12,8 +12,9 @@ Three.js remains the default because its subgroup-specialized TSL solver is
 faster on the validation GPU. It shares browser reference preparation and the
 same result contract, but keeps an optimized TSL implementation. TSL now also
 compiles a serial solver to GLSL transform feedback when Three.js falls back to
-WebGL2. GPU-IO remains a separate historical implementation because WebGL
-cannot execute the canonical WGSL compute shaders directly.
+WebGL2. The deprecated GPU-IO backend remains a separate historical
+implementation because WebGL cannot execute the canonical WGSL compute
+shaders directly. It is not a target for further kernel development.
 
 Architecture
 ------------

@@ -1,10 +1,22 @@
 Current limitations
 ===================
 
+Backend lifecycle
+-----------------
+
+GPU-IO is deprecated as an application backend. It is still packaged so that
+historical measurements can be reproduced and the Three.js/WebGL2 replacement
+can be tested on additional adapters. No removal release is scheduled until
+that compatibility matrix has been exercised. New numerical features are not
+planned for GPU-IO.
+
+Three.js/TSL is the supported browser path. Its automatic WebGL2 fallback
+removes the need to select GPU-IO merely because WebGPU is unavailable.
+
 Geometry and input
 ------------------
 
-* All four backends support dynamic frame dimensions and have been validated
+* All current backends support dynamic frame dimensions and have been validated
   at 3840 x 2160. Reference and target dimensions must match.
 * GPU-IO dimensions must be exact multiples of 16 because its texture grid is
   allocated when the private headless page starts. A dimension change rebuilds

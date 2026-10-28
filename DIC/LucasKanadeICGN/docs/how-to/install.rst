@@ -54,8 +54,7 @@ Three.js/TSL is the default backend. A standard engine therefore selects it:
 
    engine = ICGNWebGL()
 
-Select the previous implementation with ``ICGNWebGL(backend="gpuio")`` or the
-command-line option ``--backend gpuio``. Select the canonical portable WGSL
+Select the canonical portable WGSL
 with ``ICGNWebGL(backend="webgpu-wgsl")`` or ``--backend webgpu-wgsl``. This
 raw WebGPU adapter executes the same IC-GN and full-pyramid shader files as
 wgpu-py and defaults to two levels; pass ``pyramid_levels=1`` for the original
@@ -72,8 +71,10 @@ transform-feedback solver. Force this path during qualification with:
 
    engine = ICGNWebGL(backend="three-tsl", force_three_webgl=True)
 
-The historical ``backend="gpuio"`` remains available while this newer fallback
-is validated across the supported browser and GPU matrix.
+The historical ``backend="gpuio"`` is deprecated. It remains available while
+the Three.js fallback is validated across the supported browser and GPU
+matrix, but new applications should not select it. Follow
+:doc:`migrate-from-gpuio` when updating existing code.
 
 Install and select native WebGPU
 ---------------------------------

@@ -1,0 +1,70 @@
+name: Documentation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".readthedocs.yaml"
+      - ".github/workflows/docs.yml"
+      - "DIC/LucasKanadeICGN/docs/**"
+      - "DIC/LucasKanadeICGN/python/pyproject.toml"
+      - "DIC/LucasKanadeICGN/python/src/**"
+      - "DIC/LucasKanadeICGN/README.md"
+      - "DIC/LucasKanadeICGN/python/README.md"
+  pull_request:
+    paths:
+      - ".readthedocs.yaml"
+      - ".github/workflows/docs.yml"
+      - "DIC/LucasKanadeICGN/docs/**"
+      - "DIC/LucasKanadeICGN/python/pyproject.toml"
+      - "DIC/LucasKanadeICGN/python/src/**"
+      - "DIC/LucasKanadeICGN/README.md"
+      - "DIC/LucasKanadeICGN/python/README.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: documentation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sphinx:
+    name: Sphinx warnings-as-errors
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            DIC/LucasKanadeICGN/docs/requirements.txt
+            DIC/LucasKanadeICGN/python/pyproject.toml
+
+      - name: Install documentation dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r DIC/LucasKanadeICGN/docs/requirements.txt
+          python -m pip install DIC/LucasKanadeICGN/python
+
+      - name: Build documentation
+        run: |
+          python -m sphinx -W --keep-going -b html \
+            DIC/LucasKanadeICGN/docs \
+            DIC/LucasKanadeICGN/docs/_build/html
+
+      - name: Upload HTML documentation
+        uses: actions/upload-artifact@v4
+        with:
+          name: dic-rt-html-documentation
+          path: DIC/LucasKanadeICGN/docs/_build/html
+          if-no-files-found: error
+          retention-days: 14

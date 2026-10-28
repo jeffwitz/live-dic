@@ -1,9 +1,10 @@
 Pipeline architecture
 =====================
 
-The Python API controls a persistent GPU-IO/WebGL2 backend, an optimized
-Three.js/TSL backend that selects WebGPU or falls back to WebGL2, a raw WebGPU
-adapter using the canonical WGSL, or the experimental native wgpu-py backend.
+The Python API controls an optimized Three.js/TSL backend that selects WebGPU
+or falls back to WebGL2, a raw WebGPU adapter using the canonical WGSL, or the
+experimental native wgpu-py backend. The deprecated GPU-IO/WebGL2 backend is
+retained only for historical comparison and migration qualification.
 Chromium is an execution environment
 for the first three, not a user interface:
 each headless page loads only its numerical runtime, creates no controls, and

@@ -22,6 +22,11 @@ to Three.js' WebGL2 transform-feedback backend. Set ``force_three_webgl=True``
 to test that compatibility path explicitly. ``EngineInfo.solver`` then reports
 ``serial-webgl2`` instead of ``subgroup`` or ``portable-workgroup``.
 
+``backend="gpuio"`` is deprecated. It remains callable for historical
+reproducibility and cross-backend regression tests, but new applications
+should use ``three-tsl``. The Three.js fallback provides WebGL2 compatibility
+without changing the public result schema.
+
 Native engine
 -------------
 
