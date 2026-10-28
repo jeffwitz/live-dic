@@ -129,15 +129,17 @@ guarantee. On the validation Intel driver the native SPIR-V subgroup pipeline
 was slower, while the Three.js WGSL subgroup pipeline remained the browser's
 faster implementation.
 
-Native full pyramid: one submission, ordered GPU passes
---------------------------------------------------------
+Shared WebGPU full pyramid: ordered GPU passes
+-----------------------------------------------
 
-The recommended native ``ICGNWGPUFullPyramid`` path follows the established
+The native ``ICGNWGPUFullPyramid`` and raw browser ``webgpu-wgsl`` paths follow
+the established
 coarse-to-fine pyramidal LK organization exposed by `NVIDIA VPI
 <https://docs.nvidia.com/vpi/algo_optflow_lk.html>`_ and `OpenCV CUDA
 <https://docs.opencv.org/4.x/d7/d05/classcv_1_1cuda_1_1SparsePyrLKOpticalFlow.html>`_.
-It does not use one monolithic megakernel. Instead, all dependent compute
-passes are recorded into one command encoder and submitted once:
+They do not use one monolithic megakernel. Instead, all dependent compute
+passes are recorded into one command encoder and submitted once for the
+calculation:
 
 .. code-block:: text
 
@@ -162,11 +164,13 @@ passes are recorded into one command encoder and submitted once:
              v
    one packed finest-level readback
 
-Pass boundaries provide device-wide ordering without a Python synchronization
+Pass boundaries provide device-wide ordering without a host synchronization
 point. Reference pixels, gradients, inverse Hessians, metadata, target spline
 coefficients, affine states, and transferred seeds are allocated once and stay
 on the same device. The two-level default uses ``(12, 30)`` maximum iterations
 from coarse to fine. Three levels use the robust ``(6, 8, 20)`` schedule.
+Setting one level creates only the original fine-level resources and
+dispatches; no reduction or seed transfer is encoded.
 
 Iteration limits are ceilings rather than fixed costs: each subset exits as
 soon as its corner-change and ZNCC criteria converge. On the measured 4K
@@ -175,6 +179,38 @@ average. A descending ``(12, 8, 6)`` latency profile saved about 0.55 ms but
 lost 421 accepted subsets, so it remains opt-in. The remaining extra-level
 cost is dominated by fixed reduction, prefilter, seed-transfer, and dispatch
 work rather than the fine iteration ceiling.
+
+Three.js/WebGL2: serial TSL through transform feedback
+------------------------------------------------------
+
+When WebGPU is unavailable, Three.js compiles a separate TSL solver to a
+WebGL2 vertex program and captures its outputs with transform feedback. One
+invocation owns one subset and performs the complete 16 x 16 accumulation and
+iteration loop serially. It calls the same TSL interpolation, Hessian solve,
+inverse composition, convergence, and median helpers as the WebGPU variants,
+but contains no workgroup arrays, barriers, or subgroup operations.
+
+.. code-block:: text
+
+   one transform-feedback invocation / subset
+              |
+              +--> serial 16 x 16 accumulation
+              +--> affine inverse-compositional update
+              +--> repeat until convergence or iteration ceiling
+              |
+              v
+   translation + linear terms + status buffers
+
+Three.js PBO-backed storage nodes provide indexed reads for the target
+coefficients, reference fields, Hessians, and neighbouring subset states. The
+horizontal prefilter, vertical prefilter, solver, and median kernels are grouped
+in one ordered ``computeAsync`` call so buffer ping-pong remains visible between
+passes without a JavaScript synchronization after each kernel.
+
+This path exists for compatibility, not for 4K60. It avoids maintaining another
+set of equations and is materially faster than the historical GPU-IO backend
+on the validation machine, but it still exposes parallelism only between
+subsets.
 
 GPU-IO/WebGL2: one fused fragment per subset
 --------------------------------------------
@@ -236,9 +272,9 @@ Scaling consequences
 
 At 512 x 512 there are 1,024 subsets; at 3840 x 2160 there are 32,400. The
 WebGPU backend exposes parallelism both *between* subsets and *within* each
-subset. GPU-IO exposes only the first level. The measured results on the
-validation machine reflect that distinction: GPU-IO remains a correct offline
-and regression backend at UHD, while the cooperative Three.js solver is the
+subset. Both WebGL2 paths expose only the first level. The measured results on
+the validation machine reflect that distinction: Three.js/WebGL2 and GPU-IO
+remain compatibility paths at UHD, while cooperative Three.js/WebGPU is the
 default performance path. See :doc:`../reference/performance` for the exact
 timing boundaries and campaign results.
 

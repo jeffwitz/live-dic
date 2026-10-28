@@ -47,16 +47,22 @@ The Three.js backend implements those same operations as TSL storage-buffer
 compute kernels: two target prefilter passes, the six-parameter affine IC-GN
 solver, and the final median consistency pass. A startup probe selects a fused
 16-lane subgroup solver when the adapter supports it; a portable
-workgroup-memory solver remains available automatically. It is an
+workgroup-memory solver remains available automatically. When WebGPU is not
+available, the same TSL implementation now falls back to Three.js' WebGL2
+transform-feedback backend and selects a serial one-invocation-per-subset
+solver. The WebGL2 path shares the mathematical helpers and result layout but
+does not attempt to emulate workgroup barriers. It is an
 implementation of the DIC-RT equations in this repository, not a copy of
 Strobox. Three.js r186 and its licence are vendored locally under
 [`three/vendor/`](./three/vendor/) for offline execution.
 
 The raw browser adapter and wgpu-py load the same canonical
-[`icgn.wgsl`](./python/src/lucas_kanade_icgn/shaders/icgn.wgsl) source. It owns
-the FIR prefilter, increment solve, inverse affine composition, convergence,
-and spatial median rules. Their host adapters only allocate resources,
-transfer frames, dispatch kernels, and convert the common packed result. The
+[`icgn.wgsl`](./python/src/lucas_kanade_icgn/shaders/icgn.wgsl) and
+[`full_pyramid.wgsl`](./python/src/lucas_kanade_icgn/shaders/full_pyramid.wgsl)
+sources. They own the FIR prefilter, increment solve, inverse affine
+composition, convergence, spatial median rules, image reduction, and affine
+seed transfer. Their host adapters only allocate resources, transfer frames,
+dispatch kernels, and convert the common packed result. The
 optimized Three.js path keeps its TSL implementation because subgroup
 collectives are faster on the validation GPU, but it now shares named
 mathematical helpers and browser reference preparation instead of duplicating
@@ -92,7 +98,7 @@ The remaining differences are platform constraints: the browser backends use
 single precision and do not expose the same register controls or queue model as
 SYCL/Level Zero. This version does not implement Aitken acceleration,
 predictive tolerance, temporal/extrapolated initialization, or the H.264
-pipeline. The native wgpu-py engine now provides an optional selective image
+pipeline. The native wgpu-py engine provides an optional selective image
 pyramid: ``pyramid_levels=1`` is the unchanged default fast path, while
 ``pyramid_levels=2`` retries only failed fine subsets from half-resolution
 seeds and preserves every previously accepted result bit for bit.
@@ -107,6 +113,14 @@ measured 14.811 ms (67.5 FPS) at 3840 x 2160 for the controlled ``(+4, -2)``
 translation while accepting 31,692 of 32,400 subsets. Three levels remain
 available explicitly for larger expected displacements. See the performance
 reference for the exact boundary and caveats.
+
+The raw browser ``webgpu-wgsl`` backend now runs that same GPU-resident
+full-pyramid graph. It defaults to two levels with schedules ``(12, 30)`` and
+``(5e-3, 1e-3)`` from coarse to fine. Set ``pyramid_levels=1`` to select the
+unchanged single-scale dispatch path, or choose three levels for a larger
+capture range. Three.js/TSL and GPU-IO remain single-scale implementations.
+GPU-IO is retained temporarily as the historical WebGL2 reference while the
+new Three.js/WebGL2 fallback is qualified on additional adapters.
 
 ## Test dataset
 
@@ -138,9 +152,14 @@ See [`python/README.md`](./python/README.md) for installation and API examples.
 
 Three.js/TSL is the default Python and command-line backend. Select the previous
 implementation explicitly with `ICGNWebGL(backend="gpuio")` or
-`--backend gpuio`. Select the canonical shared shader in Chromium with
-`ICGNWebGL(backend="webgpu-wgsl")`, or the browser-free path with `ICGNWGPU()`.
+`--backend gpuio`. Select the canonical shared shaders and default two-level
+pyramid in Chromium with `ICGNWebGL(backend="webgpu-wgsl")`, or the
+browser-free path with `ICGNWGPU()`.
 All return the same NumPy result schema.
+
+Three.js chooses WebGPU first and falls back to WebGL2 when necessary. Use
+`ICGNWebGL(backend="three-tsl", force_three_webgl=True)` or
+`--force-three-webgl` to exercise and qualify the compatibility path explicitly.
 
 ## Optional browser demo
 

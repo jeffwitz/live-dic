@@ -26,9 +26,9 @@ Real-Time DIC in Python toward 4K60
 This documentation describes a Python workflow for GPU-accelerated digital
 image correlation (DIC). The current implementation performs affine
 inverse-compositional Gauss-Newton registration on grayscale frames through
-GPU-IO/WebGL2, Three.js/TSL WebGPU, raw browser WebGPU with a shared WGSL
-kernel, and native wgpu-py backends. The default remains Three.js. All four
-paths have been validated at 3840 x 2160 pixels.
+GPU-IO/WebGL2, Three.js/TSL with WebGPU and WebGL2 backends, raw browser WebGPU
+with shared WGSL kernels, and native wgpu-py backends. The default remains
+Three.js. All paths have been validated at 3840 x 2160 pixels.
 
 The native backend also offers opt-in selective pyramid recovery for subsets
 that fail the initial fine solve. One scale remains the default fast path. A

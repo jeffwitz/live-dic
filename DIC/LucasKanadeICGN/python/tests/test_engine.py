@@ -64,7 +64,7 @@ class RegistrationResultTests(unittest.TestCase):
             "replaced": 1,
             "meanTranslation": [2, -1],
             "meanIterations": 5,
-            "timing": {"solveWallMs": 4.2},
+            "timing": {"solveWallMs": 4.2, "gpuMs": None},
             "config": {"iterations": 30},
             "width": 512,
             "height": 512,
@@ -76,6 +76,7 @@ class RegistrationResultTests(unittest.TestCase):
         self.assertEqual(int(result.accepted_mask.sum()), 3)
         self.assertEqual(int(result.replaced_mask.sum()), 1)
         self.assertEqual(result.rmse((2, -1)), 0.0)
+        self.assertNotIn("gpuMs", result.timing)
 
     def test_benchmark_payload_keeps_timing_samples(self) -> None:
         registration = {
@@ -132,6 +133,46 @@ class RuntimeAssetTests(unittest.TestCase):
         one_shot_default = inspect.signature(register_pair).parameters["backend"].default
         self.assertEqual(engine_default, "three-tsl")
         self.assertEqual(one_shot_default, "three-tsl")
+        self.assertIn("pyramid_levels", inspect.signature(register_pair).parameters)
+
+    def test_shared_wgsl_backend_defaults_to_two_pyramid_levels(self) -> None:
+        engine = ICGNWebGL(backend="webgpu-wgsl")
+        self.assertEqual(engine.pyramid_levels, 2)
+        self.assertIsNone(engine.iterations_per_level)
+        self.assertEqual(
+            engine._options(iterations=None, tolerance=None, zncc_min=None)["pyramidLevels"],
+            2,
+        )
+
+    def test_browser_pyramid_options_are_validated(self) -> None:
+        for levels in (0, 4, 1.5, True):
+            with self.subTest(levels=levels), self.assertRaisesRegex(ValueError, "pyramid_levels"):
+                ICGNWebGL(backend="webgpu-wgsl", pyramid_levels=levels)
+        with self.assertRaisesRegex(ValueError, "only.*webgpu-wgsl"):
+            ICGNWebGL(backend="three-tsl", pyramid_levels=2)
+        with self.assertRaisesRegex(ValueError, "one value per pyramid level"):
+            ICGNWebGL(
+                backend="webgpu-wgsl",
+                pyramid_levels=3,
+                iterations_per_level=(8, 20),
+            )
+        for schedule in ((12.5, 30), (True, 30)):
+            with (
+                self.subTest(schedule=schedule),
+                self.assertRaisesRegex(ValueError, "iterations_per_level"),
+            ):
+                ICGNWebGL(
+                    backend="webgpu-wgsl",
+                    pyramid_levels=2,
+                    iterations_per_level=schedule,
+                )
+
+    def test_three_webgl_fallback_is_explicitly_testable(self) -> None:
+        engine = ICGNWebGL(backend="three-tsl", force_three_webgl=True)
+        self.assertTrue(engine.force_three_webgl)
+        self.assertNotIn("--use-angle=vulkan", engine.chromium_args)
+        with self.assertRaisesRegex(ValueError, "only.*three-tsl"):
+            ICGNWebGL(backend="gpuio", force_three_webgl=True)
 
     def test_packaged_runtime_is_complete(self) -> None:
         assets = _find_runtime_assets(None, "gpuio")
@@ -164,6 +205,9 @@ class RuntimeAssetTests(unittest.TestCase):
             "common/ReferencePreparation.js",
         ):
             self.assertTrue((assets.root / filename).is_file(), filename)
+        implementation = (assets.root / "three/LucasKanadeICGNThree.js").read_text(encoding="utf-8")
+        self.assertIn("makeSerialSolverKernel", implementation)
+        self.assertIn("forceWebGL", implementation)
         page = (assets.root / assets.headless_path).read_text(encoding="utf-8")
         self.assertNotIn("https://", page)
         self.assertNotIn("http://", page)
@@ -187,6 +231,7 @@ class RuntimeAssetTests(unittest.TestCase):
             "web/webgpu/LucasKanadeICGNWebGPU.js",
             "web/common/ReferencePreparation.js",
             "shaders/icgn.wgsl",
+            "shaders/full_pyramid.wgsl",
         ):
             self.assertTrue((assets.root / filename).is_file(), filename)
         page = (assets.root / assets.headless_path).read_text(encoding="utf-8")

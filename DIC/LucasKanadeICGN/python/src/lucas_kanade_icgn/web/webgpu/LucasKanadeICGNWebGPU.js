@@ -1,15 +1,16 @@
 /*
  * Raw browser WebGPU adapter for the same portable WGSL used by wgpu-py.
  *
- * This adapter deliberately contains host orchestration only. The FIR,
- * affine IC-GN solve, convergence rules, and median replacement are loaded
- * from the canonical shaders/icgn.wgsl package resource.
+ * This adapter deliberately contains host orchestration only. Pyramid
+ * reduction and seed transfer come from full_pyramid.wgsl; FIR, affine IC-GN,
+ * convergence, and median replacement come from the canonical icgn.wgsl.
  */
 
 import {
   imageToGray,
   makeFIRWeights,
-  prepareReferenceData,
+  prepareReferenceGray,
+  reduceHalfGray,
 } from '../common/ReferencePreparation.js';
 
 const SUBSET_SIZE = 16;
@@ -18,18 +19,38 @@ const DEFAULT_TOLERANCE = 1e-3;
 const DEFAULT_ZNCC_MIN = 0.8;
 const FIR_RADIUS = 15;
 const SHADER_URL = new URL('../../shaders/icgn.wgsl', import.meta.url);
+const PYRAMID_SHADER_URL = new URL('../../shaders/full_pyramid.wgsl', import.meta.url);
+const DEFAULT_PYRAMID_LEVELS = 2;
+const ITERATION_SCHEDULES = {
+  1: [30],
+  2: [12, 30],
+  3: [6, 8, 20],
+};
+const TOLERANCE_SCHEDULES = {
+  1: [1e-3],
+  2: [5e-3, 1e-3],
+  3: [1e-2, 5e-3, 1e-3],
+};
 
 const configuration = {
   iterations: DEFAULT_MAX_ITERATIONS,
   tolerance: DEFAULT_TOLERANCE,
   znccMin: DEFAULT_ZNCC_MIN,
+  pyramidLevels: DEFAULT_PYRAMID_LEVELS,
+  iterationsPerLevel: [...ITERATION_SCHEDULES[DEFAULT_PYRAMID_LEVELS]],
+  tolerancePerLevel: [...TOLERANCE_SCHEDULES[DEFAULT_PYRAMID_LEVELS]],
 };
 
 let adapter = null;
 let device = null;
 let shaderModule = null;
+let pyramidShaderModule = null;
 let pipelines = null;
 let bindGroupLayout = null;
+let seededBindGroupLayout = null;
+let reduceXBindGroupLayout = null;
+let reduceYBindGroupLayout = null;
+let seedTransferBindGroupLayout = null;
 let bindGroup = null;
 let sourceTexture = null;
 let buffers = null;
@@ -37,6 +58,10 @@ let querySet = null;
 let queryResolveBuffer = null;
 let timestampQueries = false;
 let referenceReady = false;
+let levels = [];
+let reductionEdges = [];
+let seedEdges = new Map();
+let runtimePyramidLevels = 0;
 let FRAME_WIDTH = 0;
 let FRAME_HEIGHT = 0;
 let PIXEL_COUNT = 0;
@@ -65,16 +90,28 @@ const createBufferWithData = (label, data, usage) => {
 };
 
 const destroyRuntimeResources = () => {
-  if (sourceTexture) sourceTexture.destroy();
-  if (buffers) Object.values(buffers).forEach((buffer) => buffer.destroy());
+  levels.forEach((level) => {
+    level.sourceTexture.destroy();
+    Object.values(level.buffers).forEach((buffer) => buffer.destroy());
+  });
+  reductionEdges.forEach((edge) => edge.intermediate.destroy());
+  seedEdges.forEach((edge) => edge.config.destroy());
   if (querySet) querySet.destroy();
   if (queryResolveBuffer) queryResolveBuffer.destroy();
+  levels = [];
+  reductionEdges = [];
+  seedEdges = new Map();
+  runtimePyramidLevels = 0;
   sourceTexture = null;
   buffers = null;
   querySet = null;
   queryResolveBuffer = null;
   bindGroup = null;
   bindGroupLayout = null;
+  seededBindGroupLayout = null;
+  reduceXBindGroupLayout = null;
+  reduceYBindGroupLayout = null;
+  seedTransferBindGroupLayout = null;
   pipelines = null;
   referenceReady = false;
 };
@@ -84,20 +121,41 @@ const ensureDevice = async () => {
   if (!navigator.gpu) throw new Error('WebGPU is unavailable in this browser');
   adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
   if (!adapter) throw new Error('No WebGPU adapter is available');
+  const requestedStorageBuffers = Math.min(
+    10,
+    adapter.limits.maxStorageBuffersPerShaderStage,
+  );
   timestampQueries = adapter.features.has('timestamp-query');
   device = await adapter.requestDevice({
     requiredFeatures: timestampQueries ? ['timestamp-query'] : [],
+    requiredLimits: {
+      maxStorageBuffersPerShaderStage: requestedStorageBuffers,
+    },
   });
-  const shaderResponse = await fetch(SHADER_URL);
-  if (!shaderResponse.ok) {
-    throw new Error(`Cannot load the shared WGSL shader: HTTP ${shaderResponse.status}`);
+  const [shaderResponse, pyramidShaderResponse] = await Promise.all([
+    fetch(SHADER_URL),
+    fetch(PYRAMID_SHADER_URL),
+  ]);
+  if (!shaderResponse.ok || !pyramidShaderResponse.ok) {
+    throw new Error(
+      `Cannot load the shared WGSL shaders: HTTP ${shaderResponse.status}`
+      + ` / ${pyramidShaderResponse.status}`,
+    );
   }
   shaderModule = device.createShaderModule({
     label: 'DIC-RT shared portable WGSL',
     code: await shaderResponse.text(),
   });
-  const compilation = await shaderModule.getCompilationInfo();
-  const errors = compilation.messages.filter((message) => message.type === 'error');
+  pyramidShaderModule = device.createShaderModule({
+    label: 'DIC-RT shared full-pyramid WGSL',
+    code: await pyramidShaderResponse.text(),
+  });
+  const compilation = await Promise.all([
+    shaderModule.getCompilationInfo(),
+    pyramidShaderModule.getCompilationInfo(),
+  ]);
+  const errors = compilation.flatMap((result) => result.messages)
+    .filter((message) => message.type === 'error');
   if (errors.length) {
     throw new Error(errors.map((message) => message.message).join('\n'));
   }
@@ -109,8 +167,22 @@ const createRuntime = async (width, height) => {
       || width < SUBSET_SIZE || height < SUBSET_SIZE) {
     throw new Error(`Image dimensions must be integers of at least ${SUBSET_SIZE} pixels`);
   }
-  if (buffers && width === FRAME_WIDTH && height === FRAME_HEIGHT) return false;
+  const levelCount = configuration.pyramidLevels;
+  const coarsestScale = 2 ** (levelCount - 1);
+  if (Math.floor(width / coarsestScale) < SUBSET_SIZE
+      || Math.floor(height / coarsestScale) < SUBSET_SIZE) {
+    throw new Error(`The coarsest pyramid level must be at least ${SUBSET_SIZE} pixels`);
+  }
+  if (buffers && width === FRAME_WIDTH && height === FRAME_HEIGHT
+      && runtimePyramidLevels === levelCount) return false;
   await ensureDevice();
+  if (levelCount > 1 && device.limits.maxStorageBuffersPerShaderStage < 10) {
+    throw new Error(
+      'A multi-level pyramid requires at least 10 storage buffers per shader stage; '
+      + `this adapter exposes ${device.limits.maxStorageBuffersPerShaderStage}. `
+      + 'Use pyramidLevels=1 on this adapter.',
+    );
+  }
   destroyRuntimeResources();
   FRAME_WIDTH = width;
   FRAME_HEIGHT = height;
@@ -124,78 +196,81 @@ const createRuntime = async (width, height) => {
       || largestBufferBytes > device.limits.maxBufferSize) {
     throw new Error(`The ${width}x${height} reference exceeds this adapter's buffer limits`);
   }
-
-  sourceTexture = device.createTexture({
-    label: 'DIC-RT target luma',
-    size: [width, height, 1],
-    format: 'r8unorm',
-    usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.TEXTURE_BINDING,
-  });
-  const storage = GPUBufferUsage.STORAGE;
-  buffers = {
-    config: device.createBuffer({
-      label: 'DIC-RT configuration',
-      size: 32,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    }),
-    temporary: device.createBuffer({
-      label: 'DIC-RT FIR temporary', size: PIXEL_COUNT * 4, usage: storage,
-    }),
-    coefficients: device.createBuffer({
-      label: 'DIC-RT target coefficients', size: PIXEL_COUNT * 4, usage: storage,
-    }),
-    reference: device.createBuffer({
-      label: 'DIC-RT reference', size: PIXEL_COUNT * 16,
-      usage: storage | GPUBufferUsage.COPY_DST,
-    }),
-    inverse: device.createBuffer({
-      label: 'DIC-RT inverse Hessians', size: GRID_COUNT * 36 * 4,
-      usage: storage | GPUBufferUsage.COPY_DST,
-    }),
-    metadata: device.createBuffer({
-      label: 'DIC-RT metadata', size: GRID_COUNT * 16 * 4,
-      usage: storage | GPUBufferUsage.COPY_DST,
-    }),
-    state: device.createBuffer({
-      label: 'DIC-RT state', size: GRID_COUNT * 8 * 4,
-      usage: storage | GPUBufferUsage.COPY_DST,
-    }),
-    fir: createBufferWithData(
-      'DIC-RT FIR weights',
-      makeFIRWeights(FIR_RADIUS),
-      storage,
-    ),
-    filteredState: device.createBuffer({
-      label: 'DIC-RT filtered state', size: GRID_COUNT * 8 * 4,
-      usage: storage | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
-    }),
-  };
-
+  const baseLayoutEntries = [
+    { binding: 0, visibility: GPUShaderStage.COMPUTE, texture: { sampleType: 'float' } },
+    { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } },
+    { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
+    { binding: 3, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
+    { binding: 4, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } },
+    { binding: 5, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } },
+    { binding: 6, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } },
+    { binding: 7, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
+    { binding: 8, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } },
+    { binding: 9, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
+  ];
   bindGroupLayout = device.createBindGroupLayout({
     label: 'DIC-RT shared WGSL bindings',
+    entries: baseLayoutEntries,
+  });
+  seededBindGroupLayout = levelCount > 1 ? device.createBindGroupLayout({
+    label: 'DIC-RT shared seeded WGSL bindings',
+    entries: [
+      ...baseLayoutEntries,
+      { binding: 10, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } },
+      { binding: 11, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } },
+    ],
+  }) : null;
+  reduceXBindGroupLayout = device.createBindGroupLayout({
     entries: [
       { binding: 0, visibility: GPUShaderStage.COMPUTE, texture: { sampleType: 'float' } },
-      { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } },
+      {
+        binding: 1,
+        visibility: GPUShaderStage.COMPUTE,
+        storageTexture: { access: 'write-only', format: 'rgba16float' },
+      },
+    ],
+  });
+  reduceYBindGroupLayout = device.createBindGroupLayout({
+    entries: [
+      { binding: 0, visibility: GPUShaderStage.COMPUTE, texture: { sampleType: 'float' } },
+      {
+        binding: 1,
+        visibility: GPUShaderStage.COMPUTE,
+        storageTexture: { access: 'write-only', format: 'rgba8unorm' },
+      },
+    ],
+  });
+  seedTransferBindGroupLayout = device.createBindGroupLayout({
+    entries: [
+      { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } },
+      { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
       { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
-      { binding: 3, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
-      { binding: 4, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } },
-      { binding: 5, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } },
-      { binding: 6, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } },
-      { binding: 7, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
-      { binding: 8, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } },
-      { binding: 9, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
+      { binding: 3, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } },
     ],
   });
   const layout = device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] });
-  const pipeline = async (label, entryPoint) => {
+  const seededLayout = seededBindGroupLayout
+    ? device.createPipelineLayout({ bindGroupLayouts: [seededBindGroupLayout] })
+    : null;
+  const emptyLayout = device.createBindGroupLayout({ entries: [] });
+  const reduceXLayout = device.createPipelineLayout({
+    bindGroupLayouts: [reduceXBindGroupLayout],
+  });
+  const reduceYLayout = device.createPipelineLayout({
+    bindGroupLayouts: [emptyLayout, reduceYBindGroupLayout],
+  });
+  const seedLayout = device.createPipelineLayout({
+    bindGroupLayouts: [emptyLayout, emptyLayout, seedTransferBindGroupLayout],
+  });
+  const pipeline = async (label, entryPoint, module = shaderModule, pipelineLayout = layout) => {
     try {
       return await device.createComputePipelineAsync({
         label,
-        layout,
-        compute: { module: shaderModule, entryPoint },
+        layout: pipelineLayout,
+        compute: { module, entryPoint },
       });
     } catch (error) {
-      const compilation = await shaderModule.getCompilationInfo();
+      const compilation = await module.getCompilationInfo();
       const diagnostics = compilation.messages.map((message) => {
         const location = message.lineNum
           ? `${message.lineNum}:${message.linePos}`
@@ -211,18 +286,202 @@ const createRuntime = async (width, height) => {
     prefilterX: await pipeline('DIC-RT shared prefilter X', 'prefilter_x'),
     prefilterY: await pipeline('DIC-RT shared prefilter Y', 'prefilter_y'),
     solver: await pipeline('DIC-RT shared affine solver', 'solve'),
+    seededSolver: seededLayout ? await pipeline(
+      'DIC-RT shared seeded affine solver',
+      'solve_seeded',
+      shaderModule,
+      seededLayout,
+    ) : null,
     median: await pipeline('DIC-RT shared median filter', 'median_filter'),
+    reduceX: await pipeline(
+      'DIC-RT pyramid reduce X', 'reduce_x', pyramidShaderModule, reduceXLayout,
+    ),
+    reduceY: await pipeline(
+      'DIC-RT pyramid reduce Y', 'reduce_y', pyramidShaderModule, reduceYLayout,
+    ),
+    transferSeed: await pipeline(
+      'DIC-RT pyramid seed transfer', 'transfer_seed', pyramidShaderModule, seedLayout,
+    ),
   };
-  const entries = [
-    { binding: 0, resource: sourceTexture.createView() },
-    ...['config', 'temporary', 'coefficients', 'reference', 'inverse', 'metadata', 'state', 'fir', 'filteredState']
-      .map((name, index) => ({ binding: index + 1, resource: { buffer: buffers[name] } })),
-  ];
-  bindGroup = device.createBindGroup({ layout: bindGroupLayout, entries });
+
+  const storage = GPUBufferUsage.STORAGE;
+  for (let levelIndex = 0; levelIndex < levelCount; ++levelIndex) {
+    const scale = 2 ** levelIndex;
+    const levelWidth = Math.floor(width / scale);
+    const levelHeight = Math.floor(height / scale);
+    const pixelCount = levelWidth * levelHeight;
+    const gridWidth = Math.floor(levelWidth / SUBSET_SIZE);
+    const gridHeight = Math.floor(levelHeight / SUBSET_SIZE);
+    const gridCount = gridWidth * gridHeight;
+    const gpuWritable = levelIndex > 0;
+    const levelSourceTexture = device.createTexture({
+      label: `DIC-RT target luma level ${levelIndex}`,
+      size: [levelWidth, levelHeight, 1],
+      format: gpuWritable ? 'rgba8unorm' : 'r8unorm',
+      usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.TEXTURE_BINDING
+        | (gpuWritable ? GPUTextureUsage.STORAGE_BINDING : 0),
+    });
+    const levelBuffers = {
+      config: device.createBuffer({
+        label: `DIC-RT configuration level ${levelIndex}`,
+        size: 32,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      }),
+      temporary: device.createBuffer({
+        label: `DIC-RT FIR temporary level ${levelIndex}`,
+        size: pixelCount * 4,
+        usage: storage,
+      }),
+      coefficients: device.createBuffer({
+        label: `DIC-RT target coefficients level ${levelIndex}`,
+        size: pixelCount * 4,
+        usage: storage,
+      }),
+      reference: device.createBuffer({
+        label: `DIC-RT reference level ${levelIndex}`,
+        size: pixelCount * 16,
+        usage: storage | GPUBufferUsage.COPY_DST,
+      }),
+      inverse: device.createBuffer({
+        label: `DIC-RT inverse Hessians level ${levelIndex}`,
+        size: gridCount * 36 * 4,
+        usage: storage | GPUBufferUsage.COPY_DST,
+      }),
+      metadata: device.createBuffer({
+        label: `DIC-RT metadata level ${levelIndex}`,
+        size: gridCount * 16 * 4,
+        usage: storage | GPUBufferUsage.COPY_DST,
+      }),
+      state: device.createBuffer({
+        label: `DIC-RT state level ${levelIndex}`,
+        size: gridCount * 8 * 4,
+        usage: storage | GPUBufferUsage.COPY_DST,
+      }),
+      fir: createBufferWithData(
+        `DIC-RT FIR weights level ${levelIndex}`,
+        makeFIRWeights(FIR_RADIUS),
+        storage,
+      ),
+      filteredState: device.createBuffer({
+        label: `DIC-RT filtered state level ${levelIndex}`,
+        size: gridCount * 8 * 4,
+        usage: storage | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
+      }),
+    };
+    if (levelIndex < levelCount - 1) {
+      levelBuffers.seedState = device.createBuffer({
+        label: `DIC-RT seed state level ${levelIndex}`,
+        size: gridCount * 8 * 4,
+        usage: storage,
+      });
+      levelBuffers.activeMask = device.createBuffer({
+        label: `DIC-RT active mask level ${levelIndex}`,
+        size: gridCount * 4,
+        usage: storage,
+      });
+    }
+    const baseEntries = [
+      { binding: 0, resource: levelSourceTexture.createView() },
+      ...['config', 'temporary', 'coefficients', 'reference', 'inverse', 'metadata', 'state', 'fir', 'filteredState']
+        .map((name, index) => ({
+          binding: index + 1,
+          resource: { buffer: levelBuffers[name] },
+        })),
+    ];
+    const levelBindGroup = device.createBindGroup({
+      layout: bindGroupLayout,
+      entries: baseEntries,
+    });
+    const seededBindGroup = levelBuffers.seedState ? device.createBindGroup({
+      layout: seededBindGroupLayout,
+      entries: [
+        ...baseEntries,
+        { binding: 10, resource: { buffer: levelBuffers.seedState } },
+        { binding: 11, resource: { buffer: levelBuffers.activeMask } },
+      ],
+    }) : null;
+    levels.push({
+      index: levelIndex,
+      width: levelWidth,
+      height: levelHeight,
+      pixelCount,
+      gridWidth,
+      gridHeight,
+      gridCount,
+      sourceTexture: levelSourceTexture,
+      buffers: levelBuffers,
+      bindGroup: levelBindGroup,
+      seededBindGroup,
+    });
+  }
+
+  for (let levelIndex = 1; levelIndex < levelCount; ++levelIndex) {
+    const source = levels[levelIndex - 1];
+    const destination = levels[levelIndex];
+    const intermediate = device.createTexture({
+      label: `DIC-RT horizontal pyramid level ${levelIndex}`,
+      size: [destination.width, source.height, 1],
+      format: 'rgba16float',
+      usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING,
+    });
+    reductionEdges.push({
+      source,
+      destination,
+      intermediate,
+      horizontalBindGroup: device.createBindGroup({
+        layout: reduceXBindGroupLayout,
+        entries: [
+          { binding: 0, resource: source.sourceTexture.createView() },
+          { binding: 1, resource: intermediate.createView() },
+        ],
+      }),
+      verticalBindGroup: device.createBindGroup({
+        layout: reduceYBindGroupLayout,
+        entries: [
+          { binding: 0, resource: intermediate.createView() },
+          { binding: 1, resource: destination.sourceTexture.createView() },
+        ],
+      }),
+    });
+  }
+
+  for (let destinationIndex = levelCount - 2; destinationIndex >= 0; --destinationIndex) {
+    const source = levels[destinationIndex + 1];
+    const destination = levels[destinationIndex];
+    const bytes = new ArrayBuffer(32);
+    const view = new DataView(bytes);
+    [source.gridWidth, source.gridHeight, destination.gridWidth, destination.gridCount]
+      .forEach((value, index) => view.setUint32(index * 4, value, true));
+    view.setFloat32(16, 2 ** (destinationIndex + 1), true);
+    view.setFloat32(20, 2 ** destinationIndex, true);
+    const config = createBufferWithData(
+      `DIC-RT seed transfer level ${destinationIndex}`,
+      new Uint8Array(bytes),
+      GPUBufferUsage.UNIFORM,
+    );
+    seedEdges.set(destinationIndex, {
+      config,
+      bindGroup: device.createBindGroup({
+        layout: seedTransferBindGroupLayout,
+        entries: [
+          { binding: 0, resource: { buffer: source.buffers.filteredState } },
+          { binding: 1, resource: { buffer: destination.buffers.seedState } },
+          { binding: 2, resource: { buffer: destination.buffers.activeMask } },
+          { binding: 3, resource: { buffer: config } },
+        ],
+      }),
+    });
+  }
+
+  sourceTexture = levels[0].sourceTexture;
+  buffers = levels[0].buffers;
+  bindGroup = levels[0].bindGroup;
+  runtimePyramidLevels = levelCount;
   if (timestampQueries) {
-    querySet = device.createQuerySet({ type: 'timestamp', count: 8 });
+    const passCount = 7 * levelCount - 3;
+    querySet = device.createQuerySet({ type: 'timestamp', count: 2 * passCount });
     queryResolveBuffer = device.createBuffer({
-      size: 8 * BigUint64Array.BYTES_PER_ELEMENT,
+      size: 2 * passCount * BigUint64Array.BYTES_PER_ELEMENT,
       usage: GPUBufferUsage.QUERY_RESOLVE | GPUBufferUsage.COPY_SRC,
     });
   }
@@ -232,32 +491,63 @@ const createRuntime = async (width, height) => {
 };
 
 const updateConfig = () => {
-  if (!buffers) return;
-  const bytes = new ArrayBuffer(32);
-  const view = new DataView(bytes);
-  const integers = [
-    FRAME_WIDTH,
-    FRAME_HEIGHT,
-    GRID_WIDTH,
-    GRID_COUNT,
-    configuration.iterations,
-    PIXEL_COUNT,
-  ];
-  integers.forEach((value, index) => view.setUint32(index * 4, value, true));
-  view.setFloat32(24, configuration.tolerance, true);
-  view.setFloat32(28, configuration.znccMin, true);
-  device.queue.writeBuffer(buffers.config, 0, bytes);
+  if (!levels.length) return;
+  levels.forEach((level) => {
+    const scheduleIndex = configuration.pyramidLevels - 1 - level.index;
+    const bytes = new ArrayBuffer(32);
+    const view = new DataView(bytes);
+    const integers = [
+      level.width,
+      level.height,
+      level.gridWidth,
+      level.gridCount,
+      configuration.iterationsPerLevel[scheduleIndex],
+      level.pixelCount,
+    ];
+    integers.forEach((value, index) => view.setUint32(index * 4, value, true));
+    view.setFloat32(24, configuration.tolerancePerLevel[scheduleIndex], true);
+    view.setFloat32(28, configuration.znccMin, true);
+    device.queue.writeBuffer(level.buffers.config, 0, bytes);
+  });
 };
 
-const configure = (options = {}) => {
+const configure = (options = {}, allowPyramidRebuild = false) => {
+  const pyramidLevels = options.pyramidLevels === undefined
+    ? configuration.pyramidLevels : Number(options.pyramidLevels);
+  if (!Number.isInteger(pyramidLevels) || pyramidLevels < 1 || pyramidLevels > 3) {
+    throw new Error('pyramidLevels must be an integer between 1 and 3');
+  }
+  if (!allowPyramidRebuild && levels.length && pyramidLevels !== runtimePyramidLevels) {
+    throw new Error('Changing pyramidLevels requires setReference() to rebuild the runtime');
+  }
+  const changedLevels = pyramidLevels !== configuration.pyramidLevels;
+  const iterationsPerLevel = options.iterationsPerLevel === undefined
+    ? (changedLevels
+      ? [...ITERATION_SCHEDULES[pyramidLevels]]
+      : [...configuration.iterationsPerLevel])
+    : Array.from(options.iterationsPerLevel, Number);
+  const tolerancePerLevel = options.tolerancePerLevel === undefined
+    ? (changedLevels
+      ? [...TOLERANCE_SCHEDULES[pyramidLevels]]
+      : [...configuration.tolerancePerLevel])
+    : Array.from(options.tolerancePerLevel, Number);
+  if (iterationsPerLevel.length !== pyramidLevels
+      || tolerancePerLevel.length !== pyramidLevels) {
+    throw new Error('Per-level schedules must contain one value per pyramid level');
+  }
   const next = {
     iterations: options.iterations === undefined
-      ? configuration.iterations : Number(options.iterations),
+      ? iterationsPerLevel[pyramidLevels - 1] : Number(options.iterations),
     tolerance: options.tolerance === undefined
-      ? configuration.tolerance : Number(options.tolerance),
+      ? tolerancePerLevel[pyramidLevels - 1] : Number(options.tolerance),
     znccMin: options.znccMin === undefined
       ? configuration.znccMin : Number(options.znccMin),
+    pyramidLevels,
+    iterationsPerLevel,
+    tolerancePerLevel,
   };
+  next.iterationsPerLevel[pyramidLevels - 1] = next.iterations;
+  next.tolerancePerLevel[pyramidLevels - 1] = next.tolerance;
   if (!Number.isInteger(next.iterations) || next.iterations < 1 || next.iterations > 30) {
     throw new Error('iterations must be an integer between 1 and 30');
   }
@@ -267,6 +557,16 @@ const configure = (options = {}) => {
   if (!Number.isFinite(next.znccMin) || next.znccMin < 0 || next.znccMin > 1) {
     throw new Error('znccMin must be between 0 and 1');
   }
+  next.iterationsPerLevel.forEach((value) => {
+    if (!Number.isInteger(value) || value < 1 || value > 30) {
+      throw new Error('Each per-level iteration count must be between 1 and 30');
+    }
+  });
+  next.tolerancePerLevel.forEach((value) => {
+    if (!Number.isFinite(value) || value <= 0) {
+      throw new Error('Each per-level tolerance must be greater than zero');
+    }
+  });
   Object.assign(configuration, next);
   updateConfig();
   return { ...configuration };
@@ -284,35 +584,98 @@ const setTarget = (image) => {
 };
 
 const executePipeline = async ({ measureGpu = false } = {}) => {
-  const encoder = device.createCommandEncoder({ label: 'DIC-RT shared WGSL registration' });
-  encoder.clearBuffer(buffers.state);
-  encoder.clearBuffer(buffers.filteredState);
-  const jobs = [
-    [pipelines.prefilterX, Math.ceil(PIXEL_COUNT / 256)],
-    [pipelines.prefilterY, Math.ceil(PIXEL_COUNT / 256)],
-    [pipelines.solver, GRID_COUNT],
-    [pipelines.median, Math.ceil(GRID_COUNT / 256)],
-  ];
-  jobs.forEach(([pipeline, workgroups], index) => {
+  const encoder = device.createCommandEncoder({ label: 'DIC-RT full-pyramid registration' });
+  levels.forEach((level) => {
+    encoder.clearBuffer(level.buffers.state);
+    encoder.clearBuffer(level.buffers.filteredState);
+  });
+  const jobs = [];
+  reductionEdges.forEach((edge) => {
+    jobs.push({
+      pipeline: pipelines.reduceX,
+      bindGroup: edge.horizontalBindGroup,
+      group: 0,
+      workgroups: [Math.ceil(edge.destination.width / 16), Math.ceil(edge.source.height / 16), 1],
+    });
+    jobs.push({
+      pipeline: pipelines.reduceY,
+      bindGroup: edge.verticalBindGroup,
+      group: 1,
+      workgroups: [
+        Math.ceil(edge.destination.width / 16),
+        Math.ceil(edge.destination.height / 16),
+        1,
+      ],
+    });
+  });
+  const appendLevel = (level, seeded) => {
+    jobs.push(
+      {
+        pipeline: pipelines.prefilterX,
+        bindGroup: level.bindGroup,
+        group: 0,
+        workgroups: [Math.ceil(level.pixelCount / 256), 1, 1],
+      },
+      {
+        pipeline: pipelines.prefilterY,
+        bindGroup: level.bindGroup,
+        group: 0,
+        workgroups: [Math.ceil(level.pixelCount / 256), 1, 1],
+      },
+      {
+        pipeline: seeded ? pipelines.seededSolver : pipelines.solver,
+        bindGroup: seeded ? level.seededBindGroup : level.bindGroup,
+        group: 0,
+        workgroups: [level.gridCount, 1, 1],
+      },
+      {
+        pipeline: pipelines.median,
+        bindGroup: level.bindGroup,
+        group: 0,
+        workgroups: [Math.ceil(level.gridCount / 256), 1, 1],
+      },
+    );
+  };
+  const coarsestIndex = levels.length - 1;
+  appendLevel(levels[coarsestIndex], false);
+  for (let destinationIndex = coarsestIndex - 1; destinationIndex >= 0; --destinationIndex) {
+    const edge = seedEdges.get(destinationIndex);
+    const destination = levels[destinationIndex];
+    jobs.push({
+      pipeline: pipelines.transferSeed,
+      bindGroup: edge.bindGroup,
+      group: 2,
+      workgroups: [Math.ceil(destination.gridCount / 256), 1, 1],
+    });
+    appendLevel(destination, true);
+  }
+  jobs.forEach((job, index) => {
     const timestampWrites = measureGpu && timestampQueries ? {
       querySet,
       beginningOfPassWriteIndex: 2 * index,
       endOfPassWriteIndex: 2 * index + 1,
     } : undefined;
     const pass = encoder.beginComputePass({ timestampWrites });
-    pass.setPipeline(pipeline);
-    pass.setBindGroup(0, bindGroup);
-    pass.dispatchWorkgroups(workgroups);
+    pass.setPipeline(job.pipeline);
+    pass.setBindGroup(job.group, job.bindGroup);
+    pass.dispatchWorkgroups(...job.workgroups);
     pass.end();
   });
   let timestampReadback = null;
   if (measureGpu && timestampQueries) {
+    const timestampBytes = 2 * jobs.length * BigUint64Array.BYTES_PER_ELEMENT;
     timestampReadback = device.createBuffer({
-      size: 8 * BigUint64Array.BYTES_PER_ELEMENT,
+      size: timestampBytes,
       usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
     });
-    encoder.resolveQuerySet(querySet, 0, 8, queryResolveBuffer, 0);
-    encoder.copyBufferToBuffer(queryResolveBuffer, 0, timestampReadback, 0, 64);
+    encoder.resolveQuerySet(querySet, 0, 2 * jobs.length, queryResolveBuffer, 0);
+    encoder.copyBufferToBuffer(
+      queryResolveBuffer,
+      0,
+      timestampReadback,
+      0,
+      timestampBytes,
+    );
   }
   device.queue.submit([encoder.finish()]);
   if (!timestampReadback) {
@@ -322,7 +685,7 @@ const executePipeline = async ({ measureGpu = false } = {}) => {
   await timestampReadback.mapAsync(GPUMapMode.READ);
   const timestamps = new BigUint64Array(timestampReadback.getMappedRange());
   let nanoseconds = 0n;
-  for (let index = 0; index < 4; ++index) {
+  for (let index = 0; index < jobs.length; ++index) {
     nanoseconds += timestamps[2 * index + 1] - timestamps[2 * index];
   }
   const gpuMs = Number(nanoseconds) / 1e6;
@@ -388,7 +751,7 @@ const readResult = async (timing) => {
 
 const setReference = async (dataUrl, options = {}) => {
   await ensureDevice();
-  configure(options);
+  configure(options, true);
   const image = await loadImage(dataUrl);
   const started = performance.now();
   const runtimeStarted = performance.now();
@@ -396,15 +759,26 @@ const setReference = async (dataUrl, options = {}) => {
   const runtimeBuildWallMs = performance.now() - runtimeStarted;
   const referenceStarted = performance.now();
   try {
-    const prepared = prepareReferenceData(image, {
+    const referenceLevels = [{
+      values: imageToGray(image, FRAME_WIDTH, FRAME_HEIGHT, 1),
       width: FRAME_WIDTH,
       height: FRAME_HEIGHT,
-      subsetSize: SUBSET_SIZE,
-      intensityScale: 1,
+    }];
+    for (let levelIndex = 1; levelIndex < configuration.pyramidLevels; ++levelIndex) {
+      const previous = referenceLevels[levelIndex - 1];
+      referenceLevels.push(reduceHalfGray(previous.values, previous.width, previous.height));
+    }
+    levels.forEach((level, levelIndex) => {
+      const source = referenceLevels[levelIndex];
+      const prepared = prepareReferenceGray(source.values, {
+        width: source.width,
+        height: source.height,
+        subsetSize: SUBSET_SIZE,
+      });
+      device.queue.writeBuffer(level.buffers.reference, 0, prepared.reference);
+      device.queue.writeBuffer(level.buffers.inverse, 0, prepared.inverseHessian);
+      device.queue.writeBuffer(level.buffers.metadata, 0, prepared.metadata);
     });
-    device.queue.writeBuffer(buffers.reference, 0, prepared.reference);
-    device.queue.writeBuffer(buffers.inverse, 0, prepared.inverseHessian);
-    device.queue.writeBuffer(buffers.metadata, 0, prepared.metadata);
   } finally {
     image.close();
   }
@@ -503,7 +877,12 @@ const info = async () => {
     description: adapterInfo.description || null,
     subgroups: false,
     subgroupWidth: 0,
-    solver: 'portable-workgroup',
+    pyramidLevels: configuration.pyramidLevels,
+    iterationsPerLevel: [...configuration.iterationsPerLevel],
+    tolerancePerLevel: [...configuration.tolerancePerLevel],
+    solver: configuration.pyramidLevels > 1
+      ? 'portable-workgroup-full-pyramid'
+      : 'portable-workgroup',
   };
 };
 

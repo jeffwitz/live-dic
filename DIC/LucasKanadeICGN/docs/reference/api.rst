@@ -12,6 +12,16 @@ Engine
 .. autoclass:: lucas_kanade_icgn.ICGNWebGL
    :members: start, info, set_reference, register, register_pair, register_many, benchmark, close
 
+For ``backend="webgpu-wgsl"``, ``pyramid_levels`` accepts one to three levels
+and defaults to two. ``iterations_per_level`` and ``tolerance_per_level`` are
+coarse-to-fine tuples with exactly one value per level. Pyramid options are
+rejected by the independent Three.js/TSL and GPU-IO implementations.
+
+``backend="three-tsl"`` selects WebGPU when available and otherwise falls back
+to Three.js' WebGL2 transform-feedback backend. Set ``force_three_webgl=True``
+to test that compatibility path explicitly. ``EngineInfo.solver`` then reports
+``serial-webgl2`` instead of ``subgroup`` or ``portable-workgroup``.
+
 Native engine
 -------------
 

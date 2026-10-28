@@ -25,9 +25,11 @@ default single-scale path. The incremental ``t=10 -> 20`` step of ``(2, -1)``
 pixels returns 900 accepted subsets. Native wgpu-py users can explicitly select
 ``pyramid_levels=2`` or ``3`` to retry only failed subsets from coarse seeds,
 or select ``ICGNWGPUFullPyramid`` when every frame should follow a fully
-GPU-resident coarse-to-fine path.
+GPU-resident coarse-to-fine path. The raw ``webgpu-wgsl`` browser backend runs
+the same full-pyramid WGSL graph and defaults to two levels. Three.js/TSL and
+GPU-IO remain single-scale.
 
-The browser backends still have no image pyramid. No backend currently provides
+No backend currently provides
 temporal initialization, extrapolated initial guesses, Aitken acceleration,
 predictive tolerance, or retry from the last accepted state. These features
 matter for larger, noisier, or faster motion.
@@ -53,9 +55,13 @@ Runtime
 * Browser GPU shader arithmetic is single precision.
 * The fastest Three.js solver requires a WebGPU subgroup containing all 16
   active lanes. Other adapters use the validated workgroup-memory fallback.
+  Browsers without WebGPU use the serial Three.js/WebGL2 transform-feedback
+  solver instead; this compatibility path is not a 4K60 implementation.
 * The raw ``webgpu-wgsl`` browser backend prioritizes source sharing and uses
-  only the portable workgroup kernel; it is slower than the specialized
-  Three.js subgroup solver on the validation machine.
+  the portable workgroup solver at every pyramid level. It is slower than the
+  specialized Three.js subgroup solver for the comparable single-scale case.
+  Its default two-level graph requires an adapter exposing at least ten storage
+  buffers per compute stage.
 * Maximum image size depends on the adapter's WebGPU storage-buffer or WebGL2
   texture limits.
 * Full parameter and status fields are read back for every ``register`` call.

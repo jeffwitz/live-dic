@@ -27,6 +27,34 @@ export const imageToGray = (image, width, height, intensityScale = 1 / 255) => {
   return gray;
 };
 
+export const reduceHalfGray = (source, width, height) => {
+  const reducedWidth = Math.floor(width / 2);
+  const reducedHeight = Math.floor(height / 2);
+  const horizontal = new Float64Array(reducedWidth * height);
+  const reduced = new Uint8Array(reducedWidth * reducedHeight);
+  const weights = [1 / 16, 4 / 16, 6 / 16, 4 / 16, 1 / 16];
+  for (let y = 0; y < height; ++y) {
+    for (let x = 0; x < reducedWidth; ++x) {
+      let value = 0;
+      for (let tap = -2; tap <= 2; ++tap) {
+        value += weights[tap + 2] * source[y * width + mirror(2 * x + tap, width)];
+      }
+      horizontal[y * reducedWidth + x] = value;
+    }
+  }
+  for (let y = 0; y < reducedHeight; ++y) {
+    for (let x = 0; x < reducedWidth; ++x) {
+      let value = 0;
+      for (let tap = -2; tap <= 2; ++tap) {
+        value += weights[tap + 2]
+          * horizontal[mirror(2 * y + tap, height) * reducedWidth + x];
+      }
+      reduced[y * reducedWidth + x] = Math.trunc(Math.max(0, Math.min(255, value)));
+    }
+  }
+  return { values: reduced, width: reducedWidth, height: reducedHeight };
+};
+
 const gaussianSigmaOne = (source, width, height) => {
   const radius = 3;
   const weights = new Float64Array(2 * radius + 1);
@@ -134,9 +162,9 @@ const invert6 = (matrix) => {
   return inverse;
 };
 
-export const prepareReferenceData = (
-  image,
-  { width, height, subsetSize = 16, intensityScale = 1 / 255 },
+export const prepareReferenceGray = (
+  gray,
+  { width, height, subsetSize = 16 },
 ) => {
   const pixelCount = width * height;
   const gridWidth = Math.floor(width / subsetSize);
@@ -144,11 +172,10 @@ export const prepareReferenceData = (
   const gridCount = gridWidth * gridHeight;
   const halfExtent = (subsetSize - 1) / 2;
   const subsetPixels = subsetSize * subsetSize;
-  const filtered = gaussianSigmaOne(
-    imageToGray(image, width, height, intensityScale),
-    width,
-    height,
-  );
+  if (gray.length !== pixelCount) {
+    throw new Error(`Expected ${pixelCount} grayscale values, got ${gray.length}`);
+  }
+  const filtered = gaussianSigmaOne(gray, width, height);
   const coefficients = cubicBSplinePrefilter(filtered, width, height);
   const reference = new Float32Array(pixelCount * 4);
   const inverseHessian = new Float32Array(gridCount * 9 * 4);
@@ -217,6 +244,14 @@ export const prepareReferenceData = (
   }
   return { reference, inverseHessian, metadata };
 };
+
+export const prepareReferenceData = (
+  image,
+  { width, height, subsetSize = 16, intensityScale = 1 / 255 },
+) => prepareReferenceGray(
+  imageToGray(image, width, height, intensityScale),
+  { width, height, subsetSize },
+);
 
 export const makeFIRWeights = (radius = 15) => {
   const gaussian = new Float64Array(7);

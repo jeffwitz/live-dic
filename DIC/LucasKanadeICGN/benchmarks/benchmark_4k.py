@@ -20,7 +20,7 @@ from lucas_kanade_icgn import ICGNWebGL, ICGNWGPU
 
 UHD_WIDTH = 3840
 UHD_HEIGHT = 2160
-TRUTH = (2.0, -1.0)
+DEFAULT_TRUTH = (2, -1)
 
 
 def _arguments() -> argparse.Namespace:
@@ -35,6 +35,14 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--repeats", type=int, default=30)
     parser.add_argument("--warmups", type=int, default=5)
     parser.add_argument(
+        "--translation",
+        nargs=2,
+        type=int,
+        default=DEFAULT_TRUTH,
+        metavar=("DX", "DY"),
+        help="exact integer target translation in pixels",
+    )
+    parser.add_argument(
         "--backend",
         choices=("three-tsl", "webgpu-wgsl", "gpuio", "wgpu-native"),
         default="three-tsl",
@@ -46,16 +54,34 @@ def _arguments() -> argparse.Namespace:
         default="auto",
         help="native solver selection policy",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--pyramid-levels",
+        type=int,
+        choices=(1, 2, 3),
+        help="full-pyramid depth for the webgpu-wgsl browser backend",
+    )
+    parser.add_argument(
+        "--force-three-webgl",
+        action="store_true",
+        help="force Three.js to use its WebGL2 compatibility backend",
+    )
+    args = parser.parse_args()
+    if args.pyramid_levels is not None and args.backend != "webgpu-wgsl":
+        parser.error("--pyramid-levels requires --backend webgpu-wgsl")
+    if args.force_three_webgl and args.backend != "three-tsl":
+        parser.error("--force-three-webgl requires --backend three-tsl")
+    return args
 
 
-def _make_pair(texture_path: Path) -> tuple[np.ndarray, np.ndarray]:
+def _make_pair(
+    texture_path: Path, truth: tuple[int, int]
+) -> tuple[np.ndarray, np.ndarray]:
     with Image.open(texture_path) as image:
         texture = np.asarray(image.convert("L"), dtype=np.uint8)
     repeat_y = (UHD_HEIGHT + texture.shape[0] - 1) // texture.shape[0]
     repeat_x = (UHD_WIDTH + texture.shape[1] - 1) // texture.shape[1]
     reference = np.tile(texture, (repeat_y, repeat_x))[:UHD_HEIGHT, :UHD_WIDTH]
-    target = np.roll(reference, shift=(-1, 2), axis=(0, 1))
+    target = np.roll(reference, shift=(truth[1], truth[0]), axis=(0, 1))
     return reference, target
 
 
@@ -65,8 +91,17 @@ def _browser_report(
     target: np.ndarray,
     repeats: int,
     warmups: int,
+    pyramid_levels: int | None,
+    force_three_webgl: bool,
+    truth: tuple[int, int],
 ) -> dict[str, Any]:
-    with ICGNWebGL(backend=backend, startup_timeout=120, call_timeout=600) as engine:
+    with ICGNWebGL(
+        backend=backend,
+        pyramid_levels=pyramid_levels,
+        force_three_webgl=force_three_webgl,
+        startup_timeout=120,
+        call_timeout=600,
+    ) as engine:
         preparation = engine.set_reference(reference)
         runtime = engine.info()
         benchmark = engine.benchmark_target(
@@ -83,7 +118,8 @@ def _browser_report(
         "subgroup_width": runtime.subgroup_width,
         "resolution": [preparation.width, preparation.height],
         "grid": list(preparation.grid),
-        "truth": list(TRUTH),
+        "truth": list(truth),
+        "config": preparation.config,
         "preparation": {
             "runtime_build_wall_ms": preparation.runtime_build_wall_ms,
             "reference_build_wall_ms": preparation.reference_build_wall_ms,
@@ -102,7 +138,7 @@ def _browser_report(
             "replaced": registration.replaced,
             "mean_translation": registration.mean_translation,
             "mean_iterations": registration.mean_iterations,
-            "translation_rmse_px": registration.rmse(TRUTH),
+            "translation_rmse_px": registration.rmse(truth),
         },
     }
 
@@ -114,6 +150,7 @@ def _native_report(
     warmups: int,
     *,
     prefer_subgroups: bool | None,
+    truth: tuple[int, int],
 ) -> dict[str, Any]:
     with ICGNWGPU(prefer_subgroups=prefer_subgroups) as engine:
         preparation = engine.set_reference(reference)
@@ -143,7 +180,7 @@ def _native_report(
         "solver_tuning_ms": solver_tuning_ms,
         "resolution": [preparation.width, preparation.height],
         "grid": list(preparation.grid),
-        "truth": list(TRUTH),
+        "truth": list(truth),
         "preparation": {
             "runtime_build_wall_ms": preparation.runtime_build_wall_ms,
             "reference_build_wall_ms": preparation.reference_build_wall_ms,
@@ -162,14 +199,15 @@ def _native_report(
             "replaced": registration.replaced,
             "mean_translation": registration.mean_translation,
             "mean_iterations": registration.mean_iterations,
-            "translation_rmse_px": registration.rmse(TRUTH),
+            "translation_rmse_px": registration.rmse(truth),
         },
     }
 
 
 def main() -> int:
     args = _arguments()
-    reference, target = _make_pair(args.texture)
+    truth = tuple(args.translation)
+    reference, target = _make_pair(args.texture, truth)
     if args.backend == "wgpu-native":
         report = _native_report(
             reference,
@@ -179,10 +217,18 @@ def main() -> int:
             prefer_subgroups={"auto": None, "portable": False, "subgroup": True}[
                 args.native_solver
             ],
+            truth=truth,
         )
     else:
         report = _browser_report(
-            args.backend, reference, target, args.repeats, args.warmups
+            args.backend,
+            reference,
+            target,
+            args.repeats,
+            args.warmups,
+            args.pyramid_levels,
+            args.force_three_webgl,
+            truth,
         )
     print(json.dumps(report, indent=2, allow_nan=False))
     return 0

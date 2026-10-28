@@ -7,7 +7,7 @@ System requirements
 The browser backends require:
 
 * Python 3.10 or newer;
-* Chromium or Google Chrome with WebGL2 and WebGPU support;
+* Chromium or Google Chrome with WebGL2 support; WebGPU is preferred;
 * a GPU and driver accepted by Chromium.
 
 The optional native backend requires Python 3.11 or newer and a platform
@@ -57,11 +57,23 @@ Three.js/TSL is the default backend. A standard engine therefore selects it:
 Select the previous implementation with ``ICGNWebGL(backend="gpuio")`` or the
 command-line option ``--backend gpuio``. Select the canonical portable WGSL
 with ``ICGNWebGL(backend="webgpu-wgsl")`` or ``--backend webgpu-wgsl``. This
-raw WebGPU adapter executes the same shader file as wgpu-py, while Three.js
-keeps the faster subgroup-specialized path. On Linux, the default Python
+raw WebGPU adapter executes the same IC-GN and full-pyramid shader files as
+wgpu-py and defaults to two levels; pass ``pyramid_levels=1`` for the original
+single-scale graph. Three.js keeps the faster subgroup-specialized path. On
+Linux, the default Python
 driver supplies the native headless Vulkan flags required by Chromium.
 Confirm that ``engine.info().device`` names the physical adapter rather than
 ``swiftshader`` before reporting performance.
+
+If WebGPU is unavailable, Three.js automatically uses its WebGL2
+transform-feedback solver. Force this path during qualification with:
+
+.. code-block:: python
+
+   engine = ICGNWebGL(backend="three-tsl", force_three_webgl=True)
+
+The historical ``backend="gpuio"`` remains available while this newer fallback
+is validated across the supported browser and GPU matrix.
 
 Install and select native WebGPU
 ---------------------------------

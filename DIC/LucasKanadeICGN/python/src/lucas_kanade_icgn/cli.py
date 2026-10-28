@@ -67,6 +67,30 @@ def _parser() -> argparse.ArgumentParser:
         help="browser compute backend",
     )
     parser.add_argument(
+        "--force-three-webgl",
+        action="store_true",
+        help="force the Three.js backend to use its WebGL2 compatibility path",
+    )
+    parser.add_argument(
+        "--pyramid-levels",
+        type=int,
+        help="full-pyramid level count for the webgpu-wgsl backend (1 to 3)",
+    )
+    parser.add_argument(
+        "--iterations-per-level",
+        nargs="+",
+        type=int,
+        metavar="COUNT",
+        help="coarse-to-fine iteration ceilings for webgpu-wgsl",
+    )
+    parser.add_argument(
+        "--tolerance-per-level",
+        nargs="+",
+        type=float,
+        metavar="PIXELS",
+        help="coarse-to-fine convergence tolerances for webgpu-wgsl",
+    )
+    parser.add_argument(
         "--startup-timeout",
         type=float,
         default=20.0,
@@ -281,6 +305,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             no_sandbox=not args.enable_chromium_sandbox,
             chromium_args=args.chromium_arg,
             backend=args.backend,
+            force_three_webgl=args.force_three_webgl,
+            pyramid_levels=args.pyramid_levels,
+            iterations_per_level=args.iterations_per_level,
+            tolerance_per_level=args.tolerance_per_level,
         ) as engine:
             info = engine.info()
             payload = (

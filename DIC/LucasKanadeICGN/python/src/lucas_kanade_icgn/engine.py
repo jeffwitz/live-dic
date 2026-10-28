@@ -4,6 +4,7 @@ import asyncio
 import base64
 import io
 import json
+import operator
 import os
 import shutil
 import socket
@@ -148,7 +149,11 @@ class RegistrationResult:
             mean_iterations=(
                 None if payload.get("meanIterations") is None else float(payload["meanIterations"])
             ),
-            timing={key: float(value) for key, value in payload.get("timing", {}).items()},
+            timing={
+                key: float(value)
+                for key, value in payload.get("timing", {}).items()
+                if value is not None
+            },
             config=dict(payload.get("config", {})),
             width=int(payload["width"]),
             height=int(payload["height"]),
@@ -446,6 +451,10 @@ class ICGNWebGL:
         no_sandbox: bool = True,
         chromium_args: Iterable[str] = (),
         backend: str = "three-tsl",
+        force_three_webgl: bool = False,
+        pyramid_levels: int | None = None,
+        iterations_per_level: Iterable[int] | None = None,
+        tolerance_per_level: Iterable[float] | None = None,
     ) -> None:
         if startup_timeout <= 0:
             raise ValueError("startup_timeout must be greater than zero")
@@ -453,16 +462,65 @@ class ICGNWebGL:
             raise ValueError("call_timeout must be greater than zero")
         if backend not in {"gpuio", "three-tsl", "webgpu-wgsl"}:
             raise ValueError("backend must be 'gpuio', 'three-tsl', or 'webgpu-wgsl'")
+        if force_three_webgl and backend != "three-tsl":
+            raise ValueError("force_three_webgl is supported only by the 'three-tsl' backend")
+        pyramid_options = (pyramid_levels, iterations_per_level, tolerance_per_level)
+        if backend != "webgpu-wgsl" and any(value is not None for value in pyramid_options):
+            raise ValueError("Pyramid options are supported only by the 'webgpu-wgsl' backend")
+        try:
+            level_count = 2 if pyramid_levels is None else operator.index(pyramid_levels)
+        except TypeError as error:
+            raise ValueError("pyramid_levels must be an integer from 1 to 3") from error
+        if isinstance(pyramid_levels, bool) or not 1 <= level_count <= 3:
+            raise ValueError("pyramid_levels must be an integer from 1 to 3")
+        try:
+            raw_iteration_schedule = (
+                None if iterations_per_level is None else tuple(iterations_per_level)
+            )
+            if raw_iteration_schedule is not None and any(
+                isinstance(value, bool) for value in raw_iteration_schedule
+            ):
+                raise TypeError
+            iteration_schedule = (
+                None
+                if raw_iteration_schedule is None
+                else tuple(operator.index(value) for value in raw_iteration_schedule)
+            )
+        except TypeError as error:
+            raise ValueError("iterations_per_level values must be integers") from error
+        tolerance_schedule = (
+            None
+            if tolerance_per_level is None
+            else tuple(float(value) for value in tolerance_per_level)
+        )
+        for schedule, name in (
+            (iteration_schedule, "iterations_per_level"),
+            (tolerance_schedule, "tolerance_per_level"),
+        ):
+            if schedule is not None and len(schedule) != level_count:
+                raise ValueError(f"{name} must contain one value per pyramid level")
+        if iteration_schedule is not None and any(
+            value < 1 or value > 30 for value in iteration_schedule
+        ):
+            raise ValueError("iterations_per_level values must be integers between 1 and 30")
+        if tolerance_schedule is not None and any(
+            not np.isfinite(value) or value <= 0 for value in tolerance_schedule
+        ):
+            raise ValueError("tolerance_per_level values must be finite and positive")
         assets = _find_runtime_assets(repo_root, backend)
         self.repo_root = assets.root
         self._headless_path = assets.headless_path
         self.backend = backend
+        self.force_three_webgl = bool(force_three_webgl)
+        self.pyramid_levels = level_count if backend == "webgpu-wgsl" else 1
+        self.iterations_per_level = iteration_schedule
+        self.tolerance_per_level = tolerance_schedule
         self.chromium = _find_chromium(chromium)
         self.startup_timeout = float(startup_timeout)
         self.call_timeout = float(call_timeout)
         self.no_sandbox = bool(no_sandbox)
         backend_arguments: tuple[str, ...] = ()
-        if backend in {"three-tsl", "webgpu-wgsl"}:
+        if backend in {"three-tsl", "webgpu-wgsl"} and not self.force_three_webgl:
             # Chromium on Linux needs all four switches to expose the native
             # Vulkan WebGPU adapter in new-headless mode. Without the surface
             # switch it silently falls back to SwiftShader on this platform.
@@ -498,6 +556,8 @@ class ICGNWebGL:
         log_path = Path(self._temporary.name) / "chromium.log"
         self._log_handle = log_path.open("wb")
         page_url = f"http://127.0.0.1:{self._server.port}/{self._headless_path}?headless=1"
+        if self.force_three_webgl:
+            page_url += "&forceWebGL=1"
         if self.backend == "gpuio" and self._requested_dimensions is not None:
             width, height = self._requested_dimensions
             page_url += f"&width={width}&height={height}"
@@ -628,8 +688,8 @@ class ICGNWebGL:
         except (OSError, websockets.exceptions.WebSocketException) as error:
             raise ICGNError(f"DevTools transport failed: {error}") from error
 
-    @staticmethod
     def _options(
+        self,
         *,
         iterations: int | None,
         tolerance: float | None,
@@ -642,6 +702,12 @@ class ICGNWebGL:
             options["tolerance"] = float(tolerance)
         if zncc_min is not None:
             options["znccMin"] = float(zncc_min)
+        if self.backend == "webgpu-wgsl":
+            options["pyramidLevels"] = self.pyramid_levels
+            if self.iterations_per_level is not None:
+                options["iterationsPerLevel"] = list(self.iterations_per_level)
+            if self.tolerance_per_level is not None:
+                options["tolerancePerLevel"] = list(self.tolerance_per_level)
         return options
 
     def info(self) -> EngineInfo:
@@ -889,13 +955,25 @@ def register_pair(
     repo_root: str | os.PathLike[str] | None = None,
     chromium: str | os.PathLike[str] | None = None,
     backend: str = "three-tsl",
+    force_three_webgl: bool = False,
+    pyramid_levels: int | None = None,
+    iterations_per_level: Iterable[int] | None = None,
+    tolerance_per_level: Iterable[float] | None = None,
     iterations: int | None = None,
     tolerance: float | None = None,
     zncc_min: float | None = None,
 ) -> RegistrationResult:
     """Run a one-shot registration and release the headless runtime afterward."""
 
-    with ICGNWebGL(repo_root=repo_root, chromium=chromium, backend=backend) as engine:
+    with ICGNWebGL(
+        repo_root=repo_root,
+        chromium=chromium,
+        backend=backend,
+        force_three_webgl=force_three_webgl,
+        pyramid_levels=pyramid_levels,
+        iterations_per_level=iterations_per_level,
+        tolerance_per_level=tolerance_per_level,
+    ) as engine:
         return engine.register_pair(
             reference,
             target,

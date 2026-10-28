@@ -31,6 +31,18 @@ Solver options
 ``--zncc-min VALUE``
    Minimum accepted ZNCC in ``[0, 1]``. Default: ``0.8``.
 
+``--pyramid-levels {1,2,3}``
+   Full-pyramid depth for ``webgpu-wgsl``. The backend default is two levels;
+   one selects the original single-scale path.
+
+``--iterations-per-level COUNT [COUNT ...]``
+   Coarse-to-fine iteration ceilings for ``webgpu-wgsl``. Supply exactly one
+   integer from 1 to 30 per pyramid level.
+
+``--tolerance-per-level PX [PX ...]``
+   Coarse-to-fine positive convergence thresholds for ``webgpu-wgsl``. Supply
+   exactly one value per pyramid level.
+
 ``--truth DX DY``
    Constant true translation used to report vector RMSE.
 
@@ -55,7 +67,11 @@ Runtime options
 
 ``--backend {three-tsl,webgpu-wgsl,gpuio}``
    Select the optimized Three.js WebGPU path, the canonical shared WGSL in raw
-   browser WebGPU, or the WebGL2 compatibility path. Default: ``three-tsl``.
+   browser WebGPU, or the historical GPU-IO path. Default: ``three-tsl``.
+
+``--force-three-webgl``
+   Force ``three-tsl`` to use its serial WebGL2 transform-feedback solver. Use
+   this for compatibility qualification on a WebGPU-capable machine.
 
 ``--repo-root PATH``
    Override automatic repository discovery.

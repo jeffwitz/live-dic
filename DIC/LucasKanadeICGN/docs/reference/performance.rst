@@ -78,7 +78,7 @@ three warm-ups.
      - **1.227 ms**
      - 900 / 1,024
      - 2.749e-5 px
-   * - shared WGSL browser
+   * - shared WGSL browser, one scale
      - raw WebGPU, Vulkan, portable workgroup
      - GPU prefilter, IC-GN, median pass
      - 0.817 ms
@@ -111,7 +111,7 @@ when that condition is not met. See :doc:`../explanation/gpu-optimization` for
 the two tiling strategies.
 
 The raw WebGPU adapter executes exactly the portable WGSL file used by
-wgpu-py. Its 512 x 512 GPU median is 21.0% above the specialized Three.js
+wgpu-py. This historical one-scale 512 x 512 GPU median is 21.0% above the specialized Three.js
 subgroup path, while its truth RMSE is within ``5e-7`` pixel. This is the
 measured cost of choosing one directly shared portable kernel on this adapter.
 
@@ -152,6 +152,62 @@ The large browser-wall difference is primarily a synchronization-path
 difference. It is not an acquisition-to-result latency comparison. Use
 :doc:`../explanation/realtime-performance` for the timing boundaries required
 to qualify a complete application.
+
+Three.js WebGL2 fallback
+------------------------
+
+The Three.js backend now selects a serial TSL transform-feedback solver when
+WebGPU is unavailable. A forced-WebGL2 campaign on the same 512 x 512 pair used
+five warm-ups and 30 measured runs. GPU-IO was measured immediately before it
+with the same process boundary and image pair.
+
+.. list-table:: WebGL2 compatibility backends at 512 x 512
+   :header-rows: 1
+
+   * - Backend
+     - GPU median
+     - GPU p95
+     - Browser wall median
+     - Browser wall p95
+     - Accepted
+     - Truth RMSE
+   * - Three.js/TSL WebGL2
+     - **1.466 ms**
+     - **1.565 ms**
+     - **8.4 ms**
+     - **8.7 ms**
+     - 900 / 1,024
+     - 3.905e-5 px
+   * - GPU-IO
+     - 3.869 ms
+     - 5.228 ms
+     - 10.8 ms
+     - 12.6 ms
+     - 900 / 1,024
+     - 3.873e-5 px
+
+The status fields were identical. Across the 900 jointly accepted subsets, the
+maximum absolute difference between any affine parameter was
+``1.4913e-4`` and the mean absolute difference was ``4.5489e-6``. Iteration
+counts were not bit-identical because the two GLSL programs accumulate in a
+different order.
+
+At 3840 x 2160, the forced Three.js/WebGL2 path measured 27.246 ms GPU median,
+27.730 ms GPU p95, 33.4 ms browser-wall median, and 37.4 ms browser-wall p95
+over eight runs after three warm-ups. It accepted 31,654 subsets with a
+``4.116e-5`` px truth RMSE. The historical GPU-IO campaign measured 80.738 ms
+GPU median on the same nominal translation. Three.js/WebGL2 is therefore a
+substantially better compatibility backend, but neither WebGL2 implementation
+meets the 16.667 ms 4K60 budget.
+
+Force the fallback on a WebGPU-capable machine with:
+
+.. code-block:: console
+
+   $ PYTHONPATH=DIC/LucasKanadeICGN/python/src \
+       python3 DIC/LucasKanadeICGN/benchmarks/benchmark_4k.py \
+       --backend three-tsl --force-three-webgl \
+       --repeats 8 --warmups 3
 
 Native wgpu-py comparison
 -------------------------
@@ -493,11 +549,90 @@ Reproduce the campaign with:
        python3 DIC/LucasKanadeICGN/benchmarks/benchmark_wgpu_full_pyramid.py \
        --width 3840 --height 2160 --levels 2 3 --warmups 2 --repeats 7
 
+Raw browser full pyramid
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+The same ``icgn.wgsl`` and ``full_pyramid.wgsl`` graph now runs through raw
+WebGPU in Chromium. The browser uploads only the finest target, retains every
+reduced image and coefficient field on the GPU, and transfers affine seeds
+coarse to fine. Two levels are the browser default; one level keeps the
+original single-scale dispatch path.
+
+The following focused campaigns used three warm-ups on the same Intel GPU. The
+nominal ``(2, -1)`` campaign contains 12 measured runs per depth; the difficult
+``(4, -2)`` campaign contains eight. GPU timestamps include reductions,
+per-level prefilters and solves, seed transfers, and the final median pass, but
+exclude PNG transport and result readback.
+
+.. list-table:: Raw browser WebGPU full-pyramid UHD validation
+   :header-rows: 1
+
+   * - Translation and levels
+     - Iterations coarse to fine
+     - GPU median
+     - GPU p95
+     - Accepted
+     - Truth RMSE
+   * - ``(2, -1)``, one scale
+     - 30
+     - 17.247 ms
+     - 17.762 ms
+     - 31,654 / 32,400
+     - 0.0000308 px
+   * - ``(2, -1)``, two levels
+     - 12, 30
+     - 16.873 ms
+     - 20.206 ms
+     - 31,654 / 32,400
+     - 0.0000295 px
+   * - ``(2, -1)``, three levels
+     - 6, 8, 20
+     - **16.536 ms (60.5 FPS)**
+     - 16.931 ms
+     - 31,654 / 32,400
+     - 0.0000296 px
+   * - ``(4, -2)``, one scale
+     - 30
+     - 61.393 ms
+     - 62.151 ms
+     - 22,401 / 32,400
+     - 0.0964 px
+   * - ``(4, -2)``, two levels
+     - 12, 30
+     - **15.931 ms (62.8 FPS)**
+     - 16.622 ms
+     - 31,692 / 32,400
+     - 0.00123 px
+   * - ``(4, -2)``, three levels
+     - 6, 8, 20
+     - **16.612 ms (60.2 FPS)**
+     - 16.897 ms
+     - 31,681 / 32,400
+     - 0.00124 px
+
+The difficult pair is the deciding result: two levels recover 9,291 additional
+subsets while reducing the median by 74% because the single-scale failures run
+to their 30-iteration ceiling. Two levels are therefore the robust browser
+default. Three remain useful for a larger expected capture range. The nominal
+two-level p95 exceeded 16.667 ms in this short campaign, so these measurements
+qualify controlled compute throughput rather than a hard real-time deadline.
+
+Reproduce either pair offline with:
+
+.. code-block:: console
+
+   $ PYTHONPATH=DIC/LucasKanadeICGN/python/src \
+       python3 DIC/LucasKanadeICGN/benchmarks/benchmark_4k.py \
+       --backend webgpu-wgsl --pyramid-levels 2 \
+       --translation 4 -2 --warmups 3 --repeats 8
+
 Browser validation
 ~~~~~~~~~~~~~~~~~~
 
-All three dynamic-resolution browser paths were also validated at 3840 x 2160 on
-the same machine. The offline reference tiles the shipped speckle texture and
+All three dynamic-resolution browser paths were also validated at 3840 x 2160
+on the same machine before the pyramid became the raw-WGSL default. This
+historical single-scale comparison uses ``pyramid_levels=1`` for shared WGSL.
+The offline reference tiles the shipped speckle texture and
 the target applies an exact ``(2, -1)`` pixel translation. This produces a 240
 x 135 grid, or 32,400 subsets. Each of three campaigns used five warm-ups and
 30 measured optical-flow runs. The table reports the median campaign summary.
@@ -619,6 +754,7 @@ Reproduce the campaign offline with:
        python3 DIC/LucasKanadeICGN/benchmarks/benchmark_4k.py \
        --backend three-tsl --repeats 30 --warmups 5
 
-Replace ``three-tsl`` with ``webgpu-wgsl`` for the canonical portable browser
-shader, or with ``gpuio`` for the optional WebGL2 measurement.
+Replace ``three-tsl`` with ``webgpu-wgsl --pyramid-levels 1`` for the canonical
+portable browser shader at the same single-scale boundary, or with ``gpuio``
+for the optional WebGL2 measurement.
 

@@ -14,7 +14,7 @@ in-process and does not start Chromium.
 ## Requirements and installation
 
 - Python 3.10 or newer;
-- Chromium or Google Chrome with WebGL2 and WebGPU support;
+- Chromium or Google Chrome with WebGL2 support; WebGPU is preferred;
 - a compatible GPU and driver.
 
 From the `tests_gpuio` repository root:
@@ -111,14 +111,46 @@ prepares the reference once. The synchronous API works inside Jupyter notebooks
 that already have an active `asyncio` event loop. An engine instance must not be
 used concurrently from multiple threads.
 
-`backend="three-tsl"` is the default. Use `backend="gpuio"` to select the
-optional fused WebGL2 implementation. Use `backend="webgpu-wgsl"` to run the
+`backend="three-tsl"` is the default. It selects WebGPU when available and
+falls back to a serial Three.js/TSL transform-feedback solver on WebGL2. Use
+`force_three_webgl=True` to qualify that fallback even on a WebGPU-capable
+machine. Use `backend="gpuio"` to select the historical fused WebGL2
+implementation. Use `backend="webgpu-wgsl"` to run the
 same portable WGSL file as wgpu-py through raw browser WebGPU. On Linux the
 default engine supplies Chromium's native headless Vulkan flags and
 `engine.info().device` identifies the selected adapter; check that it does not
 report SwiftShader before interpreting GPU benchmarks. `engine.info().solver`
 reports either `subgroup` or `portable-workgroup`, and `subgroup_width` records
 the measured hardware width.
+
+The raw ``webgpu-wgsl`` backend uses the shared GPU-resident full pyramid and
+defaults to two levels. Configure its coarse-to-fine schedules on the engine:
+
+```python
+with ICGNWebGL(
+    backend="webgpu-wgsl",
+    pyramid_levels=3,
+    iterations_per_level=(6, 8, 20),
+    tolerance_per_level=(1e-2, 5e-3, 1e-3),
+) as engine:
+    engine.set_reference(reference)
+    result = engine.register(target)
+```
+
+Use ``pyramid_levels=1`` for the original single-scale execution path. It does
+not allocate reduced levels or dispatch reduction and seed-transfer kernels.
+The Three.js/TSL and GPU-IO backends are still single-scale and reject pyramid
+options explicitly.
+
+The explicit WebGL2 compatibility form is:
+
+```python
+with ICGNWebGL(backend="three-tsl", force_three_webgl=True) as engine:
+    engine.set_reference(reference)
+    result = engine.register(target)
+
+assert engine.info().solver == "serial-webgl2"
+```
 
 ## Native WebGPU engine
 
@@ -273,8 +305,13 @@ Benchmark the same pair:
 icgn-webgl \
   DIC/LucasKanadeICGN/assets/frame_000.png \
   DIC/LucasKanadeICGN/assets/frame_010.png \
+  --backend webgpu-wgsl --pyramid-levels 2 \
   --benchmark --repeats 30 --warmups 3 --truth 2 -1
 ```
+
+Use ``--iterations-per-level`` and ``--tolerance-per-level`` to override the
+coarse-to-fine schedules; each list must contain exactly one value per level.
+Use ``--backend three-tsl --force-three-webgl`` to exercise the WebGL2 fallback.
 
 Standard output is a compact JSON summary. `--output` writes the complete
 `parameters`, `displacement`, `status`, `iterations`, and benchmark samples to

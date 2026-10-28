@@ -3,15 +3,17 @@ Shared numerical kernel and adapter contract
 
 The portable WebGPU path follows one rule: the affine IC-GN equations are
 defined once, while each host owns only resource allocation, transfers,
-dispatch, and result conversion. The canonical source is
-``lucas_kanade_icgn/shaders/icgn.wgsl``. Both the raw browser WebGPU adapter
-and wgpu-py load that file without generating or translating shader code.
+dispatch, and result conversion. The canonical sources are
+``lucas_kanade_icgn/shaders/icgn.wgsl`` and ``full_pyramid.wgsl``. Both the raw
+browser WebGPU adapter and wgpu-py load those files without generating or
+translating shader code.
 
 Three.js remains the default because its subgroup-specialized TSL solver is
 faster on the validation GPU. It shares browser reference preparation and the
-same result contract, but keeps an optimized TSL implementation. GPU-IO is a
-separate WebGL2 compatibility implementation because WebGL cannot execute
-WGSL compute shaders.
+same result contract, but keeps an optimized TSL implementation. TSL now also
+compiles a serial solver to GLSL transform feedback when Three.js falls back to
+WebGL2. GPU-IO remains a separate historical implementation because WebGL
+cannot execute the canonical WGSL compute shaders directly.
 
 Architecture
 ------------
@@ -36,7 +38,8 @@ Architecture
                        |                 v
                        |       +--------------------+
                        |       | canonical WGSL     |
-                       |       | FIR, LK, median    |
+                       |       | reduce, FIR, LK,   |
+                       |       | seed, median       |
                        |       +--------------------+
                        |                 ^
                        |                 | loads
@@ -52,8 +55,10 @@ Architecture
 The shared browser preparation module is
 ``web/common/ReferencePreparation.js``. It is parameterized by intensity
 scale: Three.js uses normalized intensities, while the canonical WGSL and
-wgpu-py use ``[0, 255]``. Normalized residuals make both conventions
-mathematically equivalent, and cross-backend tests check the resulting fields.
+wgpu-py use ``[0, 255]``. The raw adapter builds reduced references once with
+the same mirrored five-tap filter as the WGSL target reductions. Normalized
+residuals make both intensity conventions mathematically equivalent, and
+cross-backend tests check the resulting fields.
 
 Numerical contract
 ------------------
@@ -144,21 +149,29 @@ workgroup owns one subset and reduces three packed partial-sum vectors. A
 ``workgroupUniformLoad`` makes the convergence decision uniform, so completed
 subsets leave the iteration loop without violating barrier uniformity.
 
-The native-only ``solve_seeded`` entry point calls the same ``solve_subset``
-body with bindings 10 and 11. The ordinary ``solve`` entry point does not
-reference those bindings, so one-scale browser and native pipelines retain
-their original ten-entry bind-group layout. Seed resources and the extended
-layout are created lazily only when a failed subset actually needs recovery.
+The shared ``solve_seeded`` entry point calls the same ``solve_subset`` body
+with bindings 10 and 11. The ordinary ``solve`` entry point does not reference
+those bindings, so one-scale browser and native pipelines retain their original
+ten-entry bind-group layout. Selective native recovery allocates seed resources
+lazily; the full-pyramid browser and native adapters allocate them once for
+every finer level.
+
+``full_pyramid.wgsl`` adds three orchestration entry points without duplicating
+the IC-GN equations: ``reduce_x`` and ``reduce_y`` construct reduced targets,
+while ``transfer_seed`` interpolates the coarser affine field and rescales its
+translation for the next finer level. Pass ordering is encoded once in the
+host command graph and all numerical solve operations remain in ``icgn.wgsl``.
 
 Change policy
 -------------
 
 A formula change that preserves the buffer contract belongs in the canonical
 WGSL and, while Three.js remains specialized, in its corresponding named TSL
-helper. A buffer-layout change must update both WebGPU hosts and the contract
-tests. Transfer, allocation, browser, and NumPy conversion changes remain
-local to their adapters. GPU-IO changes remain independently qualified against
-the same image pairs.
+helper. The Three.js WebGPU and WebGL2 solvers call those same TSL helpers but
+keep different accumulation organizations. A buffer-layout change must update
+both WebGPU hosts and the contract tests. Transfer, allocation, browser, and
+NumPy conversion changes remain local to their adapters. GPU-IO changes remain
+independently qualified against the same image pairs until its retirement.
 
 The comparison scripts report status equality, jointly accepted subsets,
 translation RMSE, and maximum absolute disagreement. Matching output types is
