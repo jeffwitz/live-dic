@@ -124,3 +124,17 @@ bounded pipeline depths explicitly:
 The reported period is total sequence wall time divided by the number of
 frames. It must not be presented as result latency when more than one slot is
 in flight.
+
+Measure optional selective pyramid recovery separately from the nominal
+small-motion throughput campaign:
+
+.. code-block:: console
+
+   $ PYTHONPATH=DIC/LucasKanadeICGN/python/src \
+       python3 DIC/LucasKanadeICGN/benchmarks/benchmark_wgpu_pyramid.py \
+       --warmups 3 --repeats 10 --levels 1 2
+
+This benchmark applies an exact ``(4, -2)`` pixel translation. Add
+``--width 3840 --height 2160`` for UHD. Keep ``--levels 1`` in every nominal
+performance campaign: it proves that no pyramid resource or retry path is
+active.

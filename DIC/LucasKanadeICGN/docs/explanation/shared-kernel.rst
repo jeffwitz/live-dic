@@ -110,6 +110,12 @@ GPU buffers
    * - 9
      - median-filtered state
      - two ``vec4`` values per subset
+   * - 10, optional
+     - coarse-to-fine seed state
+     - two read-only ``vec4`` values per subset
+   * - 11, optional
+     - selective retry mask
+     - one read-only ``u32`` per subset
 
 The two packed state vectors are ``[tx, du/dx, du/dy, ty]`` and
 ``[dv/dx, dv/dy, status, iterations]``. Hosts must not reinterpret this order.
@@ -137,6 +143,12 @@ The solve entry point retains the GPU-specific organization: one 16-lane
 workgroup owns one subset and reduces three packed partial-sum vectors. A
 ``workgroupUniformLoad`` makes the convergence decision uniform, so completed
 subsets leave the iteration loop without violating barrier uniformity.
+
+The native-only ``solve_seeded`` entry point calls the same ``solve_subset``
+body with bindings 10 and 11. The ordinary ``solve`` entry point does not
+reference those bindings, so one-scale browser and native pipelines retain
+their original ten-entry bind-group layout. Seed resources and the extended
+layout are created lazily only when a failed subset actually needs recovery.
 
 Change policy
 -------------

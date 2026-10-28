@@ -30,6 +30,10 @@ GPU-IO/WebGL2, Three.js/TSL WebGPU, raw browser WebGPU with a shared WGSL
 kernel, and native wgpu-py backends. The default remains Three.js. All four
 paths have been validated at 3840 x 2160 pixels.
 
+The native backend also offers opt-in selective pyramid recovery for subsets
+that fail the initial fine solve. One scale remains the default fast path; the
+coarse path is not presented as a 4K60 mode.
+
 The engineering objective is sustained, measurable DIC processing from Python.
 That means keeping the GPU runtime alive, preparing the reference only once,
 separating compute time from transport and readback, and reporting the complete

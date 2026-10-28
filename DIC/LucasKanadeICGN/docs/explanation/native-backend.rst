@@ -105,6 +105,33 @@ design improves steady-state period rather than the latency of an individual
 registration. See :doc:`../reference/performance` for the measured throughput
 and latency trade-off.
 
+Selective pyramid recovery
+---------------------------
+
+``pyramid_levels=1`` is the default and executes the original registration
+graph without coarse engines, seed buffers, or retry dispatches. Values ``2``
+and ``3`` prepare half- and optionally quarter-resolution references once.
+
+For every target, the fine solver remains the first observation. If all useful
+subsets converge, no pyramid work is performed. Otherwise the native host:
+
+#. reduces the target with the SYSCL five-tap ``[1, 4, 6, 4, 1] / 16`` filter;
+#. computes the four-source interpolation closure required by failed subsets;
+#. solves only that active closure at the coarse levels;
+#. transfers affine seeds from coarse to fine coordinates; and
+#. retries only failed fine subsets before the spatial consistency pass.
+
+The final merge restores the parameters, status, and iteration count of every
+subset accepted by the first fine solve bit for bit. Pyramid recovery therefore
+extends capture locally; it does not silently revise observations that were
+already published as accepted.
+
+The current native implementation constructs reduced target images on the CPU
+and uses one retained wgpu engine per coarse scale. This is acceptable for an
+exception path, but the active two-scale 4K path is not a 60 FPS path. Moving
+the five-tap reduction and level orchestration onto one device is the next
+optimization if recovery frequency becomes significant.
+
 Rust/PyO3 milestone
 -------------------
 

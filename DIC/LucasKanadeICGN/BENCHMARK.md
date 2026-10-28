@@ -117,6 +117,33 @@ qualification. The two-slot median period leaves 3.287 ms inside a 16.667 ms
 frame interval for acquisition handoff and downstream work, but its result is
 available roughly one processed frame later.
 
+## Selective native pyramid recovery
+
+The wgpu-py engine now accepts `pyramid_levels=1`, `2`, or `3`. One scale is
+the default and retains the original command graph. Additional scales are
+prepared once; at run time a five-tap reduction and coarse solve are restricted
+to the interpolation closure of fine subsets that failed. The final merge
+preserves parameters, status, and iteration count for every initially accepted
+fine subset bit for bit.
+
+The deterministic `(4, -2)` pixel recovery campaign measured:
+
+| Resolution / scales | Median | p95 | Accepted | Recovered failures | Truth RMSE |
+|---|---:|---:|---:|---:|---:|
+| 512 x 512 / 1 | 3.189 ms | 3.682 ms | 634 | 0 | 0.0906 px |
+| 512 x 512 / 2 | 5.834 ms | 6.396 ms | 900 | 266 | 0.0760 px |
+| 3840 x 2160 / 1 | 36.247 ms | 38.285 ms | 22,401 | 0 | 0.0964 px |
+| 3840 x 2160 / 2 | 90.035 ms | 91.359 ms | 31,654 | 9,253 | 0.0811 px |
+
+The 512 x 512 one-scale output hash matches the pre-pyramid wheel exactly.
+On the nominal `(2, -1)` UHD throughput case, the new one-scale two-slot run
+measured 13.469 ms versus the earlier 13.380 ms, while returning the same
+31,654 accepted subsets and `3.075e-5 px` RMSE. Active 4K recovery is therefore
+not a 60 FPS path yet; the current CPU reduced-image construction is the next
+optimization target.
+Fixed border subsets with no valid interpolation support are excluded from the
+recovery trigger.
+
 ## Ported SYCL operations
 
 The reference is prepared once using the same Gaussian filter and cubic

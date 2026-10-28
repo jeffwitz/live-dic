@@ -31,6 +31,12 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--warmups", type=int, default=5)
     parser.add_argument("--campaigns", type=int, default=4)
     parser.add_argument(
+        "--pyramid-levels",
+        type=int,
+        default=1,
+        help="total image scales; one measures the unchanged fast path",
+    )
+    parser.add_argument(
         "--depths",
         nargs="+",
         type=int,
@@ -116,7 +122,10 @@ def main() -> int:
     methods = ("sync", *(f"pipeline-{depth}" for depth in args.depths))
     campaigns: dict[str, list[dict[str, Any]]] = {method: [] for method in methods}
 
-    with ICGNWGPU(prefer_subgroups=False) as engine:
+    with ICGNWGPU(
+        prefer_subgroups=False,
+        pyramid_levels=args.pyramid_levels,
+    ) as engine:
         preparation = engine.set_reference(reference)
         for _ in range(args.warmups):
             engine.register(target)
@@ -181,6 +190,7 @@ def main() -> int:
                 "repeats": args.repeats,
                 "warmups": args.warmups,
                 "campaigns": args.campaigns,
+                "pyramid_levels": args.pyramid_levels,
                 "preparation_wall_ms": preparation.total_wall_ms,
                 "summary": summary,
                 "campaign_samples": campaigns,

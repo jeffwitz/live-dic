@@ -24,8 +24,11 @@ does not start Chromium or serialize frames as PNG.
 
 ``register_stream`` and ``register_many`` keep at most two images in flight by
 default. The public ``DEFAULT_IN_FLIGHT_FRAMES`` constant records this policy
-in one place. ``pipeline_depth`` refers to concurrent sequence execution;
-DIC-RT does not currently build a multi-scale image pyramid.
+in one place. ``pipeline_depth`` refers only to concurrent sequence execution
+and does not denote an image-pyramid depth. Native pyramid recovery is a
+separate opt-in constructor setting: ``pyramid_levels=1`` is the default
+single-scale path, and values ``2`` or ``3`` enable selective coarse-to-fine
+recovery for failed subsets.
 
 One-shot registration
 ---------------------
@@ -58,5 +61,7 @@ Constants and input types
 .. autodata:: lucas_kanade_icgn.PARAMETER_ORDER
 
 .. autodata:: lucas_kanade_icgn.DEFAULT_IN_FLIGHT_FRAMES
+
+.. autodata:: lucas_kanade_icgn.DEFAULT_PYRAMID_LEVELS
 
 .. autodata:: lucas_kanade_icgn.ImageInput

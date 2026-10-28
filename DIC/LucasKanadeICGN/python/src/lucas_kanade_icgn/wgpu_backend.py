@@ -29,6 +29,8 @@ FIR_RADIUS = 15
 MAX_ITERATIONS = 30
 #: Recommended maximum number of native sequence registrations in flight.
 DEFAULT_IN_FLIGHT_FRAMES = 2
+#: Default total number of image scales; one keeps the original fast path.
+DEFAULT_PYRAMID_LEVELS = 1
 
 
 @dataclass(slots=True)
@@ -39,6 +41,7 @@ class _RegistrationSlot:
     buffers: dict[str, Any]
     bind_group: Any
     readback: Any
+    seeded_bind_group: Any = None
 
 
 @dataclass(slots=True)
@@ -50,6 +53,136 @@ class _PendingRegistration:
     upload_wall_ms: float
     submit_wall_ms: float
     config: dict[str, float | int]
+    frame: npt.NDArray[np.uint8]
+
+
+def _reduce_half(image: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
+    """Apply the SYSCL five-tap reduction and retain every second sample."""
+
+    source = np.asarray(image, dtype=np.float32)
+    height, width = source.shape
+    reduced_height = height // 2
+    reduced_width = width // 2
+    taps = np.asarray((1.0, 4.0, 6.0, 4.0, 1.0), dtype=np.float32) / 16.0
+    padded_x = np.pad(source, ((0, 0), (2, 2)), mode="reflect")
+    horizontal = sum(
+        taps[index] * padded_x[:, index : index + 2 * reduced_width : 2] for index in range(5)
+    )
+    padded_y = np.pad(horizontal, ((2, 2), (0, 0)), mode="reflect")
+    reduced = sum(
+        taps[index] * padded_y[index : index + 2 * reduced_height : 2] for index in range(5)
+    )
+    return np.ascontiguousarray(np.clip(reduced, 0.0, 255.0).astype(np.uint8))
+
+
+def _transfer_pyramid_seed(
+    result: RegistrationResult,
+    *,
+    source_scale: int,
+    destination_scale: int,
+    destination_grid: tuple[int, int],
+    requested: npt.NDArray[np.bool_],
+) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.uint32]]:
+    """Interpolate coarse affine warps onto requested finer subset centres."""
+
+    destination_width, destination_height = destination_grid
+    seeds = np.zeros((destination_height, destination_width, 8), dtype=np.float32)
+    active = np.zeros((destination_height, destination_width), dtype=np.uint32)
+    source_height, source_width = result.status.shape
+    if source_width < 2 or source_height < 2:
+        return seeds, active
+    source_offset = (1.0 - source_scale) * 0.5
+    destination_offset = (1.0 - destination_scale) * 0.5
+    translation_scale = source_scale / destination_scale
+    destinations = np.argwhere(requested)
+    if destinations.size == 0:
+        return seeds, active
+    destination_y = destinations[:, 0]
+    destination_x = destinations[:, 1]
+    x = (
+        destination_scale * (8.0 + SUBSET_SIZE * destination_x) + destination_offset - source_offset
+    ) / source_scale
+    y = (
+        destination_scale * (8.0 + SUBSET_SIZE * destination_y) + destination_offset - source_offset
+    ) / source_scale
+    grid_x = (x - 8.0) / SUBSET_SIZE
+    grid_y = (y - 8.0) / SUBSET_SIZE
+    lower_x = np.clip(np.floor(grid_x), 0, source_width - 2).astype(np.intp)
+    lower_y = np.clip(np.floor(grid_y), 0, source_height - 2).astype(np.intp)
+    fraction_x = np.clip(grid_x - lower_x, 0.0, 1.0)
+    fraction_y = np.clip(grid_y - lower_y, 0.0, 1.0)
+    accumulated = np.zeros((destinations.shape[0], 6), dtype=np.float64)
+    weight_sum = np.zeros(destinations.shape[0], dtype=np.float64)
+    linear_components = np.asarray((1, 2, 4, 5))
+    for corner in range(4):
+        source_x = lower_x + (corner & 1)
+        source_y = lower_y + (corner >> 1)
+        valid = result.status[source_y, source_x] >= -0.5
+        weight_x = fraction_x if corner & 1 else 1.0 - fraction_x
+        weight_y = fraction_y if corner & 2 else 1.0 - fraction_y
+        weight = weight_x * weight_y * valid
+        parameters = result.parameters[source_y, source_x]
+        delta_x = x - (8.0 + SUBSET_SIZE * source_x)
+        delta_y = y - (8.0 + SUBSET_SIZE * source_y)
+        accumulated[:, 0] += (
+            weight
+            * (parameters[:, 0] + parameters[:, 1] * delta_x + parameters[:, 2] * delta_y)
+            * translation_scale
+        )
+        accumulated[:, 3] += (
+            weight
+            * (parameters[:, 3] + parameters[:, 4] * delta_x + parameters[:, 5] * delta_y)
+            * translation_scale
+        )
+        accumulated[:, linear_components] += weight[:, None] * parameters[:, linear_components]
+        weight_sum += weight
+    valid_destinations = weight_sum > 0.0
+    selected_y = destination_y[valid_destinations]
+    selected_x = destination_x[valid_destinations]
+    seeds[selected_y, selected_x, :6] = (
+        accumulated[valid_destinations] / weight_sum[valid_destinations, None]
+    )
+    active[selected_y, selected_x] = 1
+    return seeds, active
+
+
+def _pyramid_dependency_mask(
+    *,
+    source_grid: tuple[int, int],
+    source_scale: int,
+    destination_scale: int,
+    requested: npt.NDArray[np.bool_],
+) -> npt.NDArray[np.bool_]:
+    """Return the four-source interpolation closure for requested subsets."""
+
+    source_width, source_height = source_grid
+    mask = np.zeros((source_height, source_width), dtype=np.bool_)
+    destinations = np.argwhere(requested)
+    if destinations.size == 0 or source_width < 2 or source_height < 2:
+        return mask
+    destination_y = destinations[:, 0]
+    destination_x = destinations[:, 1]
+    source_offset = (1.0 - source_scale) * 0.5
+    destination_offset = (1.0 - destination_scale) * 0.5
+    x = (
+        destination_scale * (8.0 + SUBSET_SIZE * destination_x) + destination_offset - source_offset
+    ) / source_scale
+    y = (
+        destination_scale * (8.0 + SUBSET_SIZE * destination_y) + destination_offset - source_offset
+    ) / source_scale
+    lower_x = np.clip(
+        np.floor((x - 8.0) / SUBSET_SIZE),
+        0,
+        source_width - 2,
+    ).astype(np.intp)
+    lower_y = np.clip(
+        np.floor((y - 8.0) / SUBSET_SIZE),
+        0,
+        source_height - 2,
+    ).astype(np.intp)
+    for corner in range(4):
+        mask[lower_y + (corner >> 1), lower_x + (corner & 1)] = True
+    return mask
 
 
 def _validated_config(
@@ -253,7 +386,14 @@ class ICGNWGPU:
         *,
         power_preference: str = "high-performance",
         prefer_subgroups: bool | None = None,
+        pyramid_levels: int = DEFAULT_PYRAMID_LEVELS,
     ) -> None:
+        try:
+            level_count = operator.index(pyramid_levels)
+        except TypeError as error:
+            raise ValueError("pyramid_levels must be an integer from 1 to 3") from error
+        if isinstance(pyramid_levels, bool) or not 1 <= level_count <= 3:
+            raise ValueError("pyramid_levels must be an integer from 1 to 3")
         try:
             import wgpu
         except ImportError as error:
@@ -303,6 +443,7 @@ class ICGNWGPU:
         shader_path = files("lucas_kanade_icgn").joinpath("shaders/icgn.wgsl")
         shader_source = shader_path.read_text(encoding="utf-8")
         shader = self.device.create_shader_module(code=shader_source)
+        self._shader = shader
         subgroup_shader = None
         if self.subgroup_width >= SUBSET_SIZE:
             subgroup_path = files("lucas_kanade_icgn").joinpath("shaders/icgn_subgroup.spv")
@@ -344,11 +485,15 @@ class ICGNWGPU:
             layout=pipeline_layout,
             compute={"module": shader, "entry_point": "median_filter"},
         )
+        self._seeded_bind_group_layout: Any = None
+        self._seeded_solver: Any = None
         self._reference_ready = False
         self._buffers: dict[str, Any] = {}
         self._source_texture: Any = None
         self._bind_group: Any = None
         self._pipeline_slots: list[_RegistrationSlot] = []
+        self.pyramid_levels = level_count
+        self._pyramid_engines: list[ICGNWGPU] = []
         self.width = 0
         self.height = 0
         self.grid_width = 0
@@ -406,7 +551,7 @@ class ICGNWGPU:
         except Exception:
             return 0
 
-    def _create_bind_group_layout(self) -> Any:
+    def _create_bind_group_layout(self, *, seeded: bool = False) -> Any:
         wgpu = self._wgpu
         entries: list[dict[str, Any]] = [
             {
@@ -439,7 +584,30 @@ class ICGNWGPU:
                     },
                 }
             )
+        if seeded:
+            for binding in (10, 11):
+                entries.append(
+                    {
+                        "binding": binding,
+                        "visibility": wgpu.ShaderStage.COMPUTE,
+                        "buffer": {"type": wgpu.BufferBindingType.read_only_storage},
+                    }
+                )
         return self.device.create_bind_group_layout(entries=entries)
+
+    def _ensure_seeded_solver(self) -> None:
+        """Create retry-only resources without changing the one-scale path."""
+
+        if self._seeded_solver is not None:
+            return
+        self._seeded_bind_group_layout = self._create_bind_group_layout(seeded=True)
+        layout = self.device.create_pipeline_layout(
+            bind_group_layouts=[self._seeded_bind_group_layout]
+        )
+        self._seeded_solver = self.device.create_compute_pipeline(
+            layout=layout,
+            compute={"module": self._shader, "entry_point": "solve_seeded"},
+        )
 
     def _storage_buffer(self, data: npt.NDArray[np.float32], *, output: bool = False) -> Any:
         usage = self._wgpu.BufferUsage.STORAGE
@@ -547,6 +715,49 @@ class ICGNWGPU:
             "resource": {"buffer": buffer, "offset": 0, "size": buffer.size},
         }
 
+    def _ensure_seed_resources(self, slot: _RegistrationSlot) -> None:
+        """Lazily attach seed and activity buffers to one retry slot."""
+
+        if slot.seeded_bind_group is not None:
+            return
+        self._ensure_seeded_solver()
+        wgpu = self._wgpu
+        grid_count = self.grid_width * self.grid_height
+        slot.buffers["seed_state"] = self.device.create_buffer(
+            size=grid_count * 8 * 4,
+            usage=wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_DST,
+        )
+        slot.buffers["active_mask"] = self.device.create_buffer(
+            size=grid_count * 4,
+            usage=wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_DST,
+        )
+        resources = [
+            {"binding": 0, "resource": slot.source_texture.create_view()},
+            *(
+                self._buffer_resource(binding, slot.buffers[name])
+                for binding, name in enumerate(
+                    (
+                        "config",
+                        "temporary",
+                        "coefficients",
+                        "reference",
+                        "inverse",
+                        "metadata",
+                        "state",
+                        "fir",
+                        "filtered_state",
+                        "seed_state",
+                        "active_mask",
+                    ),
+                    start=1,
+                )
+            ),
+        ]
+        slot.seeded_bind_group = self.device.create_bind_group(
+            layout=self._seeded_bind_group_layout,
+            entries=resources,
+        )
+
     def _packed_config(self, config: dict[str, float | int]) -> bytes:
         return struct.pack(
             "<6I2f",
@@ -585,12 +796,22 @@ class ICGNWGPU:
     def _destroy_runtime(self) -> None:
         """Release dimension-dependent resources without destroying the device."""
 
-        dynamic_names = ("config", "temporary", "coefficients", "state", "filtered_state")
+        dynamic_names = (
+            "config",
+            "temporary",
+            "coefficients",
+            "state",
+            "filtered_state",
+            "seed_state",
+            "active_mask",
+        )
         for slot in self._pipeline_slots:
             slot.source_texture.destroy()
             slot.readback.destroy()
             for name in dynamic_names:
-                slot.buffers[name].destroy()
+                buffer = slot.buffers.get(name)
+                if buffer is not None:
+                    buffer.destroy()
         for name in ("reference", "inverse", "metadata", "fir"):
             buffer = self._buffers.get(name)
             if buffer is not None:
@@ -642,6 +863,232 @@ class ICGNWGPU:
         self.device.queue.submit([command])
         return self.device.queue.read_buffer(self._buffers["filtered_state"])
 
+    def _retry_seeded(
+        self,
+        slot: _RegistrationSlot,
+        seeds: npt.NDArray[np.float32],
+        active: npt.NDArray[np.uint32],
+        previous: RegistrationResult,
+    ) -> RegistrationResult:
+        """Retry selected subsets from transferred seeds, then median-filter."""
+
+        if not np.any(active):
+            return previous
+        self._ensure_seed_resources(slot)
+        self.device.queue.write_buffer(
+            slot.buffers["seed_state"],
+            0,
+            np.ascontiguousarray(seeds, dtype=np.float32),
+        )
+        self.device.queue.write_buffer(
+            slot.buffers["active_mask"],
+            0,
+            np.ascontiguousarray(active, dtype=np.uint32),
+        )
+        started = time.perf_counter()
+        encoder = self.device.create_command_encoder(label="DIC-RT seeded pyramid retry")
+        encoder.clear_buffer(slot.buffers["filtered_state"])
+        compute_pass = encoder.begin_compute_pass()
+        compute_pass.set_pipeline(self._seeded_solver)
+        compute_pass.set_bind_group(0, slot.seeded_bind_group)
+        compute_pass.dispatch_workgroups(self.grid_width * self.grid_height, 1, 1)
+        compute_pass.end()
+        compute_pass = encoder.begin_compute_pass()
+        compute_pass.set_pipeline(self._median_filter)
+        compute_pass.set_bind_group(0, slot.bind_group)
+        compute_pass.dispatch_workgroups(
+            (self.grid_width * self.grid_height + 255) // 256,
+            1,
+            1,
+        )
+        compute_pass.end()
+        self.device.queue.submit([encoder.finish()])
+        raw = self.device.queue.read_buffer(slot.buffers["filtered_state"])
+        elapsed_ms = (time.perf_counter() - started) * 1_000.0
+        timing = dict(previous.timing)
+        timing["seededRetryWallMs"] = elapsed_ms
+        timing["totalWallMs"] = timing.get("totalWallMs", 0.0) + elapsed_ms
+        return self._result_from_raw(raw, timing=timing, config=self._config)
+
+    def _register_seeded_frame(
+        self,
+        frame: npt.NDArray[np.uint8],
+        seeds: npt.NDArray[np.float32],
+        active: npt.NDArray[np.uint32],
+    ) -> RegistrationResult:
+        """Prefilter one coarse frame and solve only its active dependency mask."""
+
+        slot = self._pipeline_slots[0]
+        self._ensure_seed_resources(slot)
+        total_started = time.perf_counter()
+        upload_wall_ms = self._upload_frame(slot, frame)
+        self.device.queue.write_buffer(
+            slot.buffers["seed_state"],
+            0,
+            np.ascontiguousarray(seeds, dtype=np.float32),
+        )
+        self.device.queue.write_buffer(
+            slot.buffers["active_mask"],
+            0,
+            np.ascontiguousarray(active, dtype=np.uint32),
+        )
+        execution_started = time.perf_counter()
+        encoder = self.device.create_command_encoder(label="DIC-RT selective coarse solve")
+        encoder.clear_buffer(slot.buffers["state"])
+        encoder.clear_buffer(slot.buffers["filtered_state"])
+        pixel_workgroups = (self.width * self.height + 255) // 256
+        for pipeline, workgroups, bind_group in (
+            (self._prefilter_x, pixel_workgroups, slot.bind_group),
+            (self._prefilter_y, pixel_workgroups, slot.bind_group),
+            (
+                self._seeded_solver,
+                self.grid_width * self.grid_height,
+                slot.seeded_bind_group,
+            ),
+            (
+                self._median_filter,
+                (self.grid_width * self.grid_height + 255) // 256,
+                slot.bind_group,
+            ),
+        ):
+            compute_pass = encoder.begin_compute_pass()
+            compute_pass.set_pipeline(pipeline)
+            compute_pass.set_bind_group(0, bind_group)
+            compute_pass.dispatch_workgroups(workgroups, 1, 1)
+            compute_pass.end()
+        self.device.queue.submit([encoder.finish()])
+        raw = self.device.queue.read_buffer(slot.buffers["filtered_state"])
+        execution_ms = (time.perf_counter() - execution_started) * 1_000.0
+        return self._result_from_raw(
+            raw,
+            timing={
+                "uploadWallMs": upload_wall_ms,
+                "executeReadbackWallMs": execution_ms,
+                "totalWallMs": (time.perf_counter() - total_started) * 1_000.0,
+            },
+            config=self._config,
+        )
+
+    def _recover_pyramid(
+        self,
+        slot: _RegistrationSlot,
+        frame: npt.NDArray[np.uint8],
+        fine_result: RegistrationResult,
+    ) -> RegistrationResult:
+        """Recover only failed fine subsets through coarse-to-fine seeds."""
+
+        # The outer subset ring cannot satisfy the four-tap interpolation
+        # support even at zero motion, so it must not trigger recovery.
+        recoverable = np.zeros_like(fine_result.status, dtype=np.bool_)
+        if self.grid_width > 2 and self.grid_height > 2:
+            recoverable[1:-1, 1:-1] = True
+        failed = (fine_result.status < 0.5) & recoverable
+        failed_count = int(np.count_nonzero(failed))
+        if not self._pyramid_engines or failed_count == 0:
+            return fine_result
+        started = time.perf_counter()
+        reduced_targets: list[npt.NDArray[np.uint8]] = []
+        reduced = frame
+        for _ in self._pyramid_engines:
+            reduced = _reduce_half(reduced)
+            reduced_targets.append(reduced)
+
+        requested_by_level: list[npt.NDArray[np.bool_]] = []
+        requested = failed
+        destination_scale = 1
+        for level_index, engine in enumerate(self._pyramid_engines):
+            level_scale = 1 << (level_index + 1)
+            requested = _pyramid_dependency_mask(
+                source_grid=(engine.grid_width, engine.grid_height),
+                source_scale=level_scale,
+                destination_scale=destination_scale,
+                requested=requested,
+            )
+            requested_by_level.append(requested)
+            destination_scale = level_scale
+
+        transferred_result: RegistrationResult | None = None
+        transferred_scale = 0
+        for level_index in range(len(self._pyramid_engines) - 1, -1, -1):
+            engine = self._pyramid_engines[level_index]
+            level_scale = 1 << (level_index + 1)
+            level_requested = requested_by_level[level_index]
+            if transferred_result is None:
+                seeds = np.zeros(
+                    (engine.grid_height, engine.grid_width, 8),
+                    dtype=np.float32,
+                )
+                active = level_requested.astype(np.uint32)
+            else:
+                seeds, active = _transfer_pyramid_seed(
+                    transferred_result,
+                    source_scale=transferred_scale,
+                    destination_scale=level_scale,
+                    destination_grid=(engine.grid_width, engine.grid_height),
+                    requested=level_requested,
+                )
+            level_result = engine._register_seeded_frame(
+                reduced_targets[level_index],
+                seeds,
+                active,
+            )
+            transferred_result = level_result
+            transferred_scale = level_scale
+
+        if transferred_result is None:
+            return fine_result
+        seeds, active = _transfer_pyramid_seed(
+            transferred_result,
+            source_scale=transferred_scale,
+            destination_scale=1,
+            destination_grid=(self.grid_width, self.grid_height),
+            requested=failed,
+        )
+        recovered = self._retry_seeded(slot, seeds, active, fine_result)
+        recovered_count = int(np.count_nonzero(failed & (recovered.status >= 0.5)))
+        preserved = fine_result.status >= 0.5
+        parameters = np.array(recovered.parameters, copy=True)
+        status = np.array(recovered.status, copy=True)
+        iteration_field = np.array(recovered.iterations, copy=True)
+        parameters[preserved] = fine_result.parameters[preserved]
+        status[preserved] = fine_result.status[preserved]
+        iteration_field[preserved] = fine_result.iterations[preserved]
+        accepted_mask = status > 0.5
+        accepted = int(np.count_nonzero(accepted_mask))
+        mean_translation = None
+        mean_iterations = None
+        if accepted:
+            mean_translation = (
+                float(np.mean(parameters[..., 0][accepted_mask], dtype=np.float64)),
+                float(np.mean(parameters[..., 3][accepted_mask], dtype=np.float64)),
+            )
+            mean_iterations = float(np.mean(iteration_field[accepted_mask], dtype=np.float64))
+        pyramid_wall_ms = (time.perf_counter() - started) * 1_000.0
+        timing = dict(recovered.timing)
+        timing.update(
+            {
+                "pyramidWallMs": pyramid_wall_ms,
+                "pyramidFailedBefore": float(failed_count),
+                "pyramidRecovered": float(recovered_count),
+                "pyramidLevels": float(self.pyramid_levels),
+            }
+        )
+        timing["totalWallMs"] = fine_result.timing["totalWallMs"] + pyramid_wall_ms
+        return RegistrationResult(
+            parameters=parameters,
+            status=status,
+            iterations=iteration_field,
+            accepted=accepted,
+            replaced=int(np.count_nonzero(status > 1.5)),
+            mean_translation=mean_translation,
+            mean_iterations=mean_iterations,
+            timing=timing,
+            config=dict(self._config),
+            width=self.width,
+            height=self.height,
+            subset_size=SUBSET_SIZE,
+        )
+
     def _upload_frame(
         self,
         slot: _RegistrationSlot,
@@ -686,6 +1133,32 @@ class ICGNWGPU:
         self.solver = min(self.solver_tuning_ms, key=self.solver_tuning_ms.__getitem__)
         self._solver = candidates[self.solver]
 
+    def _close_pyramid_engines(self) -> None:
+        for engine in self._pyramid_engines:
+            engine.close()
+        self._pyramid_engines.clear()
+
+    def _prepare_pyramid(
+        self,
+        reference: npt.NDArray[np.uint8],
+        *,
+        zncc_min: float,
+    ) -> None:
+        """Prepare optional coarse references outside the per-frame path."""
+
+        self._close_pyramid_engines()
+        reduced = reference
+        for _ in range(1, self.pyramid_levels):
+            reduced = _reduce_half(reduced)
+            engine = ICGNWGPU(prefer_subgroups=False, pyramid_levels=1)
+            engine.set_reference(
+                reduced,
+                iterations=12,
+                tolerance=1e-2,
+                zncc_min=zncc_min,
+            )
+            self._pyramid_engines.append(engine)
+
     def set_reference(
         self,
         image: ImageInput,
@@ -696,6 +1169,7 @@ class ICGNWGPU:
     ) -> ReferenceInfo:
         total_start = time.perf_counter()
         frame = _as_uint8_gray(image)
+        self._close_pyramid_engines()
         self.height, self.width = frame.shape
         self.grid_width = self.width // SUBSET_SIZE
         self.grid_height = self.height // SUBSET_SIZE
@@ -709,6 +1183,7 @@ class ICGNWGPU:
         self._allocate_runtime(reference, inverse, metadata)
         self._update_config()
         self._autotune_solver(frame)
+        self._prepare_pyramid(frame, zncc_min=zncc_min)
         runtime_wall_ms = (time.perf_counter() - runtime_start) * 1_000.0
         self._reference_ready = True
         total_wall_ms = (time.perf_counter() - total_start) * 1_000.0
@@ -810,7 +1285,7 @@ class ICGNWGPU:
         raw = self._execute_registration(self._solver)
         execution_readback_wall_ms = (time.perf_counter() - execution_start) * 1_000.0
         total_wall_ms = (time.perf_counter() - total_start) * 1_000.0
-        return self._result_from_raw(
+        result = self._result_from_raw(
             raw,
             timing={
                 "uploadWallMs": upload_wall_ms,
@@ -819,6 +1294,9 @@ class ICGNWGPU:
             },
             config=self._config,
         )
+        if self.pyramid_levels == 1:
+            return result
+        return self._recover_pyramid(self._pipeline_slots[0], frame, result)
 
     def _submit_slot(
         self,
@@ -838,6 +1316,7 @@ class ICGNWGPU:
             upload_wall_ms=upload_wall_ms,
             submit_wall_ms=submit_wall_ms,
             config=dict(config),
+            frame=frame,
         )
 
     def _retire_slot(self, pending: _PendingRegistration) -> RegistrationResult:
@@ -858,6 +1337,8 @@ class ICGNWGPU:
         }
         result = self._result_from_raw(raw, timing=timing, config=pending.config)
         result.timing["totalWallMs"] = (time.perf_counter() - pending.submitted_at) * 1_000.0
+        if self.pyramid_levels > 1:
+            result = self._recover_pyramid(pending.slot, pending.frame, result)
         return result
 
     def register_stream(
@@ -937,6 +1418,7 @@ class ICGNWGPU:
 
     def close(self) -> None:
         self._reference_ready = False
+        self._close_pyramid_engines()
         self._destroy_runtime()
 
     def __enter__(self) -> ICGNWGPU:

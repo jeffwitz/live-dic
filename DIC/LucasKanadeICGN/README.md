@@ -91,8 +91,11 @@ remains the lowest-latency path.
 The remaining differences are platform constraints: the browser backends use
 single precision and do not expose the same register controls or queue model as
 SYCL/Level Zero. This version does not implement Aitken acceleration,
-predictive tolerance, temporal/extrapolated initialization, a pyramid, or the
-H.264 pipeline.
+predictive tolerance, temporal/extrapolated initialization, or the H.264
+pipeline. The native wgpu-py engine now provides an optional selective image
+pyramid: ``pyramid_levels=1`` is the unchanged default fast path, while
+``pyramid_levels=2`` retries only failed fine subsets from half-resolution
+seeds and preserves every previously accepted result bit for bit.
 
 ## Test dataset
 

@@ -17,6 +17,10 @@ struct Float4Buffer {
     values: array<vec4<f32>>,
 }
 
+struct UintBuffer {
+    values: array<u32>,
+}
+
 struct WarpUpdate {
     translation: vec2<f32>,
     linear: vec4<f32>,
@@ -32,6 +36,8 @@ struct WarpUpdate {
 @group(0) @binding(7) var<storage, read_write> state: Float4Buffer;
 @group(0) @binding(8) var<storage, read> fir_weights: FloatBuffer;
 @group(0) @binding(9) var<storage, read_write> filtered_state: Float4Buffer;
+@group(0) @binding(10) var<storage, read> seed_state: Float4Buffer;
+@group(0) @binding(11) var<storage, read> active_mask: UintBuffer;
 
 const SUBSET_SIZE: i32 = 16;
 const SUBSET_PIXELS: f32 = 256.0;
@@ -210,17 +216,17 @@ fn convergence_status(change: f32, zncc: f32) -> f32 {
     return select(-2.0, 1.0, zncc >= config.zncc_min);
 }
 
-@compute @workgroup_size(16)
-fn solve(
-    @builtin(workgroup_id) workgroup_id: vec3<u32>,
-    @builtin(local_invocation_id) local_id: vec3<u32>,
+fn solve_subset(
+    subset_index: u32,
+    lane: u32,
+    initial_translation: vec2<f32>,
+    initial_linear: vec4<f32>,
+    enabled: bool,
 ) {
-    let subset_index = workgroup_id.x;
-    let lane = local_id.x;
     if lane == 0u {
-        shared_translation = vec2<f32>(0.0);
-        shared_linear = vec4<f32>(0.0);
-        let valid = metadata_value(subset_index, 1u) >= 0.5;
+        shared_translation = initial_translation;
+        shared_linear = initial_linear;
+        let valid = enabled && metadata_value(subset_index, 1u) >= 0.5;
         shared_status = vec2<f32>(select(-1.0, 0.0, valid), 0.0);
     }
     workgroupBarrier();
@@ -348,7 +354,7 @@ fn solve(
         workgroupBarrier();
     }
 
-    if lane == 0u {
+    if lane == 0u && enabled {
         state.values[subset_index * 2u] = vec4<f32>(
             shared_translation.x,
             shared_linear.x,
@@ -362,6 +368,37 @@ fn solve(
             shared_status.y,
         );
     }
+}
+
+@compute @workgroup_size(16)
+fn solve(
+    @builtin(workgroup_id) workgroup_id: vec3<u32>,
+    @builtin(local_invocation_id) local_id: vec3<u32>,
+) {
+    solve_subset(
+        workgroup_id.x,
+        local_id.x,
+        vec2<f32>(0.0),
+        vec4<f32>(0.0),
+        true,
+    );
+}
+
+@compute @workgroup_size(16)
+fn solve_seeded(
+    @builtin(workgroup_id) workgroup_id: vec3<u32>,
+    @builtin(local_invocation_id) local_id: vec3<u32>,
+) {
+    let subset_index = workgroup_id.x;
+    let seed_a = seed_state.values[subset_index * 2u];
+    let seed_b = seed_state.values[subset_index * 2u + 1u];
+    solve_subset(
+        subset_index,
+        local_id.x,
+        vec2<f32>(seed_a.x, seed_a.w),
+        vec4<f32>(seed_a.y, seed_a.z, seed_b.x, seed_b.y),
+        active_mask.values[subset_index] != 0u,
+    );
 }
 
 fn median_eight(values: ptr<function, array<f32, 8>>, count: u32) -> f32 {

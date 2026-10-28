@@ -164,6 +164,25 @@ Keep ``register()`` for the lowest latency on isolated pairs.
 ``register_many()`` uses the same default and returns a list when all results
 must be retained.
 
+For displacements outside the local single-scale basin, enable selective
+pyramid recovery explicitly:
+
+```python
+with ICGNWGPU(prefer_subgroups=False, pyramid_levels=2) as engine:
+    engine.set_reference(reference_frame)
+    result = engine.register(target_frame)
+```
+
+``pyramid_levels`` counts the fine image, so ``1`` means no pyramid and remains
+the default. With two or three scales, reduced references are prepared once.
+For each target, the ordinary fine solve runs first; a five-tap pyramid and a
+coarse-to-fine seeded retry are executed only when fine subsets fail. The
+coarse dependency mask contains only the interpolation support required by
+those failures. Parameters, statuses, and iteration counts already accepted by
+the fine solve are preserved bit for bit. Two scales are the recommended
+recovery setting; a third scale should be enabled only after qualification on
+the expected displacement field.
+
 ## One-shot function
 
 ```python

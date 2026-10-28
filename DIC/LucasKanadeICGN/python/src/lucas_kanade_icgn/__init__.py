@@ -11,11 +11,12 @@ from .engine import (
     RegistrationResult,
     register_pair,
 )
-from .wgpu_backend import DEFAULT_IN_FLIGHT_FRAMES, ICGNWGPU
+from .wgpu_backend import DEFAULT_IN_FLIGHT_FRAMES, DEFAULT_PYRAMID_LEVELS, ICGNWGPU
 
 __all__ = [
     "BenchmarkResult",
     "DEFAULT_IN_FLIGHT_FRAMES",
+    "DEFAULT_PYRAMID_LEVELS",
     "EngineInfo",
     "ImageInput",
     "ICGNError",

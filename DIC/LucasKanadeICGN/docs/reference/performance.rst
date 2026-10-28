@@ -340,6 +340,77 @@ Reproduce the comparison with:
        python3 DIC/LucasKanadeICGN/benchmarks/benchmark_wgpu_pipeline.py \
        --repeats 30 --warmups 5 --campaigns 4 --depths 1 2 3
 
+Selective native pyramid recovery
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The optional native pyramid was measured with an exact ``(4, -2)`` pixel
+translation, which deliberately exceeds the robust basin of many fine subsets.
+``pyramid_levels`` counts the fine image. One scale is the default fast path;
+two scales add a half-resolution selective recovery.
+
+.. list-table:: Selective pyramid recovery on the validation machine
+   :header-rows: 1
+
+   * - Resolution and scales
+     - Median call
+     - p95
+     - Accepted
+     - Recovered failures
+     - Truth RMSE
+   * - 512 x 512, one scale
+     - 3.189 ms
+     - 3.682 ms
+     - 634 / 1,024
+     - 0
+     - 0.0906 px
+   * - 512 x 512, two scales
+     - 5.834 ms
+     - 6.396 ms
+     - 900 / 1,024
+     - 266
+     - 0.0760 px
+   * - 3840 x 2160, one scale
+     - 36.247 ms
+     - 38.285 ms
+     - 22,401 / 32,400
+     - 0
+     - 0.0964 px
+   * - 3840 x 2160, two scales
+     - 90.035 ms
+     - 91.359 ms
+     - 31,654 / 32,400
+     - 9,253
+     - 0.0811 px
+
+These are recovery measurements, not the nominal ``(2, -1)`` throughput case.
+The two-scale path preserves every result accepted by the first fine solve, so
+its RMSE intentionally retains any fine-scale false convergence. On the
+512 x 512 validation, all six parameters, status, and iteration count of all
+634 initially accepted subsets remained bit-for-bit identical. Fixed border
+subsets whose interpolation support cannot lie inside the image are excluded
+from recovery triggering and scoring.
+
+The one-scale WGSL output also remained bit-for-bit identical to the wheel
+before the pyramid implementation. Its 512 x 512 packed-field SHA-256 for the
+shipped ``t=20`` pair was
+``74ef8ba550fba255a18d9bf904dfb591892d0a71358e37e070646ad01b544b1f``
+before and after. A repeated nominal UHD pipeline campaign measured 13.469 ms
+per target versus the earlier 13.380 ms, a 0.7% difference within the observed
+campaign spread; the numerical result was unchanged.
+
+Reproduce the recovery campaign with:
+
+.. code-block:: console
+
+   $ PYTHONPATH=DIC/LucasKanadeICGN/python/src \
+       python3 DIC/LucasKanadeICGN/benchmarks/benchmark_wgpu_pyramid.py \
+       --warmups 3 --repeats 10 --levels 1 2
+
+Add ``--width 3840 --height 2160`` for the UHD campaign. The current CPU
+five-tap reduction makes active 4K recovery an exception path rather than a
+4K60 mode. When no recovery is configured, none of these resources or
+dispatches exists.
+
 Browser validation
 ~~~~~~~~~~~~~~~~~~
 
