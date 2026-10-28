@@ -12,7 +12,8 @@ Positional arguments
 --------------------
 
 ``reference``
-   One reference image. Its dimensions define the Three.js subset grid.
+   One reference image. Its dimensions define the subset grid for either
+   backend; GPU-IO requires both dimensions to be multiples of 16.
 
 ``targets``
    One or more target images with the same dimensions as the reference.

@@ -60,7 +60,9 @@ Interpret the timers
    graph construction. ``reference_build_wall_ms`` measures gradients,
    Hessians, and metadata derived from the reference. ``preparation_wall_ms``
    covers both in the browser, while ``total_wall_ms`` is the complete Python
-   preparation call.
+   preparation call. GPU-IO allocates textures while its private page starts,
+   so it reports zero runtime-build time; if dimensions change, the page restart
+   remains visible in ``total_wall_ms``.
 
 Complete Python call
    Measure ``engine.register(frame)`` with ``time.perf_counter``. This includes
@@ -82,3 +84,14 @@ iteration count.
 For the measured Three.js, GPU-IO, and SYCL results on the validation machine,
 see :doc:`../reference/performance`. For the interpretation of timing
 boundaries, see :doc:`../explanation/realtime-performance`.
+
+From a repository checkout, reproduce the UHD campaign for either browser
+backend with:
+
+.. code-block:: console
+
+   $ PYTHONPATH=DIC/LucasKanadeICGN/python/src \
+       python3 DIC/LucasKanadeICGN/benchmarks/benchmark_4k.py \
+       --backend three-tsl --repeats 30 --warmups 5
+
+Use ``--backend gpuio`` for the WebGL2 path.

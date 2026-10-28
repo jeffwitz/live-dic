@@ -4,9 +4,11 @@ Current limitations
 Geometry and input
 ------------------
 
-* The Three.js/TSL backend supports dynamic frame dimensions, including the
-  validated 3840 x 2160 path. Reference and target dimensions must match.
-* The optional GPU-IO backend remains fixed at 512 x 512 pixels.
+* Both backends support dynamic frame dimensions and have been validated at
+  3840 x 2160. Reference and target dimensions must match.
+* GPU-IO dimensions must be exact multiples of 16 because its texture grid is
+  allocated when the private headless page starts. A dimension change rebuilds
+  that page automatically.
 * Grid spacing and subset size are fixed at 16 pixels.
 * Grid dimensions are ``floor(width / 16)`` by ``floor(height / 16)``;
   uncovered right or bottom pixels are not assigned to a subset.
@@ -36,7 +38,8 @@ Runtime
 * Browser GPU shader arithmetic is single precision.
 * The fastest Three.js solver requires a WebGPU subgroup containing all 16
   active lanes. Other adapters use the validated workgroup-memory fallback.
-* Maximum image size depends on the adapter's WebGPU storage-buffer limits.
+* Maximum image size depends on the adapter's WebGPU storage-buffer or WebGL2
+  texture limits.
 * Full parameter and status fields are read back for every ``register`` call.
 * Current timing is soft real-time and provides no operating-system deadline
   guarantee.

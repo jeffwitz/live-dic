@@ -1,4 +1,4 @@
-"""Validate and benchmark the Three.js backend on a synthetic UHD image pair.
+"""Validate and benchmark a browser backend on a synthetic UHD image pair.
 
 The shipped 512-pixel reference texture is tiled to 3840 x 2160, then shifted
 by exactly ``(2, -1)`` pixels. Reference construction and repeated optical-flow
@@ -34,6 +34,12 @@ def _arguments() -> argparse.Namespace:
     )
     parser.add_argument("--repeats", type=int, default=30)
     parser.add_argument("--warmups", type=int, default=5)
+    parser.add_argument(
+        "--backend",
+        choices=("three-tsl", "gpuio"),
+        default="three-tsl",
+        help="browser GPU implementation to measure",
+    )
     return parser.parse_args()
 
 
@@ -52,10 +58,10 @@ def main() -> int:
     reference, target = _make_pair(args.texture)
 
     with ICGNWebGL(
-        backend="three-tsl", startup_timeout=120, call_timeout=600
+        backend=args.backend, startup_timeout=120, call_timeout=600
     ) as engine:
-        runtime = engine.info()
         preparation = engine.set_reference(reference)
+        runtime = engine.info()
         benchmark = engine.benchmark_target(
             target,
             repeats=args.repeats,
@@ -64,7 +70,7 @@ def main() -> int:
 
     registration = benchmark.registration
     report: dict[str, Any] = {
-        "backend": "three-tsl",
+        "backend": args.backend,
         "device": benchmark.device,
         "solver": runtime.solver,
         "subgroup_width": runtime.subgroup_width,

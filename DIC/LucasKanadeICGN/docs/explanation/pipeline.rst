@@ -58,13 +58,13 @@ Target stage
 ------------
 
 Every target is converted to grayscale, uploaded, and filtered into cubic
-B-spline coefficients. The selected GPU solver then runs up to 30 affine IC-GN
-iterations per subset inside one fused compute dispatch. Subsets stop doing the
-expensive interpolation and update after convergence or rejection. The fast
-path uses 16 active lanes and hardware subgroup reductions; a startup probe
-selects the portable workgroup-memory implementation when one subgroup cannot
-contain those lanes. A final GPU pass detects spatial outliers and can replace
-them with neighbor medians.
+B-spline coefficients. Three.js runs up to 30 affine IC-GN iterations inside
+one compute dispatch and groups 16 active lanes per subset. GPU-IO fuses the
+same iteration loop into one fragment per subset and scans the 16 x 16 tile
+serially. In both cases, converged or rejected subsets stop expensive target
+sampling. A final GPU pass detects spatial outliers and can replace them with
+neighbor medians. :doc:`gpu-optimization` describes both mappings and their
+reduction strategies in detail.
 
 Control path
 ------------

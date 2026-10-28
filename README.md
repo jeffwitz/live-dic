@@ -11,7 +11,7 @@
 The project goal is sustained digital image correlation on 3840 x 2160 frames
 at 60 frames per second, measured across the complete acquisition-to-result
 pipeline. The current Three.js/WebGPU milestone processes the reproducible UHD
-test pair in **13.341 ms median GPU time** with a **14.405 ms p95**, below the
+test pair in **13.629 ms median GPU time** with a **15.352 ms p95**, below the
 16.667 ms compute budget of 60 FPS on the validation machine.
 
 This is an encouraging compute result, not yet a 4K60 system qualification.
@@ -23,9 +23,10 @@ claimed.
 This fork adds a Python-accessible, GPU-accelerated digital image correlation
 (DIC) implementation to `tests_gpuio`. It performs affine
 inverse-compositional Gauss-Newton registration through a default Three.js/TSL
-WebGPU backend and an optional GPU-IO/WebGL2 backend. The dynamic Three.js path
-has been validated from 512 x 512 through UHD 3840 x 2160 and is designed as
-the numerical core of a soft real-time Python processing pipeline.
+WebGPU backend and an optional GPU-IO/WebGL2 backend. Both paths now accept
+dynamic dimensions and have been validated from 512 x 512 through UHD 3840 x
+2160; Three.js remains the performance-oriented numerical core of the soft
+real-time Python pipeline.
 
 The current implementation deliberately starts with deterministic images from
 the validation dataset. It does **not** include camera acquisition or the H.264
@@ -44,7 +45,8 @@ The implementation in [`DIC/LucasKanadeICGN/`](./DIC/LucasKanadeICGN/) adds:
 - a dynamic 16-pixel grid of 16 x 16 subsets, including 32 x 32 at 512 pixels
   and 240 x 135 at UHD;
 - target prefiltering and registration on Three.js/TSL WebGPU by default;
-- the previous fixed-512 GPU-IO/WebGL2 implementation as an optional backend;
+- a fused, dynamically sized GPU-IO/WebGL2 implementation as an optional
+  backend;
 - a persistent, headless Python API with no visible browser interface;
 - NumPy displacement, affine-parameter, status, and iteration fields;
 - sequence processing, benchmarking, `.npz` export, and a command-line tool;
@@ -97,6 +99,12 @@ uses 16 cooperating lanes per subset. A startup probe selects hardware subgroup
 reductions when all lanes fit in one subgroup and otherwise selects the
 portable workgroup-memory solver.
 
+The GPU-IO solver uses the WebGL2 execution model: one fragment owns one subset
+and scans its 16 x 16 pixels serially. Its iterations are fused into one draw,
+the affine state and reference atlases stay in registers, and three result
+attachments are written once. The complete tiling and grouping diagrams are in
+the [GPU optimization documentation](./DIC/LucasKanadeICGN/docs/explanation/gpu-optimization.rst).
+
 Chromium is used only as an invisible WebGPU or WebGL2 execution environment.
 The Python entry point does not load Tweakpane, attach the canvas to the visible
 page, or open a browser window. One persistent engine should be reused for a
@@ -130,20 +138,21 @@ five warm-ups. At 512 x 512, the median campaign summaries are:
 
 | Backend | GPU median | GPU p95 | Browser wall median |
 |---|---:|---:|---:|
-| Three.js/TSL WebGPU | **0.672 ms** | **1.225 ms** | **2.7 ms** |
-| GPU-IO/WebGL2 | 3.768 ms | 4.362 ms | 16.6 ms |
+| Three.js/TSL WebGPU | **0.675 ms** | **1.227 ms** | **2.7 ms** |
+| GPU-IO/WebGL2 | 3.301 ms | 4.210 ms | 10.3 ms |
 
 The reproducible UHD pair contains 32,400 subsets and an exact `(2, -1)` pixel
 translation:
 
 | UHD compute boundary | Median | p95 | Accepted | RMSE |
 |---|---:|---:|---:|---:|
-| Three.js/TSL | **13.341 ms** | **14.405 ms** | 31,654 | `3.076e-5` px |
+| Three.js/TSL | **13.629 ms** | **15.352 ms** | 31,654 | `3.076e-5` px |
+| GPU-IO/WebGL2 | 80.738 ms | 82.522 ms | 31,654 | `4.182e-5` px |
 | SYCL mixed/double reduction | 19.099 ms | 19.863 ms | 31,654 | `2.555e-5` px |
 | SYCL `--float-reduce` | 18.111 ms | 19.062 ms | 31,654 | `2.712e-5` px |
 
-At the comparable UHD compute boundary, Three.js is 30.1% faster than the
-mixed/double-reduction SYCL configuration and 26.3% faster than the numerically
+At the comparable UHD compute boundary, Three.js is 28.6% faster than the
+mixed/double-reduction SYCL configuration and 24.7% faster than the numerically
 closer float-reduction variant on this machine. Three.js GPU timestamps exclude
 input upload and output readback; the documented SYCL totals include them in a
 separate timing boundary.
@@ -268,8 +277,8 @@ available from [`index.html`](./index.html).
 
 ## Current limitations
 
-- dynamic grayscale frame dimensions in the default Three.js backend; the
-  optional GPU-IO backend remains fixed at 512 x 512;
+- dynamic grayscale frame dimensions in both backends; GPU-IO requires width
+  and height to be multiples of 16;
 - fixed 16 x 16 subsets on a 16-pixel grid;
 - single-scale registration with no pyramid;
 - no temporal or extrapolated initialization;

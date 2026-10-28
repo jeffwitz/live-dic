@@ -91,7 +91,8 @@ The affine parameter order is:
 Accepted image inputs are file paths, encoded PNG/JPEG bytes, Pillow images,
 and 2D/RGB/RGBA NumPy-compatible arrays. The default Three.js backend derives
 its dimensions from the reference; all targets must match. The optional GPU-IO
-backend remains fixed at 512 x 512 pixels. Floating-point arrays with a maximum
+backend also derives its allocation from the reference, with width and height
+restricted to multiples of 16. Floating-point arrays with a maximum
 value at or below 1 are interpreted as normalized images and scaled to 8-bit
 grayscale.
 
@@ -101,7 +102,7 @@ that already have an active `asyncio` event loop. An engine instance must not be
 used concurrently from multiple threads.
 
 `backend="three-tsl"` is the default. Use `backend="gpuio"` to select the
-previous WebGL2 implementation. On Linux the default engine supplies Chromium's
+optional fused WebGL2 implementation. On Linux the default engine supplies Chromium's
 native headless Vulkan flags and `engine.info().device` identifies the selected
 adapter; check that it does not report SwiftShader before interpreting GPU
 benchmarks. `engine.info().solver` reports either `subgroup` or

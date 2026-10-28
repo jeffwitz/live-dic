@@ -11,7 +11,7 @@
 
 The long-term objective is sustained 3840 x 2160 DIC at 60 FPS over the full
 acquisition-to-result path. The current optimized Three.js compute boundary is
-13.341 ms median and 14.405 ms p95 on the validation machine, inside a 16.667 ms
+13.629 ms median and 15.352 ms p95 on the validation machine, inside a 16.667 ms
 frame period. Acquisition, upload, Python transport, readback, and downstream
 processing are excluded, so this repository does not yet claim a qualified
 4K60 application.
@@ -50,12 +50,12 @@ implementation of the DIC-RT equations in this repository, not a copy of
 Strobox. Three.js r186 and its licence are vendored locally under
 [`three/vendor/`](./three/vendor/) for offline execution.
 
-The Three.js runtime derives its buffers and subset grid from the reference
-dimensions. It has been validated at both 512 × 512 and UHD 3840 × 2160. The
-one-time reference construction is exposed by `set_reference()`, while
-`register()` and `benchmark_target()` operate against that prepared state so
-reference construction and optical-flow timings remain separate. GPU-IO is
-kept as the optional fixed-512 backend.
+Both runtimes derive their buffers or textures and subset grid from the
+reference dimensions. They have been validated at both 512 × 512 and UHD 3840
+× 2160; GPU-IO dimensions must be multiples of 16. The one-time reference
+construction is exposed by `set_reference()`, while `register()` and
+`benchmark_target()` operate against that prepared state so reference
+construction and optical-flow timings remain separate.
 
 The remaining differences are platform constraints: the browser backends use
 single precision and do not expose the same register controls or queue model as
@@ -122,6 +122,10 @@ Measured accuracy and performance are recorded in
 GPU-IO, and the external
 [`DIC_FROM_H264` SYCL implementation](https://github.com/jeffwitz/DIC_FROM_H264)
 on the validation machine.
+
+[`GPU tiling and grouping`](./docs/explanation/gpu-optimization.rst) explains
+the 16-lane WebGPU subgroup/workgroup reductions and the fused one-fragment-per-
+subset WebGL2 strategy with execution diagrams.
 
 The reproducible offline UHD campaign is
 [`benchmarks/benchmark_4k.py`](./benchmarks/benchmark_4k.py). It constructs a

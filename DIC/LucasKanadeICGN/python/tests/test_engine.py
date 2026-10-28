@@ -14,6 +14,7 @@ from lucas_kanade_icgn.engine import (
     ICGNError,
     ICGNWebGL,
     RegistrationResult,
+    _array_data_url,
     _as_uint8_gray,
     _find_runtime_assets,
     _run_async_blocking,
@@ -35,6 +36,10 @@ class ImageConversionTests(unittest.TestCase):
     def test_uhd_frame_is_accepted(self) -> None:
         image = np.zeros((2160, 3840), dtype=np.uint8)
         self.assertEqual(_as_uint8_gray(image).shape, (2160, 3840))
+
+    def test_normalized_array_can_be_encoded_without_rescaling(self) -> None:
+        image = np.full((16, 32), 73, dtype=np.uint8)
+        self.assertTrue(_array_data_url(image).startswith("data:image/png;base64,"))
 
     def test_too_small_frame_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "at least 16"):

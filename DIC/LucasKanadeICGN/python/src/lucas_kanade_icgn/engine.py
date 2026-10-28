@@ -351,14 +351,19 @@ def _as_uint8_gray(image: ImageInput) -> np.ndarray:
     return np.ascontiguousarray(array)
 
 
-def _data_url(image: ImageInput) -> str:
-    """Encode a normalized frame as a browser-compatible PNG data URL."""
+def _array_data_url(array: npt.NDArray[np.uint8]) -> str:
+    """Encode an already normalized frame as a browser-compatible data URL."""
 
-    array = _as_uint8_gray(image)
     buffer = io.BytesIO()
     Image.fromarray(array).save(buffer, format="PNG", optimize=False)
     payload = base64.b64encode(buffer.getvalue()).decode("ascii")
     return f"data:image/png;base64,{payload}"
+
+
+def _data_url(image: ImageInput) -> str:
+    """Normalize and encode a frame as a browser-compatible PNG data URL."""
+
+    return _array_data_url(_as_uint8_gray(image))
 
 
 def _run_async_blocking(coroutine: Coroutine[Any, Any, _T]) -> _T:
@@ -439,6 +444,8 @@ class ICGNWebGL:
         self._websocket_url: str | None = None
         self._devtools_origin: str | None = None
         self._reference_ready = False
+        self._requested_dimensions: tuple[int, int] | None = None
+        self._runtime_dimensions: tuple[int, int] | None = None
 
     def start(self) -> ICGNWebGL:
         """Start Chromium and wait until the JavaScript headless API is ready."""
@@ -455,6 +462,9 @@ class ICGNWebGL:
         log_path = Path(self._temporary.name) / "chromium.log"
         self._log_handle = log_path.open("wb")
         page_url = f"http://127.0.0.1:{self._server.port}/{self._headless_path}?headless=1"
+        if self.backend == "gpuio" and self._requested_dimensions is not None:
+            width, height = self._requested_dimensions
+            page_url += f"&width={width}&height={height}"
         command = [
             self.chromium,
             "--headless=new",
@@ -497,6 +507,8 @@ class ICGNWebGL:
                 )
                 self._websocket_url = str(page["webSocketDebuggerUrl"])
                 if self._wait_until_ready(deadline):
+                    if self.backend == "gpuio":
+                        self._runtime_dimensions = self._requested_dimensions or (512, 512)
                     return self
             except (
                 json.JSONDecodeError,
@@ -623,7 +635,22 @@ class ICGNWebGL:
 
         total_start = time.perf_counter()
         encoding_start = time.perf_counter()
-        data_url = _data_url(image)
+        array = _as_uint8_gray(image)
+        height, width = array.shape
+        if self.backend == "gpuio":
+            dimensions = (width, height)
+            if width % 16 or height % 16:
+                raise ValueError(
+                    "The GPU-IO backend requires width and height to be multiples of 16; "
+                    f"received {width}x{height}."
+                )
+            if self._runtime_dimensions is not None and self._runtime_dimensions != dimensions:
+                # GPU-IO allocates all textures at page creation. Reopening the
+                # private headless page is the only dimension change required;
+                # the public engine instance and API remain unchanged.
+                self.close()
+            self._requested_dimensions = dimensions
+        data_url = _array_data_url(array)
         encoding_wall_ms = (time.perf_counter() - encoding_start) * 1_000.0
         options = self._options(iterations=iterations, tolerance=tolerance, zncc_min=zncc_min)
         expression = (
@@ -805,6 +832,7 @@ class ICGNWebGL:
         self._websocket_url = None
         self._devtools_origin = None
         self._reference_ready = False
+        self._runtime_dimensions = None
 
     def __enter__(self) -> ICGNWebGL:
         return self.start()

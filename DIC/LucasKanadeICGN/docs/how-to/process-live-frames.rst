@@ -18,8 +18,10 @@ reference image and every target must match them. Accepted inputs are:
 Floating-point arrays with maximum value at or below 1 are treated as normalized
 images and scaled to 8-bit grayscale.
 
-The optional GPU-IO backend remains limited to 512 x 512 frames. Maximum
-Three.js dimensions also depend on the WebGPU adapter's storage-buffer limits.
+The optional GPU-IO backend also derives its allocation from the reference;
+its width and height must be multiples of 16. Changing dimensions rebuilds its
+private runtime page. Maximum dimensions depend on the WebGPU storage-buffer
+or WebGL2 texture limits of the selected adapter.
 
 Use a frame iterator
 --------------------

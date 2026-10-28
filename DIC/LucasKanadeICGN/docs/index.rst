@@ -13,7 +13,7 @@ Real-Time DIC in Python toward 4K60
 
    The engineering objective is sustained DIC on 3840 x 2160 frames at 60
    frames per second over the complete acquisition-to-result pipeline. The
-   current Three.js/WebGPU compute boundary is 13.341 ms median and 14.405 ms
+   current Three.js/WebGPU compute boundary is 13.629 ms median and 15.352 ms
    p95 on the validation machine, below the 16.667 ms frame period. Camera
    acquisition, upload, Python transport, readback, and downstream consumers
    are not included in that timer, so 4K60 is a target rather than a current
@@ -41,6 +41,8 @@ Choose the section that matches your task:
 * :doc:`reference/api` for the exact Python interface;
 * :doc:`reference/performance` for measured Three.js, GPU-IO, and SYCL results
   on the validation machine;
+* :doc:`explanation/gpu-optimization` for the backend tiling, lane grouping,
+  and reduction strategies;
 * :doc:`explanation/realtime-performance` to understand what "real time" means
   for this pipeline.
 
@@ -91,6 +93,7 @@ path.
 
    explanation/pipeline
    explanation/icgn
+   explanation/gpu-optimization
    explanation/realtime-performance
    explanation/limitations
    explanation/acknowledgements

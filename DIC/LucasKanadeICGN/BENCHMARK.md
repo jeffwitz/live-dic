@@ -1,6 +1,6 @@
 # Affine IC-GN backend benchmarks
 
-Date: October 27, 2026. Three.js/TSL comparison added October 28, 2026.
+Date: October 28, 2026.
 
 ## Common configuration
 
@@ -28,8 +28,10 @@ each target.
 
 The registration shader reads each interpolated target pixel once per
 iteration. It accumulates the mean, norm, ZNCC, and `J^T g` together, then
-applies `-H^-1 b` and the same inverse-compositional update. A final pass runs
-the normalized 3 x 3 median consistency test and replaces flagged subsets.
+applies `-H^-1 b` and the same inverse-compositional update. All iterations are
+fused in one fragment draw; invariant Hessian and metadata blocks remain in
+registers until the subset finishes. A final pass runs the normalized 3 x 3
+median consistency test and replaces flagged subsets.
 
 ## WebGL2 performance
 
@@ -68,6 +70,14 @@ time, with **16.8 ms** and **16.9 ms** median wall time. Their midpoint is
 3.913 ms, effectively unchanged from the 3.908 ms baseline. The displacement,
 accepted-subset count, and iteration count remained identical.
 
+The current fused-iteration shader was measured in three new campaigns of five
+warm-ups and 30 samples. The median campaign result is **3.301 ms GPU**
+(**4.210 ms p95**) and **10.3 ms browser wall** (**11.9 ms p95**). This is a
+12.4% reduction from the previous 3.768 ms paired-backend GPU median and a 38.0%
+reduction from its 16.6 ms synchronized browser median. The numerical result is
+unchanged within single-precision rounding: 900 accepted subsets and a
+`3.873e-5 px` truth RMSE.
+
 ## Three.js/TSL WebGPU backend
 
 The independent Three.js r186 backend implements the same radius-15 target
@@ -89,14 +99,12 @@ are excluded from both samples.
 
 | Backend | Native device path | GPU median | GPU p95 | Browser wall median | Browser wall p95 |
 |---|---|---:|---:|---:|---:|
-| GPU-IO | ANGLE / Mesa Intel OpenGL 4.6 | 3.768 ms | 4.362 ms | 16.6 ms | 18.4 ms |
-| Three.js/TSL | WebGPU / Intel Xe2-LPG Vulkan | **0.672 ms** | **1.225 ms** | **2.7 ms** | **3.5 ms** |
+| GPU-IO | ANGLE / Mesa Intel OpenGL 4.6 | 3.301 ms | 4.210 ms | 10.3 ms | 11.9 ms |
+| Three.js/TSL | WebGPU / Intel Xe2-LPG Vulkan | **0.675 ms** | **1.227 ms** | **2.7 ms** | **3.4 ms** |
 
-For this workload, Three.js/TSL uses **17.8% of the GPU time** of GPU-IO, an
-82.2% reduction. The three per-campaign ratios were 23.1%, 17.4%, and 17.2%.
-Its browser-side synchronized median is 83.7% lower. Three.js GPU p95 ranged
-from 1.174 to 1.227 ms across the campaigns; GPU-IO ranged from 4.253 to
-4.613 ms.
+For this workload, Three.js/TSL uses **20.4% of the GPU time** of GPU-IO, a
+79.6% reduction and 4.89 times the throughput. Its browser-side synchronized
+median is 73.8% lower.
 That wall-time difference is backend synchronization overhead, not an
 acquisition-to-result measurement; complete Python calls still include
 DevTools transport and result readback.
@@ -105,24 +113,22 @@ Numerical agreement on the 1,024-subset field is:
 
 - identical status values for all 1,024 subsets;
 - 900 accepted subsets with both backends and no median replacements;
-- translation difference RMS: `1.90e-5 px`;
-- largest absolute translation difference: `1.42e-4 px`;
+- translation difference RMS: `2.04e-5 px`;
+- largest absolute translation difference: `2.00e-4 px`;
 - Three.js mean translation: `(1.9999928, -0.9999963) px`;
-- Three.js truth RMSE: `2.75e-5 px` versus `3.82e-5 px` for GPU-IO.
+- Three.js truth RMSE: `2.75e-5 px` versus `3.87e-5 px` for GPU-IO.
 
 All four offline targets were also checked after one reference preparation:
 
 | Target | Accepted GPU-IO / Three.js | Replaced | Equal statuses | Translation difference RMS | Maximum difference |
 |---|---:|---:|---:|---:|---:|
-| t=1 | 900 / 900 | 0 / 0 | 1,024 / 1,024 | `1.72e-5 px` | `1.49e-4 px` |
-| t=5 | 900 / 900 | 0 / 0 | 1,024 / 1,024 | `1.73e-5 px` | `2.80e-4 px` |
-| t=10 | 900 / 900 | 0 / 0 | 1,024 / 1,024 | `1.70e-5 px` | `1.92e-4 px` |
-| t=20 | 634 / 634 | 1 / 1 | 1,023 / 1,024 | `1.51e-5 px` | `2.16e-4 px` |
+| t=1 | 900 / 900 | 0 / 0 | 1,024 / 1,024 | `2.33e-5 px` | `1.72e-4 px` |
+| t=5 | 900 / 900 | 0 / 0 | 1,024 / 1,024 | `2.35e-5 px` | `2.93e-4 px` |
+| t=10 | 900 / 900 | 0 / 0 | 1,024 / 1,024 | `2.04e-5 px` | `2.00e-4 px` |
+| t=20 | 634 / 634 | 1 / 1 | 1,024 / 1,024 | `1.87e-5 px` | `1.11e-4 px` |
 
-The sole status mismatch at `t=20` is a convergence-boundary classification;
-it does not change the accepted or median-replaced counts. The four comparisons
-therefore exercise small motion, nominal motion, large motion, rejection, and
-the median-replacement path.
+The four comparisons have identical status fields and exercise small motion,
+nominal motion, large motion, rejection, and the median-replacement path.
 
 Chromium must use the native Vulkan adapter for a meaningful comparison. With
 only `--enable-unsafe-webgpu`, Chromium selected Google SwiftShader and the
@@ -130,49 +136,50 @@ same Three.js pipeline took 29.38 ms median GPU time. The Python engine supplies
 the required headless Vulkan flags automatically and reports the selected
 adapter through `ICGNWebGL.info()`.
 
-## UHD Three.js validation and SYCL comparison
+## UHD browser validation and SYCL comparison
 
-The dynamic Three.js path was validated at 3840 × 2160 with a reproducible
+Both browser paths were validated at 3840 × 2160 with a reproducible
 offline pair generated by `benchmarks/benchmark_4k.py`. The shipped reference
 texture is tiled to UHD and shifted by exactly `(2, -1)` pixels. Reference
 construction is performed once. Each of three campaigns used five warm-ups
 followed by 30 measured optical-flow runs; the table reports the median of the
 three campaign summaries.
 
-| Phase | Three.js/TSL result |
-|---|---:|
-| Runtime and TSL graph construction | 5.1 ms |
-| Reference-dependent construction | 996.3 ms |
-| Complete browser preparation | 1,003.1 ms |
-| Complete Python preparation call | 1,291.3 ms |
-| Optical-flow GPU median / p95 | **13.341 / 14.405 ms** |
-| Optical-flow browser wall median / p95 | **14.7 / 16.0 ms** |
+| Phase | Three.js/TSL | GPU-IO |
+|---|---:|---:|
+| Runtime graph/shader construction | 4.4 ms | page startup |
+| Reference-dependent construction | 1,073.9 ms | 1,261.1 ms |
+| Complete browser preparation | 1,078.3 ms | 1,261.1 ms |
+| Complete Python preparation call | 1,382.3 ms | 2,583.3 ms |
+| Optical-flow GPU median / p95 | **13.629 / 15.352 ms** | 80.738 / 82.522 ms |
+| Optical-flow browser wall median / p95 | **15.3 / 17.5 ms** | 85.9 / 90.2 ms |
 
-The 240 × 135 grid contains 32,400 subsets. The subgroup solver accepted
+The 240 × 135 grid contains 32,400 subsets. Both solvers accepted
 31,654, recovered `(1.999991, -0.999997)` pixels, required 5.943 iterations on
 average, and produced a vector RMSE of `3.076e-5 px`. The startup probe measured
 a 32-lane hardware subgroup, so the 16-lane fast path was active. Compared with
-the earlier one-dispatch-per-iteration TSL implementation (81.817 ms median),
-the fused cooperative kernel is **6.13× faster**.
+GPU-IO, the fused cooperative Three.js kernel is **5.92× faster**. GPU-IO
+recovered `(1.999991, -0.999996)` with 5.947 iterations and a `4.182e-5 px`
+RMSE, establishing functional UHD support but not a 4K60 performance path.
 
 The current SYCL source was rebuilt and run on the same pair, GPU, tolerance,
 mixed-precision mode, column layout, FIR prefilter, inverse Hessian, and median
 replacement settings. Thirty independent measured processes followed five
 warm-ups.
 
-| UHD measurement | Three.js/TSL | SYCL mixed/double reduction | SYCL `--float-reduce` |
-|---|---:|---:|---:|
-| Prefilter + registration GPU median | **13.341 ms** | 19.099 ms | 18.111 ms |
-| Prefilter + registration p95 | **14.405 ms** | 19.863 ms | 19.062 ms |
-| Upload + compute + download median | not included | 19.573 ms | 18.509 ms |
-| Accepted subsets | 31,654 | 31,654 | 31,654 |
-| Mean iterations | 5.943 | 5.944 | 5.940 |
-| Truth RMSE | `3.076e-5 px` | `2.555e-5 px` | `2.712e-5 px` |
+| UHD measurement | Three.js/TSL | GPU-IO | SYCL mixed/double reduction | SYCL `--float-reduce` |
+|---|---:|---:|---:|---:|
+| Prefilter + registration GPU median | **13.629 ms** | 80.738 ms | 19.099 ms | 18.111 ms |
+| Prefilter + registration p95 | **15.352 ms** | 82.522 ms | 19.863 ms | 19.062 ms |
+| Upload + compute + download median | not included | not included | 19.573 ms | 18.509 ms |
+| Accepted subsets | 31,654 | 31,654 | 31,654 | 31,654 |
+| Mean iterations | 5.943 | 5.947 | 5.944 | 5.940 |
+| Truth RMSE | `3.076e-5 px` | `4.182e-5 px` | `2.555e-5 px` | `2.712e-5 px` |
 
-At the comparable compute boundary, optimized Three.js is **30.1% faster**
-than the mixed/double-reduction SYCL configuration (1.43× the throughput). It
-is still **26.3% faster** than the numerically closer float-reduction variant
-(1.36× the throughput). Three.js GPU timing excludes input upload and output
+At the comparable compute boundary, optimized Three.js is **28.6% faster**
+than the mixed/double-reduction SYCL configuration (1.40× the throughput). It
+is still **24.7% faster** than the numerically closer float-reduction variant
+(1.33× the throughput). Browser GPU timing excludes input upload and output
 readback; the separate SYCL total row includes both. This is a backend compute
 comparison, not an acquisition-to-result or 4K60 claim. WebGPU upload and
 pipeline compilation are lazy and are absorbed by the five unreported warm-ups
@@ -184,15 +191,14 @@ The SYCL binary was rebuilt from `icgn_sycl.cpp`. Thirty independent processes
 were measured after three warm-ups, resetting initialization for every
 `t=0 -> 10` pair.
 
-| Measurement | Equivalent WebGL2 | SYCL | WebGL/SYCL ratio |
+| Measurement | Current WebGL2 | SYCL | WebGL/SYCL ratio |
 |---|---:|---:|---:|
-| GPU registration | 3.55 ms estimated | 2.573 ms | 1.38x |
-| GPU prefilter + registration | 3.78 ms | 3.651 ms total SYCL | 1.04x |
-| Pipeline p95 | 4.24-4.38 ms typical | 4.280 ms | approximately 1.00x |
-| End-to-end with CPU readback | 17.6 ms | 3.651 ms | 4.82x |
+| GPU prefilter + registration + median | 3.301 ms | 3.651 ms total SYCL | 0.90x |
+| Pipeline p95 | 4.210 ms | 4.280 ms | 0.98x |
+| Browser synchronization / SYCL total | 10.3 ms | 3.651 ms | 2.82x |
 | Mean iterations, accepted subsets | 5.957 | 5.763 | 1.03x |
 | Accepted subsets | 900/1,024 | 900/1,024 | identical |
-| Vector RMSE | `3.82e-5 px` | `1.12e-5 px` | both subpixel |
+| Vector RMSE | `3.87e-5 px` | `1.12e-5 px` | both subpixel |
 
 GPU compute cost is now comparable to SYCL for this case. The browser
 end-to-end path remains slower because of synchronization and WebGL readback.
@@ -206,7 +212,7 @@ the table reports end-to-end time separately.
 |---|---:|---:|---:|---:|---:|---:|
 | t=1 | (0.20, -0.10) | (0.191, -0.093) | 0.0186 px | 900/1,024 | 3.994 | 0 |
 | t=5 | (1.00, -0.50) | (1.000, -0.500) | 0.0170 px | 900/1,024 | 5.197 | 0 |
-| t=10 | (2.00, -1.00) | (1.999993, -0.999995) | `3.82e-5 px` | 900/1,024 | 5.957 | 0 |
+| t=10 | (2.00, -1.00) | (1.999994, -0.999995) | `3.87e-5 px` | 900/1,024 | 5.957 | 0 |
 | t=20 | (4.00, -2.00) | (3.998, -1.997) | 0.0906 px | 634/1,024 | 11.855 | 1 |
 
 The incremental `t=10 -> 20` step, a `(2, -1)` pixel displacement, accepts

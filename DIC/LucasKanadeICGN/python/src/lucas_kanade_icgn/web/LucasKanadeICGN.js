@@ -21,12 +21,20 @@ const {
   NEAREST,
 } = GPUIO;
 
-const FRAME_WIDTH = 512;
-const FRAME_HEIGHT = 512;
 const SUBSET_SIZE = 16;
 const SUBSET_HALF_EXTENT = 7.5;
 const FIR_RADIUS = 15;
-const HEADLESS_MODE = new URLSearchParams(window.location.search).get('headless') === '1';
+const URL_PARAMETERS = new URLSearchParams(window.location.search);
+const frameDimension = (name, fallback) => {
+  const value = Number(URL_PARAMETERS.get(name) ?? fallback);
+  if (!Number.isInteger(value) || value < SUBSET_SIZE || value % SUBSET_SIZE !== 0) {
+    throw new Error(`${name} must be a positive multiple of ${SUBSET_SIZE}; received ${value}.`);
+  }
+  return value;
+};
+const FRAME_WIDTH = frameDimension('width', 512);
+const FRAME_HEIGHT = frameDimension('height', 512);
+const HEADLESS_MODE = URL_PARAMETERS.get('headless') === '1';
 
 const DATASET = {
   name: 'seed2026101102_translation/raw',
@@ -318,34 +326,26 @@ const affineICGNProgram = new GPUProgram(composer, {
     uniform vec2 u_grid_size;
     uniform float u_tolerance;
     uniform float u_zncc_min;
+    uniform int u_max_iterations;
 
     layout(location = 0) out vec2 out_translation;
     layout(location = 1) out vec4 out_linear;
     layout(location = 2) out vec2 out_status;
 
-    float hessianValue(ivec2 point, int index) {
+    float hessianValue(in vec4 blocks[9], int index) {
       int block = index / 4;
-      vec4 packed = texelFetch(
-        u_hessian_inverse,
-        point * 3 + ivec2(block - 3 * (block / 3), block / 3),
-        0
-      );
-      return packed[index - 4 * block];
+      return blocks[block][index - 4 * block];
     }
 
-    float metaValue(ivec2 point, int index) {
+    float metaValue(in vec4 blocks[4], int index) {
       int block = index / 4;
-      vec4 packed = texelFetch(
-        u_solver_meta,
-        point * 2 + ivec2(block - 2 * (block / 2), block / 2),
-        0
-      );
-      return packed[index - 4 * block];
+      return blocks[block][index - 4 * block];
     }
 
     float sampleCubic(vec2 position) {
-      ivec2 base = ivec2(floor(position));
-      vec2 t = position - floor(position);
+      vec2 floored = floor(position);
+      ivec2 base = ivec2(floored);
+      vec2 t = position - floored;
       float tx2 = t.x * t.x;
       float tx3 = tx2 * t.x;
       float ux = 1.0 - t.x;
@@ -364,50 +364,44 @@ const affineICGNProgram = new GPUProgram(composer, {
       wy[3] = ty3 / 6.0;
       float value = 0.0;
       for (int yy = 0; yy < 4; ++yy) {
+        float row = 0.0;
         for (int xx = 0; xx < 4; ++xx) {
-          value += wy[yy] * wx[xx] * texelFetch(
+          row += wx[xx] * texelFetch(
             u_current_coefficients,
             base + ivec2(xx - 1, yy - 1),
             0
           ).x;
         }
+        value += wy[yy] * row;
       }
       return value;
     }
 
-    void main() {
-      vec2 t = texture(u_translation, v_uv).xy;
-      vec4 d = texture(u_linear, v_uv);
-      vec2 oldStatus = texture(u_status, v_uv).xy;
-      out_translation = t;
-      out_linear = d;
-      out_status = oldStatus;
-
-      if (oldStatus.x > 0.5 || oldStatus.x < -0.5) return;
-
-      ivec2 gridIndex = ivec2(floor(v_uv * u_grid_size));
-      if (metaValue(gridIndex, 1) < 0.5) {
-        out_status = vec2(-1.0, oldStatus.y);
-        return;
-      }
-
-      vec2 center = (vec2(gridIndex) + vec2(0.5)) * ${SUBSET_SIZE}.0;
+    bool iterateICGN(
+      ivec2 gridIndex,
+      vec2 center,
+      inout vec2 translation,
+      inout vec4 linear,
+      inout vec2 status,
+      in vec4 hessianBlocks[9],
+      in vec4 metaBlocks[4]
+    ) {
       bool inside = true;
       for (int corner = 0; corner < 4; ++corner) {
         vec2 local = vec2(
           (corner == 1 || corner == 3) ? ${SUBSET_HALF_EXTENT} : -${SUBSET_HALF_EXTENT},
           corner >= 2 ? ${SUBSET_HALF_EXTENT} : -${SUBSET_HALF_EXTENT}
         );
-        vec2 position = center - vec2(0.5) + local + t + vec2(
-          d.x * local.x + d.y * local.y,
-          d.z * local.x + d.w * local.y
+        vec2 position = center - vec2(0.5) + local + translation + vec2(
+          linear.x * local.x + linear.y * local.y,
+          linear.z * local.x + linear.w * local.y
         );
         inside = inside && position.x >= 2.0 && position.y >= 2.0 &&
           position.x <= u_frame_size.x - 3.0 && position.y <= u_frame_size.y - 3.0;
       }
       if (!inside) {
-        out_status = vec2(-1.0, oldStatus.y);
-        return;
+        status.x = -1.0;
+        return false;
       }
 
       float sumCurrent = 0.0;
@@ -417,13 +411,13 @@ const affineICGNProgram = new GPUProgram(composer, {
       for (int a = 0; a < 6; ++a) sumJCurrent[a] = 0.0;
 
       // One cubic read per pixel: statistics and J^T g are accumulated in the
-      // same pass, avoiding the earlier two-pass implementation.
+      // same pass. The complete warp remains in registers between iterations.
       for (int yy = 0; yy < ${SUBSET_SIZE}; ++yy) {
         for (int xx = 0; xx < ${SUBSET_SIZE}; ++xx) {
           vec2 local = vec2(float(xx) - ${SUBSET_HALF_EXTENT}, float(yy) - ${SUBSET_HALF_EXTENT});
-          vec2 displacement = t + vec2(
-            d.x * local.x + d.y * local.y,
-            d.z * local.x + d.w * local.y
+          vec2 displacement = translation + vec2(
+            linear.x * local.x + linear.y * local.y,
+            linear.z * local.x + linear.w * local.y
           );
           float g = sampleCubic(center - vec2(0.5) + local + displacement);
           vec3 templateValue = texelFetch(
@@ -434,70 +428,79 @@ const affineICGNProgram = new GPUProgram(composer, {
           float f = templateValue.x;
           float gx = templateValue.y;
           float gy = templateValue.z;
-          float j[6];
-          j[0] = gx;
-          j[1] = gx * local.x;
-          j[2] = gx * local.y;
-          j[3] = gy;
-          j[4] = gy * local.x;
-          j[5] = gy * local.y;
           sumCurrent += g;
           sumCurrent2 += g * g;
           sumReferenceCurrent += f * g;
-          for (int a = 0; a < 6; ++a) sumJCurrent[a] += j[a] * g;
+          float gxg = gx * g;
+          float gyg = gy * g;
+          sumJCurrent[0] += gxg;
+          sumJCurrent[1] += gxg * local.x;
+          sumJCurrent[2] += gxg * local.y;
+          sumJCurrent[3] += gyg;
+          sumJCurrent[4] += gyg * local.x;
+          sumJCurrent[5] += gyg * local.y;
         }
       }
 
       float currentMean = sumCurrent / 256.0;
       float currentNorm = sqrt(max(0.0, sumCurrent2 - sumCurrent * currentMean));
-      float referenceNorm = metaValue(gridIndex, 0);
+      float referenceNorm = metaValue(metaBlocks, 0);
       if (currentNorm < 1e-9 || referenceNorm < 1e-9) {
-        out_status = vec2(-2.0, oldStatus.y + 1.0);
-        return;
+        status = vec2(-2.0, status.y + 1.0);
+        return false;
       }
 
       float b[6];
       float ratio = referenceNorm / currentNorm;
       for (int a = 0; a < 6; ++a) {
-        float jtReference = metaValue(gridIndex, 2 + a);
-        float sumJ = metaValue(gridIndex, 8 + a);
+        float jtReference = metaValue(metaBlocks, 2 + a);
+        float sumJ = metaValue(metaBlocks, 8 + a);
         b[a] = jtReference - ratio * (sumJCurrent[a] - currentMean * sumJ);
       }
 
-      // The inverse Hessian is constant in IC-GN and prepared once per reference.
       float dp[6];
       for (int row = 0; row < 6; ++row) {
         float value = 0.0;
         for (int column = 0; column < 6; ++column) {
-          value += hessianValue(gridIndex, 6 * row + column) * b[column];
+          value += hessianValue(hessianBlocks, 6 * row + column) * b[column];
         }
         dp[row] = -value;
       }
 
-      // W <- W o inverse(dW), matching the composition in icgn_compose().
       float da11 = 1.0 + dp[1];
       float da12 = dp[2];
       float da21 = dp[4];
       float da22 = 1.0 + dp[5];
       float determinant = da11 * da22 - da12 * da21;
       if (abs(determinant) < 1e-8) {
-        out_status = vec2(-1.0, oldStatus.y + 1.0);
-        return;
+        status = vec2(-1.0, status.y + 1.0);
+        return false;
       }
 
       mat2 inverseDelta = mat2(
         da22 / determinant, -da21 / determinant,
         -da12 / determinant, da11 / determinant
       );
-      mat2 warp = mat2(1.0 + d.x, d.z, d.y, 1.0 + d.w);
+      mat2 warp = mat2(
+        1.0 + linear.x,
+        linear.z,
+        linear.y,
+        1.0 + linear.w
+      );
       vec2 inverseDeltaTranslation = -(inverseDelta * vec2(dp[0], dp[3]));
       mat2 updatedWarp = warp * inverseDelta;
-      vec2 updatedTranslation = t + warp * inverseDeltaTranslation;
+      translation += warp * inverseDeltaTranslation;
+      linear = vec4(
+        updatedWarp[0][0] - 1.0,
+        updatedWarp[1][0],
+        updatedWarp[0][1],
+        updatedWarp[1][1] - 1.0
+      );
 
       float cornerChange = 0.0;
       for (int corner = 0; corner < 4; ++corner) {
         float x = (corner == 1 || corner == 3) ? ${SUBSET_HALF_EXTENT} : -${SUBSET_HALF_EXTENT};
-        float y = (corner >= 2) ? ${SUBSET_HALF_EXTENT} : -${SUBSET_HALF_EXTENT};
+        float y = corner >= 2 ? ${SUBSET_HALF_EXTENT} : -${SUBSET_HALF_EXTENT};
         vec2 deltaAtCorner = vec2(
           dp[0] + dp[1] * x + dp[2] * y,
           dp[3] + dp[4] * x + dp[5] * y
@@ -505,17 +508,63 @@ const affineICGNProgram = new GPUProgram(composer, {
         cornerChange = max(cornerChange, length(deltaAtCorner));
       }
 
-      out_translation = updatedTranslation;
-      out_linear = vec4(
-        updatedWarp[0][0] - 1.0,
-        updatedWarp[1][0],
-        updatedWarp[0][1],
-        updatedWarp[1][1] - 1.0
-      );
+      status.y += 1.0;
       float zncc = sumReferenceCurrent / (referenceNorm * currentNorm);
-      float state = 0.0;
-      if (cornerChange < u_tolerance) state = zncc >= u_zncc_min ? 1.0 : -2.0;
-      out_status = vec2(state, oldStatus.y + 1.0);
+      if (cornerChange < u_tolerance) {
+        status.x = zncc >= u_zncc_min ? 1.0 : -2.0;
+        return false;
+      }
+      status.x = 0.0;
+      return true;
+    }
+
+    void main() {
+      vec2 translation = texture(u_translation, v_uv).xy;
+      vec4 linear = texture(u_linear, v_uv);
+      vec2 status = texture(u_status, v_uv).xy;
+      ivec2 gridIndex = ivec2(floor(v_uv * u_grid_size));
+
+      if (status.x <= 0.5 && status.x >= -0.5) {
+        vec4 metaBlocks[4];
+        for (int block = 0; block < 4; ++block) {
+          metaBlocks[block] = texelFetch(
+            u_solver_meta,
+            gridIndex * 2 + ivec2(block - 2 * (block / 2), block / 2),
+            0
+          );
+        }
+        if (metaValue(metaBlocks, 1) < 0.5) {
+          status.x = -1.0;
+        } else {
+          // These invariant blocks stay in registers throughout every IC-GN
+          // iteration instead of being fetched repeatedly from the atlases.
+          vec4 hessianBlocks[9];
+          for (int block = 0; block < 9; ++block) {
+            hessianBlocks[block] = texelFetch(
+              u_hessian_inverse,
+              gridIndex * 3 + ivec2(block - 3 * (block / 3), block / 3),
+              0
+            );
+          }
+          vec2 center = (vec2(gridIndex) + vec2(0.5)) * ${SUBSET_SIZE}.0;
+          for (int iteration = 0; iteration < 30; ++iteration) {
+            if (iteration >= u_max_iterations) break;
+            if (!iterateICGN(
+              gridIndex,
+              center,
+              translation,
+              linear,
+              status,
+              hessianBlocks,
+              metaBlocks
+            )) break;
+          }
+        }
+      }
+
+      out_translation = translation;
+      out_linear = linear;
+      out_status = status;
     }
   `,
   uniforms: [
@@ -530,6 +579,7 @@ const affineICGNProgram = new GPUProgram(composer, {
     { name: 'u_grid_size', value: gridDimensions(), type: FLOAT },
     { name: 'u_tolerance', value: PARAMS.tracking.tolerance, type: FLOAT },
     { name: 'u_zncc_min', value: PARAMS.tracking.znccMin, type: FLOAT },
+    { name: 'u_max_iterations', value: PARAMS.tracking.iterations, type: INT },
   ],
 });
 
@@ -654,6 +704,8 @@ if (!HEADLESS_MODE) {
   trackingFolder.addInput(PARAMS.tracking, 'active', { label: 'active' });
   trackingFolder.addInput(PARAMS.tracking, 'iterations', {
     label: 'max iterations', min: 1, max: 30, step: 1,
+  }).on('change', () => {
+    affineICGNProgram.setUniform('u_max_iterations', PARAMS.tracking.iterations);
   });
   trackingFolder.addInput(PARAMS.tracking, 'tolerance', {
     label: 'tolerance (px)', min: 0.0001, max: 0.05,
@@ -975,21 +1027,19 @@ const selectTarget = async (frame) => {
 
 const solveCurrent = () => {
   resetParameters();
-  for (let iteration = 0; iteration < PARAMS.tracking.iterations; ++iteration) {
-    composer.step({
-      program: affineICGNProgram,
-      input: [
-        currentCoefficients,
-        referenceTemplate,
-        hessianInverseAtlas,
-        solverMetaAtlas,
-        translation,
-        linearPart,
-        trackingStatus,
-      ],
-      output: [translation, linearPart, trackingStatus],
-    });
-  }
+  composer.step({
+    program: affineICGNProgram,
+    input: [
+      currentCoefficients,
+      referenceTemplate,
+      hessianInverseAtlas,
+      solverMetaAtlas,
+      translation,
+      linearPart,
+      trackingStatus,
+    ],
+    output: [translation, linearPart, trackingStatus],
+  });
   composer.step({
     program: medianReplaceProgram,
     input: [translation, linearPart, trackingStatus],
@@ -1332,6 +1382,7 @@ const configureHeadless = (options = {}) => {
       throw new Error('iterations must be an integer between 1 and 30.');
     }
     PARAMS.tracking.iterations = iterations;
+    affineICGNProgram.setUniform('u_max_iterations', iterations);
   }
   if (options.tolerance !== undefined) {
     const tolerance = Number(options.tolerance);
@@ -1446,6 +1497,8 @@ if (HEADLESS_MODE) {
       subsetSize: SUBSET_SIZE,
       device: rendererName(),
       timerQuery: Boolean(timerQueryExtension),
+      solver: 'fused-fragment',
+      subgroupWidth: 0,
     }),
     configure: configureHeadless,
     setReference: headlessSetReference,
