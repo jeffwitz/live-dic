@@ -81,8 +81,9 @@ orchestration remains in wgpu-py for this milestone.
 
 For sustained native sequences, ``ICGNWGPU.register_stream`` uses a bounded
 ring of independent target, solver-state, and readback resources. Two slots
-allow Python to retire one packed result while the GPU processes the next
-frame. On the validation machine this reduced the median UHD sequence period
+are the default and allow Python to retire one packed result while the GPU
+processes the next frame. This slot count is unrelated to an image pyramid. On
+the validation machine this reduced the median UHD sequence period
 from 14.792 ms to 13.380 ms (74.7 FPS), while preserving bit-for-bit output;
 median result latency increased to 26.617 ms. The ordinary ``register`` method
 remains the lowest-latency path.

@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import unittest
 from importlib.resources import files
+from inspect import signature
 
 import numpy as np
 
+from lucas_kanade_icgn import DEFAULT_IN_FLIGHT_FRAMES
 from lucas_kanade_icgn.wgpu_backend import (
     ICGNWGPU,
     _fir_weights,
@@ -14,6 +16,13 @@ from lucas_kanade_icgn.wgpu_backend import (
 
 
 class NativeReferenceTests(unittest.TestCase):
+    def test_sequence_apis_default_to_two_images_in_flight(self) -> None:
+        self.assertEqual(DEFAULT_IN_FLIGHT_FRAMES, 2)
+        for method in (ICGNWGPU.register_stream, ICGNWGPU.register_many):
+            with self.subTest(method=method.__name__):
+                default = signature(method).parameters["pipeline_depth"].default
+                self.assertEqual(default, DEFAULT_IN_FLIGHT_FRAMES)
+
     def test_pipeline_depth_is_a_positive_integer(self) -> None:
         engine = object.__new__(ICGNWGPU)
         engine._reference_ready = True

@@ -27,6 +27,8 @@ SUBSET_SIZE = 16
 SUBSET_HALF_EXTENT = 7.5
 FIR_RADIUS = 15
 MAX_ITERATIONS = 30
+#: Recommended maximum number of native sequence registrations in flight.
+DEFAULT_IN_FLIGHT_FRAMES = 2
 
 
 @dataclass(slots=True)
@@ -862,17 +864,19 @@ class ICGNWGPU:
         self,
         targets: Iterable[ImageInput],
         *,
-        pipeline_depth: int = 2,
+        pipeline_depth: int = DEFAULT_IN_FLIGHT_FRAMES,
         iterations: int | None = None,
         tolerance: float | None = None,
         zncc_min: float | None = None,
     ) -> Iterator[RegistrationResult]:
         """Register a sequence with bounded GPU work and readback in flight.
 
-        A depth of two lets the GPU execute the next target while Python
-        converts the previous packed readback into result arrays. Results are
-        yielded in input order. The extra in-flight frame improves steady-state
-        throughput at the cost of approximately one frame of latency.
+        ``pipeline_depth`` is the maximum number of images in flight, not an
+        image-pyramid depth. Its default of two lets the GPU execute the next
+        target while Python converts the previous packed readback into result
+        arrays. Results are yielded in input order. The extra in-flight frame
+        improves steady-state throughput at the cost of approximately one
+        processed frame of latency.
         """
 
         if not self._reference_ready:
@@ -910,12 +914,16 @@ class ICGNWGPU:
         self,
         targets: Iterable[ImageInput],
         *,
-        pipeline_depth: int = 2,
+        pipeline_depth: int = DEFAULT_IN_FLIGHT_FRAMES,
         iterations: int | None = None,
         tolerance: float | None = None,
         zncc_min: float | None = None,
     ) -> list[RegistrationResult]:
-        """Return all results from :meth:`register_stream` as a list."""
+        """Return all results from :meth:`register_stream` as a list.
+
+        The default keeps at most two images in flight, matching
+        :meth:`register_stream`.
+        """
 
         return list(
             self.register_stream(

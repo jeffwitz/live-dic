@@ -22,6 +22,11 @@ The native engine is optional and experimental. It returns the same
 ``ReferenceInfo`` and ``RegistrationResult`` types as the browser engine, but
 does not start Chromium or serialize frames as PNG.
 
+``register_stream`` and ``register_many`` keep at most two images in flight by
+default. The public ``DEFAULT_IN_FLIGHT_FRAMES`` constant records this policy
+in one place. ``pipeline_depth`` refers to concurrent sequence execution;
+DIC-RT does not currently build a multi-scale image pyramid.
+
 One-shot registration
 ---------------------
 
@@ -51,5 +56,7 @@ Constants and input types
 -------------------------
 
 .. autodata:: lucas_kanade_icgn.PARAMETER_ORDER
+
+.. autodata:: lucas_kanade_icgn.DEFAULT_IN_FLIGHT_FRAMES
 
 .. autodata:: lucas_kanade_icgn.ImageInput

@@ -39,7 +39,8 @@ Runtime
   Python 3.11 or newer and a wgpu-native-supported graphics driver.
 * One engine instance is not thread-safe.
 * Native sequence pipelining improves throughput by keeping bounded work in
-  flight; depth two adds approximately one processed frame of result latency.
+  flight; the default of two adds approximately one processed frame of result
+  latency. This setting is unrelated to an image pyramid.
 * Browser GPU shader arithmetic is single precision.
 * The fastest Three.js solver requires a WebGPU subgroup containing all 16
   active lanes. Other adapters use the validated workgroup-memory fallback.
