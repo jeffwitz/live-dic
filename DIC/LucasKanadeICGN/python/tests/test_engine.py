@@ -235,7 +235,7 @@ class RuntimeAssetTests(unittest.TestCase):
             for filename in ("headless.html", "gpu-io.js", "LucasKanadeICGN.js"):
                 (root / filename).touch()
             assets = _find_runtime_assets(root, "gpuio")
-        self.assertEqual(assets.root, root)
+            self.assertTrue(assets.root.samefile(root))
         self.assertEqual(assets.headless_path, "headless.html")
 
     def test_packaged_three_tsl_runtime_is_complete_and_offline(self) -> None:
