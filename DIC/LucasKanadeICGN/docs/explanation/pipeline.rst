@@ -59,9 +59,12 @@ Target stage
 
 Every target is converted to grayscale, uploaded, and filtered into cubic
 B-spline coefficients. The selected GPU solver then runs up to 30 affine IC-GN
-iterations per subset. Subsets stop updating after convergence or rejection,
-although the fixed shader passes still execute for the full grid. A final GPU
-pass detects spatial outliers and can replace them with neighbor medians.
+iterations per subset inside one fused compute dispatch. Subsets stop doing the
+expensive interpolation and update after convergence or rejection. The fast
+path uses 16 active lanes and hardware subgroup reductions; a startup probe
+selects the portable workgroup-memory implementation when one subgroup cannot
+contain those lanes. A final GPU pass detects spatial outliers and can replace
+them with neighbor medians.
 
 Control path
 ------------

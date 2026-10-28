@@ -34,6 +34,8 @@ Runtime
   wheel.
 * One engine instance is not thread-safe.
 * Browser GPU shader arithmetic is single precision.
+* The fastest Three.js solver requires a WebGPU subgroup containing all 16
+  active lanes. Other adapters use the validated workgroup-memory fallback.
 * Maximum image size depends on the adapter's WebGPU storage-buffer limits.
 * Full parameter and status fields are read back for every ``register`` call.
 * Current timing is soft real-time and provides no operating-system deadline

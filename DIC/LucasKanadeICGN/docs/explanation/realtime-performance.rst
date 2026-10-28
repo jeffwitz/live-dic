@@ -48,29 +48,30 @@ For the ``t=0 -> 10`` analytical translation on Intel Lunar Lake, the current
      - GPU-IO
      - Three.js/TSL
    * - median GPU prefilter + solver
-     - 3.74-3.90 ms
-     - 3.40-3.56 ms
+     - 3.70-3.90 ms
+     - 0.65-0.85 ms
    * - p95 GPU prefilter + solver
-     - 4.13-4.33 ms
-     - 3.71-4.56 ms
+     - 4.25-4.61 ms
+     - 1.17-1.23 ms
    * - median browser benchmark wall time
-     - 16.5-17.0 ms
-     - 5.1-5.8 ms
+     - 16.6-16.8 ms
+     - 2.7-2.9 ms
    * - accepted subsets
      - 900 / 1,024
      - 900 / 1,024
    * - mean iterations over accepted subsets
      - 5.957
-     - 5.952
+     - 5.959
    * - vector RMSE
      - 3.819e-5 pixel
-     - 4.076e-5 pixel
+     - 2.749e-5 pixel
 
 The GPU work is well below a 16.7 ms budget. GPU-IO's browser benchmark wall
-time is near the nominal 60 Hz period, while the Three.js/TSL boundary is below
-it on this machine. Both benchmarks exclude Python frame encoding, DevTools
-transport, decoding, and result transfer. Neither therefore proves a sustained
-60 Hz Python application.
+time is near the nominal 60 Hz period, while the Three.js/TSL boundary is well
+below it on this machine. The Three.js runtime measured a 32-lane subgroup and
+selected its fused 16-lane solver for these campaigns. Both benchmarks exclude
+Python frame encoding, DevTools transport, decoding, and result transfer.
+Neither therefore proves a sustained 60 Hz Python application.
 
 Frame-rate budgets
 ------------------

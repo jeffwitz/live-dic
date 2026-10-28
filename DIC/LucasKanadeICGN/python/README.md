@@ -64,6 +64,7 @@ with ICGNWebGL() as engine:
 
 result = results[-1]
 print(engine_info.device)
+print(engine_info.solver, engine_info.subgroup_width)
 print(reference_info.reference_build_wall_ms)
 print(reference_info.total_wall_ms)
 print(result.parameters.shape)       # (32, 32, 6)
@@ -103,7 +104,8 @@ used concurrently from multiple threads.
 previous WebGL2 implementation. On Linux the default engine supplies Chromium's
 native headless Vulkan flags and `engine.info().device` identifies the selected
 adapter; check that it does not report SwiftShader before interpreting GPU
-benchmarks.
+benchmarks. `engine.info().solver` reports either `subgroup` or
+`portable-workgroup`, and `subgroup_width` records the measured hardware width.
 
 ## One-shot function
 

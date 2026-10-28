@@ -27,6 +27,7 @@ Create a script named ``first_registration.py``:
        result = engine.register(target)
 
    print(f"GPU: {engine_info.device}")
+   print(f"Solver: {engine_info.solver}, subgroup width: {engine_info.subgroup_width}")
    print(f"Runtime construction: {reference_info.runtime_build_wall_ms:.3f} ms")
    print(f"Reference construction: {reference_info.reference_build_wall_ms:.3f} ms")
    print(f"Complete preparation: {reference_info.total_wall_ms:.3f} ms")
@@ -45,10 +46,10 @@ On the validated Intel Lunar Lake system, the important values are close to:
 
 .. code-block:: text
 
-   Mean translation: (1.999993, -0.999995)
+   Mean translation: (1.999993, -0.999996)
    Accepted subsets: 900
-   Mean iterations: 5.957
-   Translation RMSE: 3.81939e-05 px
+   Mean iterations: 5.959
+   Translation RMSE: 2.74937e-05 px
 
 Inspect the fields
 ------------------
