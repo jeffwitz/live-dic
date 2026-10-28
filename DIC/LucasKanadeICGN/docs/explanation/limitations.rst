@@ -65,8 +65,9 @@ Runtime
   reductions and intermediate readbacks, but does not yet expose sequence
   pipelining or the subgroup solver.
 * Browser GPU shader arithmetic is single precision.
-* The fastest Three.js solver requires a WebGPU subgroup containing all 16
-  active lanes. Other adapters use the validated workgroup-memory fallback.
+* The fastest Three.js solver requires a WebGPU subgroup capable of covering
+  the subset and sizes its workgroup to the measured subgroup width. Other
+  adapters use the validated 16-lane workgroup-memory fallback.
   Browsers without WebGPU use the serial Three.js/WebGL2 transform-feedback
   solver instead; this compatibility path is not a 4K60 implementation.
 * The raw ``webgpu-wgsl`` browser backend prioritizes source sharing and uses

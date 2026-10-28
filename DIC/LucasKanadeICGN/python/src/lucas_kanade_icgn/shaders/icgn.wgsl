@@ -42,13 +42,14 @@ struct WarpUpdate {
 const SUBSET_SIZE: i32 = 16;
 const SUBSET_PIXELS: f32 = 256.0;
 const SUBSET_HALF_EXTENT: f32 = 7.5;
-const FIR_RADIUS: i32 = 15;
+const FIR_WEIGHT_RADIUS: i32 = 15;
+const FIR_RADIUS: i32 = 12;
 const PREFILTER_X_WIDTH: i32 = 32;
 const PREFILTER_X_HEIGHT: i32 = 8;
 const PREFILTER_X_STRIDE: i32 = PREFILTER_X_WIDTH + 2 * FIR_RADIUS;
 const PREFILTER_Y_WIDTH: i32 = 8;
 const PREFILTER_Y_HEIGHT: i32 = 32;
-const PREFILTER_TILE_PIXELS: u32 = 496u;
+const PREFILTER_TILE_PIXELS: u32 = 448u;
 
 var<workgroup> partial_a: array<vec4<f32>, 16>;
 var<workgroup> partial_b: array<vec4<f32>, 16>;
@@ -99,7 +100,7 @@ fn prefilter_x(
         let tile_index = i32(local_id.y) * PREFILTER_X_STRIDE
             + i32(local_id.x) + FIR_RADIUS + tap;
         let sample = prefilter_tile[tile_index];
-        result = result + fir_weights.values[u32(tap + FIR_RADIUS)] * sample;
+        result = result + fir_weights.values[u32(tap + FIR_WEIGHT_RADIUS)] * sample;
     }
     temporary.values[u32(y * width + x)] = result;
 }
@@ -133,7 +134,7 @@ fn prefilter_y(
     for (var tap = -FIR_RADIUS; tap <= FIR_RADIUS; tap = tap + 1) {
         let tile_index = (i32(local_id.y) + FIR_RADIUS + tap) * PREFILTER_Y_WIDTH
             + i32(local_id.x);
-        result = result + fir_weights.values[u32(tap + FIR_RADIUS)]
+        result = result + fir_weights.values[u32(tap + FIR_WEIGHT_RADIUS)]
             * prefilter_tile[tile_index];
     }
     coefficients.values[u32(y * width + x)] = result;

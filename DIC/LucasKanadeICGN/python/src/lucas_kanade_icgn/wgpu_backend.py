@@ -26,6 +26,8 @@ from .engine import ICGNError, ImageInput, ReferenceInfo, RegistrationResult, _a
 SUBSET_SIZE = 16
 SUBSET_HALF_EXTENT = 7.5
 FIR_RADIUS = 15
+#: Runtime FIR half-width after removing numerically negligible outer taps.
+FIR_RUNTIME_RADIUS = 12
 MAX_ITERATIONS = 30
 #: Recommended maximum number of native sequence registrations in flight.
 DEFAULT_IN_FLIGHT_FRAMES = 2

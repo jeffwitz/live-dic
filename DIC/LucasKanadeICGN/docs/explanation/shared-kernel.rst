@@ -125,6 +125,9 @@ GPU buffers
 
 The two packed state vectors are ``[tx, du/dx, du/dy, ty]`` and
 ``[dv/dx, dv/dy, status, iterations]``. Hosts must not reinterpret this order.
+The full 31-value FIR record preserves the common buffer contract. The current
+WGSL prefilter reads its central 25 entries; the six omitted tails have a total
+absolute weight below ``7e-8``.
 
 Status contract
 ~~~~~~~~~~~~~~~

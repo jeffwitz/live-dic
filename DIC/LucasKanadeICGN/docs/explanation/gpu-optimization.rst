@@ -35,10 +35,40 @@ reused for every target.
    each p -> affine warp -> 4 x 4 target-coefficient tile
           -> F, g, g^2, F*g, and six J*g contributions
 
-The target FIR prefilter is separable. A horizontal radius-15 pass writes an
-intermediate image and a vertical radius-15 pass produces the cubic coefficient
-image. This avoids a 31 x 31 two-dimensional convolution and gives both
-backends the same interpolation input.
+The target FIR prefilter is separable. The coefficient vector contains the same
+31 radius-15 weights as the optimized SYCL configuration. A horizontal pass
+writes an intermediate image and a vertical pass produces the cubic
+coefficient image, avoiding a 31 x 31 two-dimensional convolution.
+
+The shared WGSL evaluates the central 25 taps. The six omitted outer weights
+have a combined absolute magnitude below ``7e-8``; even for a 255-valued input,
+their worst-case contribution is below ``1.8e-5`` grayscale unit per pass. The
+opt-in GPU regression compares the resulting coefficients with an independent
+CPU convolution. Three.js and its WebGL2 fallback retain all 31 taps.
+
+The shared WGSL also stages each pass in workgroup memory. The horizontal pass
+produces a 32 x 8 output tile from a 56 x 8 halo, while the vertical pass uses
+an 8 x 32 output tile with an 8 x 56 halo. Thus 256 outputs require 448 source
+reads instead of 6,400 uncached reads for a 25-tap pass.
+
+.. code-block:: text
+
+   horizontal FIR                         vertical FIR
+
+   56 source columns x 8 rows             8 columns x 56 source rows
+   +--------------------------+            +--------+
+   | halo | 32 outputs | halo |            |  halo  |
+   +--------------------------+            +--------+
+                                               |
+                                           8 x 32 outputs
+                                               |
+                                           +--------+
+                                           |  halo  |
+                                           +--------+
+
+The TSL path uses a conservative 16 x 16 output tile and a 16 x 46 halo in
+each orientation. WebGL2 keeps its serial prefilter because workgroup memory
+and barriers are not available through that fallback.
 
 WebGPU: one cooperative group per subset
 ----------------------------------------
@@ -76,25 +106,26 @@ Fast subgroup reduction
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 At startup the runtime probes the hardware subgroup width. When a subgroup can
-contain all 16 active lanes, subgroup collectives reduce the partial vectors
-without workgroup-memory round trips.
+contain the subset, the TSL kernel fills the measured subgroup rather than
+leaving lanes idle. On the validation adapter, 32 lanes each process eight of
+the 256 pixels. Subgroup collectives then reduce the partial vectors without
+workgroup-memory round trips.
 
 .. code-block:: text
 
-   16 lane-local partial vectors
+   one hardware subgroup of lane-local partial vectors
 
-   [00][01][02][03][04][05][06][07][08][09][10][11][12][13][14][15]
-     \_____________________________________________________________/
+   [00][01][02][03][04][05][06][07] ... [24][25][26][27][28][29][30][31]
+     \_________________________________________________________________/
                      subgroupAdd(vec4) x 3
                                    |
                                    v
                      complete sums available to lane 0
 
-Lane 0 computes the normalized residual, multiplies by the constant inverse
-Hessian, composes the inverse warp, and tests the four subset corners. The new
-warp is broadcast to the group before the next iteration. All IC-GN iterations
-remain inside one compute dispatch, so converged subsets stop expensive image
-sampling without a new Python, JavaScript, or GPU submission.
+The normalized residual, inverse-Hessian multiplication, inverse composition,
+and corner test use the reduced values. Lane 0 writes the final state. All
+IC-GN iterations remain inside one compute dispatch, so converged subsets stop
+expensive image sampling without a new Python, JavaScript, or GPU submission.
 
 Portable workgroup reduction
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~

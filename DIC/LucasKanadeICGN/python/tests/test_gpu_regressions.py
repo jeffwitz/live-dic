@@ -16,7 +16,12 @@ from typing import Any
 import numpy as np
 
 from lucas_kanade_icgn import ICGNWGPUFullPyramid
-from lucas_kanade_icgn.wgpu_backend import _fir_weights, _reduce_half
+from lucas_kanade_icgn.wgpu_backend import (
+    FIR_RADIUS,
+    FIR_RUNTIME_RADIUS,
+    _fir_weights,
+    _reduce_half,
+)
 
 
 def _integer_reduction(image: np.ndarray) -> np.ndarray:
@@ -43,7 +48,8 @@ def _integer_reduction(image: np.ndarray) -> np.ndarray:
 def _cpu_prefilter(image: np.ndarray) -> np.ndarray:
     """Mirror the shader's separable float32 FIR accumulation order."""
 
-    weights = _fir_weights()
+    trim = FIR_RADIUS - FIR_RUNTIME_RADIUS
+    weights = _fir_weights()[trim:-trim]
     radius = weights.size // 2
     horizontal = np.zeros(image.shape, dtype=np.float32)
     padded_x = np.pad(image.astype(np.float32), ((0, 0), (radius, radius)), mode="reflect")
