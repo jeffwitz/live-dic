@@ -19,12 +19,18 @@ import {
   float,
   int,
   ivec2,
+  localId,
   select,
   storage,
+  subgroupAdd,
+  subgroupSize,
   uint,
   uniform,
   vec2,
   vec4,
+  workgroupArray,
+  workgroupBarrier,
+  workgroupId,
   instanceIndex,
 } from 'three/tsl';
 
@@ -33,6 +39,7 @@ const DEFAULT_FRAME_HEIGHT = 512;
 const SUBSET_SIZE = 16;
 const SUBSET_HALF_EXTENT = (SUBSET_SIZE - 1) / 2;
 const SUBSET_PIXELS = SUBSET_SIZE * SUBSET_SIZE;
+const SOLVER_LANES = 16;
 const DEFAULT_MAX_ITERATIONS = 30;
 const DEFAULT_TOLERANCE = 1e-3;
 const DEFAULT_ZNCC_MIN = 0.8;
@@ -46,6 +53,7 @@ const configuration = {
 };
 const toleranceNode = uniform(DEFAULT_TOLERANCE);
 const znccMinNode = uniform(DEFAULT_ZNCC_MIN);
+const iterationCountNode = uniform(DEFAULT_MAX_ITERATIONS, 'int');
 
 let renderer = null;
 let rendererPromise = null;
@@ -70,6 +78,7 @@ let statusNode = null;
 let filteredTranslationNode = null;
 let filteredLinearNode = null;
 let filteredStatusNode = null;
+let subgroupWidth = 0;
 
 /** Allocate all resolution-dependent storage and rebuild the TSL compute graph. */
 const initializeRuntime = (width, height) => {
@@ -410,147 +419,393 @@ const sampleCubic = (position) => {
   const wy = cubicWeights(fraction.y);
   const value = float(0).toVar();
   for (let yy = 0; yy < 4; ++yy) {
+    const rowValue = float(0).toVar();
     for (let xx = 0; xx < 4; ++xx) {
       const sx = base.x.add(xx - 1);
       const sy = base.y.add(yy - 1);
-      value.addAssign(coefficientsNode.element(uint(sy.mul(FRAME_WIDTH).add(sx))).mul(wx[xx]).mul(wy[yy]));
+      rowValue.addAssign(coefficientsNode.element(uint(sy.mul(FRAME_WIDTH).add(sx))).mul(wx[xx]));
     }
+    value.addAssign(rowValue.mul(wy[yy]));
   }
   return value;
 };
 
 /** Build one affine IC-GN iteration. JavaScript dispatches this kernel repeatedly. */
-const makeSolverKernel = () => Fn(() => {
-  const subsetIndex = instanceIndex;
-  const oldTranslation = translationNode.element(subsetIndex).toVar();
-  const oldLinear = linearNode.element(subsetIndex).toVar();
-  const oldStatus = statusNode.element(subsetIndex).toVar();
 
-  If(oldStatus.x.greaterThan(0.5).or(oldStatus.x.lessThan(-0.5)), () => Return());
-  If(metadataValue(subsetIndex, 1).lessThan(0.5), () => {
-    statusNode.element(subsetIndex).assign(vec2(-1, oldStatus.y));
-    Return();
-  });
 
+/**
+ * Build the complete affine IC-GN solve as one cooperative dispatch.
+ *
+ * Keeping the warp in workgroup memory avoids global state round-trips between
+ * iterations. Converged subsets skip interpolation and updates while all lanes
+ * continue through the barriers required by portable WGSL.
+ */
+const makeFusedCooperativeSolverKernel = () => Fn(() => {
+  const subsetIndex = uint(workgroupId.x);
+  const lane = int(localId.x);
+  const initialTranslation = translationNode.element(subsetIndex).toVar();
+  const initialLinear = linearNode.element(subsetIndex).toVar();
+  const initialStatus = statusNode.element(subsetIndex).toVar();
   const gridX = int(subsetIndex.mod(uint(GRID_WIDTH)));
   const gridY = int(subsetIndex.div(uint(GRID_WIDTH)));
   const center = vec2(float(gridX).add(0.5), float(gridY).add(0.5)).mul(SUBSET_SIZE);
-  const inside = float(1).toVar();
-  for (let corner = 0; corner < 4; ++corner) {
-    const localX = corner === 1 || corner === 3 ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
-    const localY = corner >= 2 ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
-    const position = center.sub(0.5).add(vec2(localX, localY)).add(oldTranslation).add(vec2(
-      oldLinear.x.mul(localX).add(oldLinear.y.mul(localY)),
-      oldLinear.z.mul(localX).add(oldLinear.w.mul(localY)),
+
+  const sharedState = workgroupArray('vec4', 2);
+  const sharedIterations = workgroupArray('float', 1);
+  const sharedA = workgroupArray('vec4', SOLVER_LANES);
+  const sharedB = workgroupArray('vec4', SOLVER_LANES);
+  const sharedC = workgroupArray('vec4', SOLVER_LANES);
+  If(lane.equal(0), () => {
+    const state = select(metadataValue(subsetIndex, 1).greaterThanEqual(0.5), initialStatus.x, -1);
+    sharedState.element(int(0)).assign(vec4(
+      initialTranslation.x,
+      initialTranslation.y,
+      initialLinear.x,
+      initialLinear.y,
     ));
-    const valid = position.x.greaterThanEqual(2).and(position.y.greaterThanEqual(2))
-      .and(position.x.lessThanEqual(FRAME_WIDTH - 3)).and(position.y.lessThanEqual(FRAME_HEIGHT - 3));
-    inside.mulAssign(select(valid, 1, 0));
-  }
-  If(inside.lessThan(0.5), () => {
-    statusNode.element(subsetIndex).assign(vec2(-1, oldStatus.y));
-    Return();
-  });
-
-  const sumCurrent = float(0).toVar();
-  const sumCurrent2 = float(0).toVar();
-  const sumReferenceCurrent = float(0).toVar();
-  const sumJCurrent = Array.from({ length: 6 }, () => float(0).toVar());
-
-  Loop({ start: int(0), end: int(SUBSET_PIXELS), type: 'int', condition: '<', name: 'pixel' }, ({ pixel }) => {
-    const xx = pixel.mod(SUBSET_SIZE);
-    const yy = pixel.div(SUBSET_SIZE);
-    const localX = float(xx).sub(SUBSET_HALF_EXTENT);
-    const localY = float(yy).sub(SUBSET_HALF_EXTENT);
-    const displacement = oldTranslation.add(vec2(
-      oldLinear.x.mul(localX).add(oldLinear.y.mul(localY)),
-      oldLinear.z.mul(localX).add(oldLinear.w.mul(localY)),
+    sharedState.element(int(1)).assign(vec4(
+      initialLinear.z,
+      initialLinear.w,
+      state,
+      initialStatus.y,
     ));
-    const current = sampleCubic(center.sub(0.5).add(vec2(localX, localY)).add(displacement));
-    const templateIndex = uint(gridY.mul(SUBSET_SIZE).add(yy).mul(FRAME_WIDTH).add(gridX.mul(SUBSET_SIZE)).add(xx));
-    const reference = referenceNode.element(templateIndex);
-    const jacobian = [
-      reference.y,
-      reference.y.mul(localX),
-      reference.y.mul(localY),
-      reference.z,
-      reference.z.mul(localX),
-      reference.z.mul(localY),
-    ];
-    sumCurrent.addAssign(current);
-    sumCurrent2.addAssign(current.mul(current));
-    sumReferenceCurrent.addAssign(reference.x.mul(current));
-    for (let component = 0; component < 6; ++component) {
-      sumJCurrent[component].addAssign(jacobian[component].mul(current));
+    sharedIterations.element(int(0)).assign(initialStatus.y);
+  });
+  workgroupBarrier();
+
+  Loop({
+    start: int(0),
+    end: iterationCountNode,
+    type: 'int',
+    condition: '<',
+    name: 'iteration',
+  }, ({ iteration }) => {
+    const state0 = sharedState.element(int(0)).toVar();
+    const state1 = sharedState.element(int(1)).toVar();
+    const oldTranslation = vec2(state0.x, state0.y);
+    const oldLinear = vec4(state0.z, state0.w, state1.x, state1.y);
+    const inside = float(1).toVar();
+    for (let corner = 0; corner < 4; ++corner) {
+      const localX = corner === 1 || corner === 3 ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
+      const localY = corner >= 2 ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
+      const position = center.sub(0.5).add(vec2(localX, localY)).add(oldTranslation).add(vec2(
+        oldLinear.x.mul(localX).add(oldLinear.y.mul(localY)),
+        oldLinear.z.mul(localX).add(oldLinear.w.mul(localY)),
+      ));
+      const valid = position.x.greaterThanEqual(2).and(position.y.greaterThanEqual(2))
+        .and(position.x.lessThanEqual(FRAME_WIDTH - 3)).and(position.y.lessThanEqual(FRAME_HEIGHT - 3));
+      inside.mulAssign(select(valid, 1, 0));
     }
-  });
+    If(lane.equal(0).and(inside.lessThan(0.5)), () => {
+      sharedState.element(int(1)).assign(vec4(state1.x, state1.y, -1, state1.w));
+    });
+    workgroupBarrier();
 
-  const currentMean = sumCurrent.div(SUBSET_PIXELS);
-  const currentNorm = sumCurrent2.sub(sumCurrent.mul(currentMean)).max(0).sqrt();
-  const referenceNorm = metadataValue(subsetIndex, 0);
-  If(currentNorm.lessThan(1e-9).or(referenceNorm.lessThan(1e-9)), () => {
-    statusNode.element(subsetIndex).assign(vec2(-2, oldStatus.y.add(1)));
-    Return();
-  });
+    const sumCurrent = float(0).toVar();
+    const sumCurrent2 = float(0).toVar();
+    const sumReferenceCurrent = float(0).toVar();
+    const sumJCurrent = Array.from({ length: 6 }, () => float(0).toVar());
+    const active = state1.z.abs().lessThanEqual(0.5).and(inside.greaterThanEqual(0.5));
+    If(active, () => {
+      Loop({ start: int(0), end: int(SUBSET_SIZE), type: 'int', condition: '<', name: 'row' }, ({ row }) => {
+        const localX = float(lane).sub(SUBSET_HALF_EXTENT);
+        const localY = float(row).sub(SUBSET_HALF_EXTENT);
+        const displacement = oldTranslation.add(vec2(
+          oldLinear.x.mul(localX).add(oldLinear.y.mul(localY)),
+          oldLinear.z.mul(localX).add(oldLinear.w.mul(localY)),
+        ));
+        const current = sampleCubic(center.sub(0.5).add(vec2(localX, localY)).add(displacement));
+        const templateIndex = uint(gridY.mul(SUBSET_SIZE).add(row).mul(FRAME_WIDTH)
+          .add(gridX.mul(SUBSET_SIZE)).add(lane));
+        const reference = referenceNode.element(templateIndex);
+        const jacobian = [
+          reference.y,
+          reference.y.mul(localX),
+          reference.y.mul(localY),
+          reference.z,
+          reference.z.mul(localX),
+          reference.z.mul(localY),
+        ];
+        sumCurrent.addAssign(current);
+        sumCurrent2.addAssign(current.mul(current));
+        sumReferenceCurrent.addAssign(reference.x.mul(current));
+        for (let component = 0; component < 6; ++component) {
+          sumJCurrent[component].addAssign(jacobian[component].mul(current));
+        }
+      });
+    });
 
-  const ratio = referenceNorm.div(currentNorm);
-  const residual = Array.from({ length: 6 }, (_, component) => metadataValue(subsetIndex, 2 + component)
-    .sub(ratio.mul(sumJCurrent[component].sub(currentMean.mul(metadataValue(subsetIndex, 8 + component))))));
-  const delta = Array.from({ length: 6 }, (_, row) => {
-    const value = float(0).toVar();
-    for (let column = 0; column < 6; ++column) {
-      value.addAssign(hessianValue(subsetIndex, 6 * row + column).mul(residual[column]));
+    sharedA.element(lane).assign(vec4(sumCurrent, sumCurrent2, sumReferenceCurrent, sumJCurrent[0]));
+    sharedB.element(lane).assign(vec4(sumJCurrent[1], sumJCurrent[2], sumJCurrent[3], sumJCurrent[4]));
+    sharedC.element(lane).assign(vec4(sumJCurrent[5], 0, 0, 0));
+    workgroupBarrier();
+    for (const offset of [8, 4, 2, 1]) {
+      If(lane.lessThan(offset), () => {
+        sharedA.element(lane).addAssign(sharedA.element(lane.add(offset)));
+        sharedB.element(lane).addAssign(sharedB.element(lane.add(offset)));
+        sharedC.element(lane).addAssign(sharedC.element(lane.add(offset)));
+      });
+      workgroupBarrier();
     }
-    return value.negate();
+
+    If(lane.equal(0).and(active), () => {
+      const totalsA = sharedA.element(int(0));
+      const totalsB = sharedB.element(int(0));
+      const totalsC = sharedC.element(int(0));
+      const reducedJ = [totalsA.w, totalsB.x, totalsB.y, totalsB.z, totalsB.w, totalsC.x];
+      const currentMean = totalsA.x.div(SUBSET_PIXELS);
+      const currentNorm = totalsA.y.sub(totalsA.x.mul(currentMean)).max(0).sqrt();
+      const referenceNorm = metadataValue(subsetIndex, 0);
+      const nextIteration = float(iteration).add(1);
+      sharedIterations.element(int(0)).assign(nextIteration);
+
+      If(currentNorm.lessThan(1e-9).or(referenceNorm.lessThan(1e-9)), () => {
+        sharedState.element(int(1)).assign(vec4(state1.x, state1.y, -2, nextIteration));
+      }).Else(() => {
+        const ratio = referenceNorm.div(currentNorm);
+        const residual = Array.from({ length: 6 }, (_, component) => metadataValue(subsetIndex, 2 + component)
+          .sub(ratio.mul(reducedJ[component]
+            .sub(currentMean.mul(metadataValue(subsetIndex, 8 + component))))));
+        const delta = Array.from({ length: 6 }, (_, row) => {
+          const value = float(0).toVar();
+          for (let column = 0; column < 6; ++column) {
+            value.addAssign(hessianValue(subsetIndex, 6 * row + column).mul(residual[column]));
+          }
+          return value.negate();
+        });
+
+        const da11 = delta[1].add(1);
+        const da12 = delta[2];
+        const da21 = delta[4];
+        const da22 = delta[5].add(1);
+        const determinant = da11.mul(da22).sub(da12.mul(da21));
+        If(determinant.abs().lessThan(1e-8), () => {
+          sharedState.element(int(1)).assign(vec4(state1.x, state1.y, -1, nextIteration));
+        }).Else(() => {
+          const inverse11 = da22.div(determinant);
+          const inverse12 = da12.negate().div(determinant);
+          const inverse21 = da21.negate().div(determinant);
+          const inverse22 = da11.div(determinant);
+          const warp11 = oldLinear.x.add(1);
+          const warp12 = oldLinear.y;
+          const warp21 = oldLinear.z;
+          const warp22 = oldLinear.w.add(1);
+          const inverseTranslationX = inverse11.mul(delta[0]).add(inverse12.mul(delta[3])).negate();
+          const inverseTranslationY = inverse21.mul(delta[0]).add(inverse22.mul(delta[3])).negate();
+          const updatedTranslation = oldTranslation.add(vec2(
+            warp11.mul(inverseTranslationX).add(warp12.mul(inverseTranslationY)),
+            warp21.mul(inverseTranslationX).add(warp22.mul(inverseTranslationY)),
+          ));
+          const updated11 = warp11.mul(inverse11).add(warp12.mul(inverse21));
+          const updated12 = warp11.mul(inverse12).add(warp12.mul(inverse22));
+          const updated21 = warp21.mul(inverse11).add(warp22.mul(inverse21));
+          const updated22 = warp21.mul(inverse12).add(warp22.mul(inverse22));
+
+          const cornerChange = float(0).toVar();
+          for (let corner = 0; corner < 4; ++corner) {
+            const x = corner === 1 || corner === 3 ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
+            const y = corner >= 2 ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
+            const change = vec2(
+              delta[0].add(delta[1].mul(x)).add(delta[2].mul(y)),
+              delta[3].add(delta[4].mul(x)).add(delta[5].mul(y)),
+            ).length();
+            cornerChange.assign(cornerChange.max(change));
+          }
+
+          const zncc = totalsA.z.div(referenceNorm.mul(currentNorm));
+          const convergedState = select(zncc.greaterThanEqual(znccMinNode), 1, -2);
+          const nextState = select(cornerChange.lessThan(toleranceNode), convergedState, 0);
+          sharedState.element(int(0)).assign(vec4(
+            updatedTranslation.x,
+            updatedTranslation.y,
+            updated11.sub(1),
+            updated12,
+          ));
+          sharedState.element(int(1)).assign(vec4(
+            updated21,
+            updated22.sub(1),
+            nextState,
+            nextIteration,
+          ));
+        });
+      });
+    });
+    workgroupBarrier();
   });
 
-  const da11 = delta[1].add(1);
-  const da12 = delta[2];
-  const da21 = delta[4];
-  const da22 = delta[5].add(1);
-  const determinant = da11.mul(da22).sub(da12.mul(da21));
-  If(determinant.abs().lessThan(1e-8), () => {
-    statusNode.element(subsetIndex).assign(vec2(-1, oldStatus.y.add(1)));
-    Return();
+  If(lane.equal(0), () => {
+    const finalState0 = sharedState.element(int(0)).toVar();
+    const finalState1 = sharedState.element(int(1)).toVar();
+    translationNode.element(subsetIndex).assign(vec2(finalState0.x, finalState0.y));
+    linearNode.element(subsetIndex).assign(vec4(finalState0.z, finalState0.w, finalState1.x, finalState1.y));
+    statusNode.element(subsetIndex).assign(vec2(finalState1.z, sharedIterations.element(int(0))));
+  });
+})().compute(GRID_COUNT * SOLVER_LANES, [SOLVER_LANES])
+  .setName('DIC-RT fused cooperative affine IC-GN solver');
+
+/**
+ * Build the fast subgroup solver used when WebGPU exposes subgroup operations.
+ *
+ * All 16 lanes retain the same warp state in registers. Hardware collectives
+ * reduce the per-column sums without workgroup barriers or global state
+ * round-trips; converged subsets skip the expensive interpolation and update.
+ */
+const makeSubgroupSolverKernel = () => Fn(() => {
+  const subsetIndex = uint(workgroupId.x);
+  const lane = int(localId.x);
+  const currentTranslation = translationNode.element(subsetIndex).toVar();
+  const currentLinear = linearNode.element(subsetIndex).toVar();
+  const initialStatus = statusNode.element(subsetIndex).toVar();
+  const currentStatus = float(select(
+    metadataValue(subsetIndex, 1).greaterThanEqual(0.5),
+    initialStatus.x,
+    -1,
+  )).toVar();
+  const currentIterations = float(initialStatus.y).toVar();
+  const gridX = int(subsetIndex.mod(uint(GRID_WIDTH)));
+  const gridY = int(subsetIndex.div(uint(GRID_WIDTH)));
+  const center = vec2(float(gridX).add(0.5), float(gridY).add(0.5)).mul(SUBSET_SIZE);
+
+  Loop({
+    start: int(0),
+    end: iterationCountNode,
+    type: 'int',
+    condition: '<',
+    name: 'iteration',
+  }, ({ iteration }) => {
+    const inside = float(1).toVar();
+    for (let corner = 0; corner < 4; ++corner) {
+      const localX = corner === 1 || corner === 3 ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
+      const localY = corner >= 2 ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
+      const position = center.sub(0.5).add(vec2(localX, localY)).add(currentTranslation).add(vec2(
+        currentLinear.x.mul(localX).add(currentLinear.y.mul(localY)),
+        currentLinear.z.mul(localX).add(currentLinear.w.mul(localY)),
+      ));
+      const valid = position.x.greaterThanEqual(2).and(position.y.greaterThanEqual(2))
+        .and(position.x.lessThanEqual(FRAME_WIDTH - 3)).and(position.y.lessThanEqual(FRAME_HEIGHT - 3));
+      inside.mulAssign(select(valid, 1, 0));
+    }
+    If(inside.lessThan(0.5), () => currentStatus.assign(-1));
+
+    const active = currentStatus.abs().lessThanEqual(0.5).and(inside.greaterThanEqual(0.5));
+    const sumCurrent = float(0).toVar();
+    const sumCurrent2 = float(0).toVar();
+    const sumReferenceCurrent = float(0).toVar();
+    const sumJCurrent = Array.from({ length: 6 }, () => float(0).toVar());
+    If(active, () => {
+      Loop({ start: int(0), end: int(SUBSET_SIZE), type: 'int', condition: '<', name: 'row' }, ({ row }) => {
+        const localX = float(lane).sub(SUBSET_HALF_EXTENT);
+        const localY = float(row).sub(SUBSET_HALF_EXTENT);
+        const displacement = currentTranslation.add(vec2(
+          currentLinear.x.mul(localX).add(currentLinear.y.mul(localY)),
+          currentLinear.z.mul(localX).add(currentLinear.w.mul(localY)),
+        ));
+        const current = sampleCubic(center.sub(0.5).add(vec2(localX, localY)).add(displacement));
+        const templateIndex = uint(gridY.mul(SUBSET_SIZE).add(row).mul(FRAME_WIDTH)
+          .add(gridX.mul(SUBSET_SIZE)).add(lane));
+        const reference = referenceNode.element(templateIndex);
+        const jacobian = [
+          reference.y,
+          reference.y.mul(localX),
+          reference.y.mul(localY),
+          reference.z,
+          reference.z.mul(localX),
+          reference.z.mul(localY),
+        ];
+        sumCurrent.addAssign(current);
+        sumCurrent2.addAssign(current.mul(current));
+        sumReferenceCurrent.addAssign(reference.x.mul(current));
+        for (let component = 0; component < 6; ++component) {
+          sumJCurrent[component].addAssign(jacobian[component].mul(current));
+        }
+      });
+    });
+
+    const totalsA = subgroupAdd(
+      vec4(sumCurrent, sumCurrent2, sumReferenceCurrent, sumJCurrent[0]),
+    ).toVar();
+    const totalsB = subgroupAdd(
+      vec4(sumJCurrent[1], sumJCurrent[2], sumJCurrent[3], sumJCurrent[4]),
+    ).toVar();
+    const totalsC = subgroupAdd(vec4(sumJCurrent[5], 0, 0, 0)).toVar();
+
+    If(active, () => {
+      const reducedJ = [totalsA.w, totalsB.x, totalsB.y, totalsB.z, totalsB.w, totalsC.x];
+      const currentMean = totalsA.x.div(SUBSET_PIXELS);
+      const currentNorm = totalsA.y.sub(totalsA.x.mul(currentMean)).max(0).sqrt();
+      const referenceNorm = metadataValue(subsetIndex, 0);
+      currentIterations.assign(float(iteration).add(1));
+
+      If(currentNorm.lessThan(1e-9).or(referenceNorm.lessThan(1e-9)), () => {
+        currentStatus.assign(-2);
+      }).Else(() => {
+        const ratio = referenceNorm.div(currentNorm);
+        const residual = Array.from({ length: 6 }, (_, component) => metadataValue(subsetIndex, 2 + component)
+          .sub(ratio.mul(reducedJ[component]
+            .sub(currentMean.mul(metadataValue(subsetIndex, 8 + component))))));
+        const delta = Array.from({ length: 6 }, (_, row) => {
+          const value = float(0).toVar();
+          for (let column = 0; column < 6; ++column) {
+            value.addAssign(hessianValue(subsetIndex, 6 * row + column).mul(residual[column]));
+          }
+          return value.negate();
+        });
+
+        const da11 = delta[1].add(1);
+        const da12 = delta[2];
+        const da21 = delta[4];
+        const da22 = delta[5].add(1);
+        const determinant = da11.mul(da22).sub(da12.mul(da21));
+        If(determinant.abs().lessThan(1e-8), () => {
+          currentStatus.assign(-1);
+        }).Else(() => {
+          const inverse11 = da22.div(determinant);
+          const inverse12 = da12.negate().div(determinant);
+          const inverse21 = da21.negate().div(determinant);
+          const inverse22 = da11.div(determinant);
+          const warp11 = currentLinear.x.add(1);
+          const warp12 = currentLinear.y;
+          const warp21 = currentLinear.z;
+          const warp22 = currentLinear.w.add(1);
+          const inverseTranslationX = inverse11.mul(delta[0]).add(inverse12.mul(delta[3])).negate();
+          const inverseTranslationY = inverse21.mul(delta[0]).add(inverse22.mul(delta[3])).negate();
+          const updatedTranslation = currentTranslation.add(vec2(
+            warp11.mul(inverseTranslationX).add(warp12.mul(inverseTranslationY)),
+            warp21.mul(inverseTranslationX).add(warp22.mul(inverseTranslationY)),
+          ));
+          const updated11 = warp11.mul(inverse11).add(warp12.mul(inverse21));
+          const updated12 = warp11.mul(inverse12).add(warp12.mul(inverse22));
+          const updated21 = warp21.mul(inverse11).add(warp22.mul(inverse21));
+          const updated22 = warp21.mul(inverse12).add(warp22.mul(inverse22));
+
+          const cornerChange = float(0).toVar();
+          for (let corner = 0; corner < 4; ++corner) {
+            const x = corner === 1 || corner === 3 ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
+            const y = corner >= 2 ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
+            const change = vec2(
+              delta[0].add(delta[1].mul(x)).add(delta[2].mul(y)),
+              delta[3].add(delta[4].mul(x)).add(delta[5].mul(y)),
+            ).length();
+            cornerChange.assign(cornerChange.max(change));
+          }
+
+          currentTranslation.assign(updatedTranslation);
+          currentLinear.assign(vec4(updated11.sub(1), updated12, updated21, updated22.sub(1)));
+          const zncc = totalsA.z.div(referenceNorm.mul(currentNorm));
+          const convergedState = select(zncc.greaterThanEqual(znccMinNode), 1, -2);
+          currentStatus.assign(select(cornerChange.lessThan(toleranceNode), convergedState, 0));
+        });
+      });
+    });
   });
 
-  const inverse11 = da22.div(determinant);
-  const inverse12 = da12.negate().div(determinant);
-  const inverse21 = da21.negate().div(determinant);
-  const inverse22 = da11.div(determinant);
-  const warp11 = oldLinear.x.add(1);
-  const warp12 = oldLinear.y;
-  const warp21 = oldLinear.z;
-  const warp22 = oldLinear.w.add(1);
-  const inverseTranslationX = inverse11.mul(delta[0]).add(inverse12.mul(delta[3])).negate();
-  const inverseTranslationY = inverse21.mul(delta[0]).add(inverse22.mul(delta[3])).negate();
-  const updatedTranslation = oldTranslation.add(vec2(
-    warp11.mul(inverseTranslationX).add(warp12.mul(inverseTranslationY)),
-    warp21.mul(inverseTranslationX).add(warp22.mul(inverseTranslationY)),
-  ));
-  const updated11 = warp11.mul(inverse11).add(warp12.mul(inverse21));
-  const updated12 = warp11.mul(inverse12).add(warp12.mul(inverse22));
-  const updated21 = warp21.mul(inverse11).add(warp22.mul(inverse21));
-  const updated22 = warp21.mul(inverse12).add(warp22.mul(inverse22));
-
-  const cornerChange = float(0).toVar();
-  for (let corner = 0; corner < 4; ++corner) {
-    const x = corner === 1 || corner === 3 ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
-    const y = corner >= 2 ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
-    const change = vec2(
-      delta[0].add(delta[1].mul(x)).add(delta[2].mul(y)),
-      delta[3].add(delta[4].mul(x)).add(delta[5].mul(y)),
-    ).length();
-    cornerChange.assign(cornerChange.max(change));
-  }
-
-  translationNode.element(subsetIndex).assign(updatedTranslation);
-  linearNode.element(subsetIndex).assign(vec4(updated11.sub(1), updated12, updated21, updated22.sub(1)));
-  const zncc = sumReferenceCurrent.div(referenceNorm.mul(currentNorm));
-  const convergedState = select(zncc.greaterThanEqual(znccMinNode), 1, -2);
-  const state = select(cornerChange.lessThan(toleranceNode), convergedState, 0);
-  statusNode.element(subsetIndex).assign(vec2(state, oldStatus.y.add(1)));
-})().compute(GRID_COUNT, [64]).setName('DIC-RT affine IC-GN iteration');
+  If(lane.equal(0), () => {
+    translationNode.element(subsetIndex).assign(currentTranslation);
+    linearNode.element(subsetIndex).assign(currentLinear);
+    statusNode.element(subsetIndex).assign(vec2(currentStatus, currentIterations));
+  });
+})().compute([GRID_COUNT, 1, 1], [SOLVER_LANES])
+  .setName('DIC-RT subgroup affine IC-GN solver');
 
 const median8Node = (values, count) => {
   Loop(8, () => {
@@ -651,9 +906,24 @@ const makeMedianKernel = () => Fn(() => {
 const buildKernels = () => ({
   prefilterX: makePrefilterKernel(sourceNode, temporaryNode, true),
   prefilterY: makePrefilterKernel(temporaryNode, coefficientsNode, false),
-  solver: makeSolverKernel(),
+  solver: subgroupWidth >= SOLVER_LANES
+    ? makeSubgroupSolverKernel()
+    : makeFusedCooperativeSolverKernel(),
   median: makeMedianKernel(),
 });
+
+/** Return the subgroup width selected for a 16-invocation compute workgroup. */
+const measureSubgroupWidth = async () => {
+  if (!renderer.backend.device.features.has('subgroups')) return 0;
+  const attribute = new THREE.StorageBufferAttribute(new Float32Array(1), 1);
+  const output = storage(attribute, 'float', 1);
+  const probe = Fn(() => {
+    If(localId.x.equal(0), () => output.element(int(0)).assign(float(subgroupSize)));
+  })().compute([1, 1, 1], [SOLVER_LANES]).setName('DIC-RT subgroup width probe');
+  renderer.compute(probe);
+  const data = await renderer.getArrayBufferAsync(attribute);
+  return new Float32Array(data)[0];
+};
 
 const ensureRenderer = async () => {
   if (rendererPromise) return rendererPromise;
@@ -667,6 +937,7 @@ const ensureRenderer = async () => {
     if (!renderer.backend.device?.queue) {
       throw new Error('WebGPU is unavailable; Three.js fell back to a non-compute backend');
     }
+    subgroupWidth = await measureSubgroupWidth();
     return renderer;
   })();
   return rendererPromise;
@@ -705,7 +976,7 @@ const executePipeline = async ({ measureGpu = false } = {}) => {
   resetSolver();
   renderer.compute(kernels.prefilterX);
   renderer.compute(kernels.prefilterY);
-  for (let iteration = 0; iteration < configuration.iterations; ++iteration) renderer.compute(kernels.solver);
+  renderer.compute(kernels.solver);
   renderer.compute(kernels.median);
   if (measureGpu) {
     const gpuMs = await resolveGpuTimestamp();
@@ -847,6 +1118,7 @@ function configure(options = {}) {
   Object.assign(configuration, next);
   toleranceNode.value = next.tolerance;
   znccMinNode.value = next.znccMin;
+  iterationCountNode.value = next.iterations;
   return { ...configuration };
 }
 
@@ -899,6 +1171,9 @@ const info = async () => {
     architecture: adapterInfo.architecture || null,
     adapterDevice: adapterInfo.device || null,
     description: adapterInfo.description || null,
+    subgroups: renderer.backend.device.features.has('subgroups'),
+    subgroupWidth,
+    solver: subgroupWidth >= SOLVER_LANES ? 'subgroup' : 'portable-workgroup',
   };
 };
 

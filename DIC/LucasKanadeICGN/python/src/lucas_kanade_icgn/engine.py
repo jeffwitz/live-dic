@@ -51,6 +51,8 @@ class EngineInfo:
     subset_size: int
     device: str
     timer_query: bool
+    solver: str = "unknown"
+    subgroup_width: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -605,6 +607,8 @@ class ICGNWebGL:
             subset_size=int(payload["subsetSize"]),
             device=str(payload["device"]),
             timer_query=bool(payload["timerQuery"]),
+            solver=str(payload.get("solver", "unknown")),
+            subgroup_width=int(payload.get("subgroupWidth", 0)),
         )
 
     def set_reference(

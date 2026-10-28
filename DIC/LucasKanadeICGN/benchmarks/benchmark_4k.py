@@ -54,6 +54,7 @@ def main() -> int:
     with ICGNWebGL(
         backend="three-tsl", startup_timeout=120, call_timeout=600
     ) as engine:
+        runtime = engine.info()
         preparation = engine.set_reference(reference)
         benchmark = engine.benchmark_target(
             target,
@@ -65,6 +66,8 @@ def main() -> int:
     report: dict[str, Any] = {
         "backend": "three-tsl",
         "device": benchmark.device,
+        "solver": runtime.solver,
+        "subgroup_width": runtime.subgroup_width,
         "resolution": [preparation.width, preparation.height],
         "grid": list(preparation.grid),
         "truth": list(TRUTH),

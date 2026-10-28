@@ -34,10 +34,12 @@ inverse-compositional update.
 
 The Three.js backend implements those same operations as TSL storage-buffer
 compute kernels: two target prefilter passes, the six-parameter affine IC-GN
-iteration, and the final median consistency pass. It is an implementation of
-the DIC-RT equations in this repository, not a copy of Strobox. Three.js r186
-and its licence are vendored locally under [`three/vendor/`](./three/vendor/)
-for offline execution.
+solver, and the final median consistency pass. A startup probe selects a fused
+16-lane subgroup solver when the adapter supports it; a portable
+workgroup-memory solver remains available automatically. It is an
+implementation of the DIC-RT equations in this repository, not a copy of
+Strobox. Three.js r186 and its licence are vendored locally under
+[`three/vendor/`](./three/vendor/) for offline execution.
 
 The Three.js runtime derives its buffers and subset grid from the reference
 dimensions. It has been validated at both 512 × 512 and UHD 3840 × 2160. The
@@ -46,10 +48,11 @@ one-time reference construction is exposed by `set_reference()`, while
 reference construction and optical-flow timings remain separate. GPU-IO is
 kept as the optional fixed-512 backend.
 
-The remaining differences are platform constraints: WebGL2 uses single
-precision and exposes neither SYCL subgroups nor the same register resources.
-This version does not implement Aitken acceleration, predictive tolerance,
-temporal/extrapolated initialization, a pyramid, or the H.264 pipeline.
+The remaining differences are platform constraints: the browser backends use
+single precision and do not expose the same register controls or queue model as
+SYCL/Level Zero. This version does not implement Aitken acceleration,
+predictive tolerance, temporal/extrapolated initialization, a pyramid, or the
+H.264 pipeline.
 
 ## Test dataset
 

@@ -70,17 +70,17 @@ three warm-ups.
      - Accepted
      - Vector RMSE
    * - Three.js/TSL
-     - WebGPU, Vulkan
+     - WebGPU, Vulkan, subgroup solver
      - GPU prefilter, IC-GN, median pass
-     - **3.461 ms**
-     - **3.713 ms**
+     - **0.672 ms**
+     - **1.225 ms**
      - 900 / 1,024
-     - 4.076e-5 px
+     - 2.749e-5 px
    * - GPU-IO
      - WebGL2, OpenGL
      - GPU prefilter, IC-GN, median pass
-     - 3.794 ms
-     - 4.160 ms
+     - 3.768 ms
+     - 4.362 ms
      - 900 / 1,024
      - 3.819e-5 px
    * - DIC_FROM_H264 SYCL
@@ -91,10 +91,12 @@ three warm-ups.
      - 900 / 1,024
      - 1.12e-5 px
 
-The Three.js/TSL median GPU time is 8.8% lower than GPU-IO for this case. The
-three campaign ratios were 91.0%, 91.3%, and 91.2%. Tail latency did not always
-improve: the Three.js p95 ranged from 3.707 to 4.562 ms, while GPU-IO ranged
-from 4.128 to 4.326 ms.
+The Three.js/TSL median GPU time is 82.2% lower than GPU-IO for this case. The
+three campaign ratios were 23.1%, 17.4%, and 17.2%. The Three.js p95 ranged
+from 1.174 to 1.227 ms, while GPU-IO ranged from 4.253 to 4.613 ms. The runtime
+measured a 32-lane hardware subgroup and selected the fused 16-lane solver; a
+portable workgroup-memory solver is selected automatically when that condition
+is not met.
 
 The SYCL row has a stricter timing boundary: its ``total_ms`` includes upload
 and readback, while browser GPU queries exclude both. The raw figures are useful
@@ -118,11 +120,11 @@ result readback.
      - Median
      - p95
    * - Three.js/TSL
-     - **5.6 ms**
-     - **6.2 ms**
+     - **2.7 ms**
+     - **3.5 ms**
    * - GPU-IO
      - 16.6 ms
-     - 19.2 ms
+     - 18.4 ms
    * - SYCL
      - not applicable
      - not applicable
@@ -159,8 +161,8 @@ UHD Three.js validation
 The dynamic-resolution Three.js path was also validated at 3840 x 2160 on the
 same machine. The offline reference tiles the shipped speckle texture and the
 target applies an exact ``(2, -1)`` pixel translation. This produces a 240 x
-135 grid, or 32,400 subsets. Five warm-ups precede 30 measured optical-flow
-runs.
+135 grid, or 32,400 subsets. Each of three campaigns used five warm-ups and 30
+measured optical-flow runs. The table reports the median campaign summary.
 
 .. list-table:: UHD preparation and optical-flow measurements
    :header-rows: 1
@@ -170,29 +172,74 @@ runs.
      - Result
    * - Runtime construction
      - storage allocation and TSL graph construction
-     - 3.9 ms
+     - 5.1 ms
    * - Reference construction
      - grayscale filtering, gradients, Hessians, and metadata
-     - 971.8 ms
+     - 996.3 ms
    * - Browser preparation
      - runtime plus reference construction
-     - 975.7 ms
+     - 1,003.1 ms
    * - Complete Python preparation
      - conversion, PNG transport, and browser preparation
-     - 1,270.2 ms
+     - 1,291.3 ms
    * - Optical flow median
      - WebGPU prefilter, IC-GN, and median pass
-     - 81.817 ms GPU; 84.0 ms browser wall
+     - **13.341 ms GPU; 14.7 ms browser wall**
    * - Optical flow p95
      - same boundary
-     - 86.246 ms GPU; 88.8 ms browser wall
+     - **14.405 ms GPU; 16.0 ms browser wall**
 
 The final registration accepted 31,654 subsets, recovered a mean translation
-of ``(1.999991, -0.999996)`` pixels, and produced a vector RMSE of
-``4.121e-5`` pixel. These values demonstrate functional UHD support, not a
-real-time 4K frame-rate claim. WebGPU upload and pipeline compilation are lazy;
-the five unreported warm-ups absorb that first-use work before the optical-flow
-distribution is measured.
+of ``(1.999991, -0.999997)`` pixels, required 5.943 iterations on average, and
+produced a vector RMSE of ``3.076e-5`` pixel. The optimized subgroup solver is
+6.13 times faster than the earlier 81.817 ms TSL baseline.
+
+The equivalent current SYCL configuration was rebuilt and measured on the same
+offline pair. It uses mixed precision, column layout, the FIR prefilter, a
+constant inverse Hessian, no acceleration or tolerance guard, and median
+replacement.
+
+.. list-table:: UHD Three.js and SYCL comparison
+   :header-rows: 1
+
+   * - Measurement
+     - Three.js/TSL
+     - SYCL mixed/double reduction
+     - SYCL float reduction
+   * - Prefilter plus registration median
+     - **13.341 ms**
+     - 19.099 ms
+     - 18.111 ms
+   * - Prefilter plus registration p95
+     - **14.405 ms**
+     - 19.863 ms
+     - 19.062 ms
+   * - Upload plus compute plus download median
+     - not included
+     - 19.573 ms
+     - 18.509 ms
+   * - Accepted subsets
+     - 31,654
+     - 31,654
+     - 31,654
+   * - Mean iterations
+     - 5.943
+     - 5.944
+     - 5.940
+   * - Truth RMSE
+     - 3.076e-5 px
+     - 2.555e-5 px
+     - 2.712e-5 px
+
+At the comparable compute boundary, optimized Three.js uses 69.9% of the
+mixed/double-reduction SYCL time: a 30.1% reduction, or 1.43 times the
+throughput, on this machine. It uses 73.7% of the numerically closer
+``--float-reduce`` time, a 26.3% reduction or 1.36 times the throughput. The
+Three.js timer excludes input upload and output readback, so the separate SYCL
+totals are shown rather than folded into those ratios. These values demonstrate
+functional UHD support and backend compute performance, not acquisition-to-
+result 4K60 qualification. WebGPU upload and pipeline compilation are lazy;
+the five unreported warm-ups absorb first-use work.
 
 Reproduce the campaign offline with:
 
