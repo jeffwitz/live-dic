@@ -488,6 +488,8 @@ class ICGNWGPU:
         self._seeded_bind_group_layout: Any = None
         self._seeded_solver: Any = None
         self._reference_ready = False
+        self._source_texture_format = wgpu.TextureFormat.r8unorm
+        self._source_texture_extra_usage = 0
         self._buffers: dict[str, Any] = {}
         self._source_texture: Any = None
         self._bind_group: Any = None
@@ -499,6 +501,60 @@ class ICGNWGPU:
         self.grid_width = 0
         self.grid_height = 0
         self._config = {"iterations": 30, "tolerance": 1e-3, "znccMin": 0.8}
+
+    def _new_shared_level(self, *, gpu_writable_source: bool = False) -> ICGNWGPU:
+        """Create an independent level runtime on this engine's device.
+
+        This private constructor is used by the full-pyramid backend.  It
+        shares immutable pipelines and the device, but not any
+        dimension-dependent image, reference, solver-state, or readback
+        resource.  Consequently all pyramid levels can be encoded into one
+        command buffer without creating extra devices or host round trips.
+        """
+
+        level = object.__new__(ICGNWGPU)
+        for name in (
+            "_wgpu",
+            "adapter",
+            "device",
+            "device_name",
+            "subgroup_width",
+            "_shader",
+            "_bind_group_layout",
+            "_prefilter_x",
+            "_prefilter_y",
+            "_portable_solver",
+            "_subgroup_solver",
+            "_median_filter",
+        ):
+            setattr(level, name, getattr(self, name))
+        level._solver_preference = False
+        level.solver_tuning_ms = {}
+        level.solver = "portable-workgroup"
+        level._solver = level._portable_solver
+        level._seeded_bind_group_layout = self._seeded_bind_group_layout
+        level._seeded_solver = self._seeded_solver
+        level._reference_ready = False
+        level._source_texture_format = (
+            self._wgpu.TextureFormat.rgba8unorm
+            if gpu_writable_source
+            else self._wgpu.TextureFormat.r8unorm
+        )
+        level._source_texture_extra_usage = (
+            self._wgpu.TextureUsage.STORAGE_BINDING if gpu_writable_source else 0
+        )
+        level._buffers = {}
+        level._source_texture = None
+        level._bind_group = None
+        level._pipeline_slots = []
+        level.pyramid_levels = 1
+        level._pyramid_engines = []
+        level.width = 0
+        level.height = 0
+        level.grid_width = 0
+        level.grid_height = 0
+        level._config = {"iterations": 30, "tolerance": 1e-3, "znccMin": 0.8}
+        return level
 
     def _measure_subgroup_width(self) -> int:
         """Return the hardware subgroup width for a 16-lane workgroup."""
@@ -645,9 +701,13 @@ class ICGNWGPU:
         grid_count = self.grid_width * self.grid_height
         source_texture = self.device.create_texture(
             size=(self.width, self.height, 1),
-            usage=wgpu.TextureUsage.COPY_DST | wgpu.TextureUsage.TEXTURE_BINDING,
+            usage=(
+                wgpu.TextureUsage.COPY_DST
+                | wgpu.TextureUsage.TEXTURE_BINDING
+                | self._source_texture_extra_usage
+            ),
             dimension=wgpu.TextureDimension.d2,
-            format=wgpu.TextureFormat.r8unorm,
+            format=self._source_texture_format,
             mip_level_count=1,
             sample_count=1,
         )
@@ -831,20 +891,12 @@ class ICGNWGPU:
         """Encode one registration without imposing a CPU/GPU synchronization."""
 
         encoder = self.device.create_command_encoder(label="DIC-RT native registration")
-        encoder.clear_buffer(slot.buffers["state"])
-        encoder.clear_buffer(slot.buffers["filtered_state"])
-        pixel_workgroups = (self.width * self.height + 255) // 256
-        for pipeline, workgroups in (
-            (self._prefilter_x, pixel_workgroups),
-            (self._prefilter_y, pixel_workgroups),
-            (solver_pipeline, self.grid_width * self.grid_height),
-            (self._median_filter, (self.grid_width * self.grid_height + 255) // 256),
-        ):
-            compute_pass = encoder.begin_compute_pass()
-            compute_pass.set_pipeline(pipeline)
-            compute_pass.set_bind_group(0, slot.bind_group)
-            compute_pass.dispatch_workgroups(workgroups, 1, 1)
-            compute_pass.end()
+        self._encode_registration_passes(
+            encoder,
+            slot,
+            solver_pipeline,
+            solver_bind_group=slot.bind_group,
+        )
         if copy_to_readback:
             encoder.copy_buffer_to_buffer(
                 slot.buffers["filtered_state"],
@@ -854,6 +906,35 @@ class ICGNWGPU:
                 slot.readback.size,
             )
         return encoder.finish()
+
+    def _encode_registration_passes(
+        self,
+        encoder: Any,
+        slot: _RegistrationSlot,
+        solver_pipeline: Any,
+        *,
+        solver_bind_group: Any,
+    ) -> None:
+        """Append one level's prefilter, solve, and median passes."""
+
+        encoder.clear_buffer(slot.buffers["state"])
+        encoder.clear_buffer(slot.buffers["filtered_state"])
+        pixel_workgroups = (self.width * self.height + 255) // 256
+        for pipeline, workgroups, bind_group in (
+            (self._prefilter_x, pixel_workgroups, slot.bind_group),
+            (self._prefilter_y, pixel_workgroups, slot.bind_group),
+            (solver_pipeline, self.grid_width * self.grid_height, solver_bind_group),
+            (
+                self._median_filter,
+                (self.grid_width * self.grid_height + 255) // 256,
+                slot.bind_group,
+            ),
+        ):
+            compute_pass = encoder.begin_compute_pass()
+            compute_pass.set_pipeline(pipeline)
+            compute_pass.set_bind_group(0, bind_group)
+            compute_pass.dispatch_workgroups(workgroups, 1, 1)
+            compute_pass.end()
 
     def _execute_registration(self, solver_pipeline: Any) -> memoryview:
         """Execute the primary slot and return its synchronized state readback."""

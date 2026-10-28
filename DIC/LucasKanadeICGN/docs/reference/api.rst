@@ -30,6 +30,18 @@ separate opt-in constructor setting: ``pyramid_levels=1`` is the default
 single-scale path, and values ``2`` or ``3`` enable selective coarse-to-fine
 recovery for failed subsets.
 
+Full-pyramid native engine
+--------------------------
+
+.. autoclass:: lucas_kanade_icgn.ICGNWGPUFullPyramid
+   :members: set_reference, register, close
+
+This separate backend runs every configured scale for every target. Pyramid
+reduction, affine seed transfer, and all IC-GN solves remain GPU-resident in one
+command submission. Per-level iteration and tolerance tuples are ordered from
+coarse to fine. Two levels are the default and recommended native configuration;
+three levels are opt-in for a larger expected displacement range.
+
 One-shot registration
 ---------------------
 
@@ -63,5 +75,7 @@ Constants and input types
 .. autodata:: lucas_kanade_icgn.DEFAULT_IN_FLIGHT_FRAMES
 
 .. autodata:: lucas_kanade_icgn.DEFAULT_PYRAMID_LEVELS
+
+.. autodata:: lucas_kanade_icgn.DEFAULT_FULL_PYRAMID_LEVELS
 
 .. autodata:: lucas_kanade_icgn.ImageInput

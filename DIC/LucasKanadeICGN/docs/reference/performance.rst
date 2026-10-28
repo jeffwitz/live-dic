@@ -411,6 +411,88 @@ five-tap reduction makes active 4K recovery an exception path rather than a
 4K60 mode. When no recovery is configured, none of these resources or
 dispatches exists.
 
+GPU-resident full pyramid
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The separate ``ICGNWGPUFullPyramid`` backend was measured on the same Intel
+GPU with the same exact ``(4, -2)`` translation. It uploads only the finest
+target, performs reduction and coarse-to-fine seed transfer on the GPU, submits
+one command buffer, and reads back only the finest packed field. The two-level
+configuration is the class default and the recommended native path.
+
+.. list-table:: Full-pyramid validation on the Intel Lunar Lake GPU
+   :header-rows: 1
+
+   * - Resolution and backend
+     - Iterations coarse to fine
+     - Median call
+     - p95
+     - Accepted
+     - Truth RMSE
+   * - 512 x 512, one scale
+     - 30
+     - 3.309 ms
+     - 3.642 ms
+     - 634 / 1,024
+     - 0.0906 px
+   * - 512 x 512, full pyramid 2
+     - 12, 30
+     - 1.973 ms
+     - 2.371 ms
+     - 900 / 1,024
+     - 0.000027 px
+   * - 512 x 512, full pyramid 3
+     - 6, 8, 20
+     - 2.420 ms
+     - 3.229 ms
+     - 897 / 1,024
+     - 0.000025 px
+   * - 3840 x 2160, one scale
+     - 30
+     - 32.177 ms
+     - 32.679 ms
+     - 22,401 / 32,400
+     - 0.0964 px
+   * - 3840 x 2160, full pyramid 2
+     - 12, 30
+     - **14.811 ms (67.5 FPS)**
+     - 15.163 ms
+     - 31,692 / 32,400
+     - 0.00123 px
+   * - 3840 x 2160, full pyramid 3
+     - 6, 8, 20
+     - **15.458 ms (64.7 FPS)**
+     - 16.210 ms
+     - 31,681 / 32,400
+     - 0.00124 px
+
+These results qualify the 4K60 compute target for this controlled translated
+texture on this machine; they are not an acquisition-to-result guarantee. Two
+levels are preferable for the tested four-pixel motion. The third level should
+be reserved for a larger expected capture range. Its default iteration ceilings
+were reduced from ``(8, 12, 30)`` to ``(6, 8, 20)`` after an alternating A/B
+campaign preserved all 31,681 accepted subsets and the ``0.00124362`` px RMSE.
+The fine level already converged in 2.45 iterations on average, so reducing the
+ceilings recovered only a fraction of the extra-scale cost; target reduction,
+prefiltering, seed transfer, and additional dispatches remain fixed costs. A
+one-level ``ICGNWGPUFullPyramid`` result matched the portable ``ICGNWGPU``
+packed field bit for bit at 512 x 512.
+
+A more aggressive descending schedule, ``(12, 8, 6)``, reduced the alternating
+campaign median from 15.895 to 15.345 ms. It also reduced accepted subsets from
+31,681 to 31,260. It is therefore available through
+``iterations_per_level`` for latency-oriented applications, but is not the
+robust default: the small time gain did not justify losing 421 measurements on
+this validation pair.
+
+Reproduce the campaign with:
+
+.. code-block:: console
+
+   $ PYTHONPATH=DIC/LucasKanadeICGN/python/src \
+       python3 DIC/LucasKanadeICGN/benchmarks/benchmark_wgpu_full_pyramid.py \
+       --width 3840 --height 2160 --levels 2 3 --warmups 2 --repeats 7
+
 Browser validation
 ~~~~~~~~~~~~~~~~~~
 

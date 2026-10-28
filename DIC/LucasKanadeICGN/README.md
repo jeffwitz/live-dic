@@ -97,6 +97,17 @@ pyramid: ``pyramid_levels=1`` is the unchanged default fast path, while
 ``pyramid_levels=2`` retries only failed fine subsets from half-resolution
 seeds and preserves every previously accepted result bit for bit.
 
+For workloads that need a pyramid on every frame, the separate
+``ICGNWGPUFullPyramid`` backend keeps reduction, per-level target coefficients,
+coarse-to-fine affine seeds, and solver states on one GPU. It encodes all
+levels in one command buffer and performs one final readback. Iterations and
+tolerances are configurable per scale from coarse to fine. Two levels are the
+recommended native default. On the validation machine, this configuration
+measured 14.811 ms (67.5 FPS) at 3840 x 2160 for the controlled ``(+4, -2)``
+translation while accepting 31,692 of 32,400 subsets. Three levels remain
+available explicitly for larger expected displacements. See the performance
+reference for the exact boundary and caveats.
+
 ## Test dataset
 
 The five PNG files in `assets/` were extracted directly from the raw YUV file

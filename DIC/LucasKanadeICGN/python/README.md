@@ -183,6 +183,32 @@ the fine solve are preserved bit for bit. Two scales are the recommended
 recovery setting; a third scale should be enabled only after qualification on
 the expected displacement field.
 
+When coarse-to-fine registration is expected on every frame, use the separate
+GPU-resident backend:
+
+```python
+from lucas_kanade_icgn import ICGNWGPUFullPyramid
+
+with ICGNWGPUFullPyramid(
+    pyramid_levels=2,
+    iterations_per_level=(12, 30),
+    tolerance_per_level=(5e-3, 1e-3),
+) as engine:
+    engine.set_reference(reference_frame)
+    result = engine.register(target_frame)
+```
+
+The schedules are ordered from coarse to fine. The finest target is uploaded
+once; reductions, prefilters, affine seed transfers, and all solves stay on one
+WebGPU device in one command submission. Only the finest packed field is read
+back. The selective `ICGNWGPU` recovery path remains useful when large motion
+is exceptional, while `ICGNWGPUFullPyramid` avoids its CPU reductions and
+intermediate readbacks when a pyramid is the normal case.
+
+Two levels are the default because they provided the best measured 4K60 margin
+on the validation GPU. Select three levels explicitly for a larger expected
+capture range; its robust default iteration schedule is `(6, 8, 20)`.
+
 ## One-shot function
 
 ```python

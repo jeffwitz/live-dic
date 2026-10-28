@@ -139,10 +139,54 @@ The 512 x 512 one-scale output hash matches the pre-pyramid wheel exactly.
 On the nominal `(2, -1)` UHD throughput case, the new one-scale two-slot run
 measured 13.469 ms versus the earlier 13.380 ms, while returning the same
 31,654 accepted subsets and `3.075e-5 px` RMSE. Active 4K recovery is therefore
-not a 60 FPS path yet; the current CPU reduced-image construction is the next
-optimization target.
+not a 60 FPS path; it remains the optional exception path for preserving
+already accepted fine results.
 Fixed border subsets with no valid interpolation support are excluded from the
 recovery trigger.
+
+## GPU-resident full pyramid
+
+`ICGNWGPUFullPyramid` is the recommended native backend when coarse-to-fine
+registration is part of every frame. It uploads only the finest target, builds
+all reduced levels with the five-tap filter on the GPU, retains each level's
+spline coefficients and solver state, transfers affine seeds on the GPU, and
+reads back only the finest packed field. All passes are recorded into one
+command buffer and use one queue submission.
+
+The default is two levels with iteration ceilings `(12, 30)` from coarse to
+fine. Three levels are opt-in and use `(6, 8, 20)` by default. The same exact
+`(4, -2)` validation pair measured:
+
+| Resolution / path | Median | p95 | Accepted | Truth RMSE |
+|---|---:|---:|---:|---:|
+| 512 x 512 / one scale | 3.309 ms | 3.642 ms | 634 | 0.0906 px |
+| 512 x 512 / full pyramid 2 | **1.973 ms** | **2.371 ms** | 900 | 0.000027 px |
+| 512 x 512 / full pyramid 3 | 2.420 ms | 3.229 ms | 897 | 0.000025 px |
+| 3840 x 2160 / one scale | 32.177 ms | 32.679 ms | 22,401 | 0.0964 px |
+| 3840 x 2160 / full pyramid 2 | **14.811 ms** | **15.163 ms** | 31,692 | 0.00123 px |
+| 3840 x 2160 / full pyramid 3 | **15.458 ms** | **16.210 ms** | 31,681 | 0.00124 px |
+
+Both full-pyramid UHD configurations remain inside the 16.667 ms 60 Hz period
+on this machine. Two levels are the default because they provide the larger
+p95 margin and slightly more accepted subsets. Three levels remain useful for
+a larger expected capture range. A one-level full-pyramid run matched the
+portable `ICGNWGPU` packed output bit for bit.
+
+Reducing the three-level ceilings from `(8, 12, 30)` to `(6, 8, 20)` preserved
+all 31,681 accepted subsets and the measured RMSE. A more aggressive descending
+schedule `(12, 8, 6)` reduced an alternating campaign median from 15.895 to
+15.345 ms, but accepted only 31,260 subsets. It is therefore available through
+`iterations_per_level` but is not the robust default. Accepted fine subsets
+already converged in 2.45 iterations on average, so fixed reduction,
+prefiltering, seed-transfer, and dispatch costs dominate further ceiling cuts.
+
+Reproduce the UHD comparison with:
+
+```console
+PYTHONPATH=DIC/LucasKanadeICGN/python/src \
+  python3 DIC/LucasKanadeICGN/benchmarks/benchmark_wgpu_full_pyramid.py \
+  --width 3840 --height 2160 --levels 2 3 --warmups 2 --repeats 7
+```
 
 ## Ported SYCL operations
 
@@ -384,6 +428,7 @@ at least 16 lanes is unavailable. Raw browser WebGPU and wgpu-py instead load
 one canonical portable WGSL file, so formula corrections propagate directly
 between those two hosts. This port does not implement Aitken
 acceleration, predictive tolerance, temporal/extrapolated initialization,
-retry from the last accepted state, a pyramid, or the H.264 pipeline. These
+or retry from the last accepted state. The browser paths do not yet implement
+the native image pyramid, and no path includes the H.264 pipeline. These
 features do not change the uniform `t=0 -> 10` result used here, but matter for
 noisy sequences and larger motions.

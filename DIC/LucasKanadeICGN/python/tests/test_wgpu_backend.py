@@ -7,10 +7,13 @@ from inspect import signature
 import numpy as np
 
 from lucas_kanade_icgn import (
+    DEFAULT_FULL_PYRAMID_LEVELS,
     DEFAULT_IN_FLIGHT_FRAMES,
     DEFAULT_PYRAMID_LEVELS,
+    ICGNWGPUFullPyramid,
     RegistrationResult,
 )
+from lucas_kanade_icgn.full_pyramid_backend import _DEFAULT_ITERATION_SCHEDULES, _schedule
 from lucas_kanade_icgn.wgpu_backend import (
     ICGNWGPU,
     _fir_weights,
@@ -23,6 +26,22 @@ from lucas_kanade_icgn.wgpu_backend import (
 
 
 class NativeReferenceTests(unittest.TestCase):
+    def test_full_pyramid_has_explicit_coarse_to_fine_defaults(self) -> None:
+        default = signature(ICGNWGPUFullPyramid).parameters["pyramid_levels"].default
+        self.assertEqual(default, DEFAULT_FULL_PYRAMID_LEVELS)
+        self.assertEqual(default, 2)
+        self.assertEqual(_DEFAULT_ITERATION_SCHEDULES[1], (30,))
+        self.assertEqual(_DEFAULT_ITERATION_SCHEDULES[2], (12, 30))
+        self.assertEqual(_DEFAULT_ITERATION_SCHEDULES[3], (6, 8, 20))
+        self.assertEqual(
+            _schedule(None, level_count=2, defaults=(8, 12, 30), name="iterations"),
+            (12, 30),
+        )
+
+    def test_full_pyramid_schedule_requires_one_value_per_level(self) -> None:
+        with self.assertRaisesRegex(ValueError, "one value per pyramid level"):
+            _schedule((8, 12), level_count=3, defaults=(8, 12, 30), name="iterations")
+
     def test_native_engine_defaults_to_one_image_scale(self) -> None:
         default = signature(ICGNWGPU).parameters["pyramid_levels"].default
         self.assertEqual(default, DEFAULT_PYRAMID_LEVELS)
@@ -133,6 +152,7 @@ class NativeReferenceTests(unittest.TestCase):
         subgroup_source = files("lucas_kanade_icgn").joinpath("shaders/icgn_subgroup.comp")
         subgroup_binary = files("lucas_kanade_icgn").joinpath("shaders/icgn_subgroup.spv")
         probe_binary = files("lucas_kanade_icgn").joinpath("shaders/subgroup_probe.spv")
+        pyramid_shader = files("lucas_kanade_icgn").joinpath("shaders/full_pyramid.wgsl")
         shader_text = shader.read_text(encoding="utf-8")
         self.assertIn("fn solve", shader_text)
         self.assertIn("array<vec4<f32>>", shader_text)
@@ -148,6 +168,9 @@ class NativeReferenceTests(unittest.TestCase):
         self.assertIn("subgroupAdd", subgroup_source.read_text(encoding="utf-8"))
         self.assertEqual(subgroup_binary.read_bytes()[:4], b"\x03\x02#\x07")
         self.assertEqual(probe_binary.read_bytes()[:4], b"\x03\x02#\x07")
+        pyramid_text = pyramid_shader.read_text(encoding="utf-8")
+        for entry_point in ("reduce_x", "reduce_y", "transfer_seed"):
+            self.assertIn(f"fn {entry_point}", pyramid_text)
 
     def test_solver_controls_are_validated(self) -> None:
         self.assertEqual(_validated_config(30, 1e-3, 0.8)["iterations"], 30)

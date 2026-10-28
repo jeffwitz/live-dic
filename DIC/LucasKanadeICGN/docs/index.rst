@@ -31,8 +31,13 @@ kernel, and native wgpu-py backends. The default remains Three.js. All four
 paths have been validated at 3840 x 2160 pixels.
 
 The native backend also offers opt-in selective pyramid recovery for subsets
-that fail the initial fine solve. One scale remains the default fast path; the
-coarse path is not presented as a 4K60 mode.
+that fail the initial fine solve. One scale remains the default fast path. A
+separate ``ICGNWGPUFullPyramid`` backend now keeps the normal coarse-to-fine
+path entirely GPU-resident and defaults to two levels. On the controlled
+``(+4, -2)`` validation pair it
+measured 14.811 ms at 4K with two levels and 15.458 ms with three levels after
+reducing the three-level iteration ceilings. These figures qualify offline
+compute on that pair, not camera-to-consumer latency.
 
 The engineering objective is sustained, measurable DIC processing from Python.
 That means keeping the GPU runtime alive, preparing the reference only once,

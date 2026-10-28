@@ -138,3 +138,16 @@ This benchmark applies an exact ``(4, -2)`` pixel translation. Add
 ``--width 3840 --height 2160`` for UHD. Keep ``--levels 1`` in every nominal
 performance campaign: it proves that no pyramid resource or retry path is
 active.
+
+Measure the separate GPU-resident full-pyramid path with:
+
+.. code-block:: console
+
+   $ PYTHONPATH=DIC/LucasKanadeICGN/python/src \
+       python3 DIC/LucasKanadeICGN/benchmarks/benchmark_wgpu_full_pyramid.py \
+       --width 3840 --height 2160 --levels 2 3 --warmups 2 --repeats 7
+
+This command reports the one-scale baseline and each requested full-pyramid
+depth on the same exact ``(4, -2)`` target. It also records the coarse-to-fine
+iteration schedule, accepted subset count, truth RMSE, and number of queue
+submissions.

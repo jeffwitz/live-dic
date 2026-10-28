@@ -129,6 +129,53 @@ guarantee. On the validation Intel driver the native SPIR-V subgroup pipeline
 was slower, while the Three.js WGSL subgroup pipeline remained the browser's
 faster implementation.
 
+Native full pyramid: one submission, ordered GPU passes
+--------------------------------------------------------
+
+The recommended native ``ICGNWGPUFullPyramid`` path follows the established
+coarse-to-fine pyramidal LK organization exposed by `NVIDIA VPI
+<https://docs.nvidia.com/vpi/algo_optflow_lk.html>`_ and `OpenCV CUDA
+<https://docs.opencv.org/4.x/d7/d05/classcv_1_1cuda_1_1SparsePyrLKOpticalFlow.html>`_.
+It does not use one monolithic megakernel. Instead, all dependent compute
+passes are recorded into one command encoder and submitted once:
+
+.. code-block:: text
+
+   finest uint8 target upload
+             |
+             +--> horizontal 5-tap reduction --> vertical 5-tap reduction
+             |                                      |
+             |                                      +--> next target level
+             |                                              ...
+             v
+   per-level spline prefilters retained on the GPU
+             |
+             v
+   coarsest solve + median consistency
+             |
+             v
+   affine seed interpolation and scale conversion
+             |
+             v
+   next solve + median --> ... --> finest solve + median
+             |
+             v
+   one packed finest-level readback
+
+Pass boundaries provide device-wide ordering without a Python synchronization
+point. Reference pixels, gradients, inverse Hessians, metadata, target spline
+coefficients, affine states, and transferred seeds are allocated once and stay
+on the same device. The two-level default uses ``(12, 30)`` maximum iterations
+from coarse to fine. Three levels use the robust ``(6, 8, 20)`` schedule.
+
+Iteration limits are ceilings rather than fixed costs: each subset exits as
+soon as its corner-change and ZNCC criteria converge. On the measured 4K
+three-level case, accepted fine subsets required only 2.45 iterations on
+average. A descending ``(12, 8, 6)`` latency profile saved about 0.55 ms but
+lost 421 accepted subsets, so it remains opt-in. The remaining extra-level
+cost is dominated by fixed reduction, prefilter, seed-transfer, and dispatch
+work rather than the fine iteration ceiling.
+
 GPU-IO/WebGL2: one fused fragment per subset
 --------------------------------------------
 

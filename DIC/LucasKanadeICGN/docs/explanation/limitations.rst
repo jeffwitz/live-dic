@@ -23,7 +23,9 @@ IC-GN is a local optimizer. The direct ``t=0 -> 20`` analytical displacement of
 ``(4, -2)`` pixels lies outside the robust local basin for many subsets in the
 default single-scale path. The incremental ``t=10 -> 20`` step of ``(2, -1)``
 pixels returns 900 accepted subsets. Native wgpu-py users can explicitly select
-``pyramid_levels=2`` or ``3`` to retry only failed subsets from coarse seeds.
+``pyramid_levels=2`` or ``3`` to retry only failed subsets from coarse seeds,
+or select ``ICGNWGPUFullPyramid`` when every frame should follow a fully
+GPU-resident coarse-to-fine path.
 
 The browser backends still have no image pyramid. No backend currently provides
 temporal initialization, extrapolated initial guesses, Aitken acceleration,
@@ -45,6 +47,9 @@ Runtime
 * Native pyramid recovery is deliberately off by default. It improves capture
   range, not the worst-case 4K60 deadline, and currently performs reduced-image
   construction on the CPU.
+* The separate full-pyramid native backend removes those per-frame CPU
+  reductions and intermediate readbacks, but does not yet expose sequence
+  pipelining or the subgroup solver.
 * Browser GPU shader arithmetic is single precision.
 * The fastest Three.js solver requires a WebGPU subgroup containing all 16
   active lanes. Other adapters use the validated workgroup-memory fallback.

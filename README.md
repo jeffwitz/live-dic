@@ -11,10 +11,11 @@
 The project goal is sustained digital image correlation on 3840 x 2160 frames
 at 60 frames per second, measured across the complete acquisition-to-result
 pipeline. The new native wgpu-py path processes the reproducible UHD test pair
-in a **16.160 ms median complete Python call** with a **16.569 ms p95**. This
-boundary includes direct target upload, GPU computation, packed readback, and
-NumPy result construction, and is just below the 16.667 ms period on the
-validation machine.
+with a two-level GPU-resident pyramid in a **14.811 ms median complete Python
+call** with a **15.163 ms p95**. This boundary includes direct target upload,
+GPU pyramid construction, coarse-to-fine IC-GN computation, packed readback,
+and NumPy result construction. Both measurements are below the 16.667 ms
+period on the validation machine.
 
 This is an encouraging compute result, not yet a 4K60 system qualification.
 Camera acquisition and downstream consumers are still excluded. The browser
@@ -27,8 +28,10 @@ This fork adds a Python-accessible, GPU-accelerated digital image correlation
 inverse-compositional Gauss-Newton registration through a default Three.js/TSL
 WebGPU backend, an optional GPU-IO/WebGL2 backend, and an experimental native
 wgpu-py backend. All paths accept dynamic dimensions and have been validated
-from 512 x 512 through UHD 3840 x 2160. Three.js remains the default while the
-native path evaluates an in-process transport suitable for live NumPy frames.
+from 512 x 512 through UHD 3840 x 2160. Three.js remains the browser-facing API
+default. For native NumPy processing, the recommended default is the two-level
+`ICGNWGPUFullPyramid` path; the previous single-scale and selective-recovery
+`ICGNWGPU` implementation remains available.
 
 The current implementation deliberately starts with deterministic images from
 the validation dataset. It does **not** include camera acquisition or the H.264
@@ -51,6 +54,9 @@ The implementation in [`DIC/LucasKanadeICGN/`](./DIC/LucasKanadeICGN/) adds:
   backend;
 - an experimental in-process wgpu-py backend with direct NumPy texture upload,
   shared WGSL compute kernels, and one packed binary readback;
+- a two-level default native full pyramid whose five-tap reductions, affine
+  seed transfers, per-level solvers, and final readback remain on one GPU and
+  one command submission;
 - a compiling Rust wgpu/PyO3 host milestone that shares the WGSL source and
   measures the NumPy-to-texture boundary;
 - a persistent, headless Python API with no visible browser interface;
@@ -323,7 +329,8 @@ available from [`index.html`](./index.html).
 - dynamic grayscale frame dimensions in all backends; GPU-IO requires width
   and height to be multiples of 16;
 - fixed 16 x 16 subsets on a 16-pixel grid;
-- single-scale registration with no pyramid;
+- the browser backends remain single-scale; the native full-pyramid backend
+  defaults to two levels and supports three explicitly;
 - no temporal or extrapolated initialization;
 - no Aitken acceleration or predictive-tolerance guard;
 - no camera, trigger, synchronization, or codec ownership;
@@ -333,15 +340,16 @@ available from [`index.html`](./index.html).
 - soft real-time behavior only, with no operating-system deadline guarantee.
 
 The direct `t=0 -> 20` displacement of `(4, -2)` pixels is outside the robust
-local basin for many subsets. The incremental `t=10 -> 20` step of `(2, -1)`
-pixels returns 900 accepted subsets. Larger motions will require a pyramid or a
+local basin for many single-scale subsets. The default two-level native full
+pyramid returns 31,692 accepted subsets out of 32,400 at UHD with a translation
+RMSE of 0.00123 pixel. Larger motions can select three levels or provide a
 better initial estimate.
 
 ## Verification
 
 The current code has been verified with:
 
-- 20 Python unit tests;
+- 34 Python unit tests;
 - Ruff linting and formatting checks;
 - offline Cargo check, rustfmt, Clippy with warnings denied, release wheel
   build, and installed PyO3 smoke test;

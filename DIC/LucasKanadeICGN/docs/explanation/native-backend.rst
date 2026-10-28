@@ -132,6 +132,61 @@ exception path, but the active two-scale 4K path is not a 60 FPS path. Moving
 the five-tap reduction and level orchestration onto one device is the next
 optimization if recovery frequency becomes significant.
 
+GPU-resident full pyramid
+-------------------------
+
+``ICGNWGPUFullPyramid`` is a separate backend for the case where a pyramid is
+part of the normal registration path rather than an exception. It deliberately
+leaves the default ``ICGNWGPU`` behaviour unchanged.
+
+The full-pyramid class defaults to two levels with the ``(12, 30)``
+coarse-to-fine iteration schedule. This is the recommended native path: it had
+the largest measured margin under the 16.667 ms 4K60 period. Select three
+levels explicitly when a larger displacement capture range is more important
+than that margin.
+
+Reference preparation builds and retains the reference pixels, gradients,
+inverse Hessians, and metadata for every scale. For each target, the backend
+then records this graph into one WebGPU command buffer:
+
+.. code-block:: text
+
+   upload finest target once
+             |
+             v
+   5-tap GPU reductions + per-level spline prefilters
+             |
+             v
+   coarsest IC-GN solve
+             |
+             v
+   GPU affine seed transfer -> next solve -> ... -> finest solve
+             |
+             v
+   finest median filter -> one packed readback
+
+The graph uses separate compute passes rather than one monolithic shader. Pass
+ordering provides the required device-wide dependencies while all images,
+coefficients, states, and transferred seeds remain on the same GPU. This avoids
+redundant pyramid construction inside each subset and keeps the numerical
+solver in the canonical ``icgn.wgsl`` file.
+
+Iterations and tolerances are specified from coarse to fine. For example:
+
+.. code-block:: python
+
+   from lucas_kanade_icgn import ICGNWGPUFullPyramid
+
+   with ICGNWGPUFullPyramid() as engine:
+       engine.set_reference(reference)
+       result = engine.register(target)
+
+The target reduction uses the same separable ``[1, 4, 6, 4, 1] / 16`` filter
+and uint8 truncation as the prepared reference pyramid. A one-level full
+pyramid executes the same registration graph as the portable one-scale native
+backend and has been verified bit for bit. Sequence pipelining is not yet
+exposed by this new backend.
+
 Rust/PyO3 milestone
 -------------------
 
