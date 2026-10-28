@@ -166,11 +166,14 @@ fine. Three levels are opt-in and use `(6, 8, 20)` by default. The same exact
 | 3840 x 2160 / full pyramid 2 | **14.811 ms** | **15.163 ms** | 31,692 | 0.00123 px |
 | 3840 x 2160 / full pyramid 3 | **15.458 ms** | **16.210 ms** | 31,681 | 0.00124 px |
 
-Both full-pyramid UHD configurations remain inside the 16.667 ms 60 Hz period
-on this machine. Two levels are the default because they provide the larger
-p95 margin and slightly more accepted subsets. Three levels remain useful for
-a larger expected capture range. A one-level full-pyramid run matched the
-portable `ICGNWGPU` packed output bit for bit.
+The published campaign placed both full-pyramid UHD p95 values inside the
+16.667 ms period. A later two-campaign audit reproduced the two-level result at
+14.699--14.939 ms median and 14.917--15.562 ms p95. The same audit measured
+16.331--16.353 ms median and 17.286--17.665 ms p95 for three levels. Two levels
+are therefore the only configuration with a repeated p95 4K60 compute margin.
+Three levels remain above 60 FPS by median and useful for a larger expected
+capture range, but are not documented as a p95 60 Hz path. A one-level
+full-pyramid run matched the portable `ICGNWGPU` packed output bit for bit.
 
 Reducing the three-level ceilings from `(8, 12, 30)` to `(6, 8, 20)` preserved
 all 31,681 accepted subsets and the measured RMSE. A more aggressive descending
@@ -240,7 +243,7 @@ time, with **16.8 ms** and **16.9 ms** median wall time. Their midpoint is
 3.913 ms, effectively unchanged from the 3.908 ms baseline. The displacement,
 accepted-subset count, and iteration count remained identical.
 
-The current fused-iteration shader was measured in three new campaigns of five
+The published fused-iteration shader result was measured in three campaigns of five
 warm-ups and 30 samples. The median campaign result is **3.301 ms GPU**
 (**4.210 ms p95**) and **10.3 ms browser wall** (**11.9 ms p95**). This is a
 12.4% reduction from the previous 3.768 ms paired-backend GPU median and a 38.0%
@@ -278,6 +281,12 @@ median is 73.8% lower.
 That wall-time difference is backend synchronization overhead, not an
 acquisition-to-result measurement; complete Python calls still include
 DevTools transport and result readback.
+
+A later three-campaign audit measured 3.293 ms GPU median for GPU-IO and
+0.668 ms for Three.js, with the same 900 accepted subsets and the same RMSE
+values shown below. The small timing shift changes the corresponding reduction
+to 79.7% and the throughput ratio to 4.93, confirming rather than changing the
+published conclusion.
 
 Numerical agreement on the 1,024-subset field is:
 
@@ -375,12 +384,13 @@ warm-ups.
 | Mean iterations | 5.943 | 5.942 | 5.947 | 5.944 | 5.940 |
 | Truth RMSE | `3.076e-5 px` | `3.078e-5 px` | `4.182e-5 px` | `2.555e-5 px` | `2.712e-5 px` |
 
-At the comparable compute boundary, optimized Three.js is **24.3% faster**
-than the mixed/double-reduction SYCL configuration (1.32× the throughput). It
-is still **20.1% faster** than the numerically closer float-reduction variant
-(1.25× the throughput). Browser GPU timing excludes input upload and output
-readback; the separate SYCL total row includes both. This is a backend compute
-comparison, not an acquisition-to-result or 4K60 claim. WebGPU upload and
+At the comparable compute boundary, optimized Three.js uses **24.3% less GPU
+time** than the mixed/double-reduction SYCL configuration (1.32× the
+throughput). It uses **20.1% less GPU time** than the numerically closer
+float-reduction variant (1.25× the throughput). Browser GPU timing excludes
+input upload and output readback; the separate SYCL total row includes both.
+This is a backend compute comparison, not an acquisition-to-result or 4K60
+claim. WebGPU upload and
 pipeline compilation are lazy and are absorbed by the five unreported warm-ups
 rather than the steady optical-flow distribution.
 

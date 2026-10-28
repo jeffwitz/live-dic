@@ -35,6 +35,16 @@ def _arguments() -> argparse.Namespace:
         default="auto",
         help="native solver selection policy",
     )
+    parser.add_argument(
+        "--webgpu-wgsl-pyramid-levels",
+        type=int,
+        choices=(1, 2, 3),
+        default=1,
+        help=(
+            "raw browser WebGPU pyramid depth; one scale is the default here "
+            "to preserve the historical like-for-like comparison"
+        ),
+    )
     return parser.parse_args()
 
 
@@ -88,6 +98,7 @@ def main() -> int:
         "resolution": [int(reference.shape[1]), int(reference.shape[0])],
         "repeats": args.repeats,
         "warmups": args.warmups,
+        "webgpu_wgsl_pyramid_levels": args.webgpu_wgsl_pyramid_levels,
     }
 
     solver_preference = {"auto": None, "portable": False, "subgroup": True}[
@@ -124,8 +135,16 @@ def main() -> int:
     if not args.native_only:
         browser_results: dict[str, RegistrationResult] = {}
         for backend in ("three-tsl", "webgpu-wgsl", "gpuio"):
+            backend_options = (
+                {"pyramid_levels": args.webgpu_wgsl_pyramid_levels}
+                if backend == "webgpu-wgsl"
+                else {}
+            )
             with ICGNWebGL(
-                backend=backend, startup_timeout=120, call_timeout=600
+                backend=backend,
+                startup_timeout=120,
+                call_timeout=600,
+                **backend_options,
             ) as engine:
                 preparation = engine.set_reference(reference)
                 for _ in range(args.warmups):

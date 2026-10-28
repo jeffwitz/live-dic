@@ -12,12 +12,13 @@
 ## 4K60 engineering objective
 
 The long-term objective is sustained 3840 x 2160 DIC at 60 FPS over the full
-acquisition-to-result path. The experimental native wgpu-py backend currently
-measures 14.621 ms median and 15.748 ms p95 for the complete Python registration
-call on the validation machine. Direct upload, computation, packed readback,
-and NumPy result construction are included. Acquisition and downstream work
-are excluded, so this repository does not yet claim a qualified 4K60
-application.
+acquisition-to-result path. The published native wgpu-py campaign measured
+14.621 ms median and 15.748 ms p95 for the complete Python registration call
+on the validation machine; the documentation audit reproduced that boundary
+at 14.605 ms median and 15.018 ms p95. Direct upload, computation, packed
+readback, and NumPy result construction are included. Acquisition and
+downstream work are excluded, so this repository does not yet claim a
+qualified 4K60 application.
 
 ## Browser backend policy
 
@@ -126,8 +127,10 @@ tolerances are configurable per scale from coarse to fine. Two levels are the
 recommended native default. On the validation machine, this configuration
 measured 14.811 ms (67.5 FPS) at 3840 x 2160 for the controlled ``(+4, -2)``
 translation while accepting 31,692 of 32,400 subsets. Three levels remain
-available explicitly for larger expected displacements. See the performance
-reference for the exact boundary and caveats.
+available explicitly for larger expected displacements, but a repeated audit
+found that their p95 exceeded the 16.667 ms period even though their median
+remained above 60 FPS. See the performance reference for the exact boundary,
+revalidation ranges, and caveats.
 
 The raw browser ``webgpu-wgsl`` backend now runs that same GPU-resident
 full-pyramid graph. It defaults to two levels with schedules ``(12, 30)`` and

@@ -57,6 +57,82 @@ translation is ``(2, -1)`` pixels. The common configuration is:
 * at most 30 inverse-compositional iterations;
 * spatial median consistency test enabled.
 
+Revalidation audit
+------------------
+
+The published tables below are campaign snapshots, not constants of the
+hardware. On 2026-10-28, after the Three.js/WebGL2 fallback and browser pyramid
+changes, the documented commands were rerun on the same machine. All accepted
+counts, status fields, mean translations, and truth RMSE values reproduced at
+the displayed precision. The main timing checks were:
+
+.. list-table:: Revalidation of the published performance claims
+   :header-rows: 1
+   :widths: 26 19 22 33
+
+   * - Boundary
+     - Published campaign
+     - Revalidation
+     - Interpretation
+   * - 512 x 512 Three.js WebGPU, GPU median
+     - 0.675 ms
+     - 0.668 ms
+     - Three paired campaigns; 900 accepted
+   * - 512 x 512 GPU-IO, GPU median
+     - 3.301 ms
+     - 3.293 ms
+     - Three paired campaigns; 900 accepted
+   * - 512 x 512 native complete call
+     - 1.812 / 2.187 ms median / p95
+     - 1.588 / 1.853 ms
+     - 900 accepted; same ``2.696e-5`` px RMSE
+   * - 512 x 512 Three.js complete Python call
+     - 56.203 / 59.117 ms median / p95
+     - 59.360 / 65.430 ms
+     - Browser transport boundary; 900 accepted
+   * - 512 x 512 raw WGSL one-scale complete call
+     - 55.916 / 59.555 ms median / p95
+     - 58.156 / 61.775 ms
+     - Explicitly forced to one scale; 900 accepted
+   * - 512 x 512 GPU-IO complete Python call
+     - 61.877 / 65.655 ms median / p95
+     - 69.636 / 73.527 ms
+     - Browser transport boundary; 900 accepted
+   * - UHD native one-scale complete call
+     - 14.621 / 15.748 ms median / p95
+     - 14.605 / 15.018 ms
+     - 31,654 accepted; same ``3.075e-5`` px RMSE
+   * - UHD native full pyramid, two levels
+     - 14.811 / 15.163 ms median / p95
+     - 14.699--14.939 / 14.917--15.562 ms
+     - Two repeated campaigns; 31,692 accepted
+   * - UHD native full pyramid, three levels
+     - 15.458 / 16.210 ms median / p95
+     - 16.331--16.353 / 17.286--17.665 ms
+     - Median remained above 60 FPS; p95 did not
+   * - UHD raw browser pyramid, two levels, ``(4, -2)``
+     - 15.931 / 16.622 ms GPU median / p95
+     - 16.012 / 16.492 ms
+     - 31,692 accepted; same ``0.00123`` px RMSE
+   * - UHD Three.js/WebGL2 compatibility path
+     - 27.246 / 27.730 ms GPU median / p95
+     - 28.511 / 29.328 ms
+     - 31,654 accepted; same ``4.116e-5`` px RMSE
+   * - UHD GPU-IO historical path
+     - 80.738 / 82.522 ms GPU median / p95
+     - 79.665 / 80.304 ms
+     - 31,654 accepted; same ``4.182e-5`` px RMSE
+
+The reproduced GPU medians support the relative conclusions below. Complete
+browser-call timings vary more because they include PNG encoding, DevTools
+transport, decoding, and result conversion. Short-campaign p95 values also
+vary more than medians and are not hard real-time guarantees. In particular,
+the revalidation no longer supports a p95 4K60 claim for the three-level
+native pyramid. The two-level native pyramid remains the recommended
+configuration. All percentages, FPS conversions, timing margins, and
+throughput ratios on this page were recomputed from their displayed table
+values.
+
 Backend comparison
 ------------------
 
@@ -241,7 +317,7 @@ array conversion.
      - 59.117 ms
      - 900 / 1,024
      - 2.749e-5 px
-   * - shared WGSL through Chromium
+   * - shared WGSL through Chromium, one scale
      - 55.916 ms
      - 59.555 ms
      - 900 / 1,024
@@ -282,7 +358,11 @@ Run the native and browser complete-call comparison with:
 
    $ PYTHONPATH=DIC/LucasKanadeICGN/python/src \
        python3 DIC/LucasKanadeICGN/benchmarks/compare_native_wgpu.py \
-       --repeats 30 --warmups 5
+       --repeats 30 --warmups 5 --webgpu-wgsl-pyramid-levels 1
+
+The comparison script defaults to one raw-browser scale so that the historical
+table remains like for like even though normal ``webgpu-wgsl`` applications
+now default to two pyramid levels.
 
 Detailed browser campaign results and the four-target numerical comparison are
 kept in ``DIC/LucasKanadeICGN/BENCHMARK.md``.
@@ -526,12 +606,16 @@ configuration is the class default and the recommended native path.
      - 31,681 / 32,400
      - 0.00124 px
 
-These results qualify the 4K60 compute target for this controlled translated
-texture on this machine; they are not an acquisition-to-result guarantee. Two
-levels are preferable for the tested four-pixel motion. The third level should
-be reserved for a larger expected capture range. Its default iteration ceilings
-were reduced from ``(8, 12, 30)`` to ``(6, 8, 20)`` after an alternating A/B
-campaign preserved all 31,681 accepted subsets and the ``0.00124362`` px RMSE.
+The published campaign placed both medians and p95 values inside the 16.667 ms
+period, but the revalidation above measured a 17.286--17.665 ms p95 for three
+levels. Two levels therefore provide the repeated 4K60 compute margin for this
+controlled translated texture on this machine. Three levels remained above 60
+FPS by median in the audit, but should be reserved for a larger expected
+capture range and are not claimed to meet the 60 Hz p95 boundary. None of
+these measurements is an acquisition-to-result guarantee. The three-level
+iteration ceilings were reduced from ``(8, 12, 30)`` to ``(6, 8, 20)`` after
+an alternating A/B campaign preserved all 31,681 accepted subsets and the
+``0.00124362`` px RMSE.
 The fine level already converged in 2.45 iterations on average, so reducing the
 ceilings recovered only a fraction of the extra-scale cost; target reduction,
 prefiltering, seed transfer, and additional dispatches remain fixed costs. A
@@ -684,8 +768,9 @@ All final registrations accepted 31,654 subsets. Three.js recovered
 ``(1.999991, -0.999997)`` pixels with a ``3.076e-5`` pixel vector RMSE; shared
 WGSL recovered the same rounded translation with a ``3.078e-5`` pixel RMSE;
 GPU-IO recovered ``(1.999991, -0.999996)`` pixels with a ``4.182e-5`` pixel
-RMSE. The shared portable kernel is 14.0% slower than the Three.js subgroup
-kernel at the median GPU boundary. Three.js is 5.58 times faster than GPU-IO.
+RMSE. The shared portable kernel uses 14.0% more GPU time than the Three.js
+subgroup kernel at the median boundary. Three.js provides 5.58 times the
+GPU-IO throughput at that boundary.
 GPU-IO is functionally valid at UHD, but its one-fragment-per-subset mapping is
 not a 4K60 performance path on this machine.
 

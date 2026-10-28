@@ -35,14 +35,14 @@ This implementation exposes several useful but different boundaries:
      - the complete measurement pipeline
      - nothing relevant to the application deadline
 
-Validated reference result
+Published reference result
 --------------------------
 
 The authoritative machine-specific results, including the external SYCL
 implementation, are maintained on the :doc:`../reference/performance` page.
 
-For the ``t=0 -> 10`` analytical translation on Intel Lunar Lake, the current
-30-run campaigns report:
+For the ``t=0 -> 10`` analytical translation on Intel Lunar Lake, the
+published 30-run campaign snapshots report:
 
 .. list-table:: Current validated measurements
    :header-rows: 1
@@ -106,6 +106,12 @@ readback but exclude acquisition. At UHD, three 30-run campaigns measured a
 median campaign of 14.621 ms median and 15.748 ms p95. Both are inside a 60 Hz
 period, but acquisition and downstream consumers are still excluded; this is
 a promising integration result, not a sustained system claim.
+
+A later audit measured 14.605 ms median and 15.018 ms p95 for the same native
+one-scale boundary. For the full-pyramid path, only the recommended two-level
+configuration retained a repeated p95 margin below 16.667 ms; three levels
+remained above 60 FPS by median but not by p95. See
+:doc:`../reference/performance` for the audit table.
 
 For a saturated sequence, the bounded two-slot native path measured a 13.380
 ms median campaign period, equivalent to 74.7 FPS, with 26.617 ms median result

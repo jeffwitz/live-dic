@@ -15,7 +15,8 @@ Real-Time DIC in Python toward 4K60
    frames per second over the complete acquisition-to-result pipeline. The
    native wgpu-py complete Python-call boundary is 14.621 ms median and 15.748
    ms p95 on the validation machine. Both are below the 16.667 ms frame period,
-   with 0.919 ms of p95 margin.
+   with 0.919 ms of p95 margin. A later documentation audit reproduced this at
+   14.605 ms median and 15.018 ms p95.
    Direct upload, GPU computation, packed readback, and NumPy result
    construction are included; camera acquisition and downstream consumers are
    not. A bounded two-slot sequence reaches a 13.380 ms median period (74.7
@@ -45,8 +46,10 @@ separate ``ICGNWGPUFullPyramid`` backend now keeps the normal coarse-to-fine
 path entirely GPU-resident and defaults to two levels. On the controlled
 ``(+4, -2)`` validation pair it
 measured 14.811 ms at 4K with two levels and 15.458 ms with three levels after
-reducing the three-level iteration ceilings. These figures qualify offline
-compute on that pair, not camera-to-consumer latency.
+reducing the three-level iteration ceilings. A later audit retained a 4K60 p95
+margin for two levels, while the three-level median remained above 60 FPS but
+its p95 did not. These figures qualify offline compute on that pair, not
+camera-to-consumer latency.
 
 The engineering objective is sustained, measurable DIC processing from Python.
 That means keeping the GPU runtime alive, preparing the reference only once,

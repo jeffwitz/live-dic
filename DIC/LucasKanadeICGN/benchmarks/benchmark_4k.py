@@ -1,8 +1,9 @@
 """Validate and benchmark a GPU backend on a synthetic UHD image pair.
 
 The shipped 512-pixel reference texture is tiled to 3840 x 2160, then shifted
-by exactly ``(2, -1)`` pixels. Reference construction and repeated optical-flow
-registration are reported as separate phases.
+by an exact integer translation. The default is ``(2, -1)`` pixels and can be
+changed with ``--translation``. Reference construction and repeated
+optical-flow registration are reported as separate phases.
 """
 
 from __future__ import annotations

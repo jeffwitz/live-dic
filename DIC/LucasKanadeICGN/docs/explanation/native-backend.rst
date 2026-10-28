@@ -141,9 +141,10 @@ leaves the default ``ICGNWGPU`` behaviour unchanged.
 
 The full-pyramid class defaults to two levels with the ``(12, 30)``
 coarse-to-fine iteration schedule. This is the recommended native path: it had
-the largest measured margin under the 16.667 ms 4K60 period. Select three
-levels explicitly when a larger displacement capture range is more important
-than that margin.
+the largest measured margin under the 16.667 ms 4K60 period and retained a p95
+margin in repeated revalidation. Select three levels explicitly when a larger
+displacement capture range is more important than that margin; its median
+remained above 60 FPS in revalidation, but its p95 did not.
 
 Reference preparation builds and retains the reference pixels, gradients,
 inverse Hessians, and metadata for every scale. For each target, the backend
@@ -211,12 +212,19 @@ Measured effect
 
 On the validation machine, the median of three 512 x 512 campaigns measured a
 native complete Python call of 1.812 ms median and 2.187 ms p95. At 3840 x
-2160 the median campaign measured 14.621 ms median and 15.748 ms p95, including direct target upload,
-computation, packed result readback, and NumPy result construction. The UHD
+2160 the median campaign measured 14.621 ms median and 15.748 ms p95,
+including direct target upload, computation, packed result readback, and NumPy
+result construction. The UHD
 median and p95 are inside one 60 Hz period, but both exclude
 camera acquisition and downstream consumers. See
 :doc:`../reference/performance` for the exact boundaries and the browser/SYCL
 comparison.
+
+The documentation audit reproduced the UHD complete-call boundary at 14.605
+ms median and 15.018 ms p95 with the same 31,654 accepted subsets and
+``3.075e-5`` px truth RMSE. The corresponding 512 x 512 audit measured 1.588
+ms median and 1.853 ms p95; complete-call timing varies with host scheduling,
+while the numerical output remained unchanged.
 
 The initial PyO3-only UHD upload probe measured 1.783 ms median. It does not
 yet demonstrate an advantage over the wgpu-py upload in the complete solver.
