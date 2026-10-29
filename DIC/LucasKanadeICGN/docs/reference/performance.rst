@@ -61,16 +61,18 @@ Current workload and protocol
 The offline validation images are tiled to 3840 x 2160. The resulting grid is
 240 x 135, or 32,400 subsets with ``subset_size=16`` and the default
 ``subset_stride=16``. No published timing on this page uses overlapping
-subsets. Both motion models measured in
-the published UHD campaign use
+subsets. The affine and translation rows in the primary UHD campaign use
 Gaussian/inverse-spline target filtering, 4 x 4 cubic B-spline interpolation,
 a ``5e-3`` fine-scale tolerance, minimum ZNCC ``0.8``, and spatial median
 consistency. No camera or H.264 stage is included.
 
-The quadratic model was added after this campaign. Its synthetic numerical
-regression is part of the GPU test suite, but it is deliberately absent from
-the table below until a dedicated UHD image-to-field campaign is recorded.
-Affine or translation timings must not be presented as quadratic performance.
+All current affine and quadratic measurements include component-wise
+normalized median replacement. Its isolated analytic A/B qualification shows
+a 29.6--36.3% reduction in curvature RMSE, including the noisy case, with a
+12.9--20.5% gradient-RMSE trade-off. See
+:doc:`../explanation/component-wise-median` for the exact protocol, equations,
+and legacy/current commit comparison. Quadratic performance remains reported
+separately because its state and solver cost differ from affine mode.
 
 Primary image-to-field stream measurements
 ------------------------------------------

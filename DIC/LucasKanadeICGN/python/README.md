@@ -25,7 +25,7 @@ WebGPU work in-process and does not route each frame through Chromium.
 GPU-IO browser runtimes. Three.js itself can execute the GPU graph quickly, but
 Python-supervised browser calls still cross a process boundary in both
 directions. The binary transport removes PNG and JSON serialization; it does
-not provide shared memory. Current complete UHD calls are about 40--43 ms
+not provide shared memory. Current complete UHD calls are about 45--47 ms
 median.
 
 Reaching competitive browser-stream performance would require a persistent

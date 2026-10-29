@@ -22,7 +22,7 @@ The Three.js and raw-WGSL browser backends serve portability, browser-native
 deployment, and numerical qualification. ``ICGNWebGL`` makes them callable
 from Python, but it necessarily copies each target into Chromium and returns
 the result to Python. Binary transport has reduced that complete UHD boundary
-to roughly 40--43 ms median, but it does not make the browser process share
+to roughly 45--47 ms median, but it does not make the browser process share
 NumPy memory.
 
 A competitive Three.js streaming deployment therefore needs a persistent
@@ -82,7 +82,12 @@ The implementation retains the main algorithmic choices of the SYCL version:
 - selectable historical B-spline, direct bilinear, and direct Keys-cubic
   target reconstruction;
 - one constant inverse Hessian prepared with the reference image;
-- ZNCC rejection and median replacement of spatial outliers.
+- ZNCC rejection and component-wise normalized median replacement of spatial
+  outliers. On analytic quadratic fields, this reduced curvature RMSE by
+  30--36%, including 36.3% with one-gray-level image noise, while leaving
+  displacement RMSE effectively unchanged. The measured gradient trade-off and
+  literature boundary are documented in the
+  [component-wise median explanation](./docs/explanation/component-wise-median.rst).
 
 The GPU-IO backend requires a different memory layout from C++/SYCL. Translation and the
 four linear affine terms are stored in two floating-point textures. Reference
@@ -233,7 +238,7 @@ adapters now use a persistent same-origin binary transport: target bytes cross
 unchanged and one packed float field returns. There is no per-frame PNG,
 DevTools image payload, decode, or JSON field. Chromium nevertheless owns
 separate memory, so the loopback copy and GPU upload remain. Current complete
-UHD calls are about 40--43 ms median; native wgpu remains the 60 Hz NumPy path.
+UHD calls are about 45--47 ms median; native wgpu remains the 60 Hz NumPy path.
 
 The raw browser ``webgpu-wgsl`` backend now runs that same GPU-resident
 full-pyramid graph. It defaults to two levels with schedules ``(8, 16)`` and

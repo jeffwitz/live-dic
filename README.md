@@ -19,7 +19,7 @@ The browser backends remain important for WebGPU/WebGL2 portability, numerical
 cross-checks, and browser deployments. Their Python adapter is not the intended
 4K60 data plane. Even with the new binary transport, every UHD target crosses
 from Python into Chromium and every full field crosses back; current complete
-calls measure about 40--43 ms median. To turn the faster Three.js GPU graph
+calls measure about 45--47 ms median. To turn the faster Three.js GPU graph
 into a competitive streaming application, a persistent **JavaScript
 supervisor** would need to own frame ingestion, GPU submission, backpressure,
 and result consumption in the browser process. Python could configure and
@@ -75,7 +75,10 @@ The implementation in [`DIC/LucasKanadeICGN/`](./DIC/LucasKanadeICGN/) adds:
 - selectable target interpolation: historical Gaussian/cubic B-spline,
   direct bilinear, or direct Keys cubic convolution;
 - reference gradients and a constant inverse Hessian prepared once;
-- ZNCC validation and spatial median replacement;
+- ZNCC validation and component-wise normalized median replacement. The new
+  affine/quadratic rule reduced analytic curvature RMSE by 30--36% while
+  preserving displacement accuracy; see the
+  [measured explanation](DIC/LucasKanadeICGN/docs/explanation/component-wise-median.rst);
 - configurable square subsets including centred odd widths 15, 17, 31, and
   33, plus optional centred Gaussian integration on native wgpu, and an
   independent ``subset_stride`` for overlapping shared-WGSL fields;

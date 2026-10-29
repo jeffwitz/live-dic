@@ -37,6 +37,23 @@ below uses overlapping subsets. No camera or H.264 stage is included.
 
 ## Primary UHD image-to-field stream boundary
 
+Current affine and quadratic measurements include the component-wise
+normalized median rule. Against the immediately preceding
+translation-triggered rule, the analytic 32 x 32 uniform quadratic benchmark
+measured these changes:
+
+| Analytic field | Curvature RMSE/component before | Current | Change |
+|---|---:|---:|---:|
+| Moderate clean | 5.727e-5 | **3.970e-5** | **-30.7%** |
+| Strong clean | 6.428e-5 | **4.525e-5** | **-29.6%** |
+| One-gray-level image noise | 1.981e-4 | **1.263e-4** | **-36.3%** |
+
+Displacement RMSE changed by less than 0.06%. Gradient RMSE increased by
+12.9--20.5%, so this is a curvature-robustness result rather than a universal
+denoising claim. The equations, literature boundary, complete accuracy table,
+and runtime cost are in the
+[component-wise median explanation](docs/explanation/component-wise-median.rst).
+
 This is the deployable Python boundary used for performance claims. A
 persistent engine receives an already acquired, contiguous `uint8` NumPy image
 and the timer stops only when the complete `(135, 240, 6)` NumPy parameter

@@ -114,6 +114,6 @@ word on the GPU instead of building a UHD float array in JavaScript.
 
 This is still not shared memory: Chromium receives its own byte buffer, uploads
 it to the GPU, and sends the result back to Python. Current UHD complete-call
-measurements are about 40--43 ms median, so native wgpu remains the 60 Hz NumPy
+measurements are about 45--47 ms median, so native wgpu remains the 60 Hz NumPy
 stream path. Include this inter-process cost whenever a browser backend is
 qualified.

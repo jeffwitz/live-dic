@@ -90,6 +90,8 @@ The robustness floor is expressed in displacement units. Translation keeps a
 the configured subset size. A component is replaced when its deviation exceeds
 twice the sum of its MAD and that floor. At least four accepted neighbours are
 required, so sparse boundaries are left unchanged rather than extrapolated.
+The derivation, literature boundary, analytic A/B results, and measured cost
+are documented in :doc:`component-wise-median`.
 
 Numerical equivalence
 ---------------------

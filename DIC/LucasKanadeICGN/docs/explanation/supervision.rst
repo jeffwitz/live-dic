@@ -30,7 +30,7 @@ Why the browser adapter remains slower
 as binary data. It no longer encodes each target as PNG, sends an image
 through DevTools, decodes it in JavaScript, or returns the field as large JSON
 arrays. Those changes reduce the complete UHD call from hundreds of
-milliseconds to roughly 40--43 ms median on the validation machine.
+milliseconds to roughly 45--47 ms median on the validation machine.
 
 Binary transport is not shared memory. A Python-supervised browser call still
 performs this sequence:

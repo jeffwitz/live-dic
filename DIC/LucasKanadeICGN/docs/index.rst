@@ -52,6 +52,17 @@ Python-supervised real-time DIC toward 4K60
    historical reproducibility and replacement qualification. See
    :doc:`how-to/migrate-from-gpuio`.
 
+.. important:: Coefficient-wise robustness result
+
+   DIC-RT applies a normalized median test independently to recentered affine
+   gradients and quadratic curvatures, replacing only the coefficients that
+   disagree with their direct neighbourhood. On the analytic quadratic
+   qualification, curvature RMSE decreased by 29.6--36.3%; the largest gain
+   occurred with one-gray-level image noise. Displacement RMSE was unchanged,
+   while gradient RMSE increased by 12.9--20.5%. This measured trade-off and
+   the bounded literature search are documented in
+   :doc:`explanation/component-wise-median`.
+
 This documentation describes a Python-supervised workflow for GPU-accelerated digital
 image correlation (DIC). The current implementation performs translation,
 affine, or quadratic inverse-compositional Gauss-Newton registration on grayscale frames through
@@ -94,6 +105,8 @@ Choose the section that matches your task:
 * :doc:`explanation/interpolation` for the selectable B-spline, bilinear, and
   Keys-cubic target reconstruction paths;
 * :doc:`explanation/motion-models` for translation, affine, and quadratic solving;
+* :doc:`explanation/component-wise-median` for the coefficient-wise robust
+  replacement rule and its measured 30--36% curvature-error reduction;
 * :doc:`explanation/subset-size` for selectable subset size and overlapping stride;
 * :doc:`explanation/shared-kernel` for the common WGSL source and its exact
   host/buffer contract;
@@ -109,8 +122,8 @@ The implementation provides a resolution-dependent grid of configurable 8 x 8,
 16 x 16, or 32 x 32 subsets, with translation, six-parameter affine, or
 twelve-parameter quadratic motion,
 selectable B-spline, bilinear, or
-Keys-cubic target interpolation, ZNCC validation, and median outlier
-replacement. The test dataset is offline;
+Keys-cubic target interpolation, ZNCC validation, and component-wise normalized
+median replacement of spatial outliers. The test dataset is offline;
 camera acquisition and codec integration are deliberately outside the current
 path.
 
@@ -157,6 +170,7 @@ path.
    explanation/icgn
    explanation/interpolation
    explanation/motion-models
+   explanation/component-wise-median
    explanation/subset-size
    explanation/gpu-optimization
    explanation/shared-kernel
