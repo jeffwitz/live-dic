@@ -8,9 +8,12 @@ dispatch, and result conversion. The canonical sources are
 browser WebGPU adapter and wgpu-py load those files without generating or
 translating shader code.
 
-Three.js remains the default because its subgroup-specialized TSL solver is
-faster on the validation GPU. It shares browser reference preparation and the
-same result contract, but keeps an optimized TSL implementation. TSL now also
+Three.js remains the default *browser entry point* because its
+subgroup-specialized TSL solver is faster on the validation GPU and it supplies
+the automatic WebGL2 fallback. The recommended native coarse-to-fine entry
+point is instead ``ICGNWGPUFullPyramid``. Three.js shares browser reference
+preparation and the same result contract, but keeps an optimized TSL
+implementation. TSL now also
 compiles a serial solver to GLSL transform feedback when Three.js falls back to
 WebGL2. The deprecated GPU-IO backend remains a separate historical
 implementation because WebGL cannot execute the canonical WGSL compute
@@ -120,7 +123,7 @@ GPU buffers
      - coarse-to-fine seed state
      - two read-only ``vec4`` values per subset
    * - 11, optional
-     - selective retry mask
+     - active/retry mask for seeded solves
      - one read-only ``u32`` per subset
 
 The two packed state vectors are ``[tx, du/dx, du/dy, ty]`` and
@@ -148,17 +151,18 @@ The WGSL file separates the algorithm into ordinary functions:
 * ``corner_change`` evaluates convergence;
 * ``convergence_status`` applies tolerance and ZNCC rules.
 
-The solve entry point retains the GPU-specific organization: one 16-lane
-workgroup owns one subset and reduces three packed partial-sum vectors. A
+The portable solve entry point retains the GPU-specific organization: one
+16-lane workgroup owns one subset and reduces three packed partial-sum vectors.
+A
 ``workgroupUniformLoad`` makes the convergence decision uniform, so completed
 subsets leave the iteration loop without violating barrier uniformity.
 
 The shared ``solve_seeded`` entry point calls the same ``solve_subset`` body
 with bindings 10 and 11. The ordinary ``solve`` entry point does not reference
 those bindings, so one-scale browser and native pipelines retain their original
-ten-entry bind-group layout. Selective native recovery allocates seed resources
-lazily; the full-pyramid browser and native adapters allocate them once for
-every finer level. The ``retry_seeded`` entry point uses the same equations
+ten-entry bind-group layout. Optional selective recovery allocates seed
+resources lazily; the recommended full-pyramid browser and native adapters
+allocate them once for every finer level. The ``retry_seeded`` entry point uses the same equations
 and seed bindings, but preserves the existing state of disabled subsets.
 Selective recovery needs those already accepted neighbours during the median
 pass. Fresh ``solve_seeded`` dispatches instead write an explicit invalid state

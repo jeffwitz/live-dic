@@ -72,8 +72,8 @@ force the portable path or ``prefer_subgroups=True`` to force the subgroup
 path for qualification. On the validation Intel driver, native subgroup
 collectives were slower, so automatic selection correctly retained WGSL.
 
-Python use
-----------
+Python use: single-scale and streaming engine
+---------------------------------------------
 
 Install the optional dependency and select the native engine explicitly:
 
@@ -90,8 +90,8 @@ Install the optional dependency and select the native engine explicitly:
        result = engine.register(target)
 
 ``RegistrationResult`` has the same parameter, displacement, status, and
-iteration fields as the browser API. The native backend is experimental and
-is not yet the package default.
+iteration fields as the browser API. ``ICGNWGPU`` is the native low-latency and
+bounded-sequence engine; it is not the recommended coarse-to-fine engine.
 
 Bounded sequence execution
 --------------------------
@@ -108,8 +108,13 @@ design improves steady-state period rather than the latency of an individual
 registration. See :doc:`../reference/performance` for the measured throughput
 and latency trade-off.
 
-Selective pyramid recovery
----------------------------
+Optional selective pyramid recovery
+-----------------------------------
+
+.. warning::
+
+   This is the older compatibility/exception path, not the recommended native
+   pyramid.  Use ``ICGNWGPUFullPyramid`` for normal coarse-to-fine processing.
 
 ``pyramid_levels=1`` is the default and executes the original registration
 graph without coarse engines, seed buffers, or retry dispatches. Values ``2``
@@ -138,16 +143,17 @@ optimization if recovery frequency becomes significant.
 GPU-resident full pyramid
 -------------------------
 
-``ICGNWGPUFullPyramid`` is a separate backend for the case where a pyramid is
-part of the normal registration path rather than an exception. It deliberately
-leaves the default ``ICGNWGPU`` behaviour unchanged.
+``ICGNWGPUFullPyramid`` is the recommended native backend when a pyramid is
+part of the normal registration path. It deliberately leaves the low-latency
+and streaming-oriented ``ICGNWGPU`` behaviour unchanged.
 
 The full-pyramid class defaults to two levels with the ``(12, 30)``
-coarse-to-fine iteration schedule. This is the recommended native path: it had
-the largest measured margin under the 16.667 ms 4K60 period and retained a p95
-margin in repeated revalidation. Select three levels explicitly when a larger
-displacement capture range is more important than that margin; its median
-remained above 60 FPS in revalidation, but its p95 did not.
+coarse-to-fine iteration schedule. This is the recommended native path. After
+axis-oriented FIR tiling, both two and three levels retained a p95 margin under
+the 16.667 ms period on the validation GPU; two levels remain the default
+because they use the smaller graph and already cover the validated motion.
+Select three levels explicitly when a larger displacement capture range is
+required.
 
 Reference preparation builds and retains the reference pixels, gradients,
 inverse Hessians, and metadata for every scale. For each target, the backend
@@ -213,25 +219,20 @@ without forking the WGSL kernels.
 Measured effect
 ---------------
 
-On the validation machine, the median of three 512 x 512 campaigns measured a
-native complete Python call of 1.812 ms median and 2.187 ms p95. At 3840 x
-2160 the median campaign measured 14.621 ms median and 15.748 ms p95,
-including direct target upload, computation, packed result readback, and NumPy
-result construction. The UHD
-median and p95 are inside one 60 Hz period, but both exclude
-camera acquisition and downstream consumers. See
-:doc:`../reference/performance` for the exact boundaries and the browser/SYCL
-comparison.
+On the validation machine, the latest 50-run UHD campaign measured the
+recommended two-level full pyramid at 10.194 ms median and 11.073 ms p95 for
+the complete Python call. It accepted 31,724 of 32,400 subsets on the difficult
+``(4, -2)`` pair with ``0.001874`` px truth RMSE. Three levels measured 10.280
+ms median and 11.151 ms p95. These boundaries include direct target upload,
+GPU pyramid construction and solving, packed result readback, and NumPy result
+construction, but exclude camera acquisition and downstream consumers.
 
-The documentation audit reproduced the UHD complete-call boundary at 14.605
-ms median and 15.018 ms p95 with the same 31,654 accepted subsets and
-``3.075e-5`` px truth RMSE. The corresponding 512 x 512 audit measured 1.588
-ms median and 1.853 ms p95; complete-call timing varies with host scheduling,
-while the numerical output remained unchanged.
+See :doc:`../reference/performance` for the current timing boundaries,
+reproduction commands, and browser comparison.
 
-The initial PyO3-only UHD upload probe measured 1.783 ms median. It does not
-yet demonstrate an advantage over the wgpu-py upload in the complete solver.
-Its value at this stage is architectural: the Rust boundary is working,
-offline-buildable, and shares the validated shader. Further migration should
-be accepted only when the complete-call distribution improves.
+The PyO3 upload probe does not yet demonstrate an advantage in a complete
+solver. Its value at this stage is architectural: the Rust boundary is
+working, offline-buildable, and shares the validated shader. Publish a Rust
+performance claim only after complete solver orchestration is implemented and
+rerun against the same current workload and timing boundary.
 

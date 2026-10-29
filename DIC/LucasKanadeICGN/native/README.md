@@ -49,11 +49,10 @@ print(np.median(samples["enqueue_ms"]))
 print(np.median(samples["synchronized_ms"]))
 ```
 
-On the Intel Lunar Lake validation GPU, the initial synchronized UHD upload
-probe measured 1.783 ms median. This is a boundary qualification, not yet a
-solver speedup: the complete IC-GN pipeline remains hosted by `wgpu-py`, whose
-measured transfer and complete-call results are documented in the Sphinx
-performance page.
+The upload probe is a boundary qualification, not a solver benchmark: the
+complete IC-GN pipeline remains hosted by `wgpu-py`. Publish a Rust performance
+row only after complete solver orchestration is available and rerun against
+the current workload and timing boundary.
 
 For offline deployment, build a wheel on a connected machine with the same
 platform and Python ABI:

@@ -54,6 +54,21 @@ python3 -m pip install --no-index --find-links wheelhouse \
   lucas-kanade-icgn-webgl
 ```
 
+## Backend selection
+
+Defaults are scoped to the selected engine, not to the whole package:
+
+| Use case | Construction | Default pyramid |
+|---|---|---|
+| Browser with automatic WebGPU/WebGL2 fallback | `ICGNWebGL()` | Three.js/TSL, one scale |
+| Browser shared WGSL | `ICGNWebGL(backend="webgpu-wgsl")` | full pyramid, two levels |
+| Recommended native coarse-to-fine processing | `ICGNWGPUFullPyramid()` | full pyramid, two levels |
+| Native low latency or bounded streaming | `ICGNWGPU()` | one scale |
+
+`ICGNWGPU(pyramid_levels=2 or 3)` selects the older selective-recovery path.
+It is retained for exceptional failures and compatibility, but it is not the
+recommended normal pyramid.
+
 ## Persistent engine
 
 Reuse one engine for an image sequence. This keeps Chromium alive and prepares
@@ -204,8 +219,8 @@ Keep ``register()`` for the lowest latency on isolated pairs.
 ``register_many()`` uses the same default and returns a list when all results
 must be retained.
 
-For displacements outside the local single-scale basin, enable selective
-pyramid recovery explicitly:
+The low-latency engine retains optional selective recovery for compatibility
+and experiments in which large motion is exceptional:
 
 ```python
 with ICGNWGPU(prefer_subgroups=False, pyramid_levels=2) as engine:
@@ -214,14 +229,15 @@ with ICGNWGPU(prefer_subgroups=False, pyramid_levels=2) as engine:
 ```
 
 ``pyramid_levels`` counts the fine image, so ``1`` means no pyramid and remains
-the default. With two or three scales, reduced references are prepared once.
+the default for ``ICGNWGPU``. With two or three scales, reduced references are prepared once.
 For each target, the ordinary fine solve runs first; a five-tap pyramid and a
 coarse-to-fine seeded retry are executed only when fine subsets fail. The
 coarse dependency mask contains only the interpolation support required by
 those failures. Parameters, statuses, and iteration counts already accepted by
 the fine solve are preserved bit for bit. Two scales are the recommended
 recovery setting; a third scale should be enabled only after qualification on
-the expected displacement field.
+the expected displacement field. For normal coarse-to-fine processing, use the
+full-pyramid engine below instead.
 
 When coarse-to-fine registration is expected on every frame, use the separate
 GPU-resident backend:
@@ -241,9 +257,9 @@ with ICGNWGPUFullPyramid(
 The schedules are ordered from coarse to fine. The finest target is uploaded
 once; reductions, prefilters, affine seed transfers, and all solves stay on one
 WebGPU device in one command submission. Only the finest packed field is read
-back. The selective `ICGNWGPU` recovery path remains useful when large motion
-is exceptional, while `ICGNWGPUFullPyramid` avoids its CPU reductions and
-intermediate readbacks when a pyramid is the normal case.
+back. The selective `ICGNWGPU` recovery path remains available when large
+motion is exceptional, while `ICGNWGPUFullPyramid` is the recommended native
+path and avoids its CPU reductions and intermediate readbacks.
 
 Two levels are the default because they provided the best measured 4K60 margin
 on the validation GPU. Select three levels explicitly for a larger expected

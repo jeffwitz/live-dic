@@ -10,15 +10,15 @@
 
 The project goal is sustained digital image correlation on 3840 x 2160 frames
 at 60 frames per second, measured across the complete acquisition-to-result
-pipeline. The GPU-qualified consolidation campaign processed the reproducible
-UHD test pair with a two-level GPU-resident pyramid in a **14.580 ms median
-complete Python call** with a **15.478 ms p95**.
+pipeline. The latest GPU-qualified campaign processed the reproducible UHD
+`(4, -2)` test pair with the recommended two-level GPU-resident pyramid in a
+**10.194 ms median complete Python call** with an **11.073 ms p95**.
 This boundary includes direct target upload,
 GPU pyramid construction, coarse-to-fine IC-GN computation, packed readback,
 and NumPy result construction. Both measurements are below the 16.667 ms
-period on the validation machine. The reduction and selective-recovery shaders
-were compiled and exercised by the opt-in hardware regressions before this
-campaign.
+period on the validation machine. The tiled FIR, pyramid-reduction, affine-seed
+transfer, and seeded-solver shaders were compiled and exercised by the opt-in
+hardware regressions before this campaign.
 
 This is an encouraging compute result, not yet a 4K60 system qualification.
 Camera acquisition and downstream consumers are still excluded. The browser
@@ -74,6 +74,24 @@ The parameter order is compatible with the SYCL prototype:
 [tx, du/dx, du/dy, ty, dv/dx, dv/dy]
 ```
 
+## Which backend is the current default?
+
+There is no global default independent of the selected class:
+
+| Intended use | Construction | Pyramid policy |
+|---|---|---|
+| Browser with automatic WebGPU/WebGL2 compatibility | `ICGNWebGL()` | Three.js/TSL, single scale |
+| Browser using the canonical shared WGSL | `ICGNWebGL(backend="webgpu-wgsl")` | Full pyramid, **2 levels by default** |
+| Native robust coarse-to-fine DIC | `ICGNWGPUFullPyramid()` | Full pyramid, **2 levels by default and recommended** |
+| Native lowest-latency or streaming API | `ICGNWGPU()` | Single scale by default |
+| Historical reproduction only | `ICGNWebGL(backend="gpuio")` | Deprecated single scale |
+
+`ICGNWGPU(pyramid_levels=2 or 3)` is the older selective-recovery mechanism.
+It first executes the fine solve and invokes CPU-orchestrated coarse recovery
+only for failures. It remains available as an optional exception mode, but it
+is not the recommended normal pyramid. The full decision table and execution
+graphs are in the [backend-selection explanation](./DIC/LucasKanadeICGN/docs/explanation/backend-selection.rst).
+
 ## Architecture
 
 The Python package exposes the browser implementations through one headless
@@ -114,10 +132,12 @@ The native path is shorter: `NumPy uint8 → r8unorm texture → WGSL FIR/IC-GN/
 median → packed readback → NumPy views`. Its detailed resource and workgroup
 layout is documented in the [native backend explanation](./DIC/LucasKanadeICGN/docs/explanation/native-backend.rst).
 
-The Three.js solver fuses the IC-GN iterations into one compute dispatch and
-uses 16 cooperating lanes per subset. A startup probe selects hardware subgroup
-reductions when all lanes fit in one subgroup and otherwise selects the
-portable workgroup-memory solver.
+The specialized Three.js/WebGPU solver fuses the IC-GN iterations into one
+compute dispatch and fills the measured hardware subgroup. On the validation
+GPU, 32 lanes each process eight pixels of a 16 x 16 subset. Its portable
+fallback instead uses one 16-lane workgroup per subset and shared-memory
+reductions. These solver groups are independent of the FIR tiles: the shared
+WGSL prefilter uses 32 x 8 horizontal and 8 x 32 vertical output tiles.
 
 The GPU-IO solver uses the WebGL2 execution model: one fragment owns one subset
 and scans its 16 x 16 pixels serially. Its iterations are fused into one draw,
@@ -154,40 +174,22 @@ The images, source hashes, format, and motion parameters are recorded in
 
 ## Performance
 
-Measurements on an Intel Lunar Lake GPU use three campaigns of 30 runs after
-five warm-ups. At 512 x 512, the median campaign summaries are:
+The current Intel Lunar Lake audit uses eight warm-ups, 50 measured UHD
+registrations, and 32,400 subsets. Native values are complete Python
+calls; browser values are GPU timestamps and therefore exclude Python
+transport and result readback:
 
-| Backend | GPU median | GPU p95 | Browser wall median |
-|---|---:|---:|---:|
-| Three.js/TSL WebGPU | **0.675 ms** | **1.227 ms** | **2.7 ms** |
-| GPU-IO/WebGL2 | 3.301 ms | 4.210 ms | 10.3 ms |
+| UHD path | Translation | Median | p95 | Accepted | RMSE |
+|---|---:|---:|---:|---:|---:|
+| Native full pyramid, 2 levels | `(4, -2)` | **10.194 ms** | **11.073 ms** | 31,724 | `1.874e-3` px |
+| Raw browser WGSL, 2 levels | `(4, -2)` | **8.789 ms** | **9.375 ms** | 31,724 | `1.804e-3` px |
+| Three.js/TSL subgroup | `(4, -2)` | 24.300 ms | 26.627 ms | 22,401 | `9.635e-2` px |
+| Three.js/TSL subgroup | `(2, -1)` | **11.893 ms** | **12.798 ms** | 31,654 | `3.05e-5` px |
 
-At the complete Python-call boundary on the same 512 x 512 pair, native
-wgpu-py measured **1.882 ms median / 2.382 ms p95**, versus 56.203 / 59.117 ms
-for Three.js through Chromium and 61.877 / 65.655 ms for GPU-IO. The browser
-calls include their PNG and DevTools transport, so this comparison measures the
-architectural transport change rather than kernel speed alone.
-
-The reproducible UHD pair contains 32,400 subsets and an exact `(2, -1)` pixel
-translation:
-
-| UHD compute boundary | Median | p95 | Accepted | RMSE |
-|---|---:|---:|---:|---:|
-| Three.js/TSL | **13.629 ms** | **15.352 ms** | 31,654 | `3.076e-5` px |
-| GPU-IO/WebGL2 | 80.738 ms | 82.522 ms | 31,654 | `4.182e-5` px |
-| SYCL mixed/double reduction | 19.099 ms | 19.863 ms | 31,654 | `2.555e-5` px |
-| SYCL `--float-reduce` | 18.111 ms | 19.062 ms | 31,654 | `2.712e-5` px |
-
-The native wgpu-py **complete Python call** measured 16.160 ms median and
-16.569 ms p95, with 31,654 accepted subsets and `3.080e-5 px` RMSE. It uses a
-stricter boundary than the browser GPU rows because upload and packed readback
-are included.
-
-At the comparable UHD compute boundary, Three.js is 28.6% faster than the
-mixed/double-reduction SYCL configuration and 24.7% faster than the numerically
-closer float-reduction variant on this machine. Three.js GPU timestamps exclude
-input upload and output readback; the documented SYCL totals include them in a
-separate timing boundary.
+The difficult `(4, -2)` pair demonstrates why the full pyramid is the native
+recommendation: it both recovers substantially more subsets and avoids failed
+single-scale subsets consuming their iteration ceiling. GPU-IO is intentionally
+absent, and no SYSCL row is currently claimed without a new equivalent run.
 
 These values do **not** prove a sustained 60 Hz Python system:
 the browser benchmark excludes Python PNG encoding, DevTools transport, image
@@ -195,7 +197,7 @@ decoding, result transfer, and camera acquisition. Real-time qualification must
 measure the complete `engine.register(frame)` call and the acquisition-to-result
 latency on the target machine.
 
-The timing protocol, preparation measurements, and full SYCL comparison are documented in
+The timing protocol, current measurements, and reproduction commands are documented in
 [`DIC/LucasKanadeICGN/BENCHMARK.md`](./DIC/LucasKanadeICGN/BENCHMARK.md).
 
 ## Installation
@@ -320,7 +322,7 @@ DIC/LucasKanadeICGN/
 ├── native/                 experimental Rust wgpu/PyO3 host
 ├── benchmarks/             reproducible backend and UHD campaigns
 ├── docs/                   Sphinx/Diátaxis documentation
-├── BENCHMARK.md            measurement protocol and SYCL comparison
+├── BENCHMARK.md            current measurements and reproduction protocol
 └── README.md               detailed implementation overview
 ```
 
@@ -346,7 +348,7 @@ available from [`index.html`](./index.html).
 The direct `t=0 -> 20` displacement of `(4, -2)` pixels is outside the robust
 local basin for many single-scale subsets. The current two-level native
 full-pyramid campaign returned 31,724 accepted subsets out of 32,400 at UHD
-with a translation RMSE of 0.00182 pixel. These values refer to that campaign's
+with a translation RMSE of 0.001874 pixel. These values refer to that campaign's
 accepted population. Larger motions can select three levels
 or provide a better initial estimate.
 

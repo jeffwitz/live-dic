@@ -13,14 +13,13 @@ Real-Time DIC in Python toward 4K60
 
    The engineering objective is sustained DIC on 3840 x 2160 frames at 60
    frames per second over the complete acquisition-to-result pipeline. The
-   native wgpu-py complete Python-call boundary is 14.621 ms median and 15.748
-   ms p95 on the validation machine. Both are below the 16.667 ms frame period,
-   with 0.919 ms of p95 margin. A later documentation audit reproduced this at
-   14.605 ms median and 15.018 ms p95.
+   recommended two-level native full pyramid measured 10.194 ms median and
+   11.073 ms p95 on the validation machine after the October 29 kernel pass.
+   Both are below the 16.667 ms frame period.
    Direct upload, GPU computation, packed readback, and NumPy result
    construction are included; camera acquisition and downstream consumers are
-   not. A bounded two-slot sequence reaches a 13.380 ms median period (74.7
-   FPS) but 26.617 ms median result latency. 4K60 processing throughput is
+   not. A bounded two-slot single-scale sequence reaches an 11.026 ms median
+   period (90.7 FPS) but 21.963 ms median result latency. 4K60 processing throughput is
    therefore demonstrated offline, while end-to-end acquisition remains to be
    qualified.
 
@@ -40,16 +39,15 @@ WGSL kernels, and native wgpu-py backends. The deprecated GPU-IO/WebGL2 path is
 retained as a historical comparison. Three.js is the default browser backend.
 All paths have been validated at 3840 x 2160 pixels.
 
-The native backend also offers opt-in selective pyramid recovery for subsets
-that fail the initial fine solve. One scale remains the default fast path. A
-separate ``ICGNWGPUFullPyramid`` backend now keeps the normal coarse-to-fine
-path entirely GPU-resident and defaults to two levels. On the controlled
-``(+4, -2)`` validation pair the current 30-run campaign
-measured 14.580 ms at 4K with two levels and 16.012 ms with three levels after
-reducing the three-level iteration ceilings. A later audit retained a 4K60 p95
-margin for two levels, while the three-level median remained above 60 FPS but
-its p95 did not. These figures qualify offline compute on that pair, not
-camera-to-consumer latency.
+The recommended native coarse-to-fine engine is
+``ICGNWGPUFullPyramid``, whose two-level default keeps reduction, prefiltering,
+seed transfer, solving, and final readback on the GPU.  The older
+``ICGNWGPU(pyramid_levels=2 or 3)`` selective-recovery mode remains available
+only as an optional exception path: it first runs a fine solve and performs
+CPU-orchestrated recovery for failures.  The current ``(+4, -2)`` UHD campaign
+measured 10.194 ms median / 11.073 ms p95 for the recommended two-level graph
+and 10.280 / 11.151 ms for three levels.  These figures qualify offline
+compute on that pair, not camera-to-consumer latency.
 
 The engineering objective is sustained, measurable DIC processing from Python.
 That means keeping the GPU runtime alive, preparing the reference only once,
@@ -64,8 +62,10 @@ Choose the section that matches your task:
 * :doc:`how-to/process-live-frames` for NumPy frames from an acquisition source;
 * :doc:`how-to/benchmark` to measure throughput and latency correctly;
 * :doc:`reference/api` for the exact Python interface;
-* :doc:`reference/performance` for measured native wgpu-py, Three.js, GPU-IO,
-  PyO3, and SYCL results on the validation machine;
+* :doc:`reference/performance` for the current native wgpu-py, raw-WGSL,
+  Three.js, and bounded-sequence results on the validation machine;
+* :doc:`explanation/backend-selection` for the exact defaults and recommended
+  execution path for each public engine;
 * :doc:`explanation/gpu-optimization` for the backend tiling, lane grouping,
   and reduction strategies;
 * :doc:`explanation/shared-kernel` for the common WGSL source and its exact
@@ -122,6 +122,7 @@ path.
    :caption: Explanation
 
    explanation/pipeline
+   explanation/backend-selection
    explanation/icgn
    explanation/gpu-optimization
    explanation/shared-kernel

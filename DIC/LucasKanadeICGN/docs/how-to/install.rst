@@ -48,6 +48,10 @@ accepted subsets for this test pair.
 Select a compute backend
 ------------------------
 
+Defaults are scoped to the chosen engine. See
+:doc:`../explanation/backend-selection` for the complete browser, native, and
+pyramid decision table.
+
 Three.js/TSL is the default backend. A standard engine therefore selects it:
 
 .. code-block:: python
@@ -85,18 +89,21 @@ Install the optional ``native`` dependency group:
 
    $ .venv-icgn/bin/pip install -e 'DIC/LucasKanadeICGN/python[native]'
 
-Then construct the native engine explicitly:
+For the recommended native coarse-to-fine path, construct the two-level full
+pyramid explicitly:
 
 .. code-block:: python
 
-   from lucas_kanade_icgn import ICGNWGPU
+   from lucas_kanade_icgn import ICGNWGPUFullPyramid
 
-   engine = ICGNWGPU()
+   engine = ICGNWGPUFullPyramid()
 
-``ICGNWGPU`` sends contiguous NumPy grayscale bytes directly to a native
-``r8unorm`` texture. It returns the same ``RegistrationResult`` array layout as
-``ICGNWebGL``. It is experimental and is not yet selected by the command-line
-interface or by the default engine.
+``ICGNWGPUFullPyramid`` sends contiguous NumPy grayscale bytes directly to a
+native ``r8unorm`` texture and keeps both scales on the GPU. It returns the
+same ``RegistrationResult`` layout as ``ICGNWebGL``. Use ``ICGNWGPU()``
+instead when the single-scale ``register_stream`` API or the lowest isolated
+frame latency is required. Native engines are selected explicitly and are not
+currently used by the command-line interface.
 
 Prepare an offline installation
 -------------------------------
