@@ -101,9 +101,10 @@ pyramid explicitly:
 ``ICGNWGPUFullPyramid`` sends contiguous NumPy grayscale bytes directly to a
 native ``r8unorm`` texture and keeps both scales on the GPU. It returns the
 same ``RegistrationResult`` layout as ``ICGNWebGL``. Use ``ICGNWGPU()``
-instead when the single-scale ``register_stream`` API or the lowest isolated
-frame latency is required. Native engines are selected explicitly and are not
-currently used by the command-line interface.
+instead when a single-scale graph, automatic subgroup tuning, or selective
+recovery is required. Both native engines expose ``register_stream``. Native
+engines are selected explicitly and are not currently used by the command-line
+interface.
 
 Prepare an offline installation
 -------------------------------

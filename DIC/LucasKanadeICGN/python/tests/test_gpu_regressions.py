@@ -211,6 +211,34 @@ class GPURegressionTests(unittest.TestCase):
                     engine.close()
                     engine.device.destroy()
 
+    def test_full_pyramid_stream_preserves_order_and_synchronous_results(self) -> None:
+        translations = ((0.25, -0.125), (0.5, -0.375), (-0.375, 0.25))
+        pairs = [_fractional_pair(128, 128, truth) for truth in translations]
+        reference = pairs[0][0]
+        targets = [pair[1] for pair in pairs]
+        engine = ICGNWGPUFullPyramid(pyramid_levels=2, motion_model="translation")
+        try:
+            engine.set_reference(reference)
+            synchronous = [engine.register(target) for target in targets]
+            streamed = list(engine.register_stream(targets, pipeline_depth=2))
+            self.assertEqual(len(streamed), len(synchronous))
+            for expected, actual, truth in zip(
+                synchronous,
+                streamed,
+                translations,
+                strict=True,
+            ):
+                np.testing.assert_array_equal(actual.status, expected.status)
+                np.testing.assert_allclose(
+                    actual.parameters, expected.parameters, rtol=0.0, atol=1e-6
+                )
+                self.assertLess(actual.rmse(truth), 0.05)
+                self.assertGreater(actual.timing["resultAgeWallMs"], 0.0)
+                self.assertGreaterEqual(actual.timing["completionWaitWallMs"], 0.0)
+        finally:
+            engine.close()
+            engine.device.destroy()
+
     def test_translation_model_recovers_fractional_shift_without_strain(self) -> None:
         truth = (0.5, -0.375)
         reference, target = _fractional_pair(256, 256, truth)

@@ -8,7 +8,7 @@ from unittest import mock
 import numpy as np
 
 from lucas_kanade_icgn.engine import RegistrationResult
-from lucas_kanade_icgn.full_pyramid_backend import ICGNWGPUFullPyramid
+from lucas_kanade_icgn.full_pyramid_backend import ICGNWGPUFullPyramid, _FullPyramidSlot
 from lucas_kanade_icgn.wgpu_backend import (
     ICGNWGPU,
     _PendingRegistration,
@@ -178,13 +178,22 @@ class NativeTimingTests(unittest.TestCase):
         engine.pyramid_levels = 1
         engine._wgpu = root._wgpu
         engine.device = device
-        engine._encode_reductions = lambda command_encoder: None
+        engine._encode_reductions = lambda command_encoder, edges: None
+        engine._full_slots = [_FullPyramidSlot((slot,), [], {})]
 
         with mock.patch("lucas_kanade_icgn.full_pyramid_backend.time.perf_counter", clock):
             result = engine.register(np.zeros((16, 16), dtype=np.uint8))
 
         self.assertAlmostEqual(result.timing["totalWallMs"], 23.0)
         self.assertAlmostEqual(result.timing["executeReadbackWallMs"], 8.0)
+        self.assertAlmostEqual(result.timing["inputPreparationWallMs"], 2.0)
+        self.assertAlmostEqual(result.timing["encodingWallMs"], 5.0)
+        self.assertAlmostEqual(result.timing["submissionWallMs"], 1.0)
+        self.assertAlmostEqual(result.timing["completionWaitWallMs"], 4.0)
+        self.assertAlmostEqual(result.timing["readbackCopyWallMs"], 3.0)
+        self.assertAlmostEqual(result.timing["pipelineLatencyWallMs"], 18.0)
+        self.assertAlmostEqual(result.timing["resultBuildWallMs"], 5.0)
+        self.assertAlmostEqual(result.timing["resultAgeWallMs"], 23.0)
         self.assertEqual(result.timing["queueSubmissions"], 1.0)
 
 

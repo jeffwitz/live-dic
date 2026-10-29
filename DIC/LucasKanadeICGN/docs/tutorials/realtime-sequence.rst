@@ -78,22 +78,33 @@ acquisition source. See :doc:`../how-to/process-live-frames`.
 Pipeline native frames for throughput
 -------------------------------------
 
-When the input is already a NumPy array, ``ICGNWGPU.register_stream`` can keep
-a bounded number of registrations in flight. A depth of two lets GPU work on
-the next frame overlap Python handling of the previous packed readback:
+When the input is already a NumPy array,
+``ICGNWGPUFullPyramid.register_stream`` can keep a bounded number of complete
+coarse-to-fine registrations in flight. A depth of two lets GPU work on the
+next frame overlap Python handling of the previous packed readback:
 
 .. code-block:: python
 
-   from lucas_kanade_icgn import ICGNWGPU
+   from lucas_kanade_icgn import ICGNWGPUFullPyramid
 
-   with ICGNWGPU(prefer_subgroups=False) as engine:
+   with ICGNWGPUFullPyramid() as engine:
        engine.set_reference(reference_frame)
        for result in engine.register_stream(frame_source):
+           print(f"result age: {result.timing['resultAgeWallMs']:.3f} ms")
            consume(result)
 
 Backpressure is automatic: the iterator keeps at most two images in flight by
 default, and results remain in input order. This is an execution-pipeline
 setting, not an image-pyramid depth. The default improves sustained throughput at the cost
 of approximately one extra processed frame of result latency. Pass
-``pipeline_depth=1`` only when minimum single-frame latency matters more than
-sequence throughput, or use ordinary ``register`` for isolated pairs.
+``pipeline_depth=1`` when minimum result age matters more than sequence
+throughput, or use ordinary ``register`` for isolated pairs. Each slot owns its
+target pyramid, mutable solver states, seeds, and readback; immutable reference
+data remain shared. Contiguous grayscale ``uint8`` arrays are uploaded directly
+to the native texture and never pass through PNG, Chromium, DevTools, or JSON.
+
+On the validation machine, two slots sustained 93.16 FPS in affine mode and
+105.58 FPS in translation mode on the changing UHD sequence. Median result age
+was 21.408 and 18.888 ms, respectively. Depth one reduced those ages to 11.478
+and 10.331 ms. Throughput and result age are different engineering quantities;
+choose the slot count from the needs of the measurement loop.

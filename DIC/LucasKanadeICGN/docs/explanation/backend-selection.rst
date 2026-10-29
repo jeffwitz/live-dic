@@ -30,14 +30,14 @@ Current recommendation
    * - Native NumPy coarse-to-fine registration
      - ``ICGNWGPUFullPyramid()``
      - two full-pyramid levels
-     - Recommended native path for the validated displacement range and 4K60
-       compute objective.
-   * - Native single-scale or bounded sequence processing
+     - Recommended native path for the validated displacement range, bounded
+       NumPy streams, and 4K60 compute objective.
+   * - Native single-scale or selective processing
      - ``ICGNWGPU()``
      - one scale
-     - Use for the lowest isolated-frame latency or ``register_stream``.  Its
-       optional selective recovery is a compatibility/exception mode, not the
-       recommended normal pyramid.
+     - Use for automatic subgroup tuning or a one-scale graph. Its optional
+       selective recovery is a compatibility/exception mode, not the
+       recommended normal pyramid. It also retains its bounded stream API.
    * - Historical GPU-IO reproduction
      - ``ICGNWebGL(backend="gpuio")``
      - one scale

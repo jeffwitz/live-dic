@@ -21,6 +21,12 @@ construction are included. Acquisition and downstream work are excluded, so
 this repository does not yet claim a qualified camera-to-consumer 4K60
 application.
 
+For sustained native input, the same two-level graph now supports a bounded
+full-pyramid stream. With two targets in flight it sustained **93.16 FPS** in
+affine mode and **105.58 FPS** in translation mode on this machine. Median
+result age was 21.408 and 18.888 ms; use one slot for the lower 11.478 and
+10.331 ms median ages. Throughput and result age are reported separately.
+
 ## Browser backend policy
 
 `three-tsl` is the supported browser backend for new applications. It uses
@@ -126,7 +132,7 @@ The word *default* is scoped to an engine class:
 | Browser API | `ICGNWebGL()` | Three.js/TSL, one scale, automatic WebGL2 fallback |
 | Shared WGSL in Chromium | `ICGNWebGL(backend="webgpu-wgsl")` | two-level GPU-resident full pyramid |
 | Recommended native coarse-to-fine path | `ICGNWGPUFullPyramid()` | two-level GPU-resident full pyramid |
-| Native single-frame/streaming path | `ICGNWGPU()` | one scale |
+| Native single-scale/selective path | `ICGNWGPU()` | one scale |
 | Historical comparison | `ICGNWebGL(backend="gpuio")` | deprecated one-scale GPU-IO |
 
 The `pyramid_levels` option on `ICGNWGPU` controls an older selective recovery
@@ -152,16 +158,17 @@ This removes PNG, Chromium, DevTools, JSON, and JavaScript-array conversions. Th
 shader compilation, and the same direct texture-upload boundary; full solver
 orchestration remains in wgpu-py for this milestone.
 
-For sustained native sequences, ``ICGNWGPU.register_stream`` uses a bounded
-ring of independent target, solver-state, and readback resources. Two slots
-are the default and allow Python to retire one packed result while the GPU
-processes the next frame. This slot count is unrelated to an image pyramid. On
-the validation machine after FIR tiling, the four-campaign median UHD period
-was 11.539 ms synchronously (86.7 FPS), 11.026 ms with the default two slots
-(90.7 FPS), and 10.780 ms with three slots (92.8 FPS), while preserving the
-same accepted count and RMSE. Median result latency was 21.963 ms for two slots
-and 32.093 ms for three. The ordinary ``register`` method remains the
-lowest-latency path.
+For sustained native sequences, both native engines expose
+``register_stream`` with a bounded ring of independent mutable resources. For
+the recommended full pyramid, each slot owns the finest target, reduced
+targets, reduction intermediates, per-level solver states and seeds, and final
+readback; immutable reference data and pipelines remain shared. Two slots are
+the default throughput compromise. On the current 50-frame changing UHD
+campaign, affine throughput increased from 86.53 FPS at depth one to 93.16 FPS
+at depth two, while translation increased from 96.42 to 105.58 FPS. Median
+result ages increased from 11.478 to 21.408 ms affine and from 10.331 to 18.888
+ms translation. The third slot brought little additional throughput and raised
+median age beyond 32 ms. Slot depth is unrelated to image-pyramid depth.
 
 The remaining differences are platform constraints: the browser backends use
 single precision and do not expose the same register controls or queue model as
@@ -185,6 +192,13 @@ ms** in affine mode and **10.526 / 11.170 ms** in translation mode. Both p95
 values are below the 16.667 ms 60 FPS period on this machine. Repeated-target
 and GPU-only figures are retained only as diagnostic kernel measurements. See
 the performance reference for the exact boundaries, protocol, and caveats.
+
+Contiguous grayscale ``uint8`` NumPy arrays are passed directly to wgpu-py's
+texture upload; a conforming camera buffer does not undergo PNG, Pillow, or
+browser conversion. A CPU-to-GPU copy remains necessary because ordinary
+NumPy memory is not GPU texture memory. The browser Python adapter still uses
+PNG/DevTools input and JSON result transport and is therefore a compatibility
+path for NumPy streams, not the low-latency path.
 
 The raw browser ``webgpu-wgsl`` backend now runs that same GPU-resident
 full-pyramid graph. It defaults to two levels with schedules ``(8, 16)`` and

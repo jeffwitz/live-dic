@@ -1,8 +1,12 @@
 Process live NumPy frames
 =========================
 
-Use one processing thread and one persistent :class:`~lucas_kanade_icgn.ICGNWebGL`
-instance. The engine is intentionally not thread-safe.
+Use one processing thread and one persistent engine instance. The engines are
+intentionally not thread-safe. For NumPy camera frames and a normal
+coarse-to-fine solve, prefer
+:class:`~lucas_kanade_icgn.ICGNWGPUFullPyramid`; use
+:class:`~lucas_kanade_icgn.ICGNWebGL` when browser or WebGL2 compatibility is
+the deployment requirement.
 
 Frame contract
 --------------
@@ -36,15 +40,14 @@ array:
 
    import numpy as np
 
-   from lucas_kanade_icgn import ICGNWebGL
+   from lucas_kanade_icgn import ICGNWGPUFullPyramid
 
 
    def process_frames(reference: np.ndarray, frames: Iterable[np.ndarray]) -> None:
-       with ICGNWebGL() as engine:
+       with ICGNWGPUFullPyramid() as engine:
            engine.set_reference(reference)
 
-           for frame_index, frame in enumerate(frames):
-               result = engine.register(frame)
+           for frame_index, result in enumerate(engine.register_stream(frames)):
                if result.mean_translation is None:
                    print(f"frame {frame_index}: no accepted subsets")
                    continue
@@ -91,6 +94,13 @@ For the lowest current latency:
 * measure the outer Python call with ``time.perf_counter``;
 * move logging and persistence to another consumer when possible.
 
-The current transport still converts each NumPy frame to PNG before sending it
-to Chromium. This is a known integration cost and must be included in real-time
-qualification.
+The native backend reads a contiguous grayscale ``uint8`` NumPy buffer
+directly during ``queue.write_texture``. ``np.ascontiguousarray`` returns the
+original object when the input already satisfies that contract, so there is no
+PNG or grayscale conversion in the normal camera path. One CPU-to-GPU upload
+is still required because ordinary NumPy memory is not GPU texture memory.
+
+The browser Python transport still converts each NumPy frame to PNG before
+sending it to Chromium and returns the field through JSON. It is a
+compatibility path, not the current real-time NumPy stream path; those costs
+must be included whenever that backend is qualified.

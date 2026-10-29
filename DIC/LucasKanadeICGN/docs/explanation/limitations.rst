@@ -63,8 +63,9 @@ Runtime
   the recommended native pyramid. It currently performs reduced-image
   construction and recovery orchestration on the CPU.
 * The recommended ``ICGNWGPUFullPyramid`` backend removes those per-frame CPU
-  reductions and intermediate readbacks, but does not yet expose sequence
-  pipelining or the subgroup solver.
+  reductions and intermediate readbacks and exposes bounded sequence
+  pipelining. It still uses the portable WGSL solver rather than the native
+  subgroup variant.
 * Browser GPU shader arithmetic is single precision.
 * The fastest Three.js solver requires a WebGPU subgroup capable of covering
   the subset and sizes its workgroup to the measured subgroup width. Reference

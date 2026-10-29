@@ -90,8 +90,9 @@ Install the optional dependency and select the native engine explicitly:
        result = engine.register(target)
 
 ``RegistrationResult`` has the same parameter, displacement, status, and
-iteration fields as the browser API. ``ICGNWGPU`` is the native low-latency and
-bounded-sequence engine; it is not the recommended coarse-to-fine engine.
+iteration fields as the browser API. ``ICGNWGPU`` is the native single-scale
+engine; it is not the recommended coarse-to-fine engine. Both native engines
+now expose bounded sequence execution.
 
 Bounded sequence execution
 --------------------------
@@ -144,8 +145,9 @@ GPU-resident full pyramid
 -------------------------
 
 ``ICGNWGPUFullPyramid`` is the recommended native backend when a pyramid is
-part of the normal registration path. It deliberately leaves the low-latency
-and streaming-oriented ``ICGNWGPU`` behaviour unchanged.
+part of the normal registration path. It leaves the single-scale and selective
+recovery behaviour of ``ICGNWGPU`` unchanged while adding its own bounded
+full-pyramid stream.
 
 The full-pyramid class defaults to two levels with the ``(8, 16)``
 coarse-to-fine iteration schedule. This is the recommended native path. After
@@ -194,8 +196,28 @@ Iterations and tolerances are specified from coarse to fine. For example:
 The target reduction uses the same separable ``[1, 4, 6, 4, 1] / 16`` filter
 and uint8 truncation as the prepared reference pyramid. A one-level full
 pyramid executes the same registration graph as the portable one-scale native
-backend and has been verified bit for bit. Sequence pipelining is not yet
-exposed by this new backend.
+backend and has been verified bit for bit.
+
+For sustained sequences, ``register_stream`` allocates a bounded ring of the
+complete mutable graph: one finest target texture, reduced targets,
+intermediate reduction textures, solver states, transferred seeds, and final
+readback per slot. Reference images, inverse Hessians, metadata, FIR weights,
+and pipelines remain shared. Queue order preserves input order and the
+iterator applies backpressure when all slots are occupied.
+
+``pipeline_depth=1`` minimizes result age. The default depth of two overlaps
+GPU processing with Python retirement of the previous packed field and is the
+recommended throughput compromise. A third slot is supported but adds little
+throughput on the validation machine while increasing age. This slot depth is
+independent of the number of pyramid levels.
+
+For every result, timings distinguish normalization, direct NumPy-to-texture
+upload, command encoding, submission, host completion wait, mapped readback
+copy, and NumPy field construction. ``resultAgeWallMs`` spans the full input
+acceptance to materialized-field boundary. ``completionWaitWallMs`` is only
+the time for which the host blocks when retiring that slot; work may already
+have executed while earlier results were being retired, so it is not a GPU
+kernel duration.
 
 Rust/PyO3 milestone
 -------------------
@@ -219,13 +241,15 @@ without forking the WGSL kernels.
 Measured effect
 ---------------
 
-On the validation machine, the changing-frame UHD campaign measured the
-recommended two-level full pyramid at 11.920 ms median and 13.072 ms p95 in
-affine mode. Translation mode measured 10.526 / 11.170 ms. This boundary starts
-with a resident ``uint8`` NumPy image and ends with a materialized NumPy field;
-it includes direct target upload, GPU pyramid construction and solving, packed
-result readback, and result statistics. Camera acquisition and downstream
-consumers remain excluded.
+On the validation machine, the changing-frame UHD synchronous campaign
+measured the recommended two-level full pyramid at 11.920 ms median and 13.072
+ms p95 in affine mode. Translation mode measured 10.526 / 11.170 ms. In the
+four-run, 50-frame bounded campaign, two slots sustained 93.16 FPS affine and
+105.58 FPS translation, with median result ages of 21.408 and 18.888 ms. This
+boundary starts with a resident ``uint8`` NumPy image and ends with a
+materialized NumPy field; it includes direct target upload, GPU pyramid
+construction and solving, packed result readback, and result statistics.
+Camera acquisition and downstream consumers remain excluded.
 
 See :doc:`../reference/performance` for the current timing boundaries,
 reproduction commands, and browser comparison.

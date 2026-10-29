@@ -9,8 +9,8 @@ This package exposes the affine IC-GN solver in the parent directory to Python
 without opening a visible browser window or loading graphical controls.
 Chromium is used as an invisible runtime for Three.js/TSL on WebGPU or WebGL2,
 the raw WebGPU shared-WGSL backend, and the deprecated GPU-IO compatibility
-backend. The optional `ICGNWGPU` backend runs
-in-process and does not start Chromium.
+backend. The optional `ICGNWGPU` and `ICGNWGPUFullPyramid` backends run
+in-process and do not start Chromium.
 
 ## Requirements and installation
 
@@ -62,8 +62,8 @@ Defaults are scoped to the selected engine, not to the whole package:
 |---|---|---|
 | Browser with automatic WebGPU/WebGL2 fallback | `ICGNWebGL()` | Three.js/TSL, one scale |
 | Browser shared WGSL | `ICGNWebGL(backend="webgpu-wgsl")` | full pyramid, two levels |
-| Recommended native coarse-to-fine processing | `ICGNWGPUFullPyramid()` | full pyramid, two levels |
-| Native low latency or bounded streaming | `ICGNWGPU()` | one scale |
+| Recommended native coarse-to-fine processing and streaming | `ICGNWGPUFullPyramid()` | full pyramid, two levels |
+| Native single-scale/selective processing | `ICGNWGPU()` | one scale |
 
 `ICGNWGPU(pyramid_levels=2 or 3)` selects the older selective-recovery path.
 It is retained for exceptional failures and compatibility, but it is not the
@@ -292,6 +292,30 @@ WebGPU device in one command submission. Only the finest packed field is read
 back. The selective `ICGNWGPU` recovery path remains available when large
 motion is exceptional, while `ICGNWGPUFullPyramid` is the recommended native
 path and avoids its CPU reductions and intermediate readbacks.
+
+The recommended backend also supports a bounded changing-frame stream:
+
+```python
+with ICGNWGPUFullPyramid(motion_model="affine") as engine:
+    engine.set_reference(reference_frame)
+    for result in engine.register_stream(frame_source, pipeline_depth=2):
+        print(result.timing["resultAgeWallMs"])
+        consume(result)
+```
+
+Every in-flight slot owns independent target-pyramid, solver-state, seed, and
+readback resources. Reference data and pipelines stay shared, and results are
+yielded in input order. Depth one minimizes result age. The default depth of
+two improves sustained throughput; a third slot is supported but added little
+throughput on the validation machine. The timing dictionary separates input
+preparation, direct upload, command encoding, submission, completion wait,
+readback copy, result construction, and total result age.
+
+For an already contiguous two-dimensional `uint8` array, input normalization
+keeps the same NumPy storage and wgpu-py uploads those bytes directly to an
+`r8unorm` texture. There is no PNG, browser, DevTools, or JSON stage. One
+CPU-to-GPU transfer is still required because a normal NumPy allocation is not
+GPU texture memory.
 
 Two levels are the default because they provided the best measured 4K60 margin
 on the validation GPU. Select three levels explicitly for a larger expected

@@ -44,6 +44,13 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--height", type=int, default=2160)
     parser.add_argument("--frames", type=int, default=12)
     parser.add_argument("--warmups", type=int, default=3)
+    parser.add_argument("--campaigns", type=int, default=1)
+    parser.add_argument(
+        "--pipeline-depth",
+        type=int,
+        default=1,
+        help="native full-pyramid targets in flight; browser backends require 1",
+    )
     parser.add_argument(
         "--backend",
         action="append",
@@ -69,7 +76,17 @@ def _arguments() -> argparse.Namespace:
         parser.error("--frames must be positive")
     if args.warmups < 0:
         parser.error("--warmups must be non-negative")
+    if args.campaigns < 1:
+        parser.error("--campaigns must be positive")
+    if args.pipeline_depth < 1:
+        parser.error("--pipeline-depth must be positive")
     args.backends = tuple(args.backends or DEFAULT_BACKENDS)
+    if args.pipeline_depth > 1 and any(
+        backend != "native-pyramid" for backend in args.backends
+    ):
+        parser.error(
+            "--pipeline-depth greater than 1 currently requires --backend native-pyramid"
+        )
     return args
 
 
@@ -138,6 +155,8 @@ def _measure(
     *,
     frames: int,
     warmups: int,
+    pipeline_depth: int,
+    use_stream: bool,
 ) -> dict[str, Any]:
     for index in range(warmups):
         engine.register(targets[index % len(targets)][0])
@@ -146,16 +165,36 @@ def _measure(
     completion_times = []
     results = []
     truths = []
+    selected = [targets[index % len(targets)] for index in range(frames)]
     stream_started = time.perf_counter()
-    for index in range(frames):
-        target, truth, _ = targets[index % len(targets)]
-        started = time.perf_counter()
-        result = engine.register(target)
-        completed = time.perf_counter()
-        samples.append((completed - started) * 1_000.0)
-        completion_times.append(completed)
-        results.append(result)
-        truths.append(truth)
+    if not use_stream:
+        for target, truth, _ in selected:
+            started = time.perf_counter()
+            result = engine.register(target)
+            completed = time.perf_counter()
+            samples.append((completed - started) * 1_000.0)
+            completion_times.append(completed)
+            results.append(result)
+            truths.append(truth)
+        execution = (
+            "synchronous persistent engine; one result completed before the next input"
+        )
+    else:
+        target_images = (target for target, _, _ in selected)
+        for result, (_, truth, _) in zip(
+            engine.register_stream(target_images, pipeline_depth=pipeline_depth),
+            selected,
+            strict=True,
+        ):
+            completed = time.perf_counter()
+            samples.append(float(result.timing["resultAgeWallMs"]))
+            completion_times.append(completed)
+            results.append(result)
+            truths.append(truth)
+        execution = (
+            "bounded native full-pyramid stream; "
+            f"{pipeline_depth} independent target(s) in flight"
+        )
     stream_wall_ms = (time.perf_counter() - stream_started) * 1_000.0
 
     shape = results[0].parameters.shape
@@ -169,7 +208,8 @@ def _measure(
     accepted = [result.accepted for result in results]
     return {
         "boundary": "resident uint8 NumPy image to materialized NumPy parameter field",
-        "execution": "synchronous persistent engine; one result completed before the next input",
+        "execution": execution,
+        "pipeline_depth": pipeline_depth,
         "frames": frames,
         "warmups": warmups,
         "latency_median_ms": float(np.median(samples)),
@@ -189,6 +229,50 @@ def _measure(
     }
 
 
+def _aggregate_campaigns(campaigns: list[dict[str, Any]]) -> dict[str, Any]:
+    """Report medians across campaigns while retaining concise raw summaries."""
+
+    if len(campaigns) == 1:
+        return {**campaigns[0], "campaigns": 1}
+    result = dict(campaigns[0])
+    median_keys = (
+        "latency_median_ms",
+        "latency_p95_ms",
+        "stream_period_ms",
+        "throughput_fps",
+        "completion_period_median_ms",
+        "rmse_median_px",
+    )
+    for key in median_keys:
+        result[key] = float(np.median([campaign[key] for campaign in campaigns]))
+    result["accepted_min"] = min(campaign["accepted_min"] for campaign in campaigns)
+    result["accepted_max"] = max(campaign["accepted_max"] for campaign in campaigns)
+    result["rmse_max_px"] = max(campaign["rmse_max_px"] for campaign in campaigns)
+    component_keys = campaigns[0]["component_timing_medians_ms"]
+    result["component_timing_medians_ms"] = {
+        key: float(
+            np.median(
+                [campaign["component_timing_medians_ms"][key] for campaign in campaigns]
+            )
+        )
+        for key in component_keys
+    }
+    result["campaigns"] = len(campaigns)
+    result["campaign_summaries"] = [
+        {
+            key: campaign[key]
+            for key in (
+                "latency_median_ms",
+                "latency_p95_ms",
+                "stream_period_ms",
+                "throughput_fps",
+            )
+        }
+        for campaign in campaigns
+    ]
+    return result
+
+
 def main() -> int:
     args = _arguments()
     reference, targets = _fixtures(args.assets, args.width, args.height)
@@ -201,15 +285,21 @@ def main() -> int:
             motion_model=args.motion_model,
         ) as engine:
             preparation = engine.set_reference(reference)
-            measurements[backend] = {
-                "device": preparation.device,
-                "preparation_ms": preparation.total_wall_ms,
-                **_measure(
+            campaigns = [
+                _measure(
                     engine,
                     targets,
                     frames=args.frames,
                     warmups=args.warmups,
-                ),
+                    pipeline_depth=args.pipeline_depth,
+                    use_stream=backend == "native-pyramid",
+                )
+                for _ in range(args.campaigns)
+            ]
+            measurements[backend] = {
+                "device": preparation.device,
+                "preparation_ms": preparation.total_wall_ms,
+                **_aggregate_campaigns(campaigns),
             }
 
     print(
@@ -228,6 +318,8 @@ def main() -> int:
                 "pyramid_levels": args.pyramid_levels,
                 "interpolation": args.interpolation,
                 "motion_model": args.motion_model,
+                "pipeline_depth": args.pipeline_depth,
+                "campaigns": args.campaigns,
                 "measurements": measurements,
             },
             indent=2,

@@ -10,15 +10,15 @@
 
 The project goal is sustained digital image correlation on 3840 x 2160 frames
 at 60 frames per second, measured across the complete acquisition-to-result
-pipeline. The latest GPU-qualified campaign processed the reproducible UHD
-`(4, -2)` test pair with the recommended two-level GPU-resident pyramid in a
-**10.863 ms median complete Python call** with a **12.915 ms p95**.
-This boundary includes direct target upload,
-GPU pyramid construction, coarse-to-fine IC-GN computation, packed readback,
-and NumPy result construction. Both measurements are below the 16.667 ms
-period on the validation machine. The tiled FIR, pyramid-reduction, affine-seed
-transfer, and seeded-solver shaders were compiled and exercised by the opt-in
-hardware regressions before this campaign.
+pipeline. On the changing UHD sequence, the recommended two-level
+GPU-resident pyramid measures **11.920 / 13.072 ms median / p95** in affine
+mode and **10.526 / 11.170 ms** in translation mode at the complete
+resident-NumPy-image to materialized-field boundary. A bounded two-slot stream
+sustains **93.16 FPS affine** and **105.58 FPS translation**; its median result
+ages are 21.408 and 18.888 ms, so throughput is not presented as latency. The
+boundary includes direct target upload, GPU pyramid construction,
+coarse-to-fine IC-GN computation, packed readback, and NumPy result
+construction.
 
 This is an encouraging compute result, not yet a 4K60 system qualification.
 Camera acquisition and downstream consumers are still excluded. The browser
@@ -61,6 +61,8 @@ The implementation in [`DIC/LucasKanadeICGN/`](./DIC/LucasKanadeICGN/) adds:
 - a two-level default native full pyramid whose five-tap reductions, affine
   seed transfers, per-level solvers, and final readback remain on one GPU and
   one command submission;
+- a bounded full-pyramid sequence API with independent mutable GPU resources
+  per in-flight NumPy frame and ordered result delivery;
 - a compiling Rust wgpu/PyO3 host milestone that shares the WGSL source and
   measures the NumPy-to-texture boundary;
 - a persistent, headless Python API with no visible browser interface;
@@ -83,8 +85,8 @@ There is no global default independent of the selected class:
 |---|---|---|
 | Browser with automatic WebGPU/WebGL2 compatibility | `ICGNWebGL()` | Three.js/TSL, single scale |
 | Browser using the canonical shared WGSL | `ICGNWebGL(backend="webgpu-wgsl")` | Full pyramid, **2 levels by default** |
-| Native robust coarse-to-fine DIC | `ICGNWGPUFullPyramid()` | Full pyramid, **2 levels by default and recommended** |
-| Native lowest-latency or streaming API | `ICGNWGPU()` | Single scale by default |
+| Native robust coarse-to-fine DIC and streaming | `ICGNWGPUFullPyramid()` | Full pyramid, **2 levels by default and recommended** |
+| Native single-scale/selective path | `ICGNWGPU()` | Single scale by default |
 | Historical reproduction only | `ICGNWebGL(backend="gpuio")` | Deprecated single scale |
 
 `ICGNWGPU(pyramid_levels=2 or 3)` is the older selective-recovery mechanism.

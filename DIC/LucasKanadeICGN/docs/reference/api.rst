@@ -77,7 +77,7 @@ Full-pyramid native engine
 --------------------------
 
 .. autoclass:: lucas_kanade_icgn.ICGNWGPUFullPyramid
-   :members: set_reference, register, close
+   :members: set_reference, register, register_stream, close
 
 This is the recommended native coarse-to-fine backend. It runs every configured
 scale for every target. Pyramid
@@ -89,6 +89,16 @@ three levels are opt-in for a larger expected displacement range.
 ``interpolation`` applies to every pyramid level. ``linear`` and ``cubic``
 omit both FIR passes at every level; ``bspline`` retains the existing graph.
 ``motion_model`` likewise applies to every level and to every transferred seed.
+
+``register_stream`` keeps two complete target pyramids in flight by default.
+Every slot has independent mutable textures, state, seed, and readback
+resources, while reference data and pipelines remain shared. Results are
+yielded in input order. Set ``pipeline_depth=1`` to minimize result age; use
+the default of two when sustained throughput is more important. The timing
+dictionary separates ``inputPreparationWallMs``, ``uploadWallMs``,
+``encodingWallMs``, ``submissionWallMs``, ``completionWaitWallMs``,
+``readbackCopyWallMs``, and ``resultBuildWallMs``. ``resultAgeWallMs`` is the
+complete accepted-image to materialized-field age.
 
 See :doc:`../explanation/backend-selection` for a single table distinguishing
 the defaults of all public engines.

@@ -57,32 +57,39 @@ but they are not stream performance claims.
 Throughput is not latency
 -------------------------
 
-The current bounded native single-scale campaign measured:
+The current bounded two-level full-pyramid campaign used four runs of 50
+changing UHD frames after eight warm-ups per run. The table reports the median
+campaign:
 
 .. list-table:: Sequence period and result age
    :header-rows: 1
 
-   * - Execution
-     - Median period
+   * - Model and targets in flight
+     - Stream period
      - Throughput
-     - Median result latency
-   * - synchronous ``register()``
-     - 11.539 ms
-     - 86.7 FPS
-     - 11.398 ms
-   * - **two frames in flight**
-     - **11.026 ms**
-     - **90.7 FPS**
-     - **21.963 ms**
-   * - three frames in flight
-     - 10.780 ms
-     - 92.8 FPS
-     - 32.093 ms
+     - Median result age
+   * - Affine, depth 1
+     - 11.561 ms
+     - 86.53 FPS
+     - **11.478 ms**
+   * - Affine, depth 2
+     - **10.735 ms**
+     - **93.16 FPS**
+     - 21.408 ms
+   * - Translation, depth 1
+     - 10.373 ms
+     - 96.42 FPS
+     - **10.331 ms**
+   * - Translation, depth 2
+     - **9.474 ms**
+     - **105.58 FPS**
+     - 18.888 ms
 
 Pipelining improves throughput by keeping the queue occupied, but it allows
-additional frames to remain in flight. A two-slot period of 11.026 ms does not
-mean that an individual result is 11.026 ms old. Pipeline depth is also
-unrelated to image-pyramid depth.
+additional frames to remain in flight. A two-slot affine period of 10.735 ms
+does not mean that an individual result is 10.735 ms old. A third slot reached
+94.97 FPS affine and 106.16 FPS translation, but median result age was 31.894
+and 29.705 ms. Pipeline depth is unrelated to image-pyramid depth.
 
 Frame-rate budgets
 ------------------

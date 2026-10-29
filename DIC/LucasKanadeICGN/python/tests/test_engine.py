@@ -30,6 +30,11 @@ from lucas_kanade_icgn.engine import (
 
 
 class ImageConversionTests(unittest.TestCase):
+    def test_contiguous_uint8_gray_input_reuses_storage(self) -> None:
+        frame = np.zeros((64, 96), dtype=np.uint8)
+        converted = _as_uint8_gray(frame)
+        self.assertTrue(np.shares_memory(converted, frame))
+
     def test_higher_bit_depth_array_requires_explicit_conversion(self) -> None:
         image = np.linspace(0, 4095, 64 * 64, dtype=np.uint16).reshape(64, 64)
         with self.assertRaisesRegex(ValueError, "Convert higher-bit-depth images explicitly"):

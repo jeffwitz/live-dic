@@ -18,8 +18,9 @@ Current backend policy
   full-pyramid WGSL graph in Chromium.
 * ``ICGNWebGL()`` remains the browser entry-point default and selects the
   optimized Three.js/TSL single-scale solver with automatic WebGL2 fallback.
-* ``ICGNWGPU()`` is the native single-scale and bounded-sequence engine. Its
-  optional selective recovery is not the normal pyramid path.
+* Both native engines expose bounded sequence execution. ``ICGNWGPU()`` is
+  the single-scale engine; its optional selective recovery is not the normal
+  pyramid path.
 * GPU-IO is deprecated and has no current performance claim.
 
 See :doc:`../explanation/backend-selection` for the complete decision table.
@@ -115,9 +116,13 @@ comparable to the two-level paths.
 For browser translation mode, PNG encoding measured about 167 ms median, the
 GPU graph about 17 ms, and the complete Python call 471 ms. The browser path is
 therefore a compatibility path, not a real-time Python stream transport. The
-native translation median comprises about 0.409 ms upload, 0.255 ms command
-encoding, and 9.500 ms combined GPU execution plus readback, within a 10.516 ms
-internal total.
+current native timing contract separates input normalization, direct texture
+upload, command encoding, queue submission, blocking completion wait,
+mapped-buffer copy, and NumPy result construction. For a synchronous
+translation call in a four-run sequence campaign, representative medians were
+0.019, 0.694, 0.449, 0.096, 8.703, 0.145, and 0.339 ms,
+respectively. The completion wait is host blocking time, not an isolated GPU
+timestamp.
 
 Reproduce this campaign with:
 
@@ -126,6 +131,69 @@ Reproduce this campaign with:
    python benchmarks/benchmark_image_to_field.py \
      --width 3840 --height 2160 --frames 12 --warmups 3 \
      --motion-model translation
+
+Native full-pyramid bounded stream
+----------------------------------
+
+``ICGNWGPUFullPyramid.register_stream`` allocates independent target textures,
+pyramid reductions, solver states, transferred seeds, and final readbacks for
+each in-flight slot. Immutable reference data and pipelines remain shared.
+The input is uploaded directly from the contiguous NumPy buffer; no PNG,
+browser, DevTools, or JSON conversion is involved.
+
+The following campaign used four runs, each with eight warm-ups and 50 changing
+UHD frames. The table reports the median campaign. Result age starts when the
+iterator accepts a NumPy frame and ends after its complete NumPy field and
+statistics have been constructed. Stream period is total wall-clock duration
+divided by 50; it is the correct sustained-throughput metric even when
+completed results arrive in short bursts.
+
+.. list-table:: Native two-level full-pyramid stream trade-off
+   :header-rows: 1
+
+   * - Model and targets in flight
+     - Median / p95 result age
+     - Stream period
+     - Throughput
+   * - Affine, depth 1
+     - **11.478 / 12.400 ms**
+     - 11.561 ms
+     - 86.53 FPS
+   * - Affine, depth 2
+     - 21.408 / 22.644 ms
+     - **10.735 ms**
+     - **93.16 FPS**
+   * - Affine, depth 3
+     - 31.894 / 39.452 ms
+     - 10.530 ms
+     - 94.97 FPS
+   * - Translation, depth 1
+     - **10.331 / 11.164 ms**
+     - 10.373 ms
+     - 96.42 FPS
+   * - Translation, depth 2
+     - 18.888 / 19.827 ms
+     - **9.474 ms**
+     - **105.58 FPS**
+   * - Translation, depth 3
+     - 29.705 / 35.718 ms
+     - 9.420 ms
+     - 106.16 FPS
+
+Depth one remains the low-age choice. Depth two is the recommended
+throughput/latency compromise: it gains 7.7% affine throughput and 9.5%
+translation throughput over depth one, while approximately doubling result
+age. A third slot adds only 1.8 FPS in affine mode and 0.6 FPS in translation
+mode while increasing median age beyond 32 ms.
+
+Reproduce one row with:
+
+.. code-block:: bash
+
+   python benchmarks/benchmark_image_to_field.py \
+     --backend native-pyramid --width 3840 --height 2160 \
+     --campaigns 4 --frames 50 --warmups 8 --pipeline-depth 2 \
+     --motion-model affine
 
 Diagnostic repeated-target and kernel results
 ---------------------------------------------
@@ -311,7 +379,7 @@ Kernel configuration represented by the results
 
 The opt-in GPU tests validate partial FIR tiles, exact integer pyramid
 reduction, fresh seeded state, selective-retry neighbour preservation, and the
-translation-only fractional-displacement contract. All 78 tests pass when GPU
+translation-only fractional-displacement contract. All 80 tests pass when GPU
 execution is enabled.
 
 Timing boundaries

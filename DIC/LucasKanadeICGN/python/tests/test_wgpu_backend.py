@@ -267,23 +267,28 @@ class NativeReferenceTests(unittest.TestCase):
 
     def test_sequence_apis_default_to_two_images_in_flight(self) -> None:
         self.assertEqual(DEFAULT_IN_FLIGHT_FRAMES, 2)
-        for method in (ICGNWGPU.register_stream, ICGNWGPU.register_many):
+        for method in (
+            ICGNWGPU.register_stream,
+            ICGNWGPU.register_many,
+            ICGNWGPUFullPyramid.register_stream,
+        ):
             with self.subTest(method=method.__name__):
                 default = signature(method).parameters["pipeline_depth"].default
                 self.assertEqual(default, DEFAULT_IN_FLIGHT_FRAMES)
 
     def test_pipeline_depth_is_a_positive_integer(self) -> None:
-        engine = object.__new__(ICGNWGPU)
-        engine._reference_ready = True
-        for depth in (0, -1, 1.5, True):
-            with (
-                self.subTest(depth=depth),
-                self.assertRaisesRegex(
-                    ValueError,
-                    "pipeline_depth",
-                ),
-            ):
-                next(engine.register_stream((), pipeline_depth=depth))
+        for engine_type in (ICGNWGPU, ICGNWGPUFullPyramid):
+            engine = object.__new__(engine_type)
+            engine._reference_ready = True
+            for depth in (0, -1, 1.5, True):
+                with (
+                    self.subTest(engine=engine_type.__name__, depth=depth),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        "pipeline_depth",
+                    ),
+                ):
+                    next(engine.register_stream((), pipeline_depth=depth))
 
     def test_stream_retains_recovery_frame_when_input_buffer_is_reused(self) -> None:
         engine = object.__new__(ICGNWGPU)

@@ -12,6 +12,8 @@ from __future__ import annotations
 import operator
 import struct
 import time
+from collections import deque
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from importlib.resources import files
 from typing import Any
@@ -19,7 +21,12 @@ from typing import Any
 from .engine import ICGNError, ImageInput, ReferenceInfo, RegistrationResult, _as_uint8_gray
 from .interpolation import normalize_interpolation
 from .motion import normalize_motion_model
-from .wgpu_backend import ICGNWGPU, _reduce_half, _validated_config
+from .wgpu_backend import (
+    DEFAULT_IN_FLIGHT_FRAMES,
+    ICGNWGPU,
+    _reduce_half,
+    _validated_config,
+)
 
 DEFAULT_FULL_PYRAMID_LEVELS = 2
 # Extra scales improve the seed, so the default three-level path can use
@@ -52,6 +59,27 @@ class _SeedEdge:
     destination_count: int
     config: Any
     bind_group: Any
+
+
+@dataclass(slots=True)
+class _FullPyramidSlot:
+    """All mutable GPU resources required by one in-flight target."""
+
+    level_slots: tuple[Any, ...]
+    reduction_edges: list[_ReductionEdge]
+    seed_edges: dict[int, _SeedEdge]
+
+
+@dataclass(slots=True)
+class _PendingFullPyramidRegistration:
+    """One submitted target awaiting its final readback."""
+
+    slot: _FullPyramidSlot
+    accepted_at: float
+    input_preparation_wall_ms: float
+    upload_wall_ms: float
+    encoding_wall_ms: float
+    submission_wall_ms: float
 
 
 def _level_count(value: int) -> int:
@@ -144,6 +172,7 @@ class ICGNWGPUFullPyramid:
         self._levels: list[ICGNWGPU] = [self._root]
         self._reduction_edges: list[_ReductionEdge] = []
         self._seed_edges: dict[int, _SeedEdge] = {}
+        self._full_slots: list[_FullPyramidSlot] = []
         self._reference_ready = False
         self._zncc_min = 0.8
         self._create_orchestration_pipelines()
@@ -253,19 +282,28 @@ class ICGNWGPUFullPyramid:
         }
 
     def _clear_level_resources(self) -> None:
-        for edge in self._reduction_edges:
-            edge.intermediate.destroy()
+        for slot in self._full_slots:
+            for edge in slot.reduction_edges:
+                edge.intermediate.destroy()
+            for edge in slot.seed_edges.values():
+                edge.config.destroy()
+        self._full_slots.clear()
         self._reduction_edges.clear()
-        for edge in self._seed_edges.values():
-            edge.config.destroy()
         self._seed_edges.clear()
         for level in self._levels[1:]:
             level.close()
         self._levels = [self._root]
 
-    def _build_reduction_edges(self) -> None:
+    def _create_reduction_edges(self, level_slots: tuple[Any, ...]) -> list[_ReductionEdge]:
         wgpu = self._wgpu
-        for source, destination in zip(self._levels[:-1], self._levels[1:], strict=True):
+        edges: list[_ReductionEdge] = []
+        for source, destination, source_slot, destination_slot in zip(
+            self._levels[:-1],
+            self._levels[1:],
+            level_slots[:-1],
+            level_slots[1:],
+            strict=True,
+        ):
             intermediate = self.device.create_texture(
                 size=(destination.width, source.height, 1),
                 usage=wgpu.TextureUsage.STORAGE_BINDING | wgpu.TextureUsage.TEXTURE_BINDING,
@@ -277,7 +315,7 @@ class ICGNWGPUFullPyramid:
             horizontal = self.device.create_bind_group(
                 layout=self._reduce_x_layout,
                 entries=[
-                    {"binding": 0, "resource": source._source_texture.create_view()},
+                    {"binding": 0, "resource": source_slot.source_texture.create_view()},
                     {"binding": 1, "resource": intermediate.create_view()},
                 ],
             )
@@ -285,10 +323,10 @@ class ICGNWGPUFullPyramid:
                 layout=self._reduce_y_layout,
                 entries=[
                     {"binding": 0, "resource": intermediate.create_view()},
-                    {"binding": 1, "resource": destination._source_texture.create_view()},
+                    {"binding": 1, "resource": destination_slot.source_texture.create_view()},
                 ],
             )
-            self._reduction_edges.append(
+            edges.append(
                 _ReductionEdge(
                     destination_width=destination.width,
                     destination_height=destination.height,
@@ -298,16 +336,19 @@ class ICGNWGPUFullPyramid:
                     vertical_bind_group=vertical,
                 )
             )
+        return edges
 
-    def _build_seed_edges(self) -> None:
+    def _create_seed_edges(self, level_slots: tuple[Any, ...]) -> dict[int, _SeedEdge]:
         wgpu = self._wgpu
+        edges: dict[int, _SeedEdge] = {}
         # Internal levels are ordered fine-to-coarse.  Each edge is keyed by
         # its finer destination index.
         for destination_index in range(self.pyramid_levels - 2, -1, -1):
             destination = self._levels[destination_index]
             source = self._levels[destination_index + 1]
-            destination._ensure_seed_resources(destination._pipeline_slots[0])
-            slot = destination._pipeline_slots[0]
+            destination_slot = level_slots[destination_index]
+            source_slot = level_slots[destination_index + 1]
+            destination._ensure_seed_resources(destination_slot)
             source_scale = float(1 << (destination_index + 1))
             destination_scale = float(1 << destination_index)
             packed = struct.pack(
@@ -328,17 +369,35 @@ class ICGNWGPUFullPyramid:
             bind_group = self.device.create_bind_group(
                 layout=self._seed_layout,
                 entries=[
-                    self._buffer_resource(0, source._pipeline_slots[0].buffers["filtered_state"]),
-                    self._buffer_resource(1, slot.buffers["seed_state"]),
-                    self._buffer_resource(2, slot.buffers["active_mask"]),
+                    self._buffer_resource(0, source_slot.buffers["filtered_state"]),
+                    self._buffer_resource(1, destination_slot.buffers["seed_state"]),
+                    self._buffer_resource(2, destination_slot.buffers["active_mask"]),
                     self._buffer_resource(3, config),
                 ],
             )
-            self._seed_edges[destination_index] = _SeedEdge(
+            edges[destination_index] = _SeedEdge(
                 destination_count=destination.grid_width * destination.grid_height,
                 config=config,
                 bind_group=bind_group,
             )
+        return edges
+
+    def _create_full_slot(self, slot_index: int) -> _FullPyramidSlot:
+        level_slots = tuple(level._pipeline_slots[slot_index] for level in self._levels)
+        return _FullPyramidSlot(
+            level_slots=level_slots,
+            reduction_edges=self._create_reduction_edges(level_slots),
+            seed_edges=self._create_seed_edges(level_slots),
+        )
+
+    def _ensure_full_slots(self, depth: int) -> list[_FullPyramidSlot]:
+        if depth < 1:
+            raise ValueError("pipeline_depth must be at least 1")
+        for level in self._levels:
+            level._ensure_pipeline_slots(depth)
+        while len(self._full_slots) < depth:
+            self._full_slots.append(self._create_full_slot(len(self._full_slots)))
+        return self._full_slots[:depth]
 
     def set_reference(
         self,
@@ -405,8 +464,12 @@ class ICGNWGPUFullPyramid:
             if level_index:
                 self._levels.append(engine)
 
-        self._build_reduction_edges()
-        self._build_seed_edges()
+        first_slot = self._create_full_slot(0)
+        self._full_slots = [first_slot]
+        # Preserve the private aliases used by the existing GPU regression
+        # tests and by downstream diagnostic code.
+        self._reduction_edges = first_slot.reduction_edges
+        self._seed_edges = first_slot.seed_edges
         self._reference_ready = True
         total_wall_ms = (time.perf_counter() - started) * 1_000.0
         fine = self._root
@@ -428,8 +491,8 @@ class ICGNWGPUFullPyramid:
             subset_size=16,
         )
 
-    def _encode_reductions(self, encoder: Any) -> None:
-        for edge in self._reduction_edges:
+    def _encode_reductions(self, encoder: Any, edges: list[_ReductionEdge]) -> None:
+        for edge in edges:
             compute_pass = encoder.begin_compute_pass()
             compute_pass.set_pipeline(self._reduce_x_pipeline)
             compute_pass.set_bind_group(0, edge.horizontal_bind_group)
@@ -449,21 +512,13 @@ class ICGNWGPUFullPyramid:
             )
             compute_pass.end()
 
-    def register(self, target: ImageInput) -> RegistrationResult:
-        """Register one target with one upload, submission, and final readback."""
-
-        if not self._reference_ready:
-            raise ICGNError("Call set_reference() before register().")
-        total_started = time.perf_counter()
-        frame = self._root._prepare_target(target)
-        upload_wall_ms = self._root._upload_frame(self._root._pipeline_slots[0], frame)
-
+    def _encode_slot(self, slot: _FullPyramidSlot) -> tuple[Any, float]:
         encode_started = time.perf_counter()
         encoder = self.device.create_command_encoder(label="DIC-RT full pyramid registration")
-        self._encode_reductions(encoder)
+        self._encode_reductions(encoder, slot.reduction_edges)
         coarsest_index = self.pyramid_levels - 1
         coarsest = self._levels[coarsest_index]
-        coarsest_slot = coarsest._pipeline_slots[0]
+        coarsest_slot = slot.level_slots[coarsest_index]
         coarsest._encode_registration_passes(
             encoder,
             coarsest_slot,
@@ -471,21 +526,21 @@ class ICGNWGPUFullPyramid:
             solver_bind_group=coarsest_slot.bind_group,
         )
         for destination_index in range(coarsest_index - 1, -1, -1):
-            seed_edge = self._seed_edges[destination_index]
+            seed_edge = slot.seed_edges[destination_index]
             compute_pass = encoder.begin_compute_pass()
             compute_pass.set_pipeline(self._seed_pipeline)
             compute_pass.set_bind_group(2, seed_edge.bind_group)
             compute_pass.dispatch_workgroups((seed_edge.destination_count + 255) // 256, 1, 1)
             compute_pass.end()
             destination = self._levels[destination_index]
-            slot = destination._pipeline_slots[0]
+            destination_slot = slot.level_slots[destination_index]
             destination._encode_registration_passes(
                 encoder,
-                slot,
+                destination_slot,
                 destination._seeded_solver,
-                solver_bind_group=slot.seeded_bind_group,
+                solver_bind_group=destination_slot.seeded_bind_group,
             )
-        fine_slot = self._root._pipeline_slots[0]
+        fine_slot = slot.level_slots[0]
         encoder.copy_buffer_to_buffer(
             fine_slot.buffers["filtered_state"],
             0,
@@ -495,29 +550,138 @@ class ICGNWGPUFullPyramid:
         )
         command = encoder.finish()
         encoding_wall_ms = (time.perf_counter() - encode_started) * 1_000.0
+        return command, encoding_wall_ms
 
-        execution_started = time.perf_counter()
+    def _submit_slot(
+        self,
+        slot: _FullPyramidSlot,
+        frame: Any,
+        *,
+        accepted_at: float,
+        input_preparation_wall_ms: float,
+    ) -> _PendingFullPyramidRegistration:
+        upload_wall_ms = self._root._upload_frame(slot.level_slots[0], frame)
+        command, encoding_wall_ms = self._encode_slot(slot)
+        submission_started = time.perf_counter()
         self.device.queue.submit([command])
+        submission_wall_ms = (time.perf_counter() - submission_started) * 1_000.0
+        return _PendingFullPyramidRegistration(
+            slot=slot,
+            accepted_at=accepted_at,
+            input_preparation_wall_ms=input_preparation_wall_ms,
+            upload_wall_ms=upload_wall_ms,
+            encoding_wall_ms=encoding_wall_ms,
+            submission_wall_ms=submission_wall_ms,
+        )
+
+    def _retire_slot(self, pending: _PendingFullPyramidRegistration) -> RegistrationResult:
+        fine_slot = pending.slot.level_slots[0]
+        wait_started = time.perf_counter()
         fine_slot.readback.map_sync(self._wgpu.MapMode.READ)
+        completion_wait_wall_ms = (time.perf_counter() - wait_started) * 1_000.0
+        copy_started = time.perf_counter()
         raw = fine_slot.readback.read_mapped(copy=True)
         fine_slot.readback.unmap()
-        execution_readback_wall_ms = (time.perf_counter() - execution_started) * 1_000.0
+        readback_copy_wall_ms = (time.perf_counter() - copy_started) * 1_000.0
+        pipeline_latency_wall_ms = (time.perf_counter() - pending.accepted_at) * 1_000.0
+        result_started = time.perf_counter()
+        execute_readback_wall_ms = (
+            pending.submission_wall_ms + completion_wait_wall_ms + readback_copy_wall_ms
+        )
         result = self._root._result_from_raw(
             raw,
             timing={
-                "uploadWallMs": upload_wall_ms,
-                "encodingWallMs": encoding_wall_ms,
-                "executeReadbackWallMs": execution_readback_wall_ms,
+                "inputPreparationWallMs": pending.input_preparation_wall_ms,
+                "uploadWallMs": pending.upload_wall_ms,
+                "encodingWallMs": pending.encoding_wall_ms,
+                "submissionWallMs": pending.submission_wall_ms,
+                "completionWaitWallMs": completion_wait_wall_ms,
+                "readbackCopyWallMs": readback_copy_wall_ms,
+                "executeReadbackWallMs": execute_readback_wall_ms,
+                "pipelineLatencyWallMs": pipeline_latency_wall_ms,
                 "pyramidLevels": float(self.pyramid_levels),
                 "queueSubmissions": 1.0,
             },
             config=self._root._config,
         )
+        result_build_wall_ms = (time.perf_counter() - result_started) * 1_000.0
+        total_wall_ms = (time.perf_counter() - pending.accepted_at) * 1_000.0
         result.timing = {
             **result.timing,
-            "totalWallMs": (time.perf_counter() - total_started) * 1_000.0,
+            "resultBuildWallMs": result_build_wall_ms,
+            "resultAgeWallMs": total_wall_ms,
+            "totalWallMs": total_wall_ms,
         }
         return result
+
+    def register(self, target: ImageInput) -> RegistrationResult:
+        """Register one target with one upload, submission, and final readback."""
+
+        if not self._reference_ready:
+            raise ICGNError("Call set_reference() before register().")
+        accepted_at = time.perf_counter()
+        preparation_started = time.perf_counter()
+        frame = self._root._prepare_target(target)
+        input_preparation_wall_ms = (time.perf_counter() - preparation_started) * 1_000.0
+        pending = self._submit_slot(
+            self._full_slots[0],
+            frame,
+            accepted_at=accepted_at,
+            input_preparation_wall_ms=input_preparation_wall_ms,
+        )
+        return self._retire_slot(pending)
+
+    def register_stream(
+        self,
+        targets: Iterable[ImageInput],
+        *,
+        pipeline_depth: int = DEFAULT_IN_FLIGHT_FRAMES,
+    ) -> Iterator[RegistrationResult]:
+        """Register an ordered stream with bounded full-pyramid work in flight.
+
+        ``pipeline_depth`` limits independent target pyramids that may be
+        queued concurrently. Results remain in input order. Increasing it can
+        improve steady-state throughput, but also increases result age and GPU
+        memory use; it is unrelated to :attr:`pyramid_levels`.
+        """
+
+        if not self._reference_ready:
+            raise ICGNError("Call set_reference() before register_stream().")
+        try:
+            depth = operator.index(pipeline_depth)
+        except TypeError as error:
+            raise ValueError("pipeline_depth must be a positive integer") from error
+        if isinstance(pipeline_depth, bool) or depth < 1:
+            raise ValueError("pipeline_depth must be a positive integer")
+
+        slots = self._ensure_full_slots(depth)
+        available = deque(slots)
+        pending: deque[_PendingFullPyramidRegistration] = deque()
+        for target in targets:
+            if not available:
+                completed = pending.popleft()
+                result = self._retire_slot(completed)
+                available.append(completed.slot)
+                yield result
+            slot = available.popleft()
+            accepted_at = time.perf_counter()
+            preparation_started = time.perf_counter()
+            frame = self._root._prepare_target(target)
+            preparation_wall_ms = (time.perf_counter() - preparation_started) * 1_000.0
+            pending.append(
+                self._submit_slot(
+                    slot,
+                    frame,
+                    accepted_at=accepted_at,
+                    input_preparation_wall_ms=preparation_wall_ms,
+                )
+            )
+
+        while pending:
+            completed = pending.popleft()
+            result = self._retire_slot(completed)
+            available.append(completed.slot)
+            yield result
 
     def close(self) -> None:
         self._reference_ready = False

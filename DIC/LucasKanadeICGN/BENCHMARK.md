@@ -15,8 +15,9 @@ when a kernel, driver, browser, or measurement boundary changes.
   graph in Chromium.
 - `ICGNWebGL()` remains the default browser entry point and uses the optimized
   Three.js/TSL single-scale solver with automatic WebGL2 fallback.
-- `ICGNWGPU()` is the native single-scale and bounded-streaming engine. Its
-  optional selective recovery is not the normal pyramid path.
+- Both native engines expose bounded streaming. `ICGNWGPU()` is the
+  single-scale engine; its optional selective recovery is not the normal
+  pyramid path.
 - GPU-IO is deprecated and has no current performance row.
 
 ## Validation machine
@@ -64,9 +65,10 @@ complete Python call measured 471 ms. This path is functional and useful for
 compatibility, but it is not a real-time Python streaming transport.
 
 The native path uploads the NumPy bytes directly to an `r8unorm` texture and
-reads one packed result buffer. In translation mode its median components were
-0.409 ms upload, 0.255 ms command encoding, and 9.500 ms combined execution
-plus readback, within a 10.516 ms internal total.
+reads one packed result buffer. The current timing contract separately reports
+input normalization, upload, encoding, queue submission, host completion wait,
+mapped-buffer copy, and NumPy result construction. The completion wait is not
+an isolated GPU timestamp.
 
 Reproduce this boundary with:
 
@@ -75,6 +77,41 @@ PYTHONPATH=DIC/LucasKanadeICGN/python/src \
   python3 DIC/LucasKanadeICGN/benchmarks/benchmark_image_to_field.py \
   --width 3840 --height 2160 --frames 12 --warmups 3 \
   --motion-model translation
+```
+
+## Native full-pyramid bounded stream
+
+`ICGNWGPUFullPyramid.register_stream()` keeps all mutable resources independent
+for every in-flight target: target textures, pyramid reductions, solver states,
+coarse-to-fine seed buffers, and final readbacks. Reference data and compiled
+pipelines remain shared. Contiguous NumPy bytes are uploaded directly; this
+path contains no PNG, Chromium, DevTools, or JSON conversion.
+
+The current campaign used four runs, each with eight warm-ups and 50 changing
+UHD frames. The table reports the median campaign. Result age starts when the
+iterator accepts an image and ends after the complete NumPy field and
+statistics exist. Stream period is total wall time divided by 50.
+
+| Model and targets in flight | Median / p95 result age | Stream period | Throughput |
+|---|---:|---:|---:|
+| Affine, depth 1 | **11.478 / 12.400 ms** | 11.561 ms | 86.53 FPS |
+| Affine, depth 2 | 21.408 / 22.644 ms | **10.735 ms** | **93.16 FPS** |
+| Affine, depth 3 | 31.894 / 39.452 ms | 10.530 ms | 94.97 FPS |
+| Translation, depth 1 | **10.331 / 11.164 ms** | 10.373 ms | 96.42 FPS |
+| Translation, depth 2 | 18.888 / 19.827 ms | **9.474 ms** | **105.58 FPS** |
+| Translation, depth 3 | 29.705 / 35.718 ms | 9.420 ms | 106.16 FPS |
+
+Depth one minimizes result age. Depth two is the recommended throughput
+setting: it gains 7.7% affine throughput and 9.5% translation throughput while
+approximately doubling result age. The third slot adds little throughput and
+raises median age beyond 32 ms.
+
+```console
+PYTHONPATH=DIC/LucasKanadeICGN/python/src \
+  python3 DIC/LucasKanadeICGN/benchmarks/benchmark_image_to_field.py \
+  --backend native-pyramid --width 3840 --height 2160 \
+  --campaigns 4 --frames 50 --warmups 8 \
+  --pipeline-depth 2 --motion-model affine
 ```
 
 ## Diagnostic UHD kernel audit
@@ -160,7 +197,7 @@ depth is unrelated to image-pyramid depth.
 
 The opt-in GPU regressions validate partial FIR tiles, exact integer pyramid
 reduction, fresh seeded state, selective-retry neighbour preservation, and the
-translation-only fractional-displacement contract. All 78 tests pass when GPU
+translation-only fractional-displacement contract. All 80 tests pass when GPU
 execution is enabled.
 
 ## Reproduce the current measurements
