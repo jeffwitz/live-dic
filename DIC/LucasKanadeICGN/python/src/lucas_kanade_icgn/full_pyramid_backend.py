@@ -21,6 +21,7 @@ from typing import Any
 from .engine import ICGNError, ImageInput, ReferenceInfo, RegistrationResult, _as_uint8_gray
 from .interpolation import normalize_interpolation
 from .motion import normalize_motion_model
+from .subset import DEFAULT_SUBSET_SIZE, normalize_subset_size
 from .wgpu_backend import (
     DEFAULT_IN_FLIGHT_FRAMES,
     ICGNWGPU,
@@ -118,7 +119,8 @@ class ICGNWGPUFullPyramid:
     prefilters, solves, seed transfers, and median filters stay on one WebGPU
     device and are encoded into one command buffer. ``linear`` and ``cubic``
     interpolation omit the per-level prefilters; ``bspline`` remains the
-    compatibility default.
+    compatibility default. ``subset_size`` selects an 8, 16, or 32 pixel
+    square and also sets the field spacing.
     """
 
     def __init__(
@@ -130,9 +132,11 @@ class ICGNWGPUFullPyramid:
         power_preference: str = "high-performance",
         interpolation: str = "bspline",
         motion_model: str = "affine",
+        subset_size: int = DEFAULT_SUBSET_SIZE,
     ) -> None:
         self.interpolation = normalize_interpolation(interpolation)
         self.motion_model = normalize_motion_model(motion_model)
+        self.subset_size = normalize_subset_size(subset_size)
         self.pyramid_levels = _level_count(pyramid_levels)
         iteration_values = _schedule(
             iterations_per_level,
@@ -164,6 +168,7 @@ class ICGNWGPUFullPyramid:
             pyramid_levels=1,
             interpolation=self.interpolation,
             motion_model=self.motion_model,
+            subset_size=self.subset_size,
         )
         self._root._ensure_seeded_solver()
         self._wgpu = self._root._wgpu
@@ -271,7 +276,11 @@ class ICGNWGPUFullPyramid:
         )
         self._seed_pipeline = self.device.create_compute_pipeline(
             layout=seed_pipeline_layout,
-            compute={"module": shader, "entry_point": "transfer_seed"},
+            compute={
+                "module": shader,
+                "entry_point": "transfer_seed",
+                "constants": {"SUBSET_SIZE": self.subset_size},
+            },
         )
 
     @staticmethod
@@ -488,7 +497,7 @@ class ICGNWGPUFullPyramid:
             grid=(fine.grid_width, fine.grid_height),
             width=fine.width,
             height=fine.height,
-            subset_size=16,
+            subset_size=self.subset_size,
         )
 
     def _encode_reductions(self, encoder: Any, edges: list[_ReductionEdge]) -> None:

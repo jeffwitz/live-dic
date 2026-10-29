@@ -100,7 +100,7 @@ sample the uploaded target directly and skip both FIR passes. Three.js runs up
 to 30 affine IC-GN iterations inside
 one compute dispatch and fills the measured subgroup when available (32 lanes
 on the validation GPU); its portable fallback uses 16 lanes. GPU-IO fuses the
-same iteration loop into one fragment per subset and scans the 16 x 16 tile
+same iteration loop into one fragment per subset and scans the selected square
 serially. Raw browser WebGPU and native wgpu-py load the same WGSL solver, with
 one 16-lane workgroup per subset and the same fused iteration structure. In
 every case, converged or rejected subsets stop expensive target sampling. A

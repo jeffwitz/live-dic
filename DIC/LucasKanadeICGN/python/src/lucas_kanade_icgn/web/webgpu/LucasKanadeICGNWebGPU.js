@@ -13,7 +13,11 @@ import {
   reduceHalfGray,
 } from '../common/ReferencePreparation.js';
 
-const SUBSET_SIZE = 16;
+const URL_PARAMETERS = new URLSearchParams(window.location.search);
+const SUBSET_SIZE = Number(URL_PARAMETERS.get('subsetSize') ?? 16);
+if (![8, 16, 32].includes(SUBSET_SIZE)) {
+  throw new Error('subsetSize must be 8, 16, or 32');
+}
 const DEFAULT_MAX_ITERATIONS = 30;
 const DEFAULT_TOLERANCE = 1e-3;
 const DEFAULT_ZNCC_MIN = 0.8;
@@ -305,6 +309,7 @@ const createRuntime = async (width, height) => {
     const constants = {
       INTERPOLATION_MODE: constant,
       MOTION_MODEL: configuration.motionModel === 'translation' ? 1 : 0,
+      SUBSET_SIZE,
     };
     solvers[mode] = await pipeline(
       `DIC-RT shared ${mode} affine solver`, 'solve', shaderModule, layout, constants,
@@ -343,7 +348,10 @@ const createRuntime = async (width, height) => {
     prefilterYSafe,
     solvers,
     seededSolvers,
-    median: await pipeline('DIC-RT shared median filter', 'median_filter'),
+    median: await pipeline(
+      'DIC-RT shared median filter', 'median_filter', shaderModule, layout,
+      { SUBSET_SIZE },
+    ),
     reduceX: await pipeline(
       'DIC-RT pyramid reduce X', 'reduce_x', pyramidShaderModule, reduceXLayout,
     ),
@@ -352,6 +360,7 @@ const createRuntime = async (width, height) => {
     ),
     transferSeed: await pipeline(
       'DIC-RT pyramid seed transfer', 'transfer_seed', pyramidShaderModule, seedLayout,
+      { SUBSET_SIZE },
     ),
   };
 
@@ -717,7 +726,7 @@ const executePipeline = async ({ measureGpu = false } = {}) => {
           : pipelines.solvers[configuration.interpolation],
         bindGroup: seeded ? level.seededBindGroup : level.bindGroup,
         group: 0,
-        workgroups: [level.gridCount, 1, 1],
+        workgroups: [level.gridWidth, level.gridHeight, 1],
       },
       {
         pipeline: pipelines.median,

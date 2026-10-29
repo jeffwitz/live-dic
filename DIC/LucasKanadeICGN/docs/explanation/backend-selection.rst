@@ -94,7 +94,8 @@ Execution mappings are independent of pyramid depth
 Three separate sizes appear in the implementation and should not be
 conflated:
 
-* a numerical subset is always 16 x 16 pixels;
+* a numerical subset is 8 x 8, 16 x 16, or 32 x 32 pixels, with 16 x 16 as
+  the default and published-performance geometry;
 * the shared-WGSL FIR uses 32 x 8 horizontal and 8 x 32 vertical output
   tiles, each executed by 256 threads;
 * the portable IC-GN solver uses one 16-lane workgroup per subset, while the
@@ -102,6 +103,7 @@ conflated:
   the validation GPU).
 
 The full-pyramid reduction passes use 16 x 16 dispatch groups, and affine seed
-transfer and median filtering use 256-thread one-dimensional groups.  These
-are scheduling choices for different kernels, not alternative subset sizes.
+transfer and median filtering use 256-thread one-dimensional groups. These
+dispatch dimensions are scheduling choices and do not change with
+``subset_size``. See :doc:`subset-size` for the numerical geometry.
 See :doc:`gpu-optimization` for the detailed memory-access diagrams.

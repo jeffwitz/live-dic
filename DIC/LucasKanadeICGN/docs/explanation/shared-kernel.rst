@@ -85,10 +85,10 @@ Numerical contract
 Geometry
 ~~~~~~~~
 
-* subset size: 16 x 16 pixels;
-* grid dimensions: ``floor(width / 16)`` by ``floor(height / 16)``;
-* subset centre: ``(8 + 16 gx, 8 + 16 gy)``;
-* local coordinates: ``[-7.5, 7.5]`` on each axis;
+* subset width ``S``: 8, 16, or 32 pixels, default 16;
+* grid dimensions: ``floor(width / S)`` by ``floor(height / S)``;
+* subset centre: ``(S/2 + S gx, S/2 + S gy)``;
+* local coordinates: ``[-(S-1)/2, +(S-1)/2]`` on each axis;
 * affine parameter order: ``[tx, du/dx, du/dy, ty, dv/dx, dv/dy]``.
 
 The translation model retains this layout but only indices 0 and 3 are active;
@@ -174,7 +174,7 @@ The WGSL file separates the algorithm into ordinary functions:
 
 The portable solve entry point retains the GPU-specific organization: one
 16-lane workgroup owns one subset and reduces three packed partial-sum vectors.
-A
+Each lane processes 4, 16, or 64 pixels for ``S=8``, ``16``, or ``32``. A
 ``workgroupUniformLoad`` makes the convergence decision uniform, so completed
 subsets leave the iteration loop without violating barrier uniformity.
 

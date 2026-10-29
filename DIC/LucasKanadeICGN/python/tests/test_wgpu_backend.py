@@ -124,6 +124,31 @@ class NativeReferenceTests(unittest.TestCase):
         self.assertEqual(default, DEFAULT_PYRAMID_LEVELS)
         self.assertEqual(default, 1)
 
+    def test_subset_size_is_validated_before_gpu_creation(self) -> None:
+        for engine_type in (ICGNWGPU, ICGNWGPUFullPyramid):
+            for value in (7, 12, 64, True, 16.0):
+                with (
+                    self.subTest(engine=engine_type.__name__, value=value),
+                    self.assertRaisesRegex(ValueError, "subset_size"),
+                ):
+                    engine_type(subset_size=value)
+
+    def test_reference_layout_supports_all_subset_sizes(self) -> None:
+        image = np.arange(64 * 96, dtype=np.uint8).reshape(64, 96)
+        for subset_size in (8, 16, 32):
+            with self.subTest(subset_size=subset_size):
+                reference, inverse, metadata = _reference_arrays(
+                    image,
+                    subset_size=subset_size,
+                )
+                grid_count = (96 // subset_size) * (64 // subset_size)
+                self.assertEqual(reference.shape, (64 * 96 * 4,))
+                self.assertEqual(inverse.shape, (grid_count * 36,))
+                self.assertEqual(metadata.shape, (grid_count * 16,))
+                self.assertTrue(np.isfinite(reference).all())
+                self.assertTrue(np.isfinite(inverse).all())
+                self.assertTrue(np.isfinite(metadata).all())
+
     def test_pyramid_level_count_is_validated_before_gpu_creation(self) -> None:
         for levels in (0, 4, 1.5, True):
             with (
@@ -305,6 +330,7 @@ class NativeReferenceTests(unittest.TestCase):
 
     def test_invalid_reference_configuration_preserves_prepared_state(self) -> None:
         engine = object.__new__(ICGNWGPU)
+        engine.subset_size = 16
         engine.height = 64
         engine.width = 64
         engine.grid_height = 4

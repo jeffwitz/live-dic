@@ -103,6 +103,21 @@ with ICGNWGPUFullPyramid(interpolation="linear") as engine:
     result = engine.register(target)
 ```
 
+The square subset width can be selected at engine construction. It also sets
+the result-grid spacing; 16 remains the qualified default:
+
+```python
+with ICGNWGPUFullPyramid(subset_size=32) as engine:
+    info = engine.set_reference(reference)
+    result = engine.register(target)
+
+assert info.subset_size == 32
+```
+
+The supported values are 8, 16, and 32. Non-default native sizes use the
+portable WGSL solver because the optional subgroup SPIR-V binary is specialized
+for 16 x 16 subsets.
+
 The choices are `"bspline"` (historical default), `"linear"`, and `"cubic"`
 (Keys cubic convolution). The two direct modes skip target FIR prefiltering.
 Changing the mode requires preparing the reference again. GPU-IO is deprecated

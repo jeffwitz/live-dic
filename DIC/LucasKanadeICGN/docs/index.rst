@@ -94,6 +94,7 @@ Choose the section that matches your task:
 * :doc:`explanation/interpolation` for the selectable B-spline, bilinear, and
   Keys-cubic target reconstruction paths;
 * :doc:`explanation/motion-models` for affine and translation-only solving;
+* :doc:`explanation/subset-size` for the 8, 16, and 32 pixel subset geometry;
 * :doc:`explanation/shared-kernel` for the common WGSL source and its exact
   host/buffer contract;
 * :doc:`explanation/native-backend` for the direct NumPy-to-WebGPU path and
@@ -104,8 +105,8 @@ Choose the section that matches your task:
 Current scope
 -------------
 
-The implementation currently provides a resolution-dependent grid of 16 x 16
-subsets, either six affine parameters or two translation parameters per subset,
+The implementation provides a resolution-dependent grid of configurable 8 x 8,
+16 x 16, or 32 x 32 subsets, either six affine parameters or two translation parameters per subset,
 selectable B-spline, bilinear, or
 Keys-cubic target interpolation, ZNCC validation, and median outlier
 replacement. The test dataset is offline;
@@ -155,6 +156,7 @@ path.
    explanation/icgn
    explanation/interpolation
    explanation/motion-models
+   explanation/subset-size
    explanation/gpu-optimization
    explanation/shared-kernel
    explanation/native-backend

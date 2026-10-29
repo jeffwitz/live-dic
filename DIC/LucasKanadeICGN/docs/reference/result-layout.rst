@@ -4,11 +4,12 @@ Result layout and status values
 Grid geometry
 -------------
 
-The frame is divided into ``floor(width / 16)`` by ``floor(height / 16)``
-subsets. Each grid point owns a 16 x 16 subset centered at coordinates
-``(8 + 16i, 8 + 16j)``. Border subsets that cannot support cubic interpolation
-are rejected. A 512 x 512 frame produces a 32 x 32 grid; a 3840 x 2160 frame
-produces a 240 x 135 grid.
+For ``subset_size=S``, the frame is divided into ``floor(width / S)`` by
+``floor(height / S)`` subsets. Each grid point owns an ``S x S`` subset
+centered at ``(S/2 + S*i, S/2 + S*j)``. Border subsets that cannot support the
+selected interpolation are rejected. With the default ``S=16``, a 512 x 512
+frame produces a 32 x 32 grid and a 3840 x 2160 frame produces a 240 x 135
+grid. See :doc:`../explanation/subset-size`.
 
 Affine parameters
 -----------------

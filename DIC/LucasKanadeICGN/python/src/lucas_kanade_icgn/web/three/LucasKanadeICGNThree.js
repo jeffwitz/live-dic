@@ -44,7 +44,11 @@ import {
 
 const DEFAULT_FRAME_WIDTH = 512;
 const DEFAULT_FRAME_HEIGHT = 512;
-const SUBSET_SIZE = 16;
+const URL_PARAMETERS = new URLSearchParams(window.location.search);
+const SUBSET_SIZE = Number(URL_PARAMETERS.get('subsetSize') ?? 16);
+if (![8, 16, 32].includes(SUBSET_SIZE)) {
+  throw new Error('subsetSize must be 8, 16, or 32');
+}
 const SUBSET_HALF_EXTENT = (SUBSET_SIZE - 1) / 2;
 const SUBSET_PIXELS = SUBSET_SIZE * SUBSET_SIZE;
 const SOLVER_LANES = 16;
@@ -55,7 +59,7 @@ const FIR_RADIUS = 15;
 const PREFILTER_TILE_SIZE = 16;
 const PREFILTER_TILE_STRIDE = PREFILTER_TILE_SIZE + 2 * FIR_RADIUS;
 const PREFILTER_TILE_PIXELS = PREFILTER_TILE_SIZE * PREFILTER_TILE_STRIDE;
-const FORCE_WEBGL = new URLSearchParams(window.location.search).get('forceWebGL') === '1';
+const FORCE_WEBGL = URL_PARAMETERS.get('forceWebGL') === '1';
 
 const configuration = {
   iterations: DEFAULT_MAX_ITERATIONS,
@@ -642,7 +646,7 @@ const makeSerialSolverKernel = () => Fn(() => {
  * continue through the barriers required by portable WGSL.
  */
 const makeFusedCooperativeSolverKernel = () => Fn(() => {
-  const subsetIndex = uint(workgroupId.x);
+  const subsetIndex = uint(workgroupId.y.mul(GRID_WIDTH).add(workgroupId.x));
   const lane = int(localId.x);
   const initialTranslation = translationNode.element(subsetIndex).toVar();
   const initialLinear = linearNode.element(subsetIndex).toVar();
@@ -707,26 +711,40 @@ const makeFusedCooperativeSolverKernel = () => Fn(() => {
     const active = state1.z.abs().lessThanEqual(0.5).and(inside.greaterThanEqual(0.5));
     If(active, () => {
       Loop({ start: int(0), end: int(SUBSET_SIZE), type: 'int', condition: '<', name: 'row' }, ({ row }) => {
-        const localX = float(lane).sub(SUBSET_HALF_EXTENT);
-        const localY = float(row).sub(SUBSET_HALF_EXTENT);
-        const displacement = displacementAt(oldTranslation, oldLinear, localX, localY);
-        const current = sampleTarget(center.sub(0.5).add(vec2(localX, localY)).add(displacement));
-        const templateIndex = uint(gridY.mul(SUBSET_SIZE).add(row).mul(FRAME_WIDTH)
-          .add(gridX.mul(SUBSET_SIZE)).add(lane));
-        const reference = referenceNode.element(templateIndex);
-        const jacobian = [
-          reference.y,
-          reference.y.mul(localX),
-          reference.y.mul(localY),
-          reference.z,
-          reference.z.mul(localX),
-          reference.z.mul(localY),
-        ];
-        sumCurrent.addAssign(current);
-        sumCurrent2.addAssign(current.mul(current));
-        sumReferenceCurrent.addAssign(reference.x.mul(current));
-        for (const component of activeMotionComponents()) {
-          sumJCurrent[component].addAssign(jacobian[component].mul(current));
+        const accumulateColumn = (column) => {
+          const localX = float(column).sub(SUBSET_HALF_EXTENT);
+          const localY = float(row).sub(SUBSET_HALF_EXTENT);
+          const displacement = displacementAt(oldTranslation, oldLinear, localX, localY);
+          const current = sampleTarget(
+            center.sub(0.5).add(vec2(localX, localY)).add(displacement),
+          );
+          const templateIndex = uint(gridY.mul(SUBSET_SIZE).add(row).mul(FRAME_WIDTH)
+            .add(gridX.mul(SUBSET_SIZE)).add(column));
+          const reference = referenceNode.element(templateIndex);
+          const jacobian = [
+            reference.y,
+            reference.y.mul(localX),
+            reference.y.mul(localY),
+            reference.z,
+            reference.z.mul(localX),
+            reference.z.mul(localY),
+          ];
+          sumCurrent.addAssign(current);
+          sumCurrent2.addAssign(current.mul(current));
+          sumReferenceCurrent.addAssign(reference.x.mul(current));
+          for (const component of activeMotionComponents()) {
+            sumJCurrent[component].addAssign(jacobian[component].mul(current));
+          }
+        };
+
+        if (SUBSET_SIZE === SOLVER_LANES) {
+          // Preserve the original generated graph for the default 16x16 path.
+          accumulateColumn(lane);
+        } else {
+          for (let offset = 0; offset < SUBSET_SIZE; offset += SOLVER_LANES) {
+            const column = lane.add(offset);
+            If(column.lessThan(SUBSET_SIZE), () => accumulateColumn(column));
+          }
         }
       });
     });
@@ -792,7 +810,7 @@ const makeFusedCooperativeSolverKernel = () => Fn(() => {
     linearNode.element(subsetIndex).assign(vec4(finalState0.z, finalState0.w, finalState1.x, finalState1.y));
     statusNode.element(subsetIndex).assign(vec2(finalState1.z, sharedIterations.element(int(0))));
   });
-})().compute(GRID_COUNT * SOLVER_LANES, [SOLVER_LANES])
+})().compute([GRID_WIDTH, GRID_HEIGHT, 1], [SOLVER_LANES, 1, 1])
   .setName('DIC-RT fused cooperative affine IC-GN solver');
 
 /**
@@ -806,7 +824,7 @@ const makeSubgroupSolverKernel = () => {
   const solverLanes = Math.min(subgroupProbeWidth, SUBSET_PIXELS);
   const pixelsPerLane = Math.ceil(SUBSET_PIXELS / solverLanes);
   return Fn(() => {
-  const subsetIndex = uint(workgroupId.x);
+  const subsetIndex = uint(workgroupId.y.mul(GRID_WIDTH).add(workgroupId.x));
   const lane = int(localId.x);
   If(subsetIndex.equal(0).and(lane.equal(0)), () => {
     // This value comes from the actual solver pipeline, not the lightweight
@@ -925,7 +943,7 @@ const makeSubgroupSolverKernel = () => {
     linearNode.element(subsetIndex).assign(currentLinear);
     statusNode.element(subsetIndex).assign(vec2(currentStatus, currentIterations));
   });
-  })().compute([GRID_COUNT, 1, 1], [solverLanes])
+  })().compute([GRID_WIDTH, GRID_HEIGHT, 1], [solverLanes, 1, 1])
     .setName(`DIC-RT ${solverLanes}-lane subgroup affine IC-GN solver`);
 };
 

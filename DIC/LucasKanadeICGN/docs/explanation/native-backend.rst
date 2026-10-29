@@ -51,17 +51,19 @@ does not claim that host-to-device transfer has disappeared.
 Algorithm mapping
 -----------------
 
-The native backend uses the same 16 x 16 subsets, affine parameter order,
-31-value radius-15 target filter vector, inverse-compositional update, ZNCC
+The native backend uses the same selectable 8 x 8, 16 x 16, or 32 x 32
+subsets, affine parameter order, 31-value radius-15 target filter vector,
+inverse-compositional update, ZNCC
 test, and median replacement as the browser implementations. The WGSL runtime
 omits only the six outer taps whose combined absolute weight is below ``7e-8``
 and stages the remaining reads in axis-oriented workgroup tiles.
 Reference-dependent values are
 prepared once by ``set_reference`` and uploaded as persistent buffers.
 
-The portable solver assigns one 16-lane workgroup to each subset. A lane owns
-one column and processes its 16 pixels; the lanes reduce their partial sums
-through shared memory. Its reference, inverse-Hessian, metadata, and state
+The portable solver assigns one 16-lane workgroup to each subset. The selected
+square is distributed over those lanes; at the default size a lane owns one
+column and processes its 16 pixels. The lanes reduce their partial sums through
+shared memory. Its reference, inverse-Hessian, metadata, and state
 buffers use aligned ``vec4`` records. All iterations remain fused in one
 dispatch. Raw browser WebGPU loads this same source; see
 :doc:`shared-kernel` for the binding contract.
@@ -70,7 +72,8 @@ An optional first-party GLSL solver performs the same reductions with subgroup
 collectives. It is compiled to SPIR-V at build time because the Naga frontend
 bundled with wgpu-py 0.32 cannot parse the WGSL subgroup extension. Both the
 GLSL source and generated SPIR-V are included in the wheel; no shader compiler
-or network access is needed at runtime.
+or network access is needed at runtime. This binary is specialized for 16 x
+16; sizes 8 and 32 use the portable WGSL solver.
 
 By default, ``set_reference`` benchmarks both valid solver pipelines on a
 representative shifted frame and retains the faster one. This tuning belongs
@@ -78,6 +81,7 @@ to preparation, not the per-target loop. Pass ``prefer_subgroups=False`` to
 force the portable path or ``prefer_subgroups=True`` to force the subgroup
 path for qualification. On the validation Intel driver, native subgroup
 collectives were slower, so automatic selection correctly retained WGSL.
+``prefer_subgroups=True`` therefore requires ``subset_size=16``.
 
 Python use: single-scale and streaming engine
 ---------------------------------------------

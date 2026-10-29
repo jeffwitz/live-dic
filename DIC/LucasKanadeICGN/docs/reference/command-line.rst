@@ -20,7 +20,8 @@ Positional arguments
 
 ``reference``
    One reference image. Its dimensions define the subset grid for every
-   backend; GPU-IO requires both dimensions to be multiples of 16.
+   backend; GPU-IO requires both dimensions to be multiples of the selected
+   subset size.
 
 ``targets``
    One or more target images with the same dimensions as the reference.
@@ -49,6 +50,10 @@ Solver options
    translation model with an analytic 2 by 2 Hessian inverse. Translation mode
    keeps the six-component result layout and writes zero deformation terms.
    The deprecated ``gpuio`` backend does not support it. Default: ``affine``.
+
+``--subset-size {8,16,32}``
+   Select the square numerical subset width. The same value is used as the
+   grid spacing. Default: ``16``.
 
 ``--pyramid-levels {1,2,3}``
    Full-pyramid depth for ``webgpu-wgsl``. The backend default is two levels;

@@ -21,10 +21,13 @@ const {
   NEAREST,
 } = GPUIO;
 
-const SUBSET_SIZE = 16;
-const SUBSET_HALF_EXTENT = 7.5;
-const FIR_RADIUS = 15;
 const URL_PARAMETERS = new URLSearchParams(window.location.search);
+const SUBSET_SIZE = Number(URL_PARAMETERS.get('subsetSize') ?? 16);
+if (![8, 16, 32].includes(SUBSET_SIZE)) {
+  throw new Error('subsetSize must be 8, 16, or 32');
+}
+const SUBSET_HALF_EXTENT = (SUBSET_SIZE - 1) / 2;
+const FIR_RADIUS = 15;
 const frameDimension = (name, fallback) => {
   const value = Number(URL_PARAMETERS.get(name) ?? fallback);
   if (!Number.isInteger(value) || value < SUBSET_SIZE || value % SUBSET_SIZE !== 0) {
@@ -442,7 +445,7 @@ const affineICGNProgram = new GPUProgram(composer, {
         }
       }
 
-      float currentMean = sumCurrent / 256.0;
+      float currentMean = sumCurrent / ${SUBSET_SIZE * SUBSET_SIZE}.0;
       float currentNorm = sqrt(max(0.0, sumCurrent2 - sumCurrent * currentMean));
       float referenceNorm = metaValue(metaBlocks, 0);
       if (currentNorm < 1e-9 || referenceNorm < 1e-9) {

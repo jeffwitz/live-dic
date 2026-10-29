@@ -51,6 +51,7 @@ class _Readback:
 
 def _engine(clock: _Clock, *, pyramid_levels: int = 1) -> ICGNWGPU:
     engine = object.__new__(ICGNWGPU)
+    engine.subset_size = 16
     engine._reference_ready = True
     engine.pyramid_levels = pyramid_levels
     engine.height = engine.width = 16
@@ -200,6 +201,7 @@ class NativeTimingTests(unittest.TestCase):
 class SeededPipelineTests(unittest.TestCase):
     def test_fresh_and_retry_pipelines_share_layout_but_have_distinct_entry_points(self) -> None:
         engine = object.__new__(ICGNWGPU)
+        engine.subset_size = 16
         engine._seeded_solver = None
         engine._retry_solver = None
         engine._shader = object()
@@ -268,6 +270,7 @@ class SeededPipelineTests(unittest.TestCase):
 
     def test_shared_level_reuses_both_seeded_pipelines(self) -> None:
         engine = object.__new__(ICGNWGPU)
+        engine.subset_size = 16
         for name in (
             "adapter",
             "device",

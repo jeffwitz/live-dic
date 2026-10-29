@@ -240,6 +240,17 @@ class NotebookLoopTests(unittest.TestCase):
 
 
 class RuntimeAssetTests(unittest.TestCase):
+    def test_browser_subset_size_is_validated_without_starting_chromium(self) -> None:
+        for subset_size in (7, 12, 64, True, 16.0):
+            with (
+                self.subTest(subset_size=subset_size),
+                self.assertRaisesRegex(ValueError, "subset_size"),
+            ):
+                ICGNWebGL(subset_size=subset_size)
+
+        engine = ICGNWebGL(subset_size=32)
+        self.assertEqual(engine.subset_size, 32)
+
     def test_browser_discovery_is_lazy(self) -> None:
         with mock.patch(
             "lucas_kanade_icgn.engine._find_chromium",

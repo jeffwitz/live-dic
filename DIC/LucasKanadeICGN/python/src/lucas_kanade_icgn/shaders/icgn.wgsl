@@ -39,9 +39,6 @@ struct WarpUpdate {
 @group(0) @binding(10) var<storage, read> seed_state: Float4Buffer;
 @group(0) @binding(11) var<storage, read> active_mask: UintBuffer;
 
-const SUBSET_SIZE: i32 = 16;
-const SUBSET_PIXELS: f32 = 256.0;
-const SUBSET_HALF_EXTENT: f32 = 7.5;
 const FIR_WEIGHT_RADIUS: i32 = 15;
 const FIR_RADIUS: i32 = 12;
 const PREFILTER_X_WIDTH: i32 = 32;
@@ -57,6 +54,9 @@ const PREFILTER_TILE_PIXELS: u32 = 448u;
 override INTERPOLATION_MODE: u32 = 0u;
 // 0: six-parameter affine warp, 1: translation-only warp.
 override MOTION_MODEL: u32 = 0u;
+// Square subset width. Repository hosts expose the validated 8, 16, and 32
+// specializations while preserving 16 as the default pipeline constant.
+override SUBSET_SIZE: i32 = 16;
 // Keep standalone consumers safe. Repository hosts specialize this override
 // to zero for dimensions where one reflection already covers every tile load.
 override PREFILTER_CLAMP_HALO: u32 = 1u;
@@ -344,8 +344,9 @@ fn corner_change(delta: array<f32, 6>) -> f32 {
     }
     var maximum = 0.0;
     for (var corner = 0; corner < 4; corner = corner + 1) {
-        let x = select(-SUBSET_HALF_EXTENT, SUBSET_HALF_EXTENT, corner == 1 || corner == 3);
-        let y = select(-SUBSET_HALF_EXTENT, SUBSET_HALF_EXTENT, corner >= 2);
+        let half_extent = subset_half_extent();
+        let x = select(-half_extent, half_extent, corner == 1 || corner == 3);
+        let y = select(-half_extent, half_extent, corner >= 2);
         let change = length(vec2<f32>(
             delta[0] + delta[1] * x + delta[2] * y,
             delta[3] + delta[4] * x + delta[5] * y,
@@ -380,21 +381,23 @@ fn solve_subset(
 
     let grid_x = i32(subset_index % config.grid_width);
     let grid_y = i32(subset_index / config.grid_width);
-    let center = (vec2<f32>(f32(grid_x), f32(grid_y)) + vec2<f32>(0.5)) * 16.0;
+    let center = (vec2<f32>(f32(grid_x), f32(grid_y)) + vec2<f32>(0.5))
+        * f32(SUBSET_SIZE);
+    let half_extent = subset_half_extent();
 
     for (var iteration = 0u; iteration < 30u; iteration = iteration + 1u) {
         if lane == 0u {
             var inside = true;
             if MOTION_MODEL == 1u {
-                let minimum = center - vec2<f32>(0.5 + SUBSET_HALF_EXTENT) + shared_translation;
-                let maximum = center + vec2<f32>(SUBSET_HALF_EXTENT - 0.5) + shared_translation;
+                let minimum = center - vec2<f32>(0.5 + half_extent) + shared_translation;
+                let maximum = center + vec2<f32>(half_extent - 0.5) + shared_translation;
                 inside = minimum.x >= 2.0 && minimum.y >= 2.0
                     && maximum.x <= f32(config.width) - 3.0
                     && maximum.y <= f32(config.height) - 3.0;
             } else {
                 for (var corner = 0; corner < 4; corner = corner + 1) {
-                    let local_x = select(-SUBSET_HALF_EXTENT, SUBSET_HALF_EXTENT, corner == 1 || corner == 3);
-                    let local_y = select(-SUBSET_HALF_EXTENT, SUBSET_HALF_EXTENT, corner >= 2);
+                    let local_x = select(-half_extent, half_extent, corner == 1 || corner == 3);
+                    let local_y = select(-half_extent, half_extent, corner >= 2);
                     let local = vec2<f32>(local_x, local_y);
                     let position = center - vec2<f32>(0.5) + local + shared_translation + vec2<f32>(
                         shared_linear.x * local_x + shared_linear.y * local_y,
@@ -419,9 +422,14 @@ fn solve_subset(
         var sum_current2 = 0.0;
         var sum_reference_current = 0.0;
         var sum_j_current = array<f32, 6>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-        let local_x = f32(lane) - SUBSET_HALF_EXTENT;
-        for (var row = 0; row < SUBSET_SIZE; row = row + 1) {
-            let local_y = f32(row) - SUBSET_HALF_EXTENT;
+        // Sixteen lanes cover every square size. For 16x16 this is the same
+        // per-lane column traversal as the original specialized kernel.
+        let subset_pixels = SUBSET_SIZE * SUBSET_SIZE;
+        for (var pixel = i32(lane); pixel < subset_pixels; pixel = pixel + 16) {
+            let column = pixel % SUBSET_SIZE;
+            let row = pixel / SUBSET_SIZE;
+            let local_x = f32(column) - half_extent;
+            let local_y = f32(row) - half_extent;
             var displacement = shared_translation;
             if MOTION_MODEL == 0u {
                 displacement = displacement + vec2<f32>(
@@ -432,7 +440,7 @@ fn solve_subset(
             let current = sample_target(
                 center - vec2<f32>(0.5) + vec2<f32>(local_x, local_y) + displacement
             );
-            let pixel_x = grid_x * SUBSET_SIZE + i32(lane);
+            let pixel_x = grid_x * SUBSET_SIZE + column;
             let pixel_y = grid_y * SUBSET_SIZE + row;
             let reference_value = reference_data.values[u32(pixel_y * i32(config.width) + pixel_x)];
             let f = reference_value.x;
@@ -484,7 +492,7 @@ fn solve_subset(
             reduced_j[4] = totals_b.w;
             reduced_j[5] = totals_c.x;
 
-            let current_mean = totals_a.x / SUBSET_PIXELS;
+            let current_mean = totals_a.x / subset_pixel_count();
             let current_norm = sqrt(max(0.0, totals_a.y - totals_a.x * current_mean));
             let reference_norm = metadata_value(subset_index, 0u);
             shared_status.y = f32(iteration + 1u);
@@ -538,8 +546,9 @@ fn solve(
     @builtin(workgroup_id) workgroup_id: vec3<u32>,
     @builtin(local_invocation_id) local_id: vec3<u32>,
 ) {
+    let subset_index = workgroup_id.y * config.grid_width + workgroup_id.x;
     solve_subset(
-        workgroup_id.x,
+        subset_index,
         local_id.x,
         vec2<f32>(0.0),
         vec4<f32>(0.0),
@@ -570,7 +579,8 @@ fn solve_seeded(
     @builtin(workgroup_id) workgroup_id: vec3<u32>,
     @builtin(local_invocation_id) local_id: vec3<u32>,
 ) {
-    solve_from_seed(workgroup_id.x, local_id.x, false);
+    let subset_index = workgroup_id.y * config.grid_width + workgroup_id.x;
+    solve_from_seed(subset_index, local_id.x, false);
 }
 
 @compute @workgroup_size(16)
@@ -578,7 +588,8 @@ fn retry_seeded(
     @builtin(workgroup_id) workgroup_id: vec3<u32>,
     @builtin(local_invocation_id) local_id: vec3<u32>,
 ) {
-    solve_from_seed(workgroup_id.x, local_id.x, true);
+    let subset_index = workgroup_id.y * config.grid_width + workgroup_id.x;
+    solve_from_seed(subset_index, local_id.x, true);
 }
 
 fn median_eight(values: ptr<function, array<f32, 8>>, count: u32) -> f32 {
@@ -640,8 +651,8 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
             if neighbor_b.z < 0.5 {
                 continue;
             }
-            let delta_x = -16.0 * f32(dx);
-            let delta_y = -16.0 * f32(dy);
+            let delta_x = -f32(SUBSET_SIZE) * f32(dx);
+            let delta_y = -f32(SUBSET_SIZE) * f32(dy);
             let p1 = neighbor_a.y;
             let p2 = neighbor_a.z;
             let p4 = neighbor_b.x;
@@ -687,4 +698,12 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
         2.0,
         own_b.w,
     );
+}
+
+fn subset_half_extent() -> f32 {
+    return 0.5 * (f32(SUBSET_SIZE) - 1.0);
+}
+
+fn subset_pixel_count() -> f32 {
+    return f32(SUBSET_SIZE * SUBSET_SIZE);
 }

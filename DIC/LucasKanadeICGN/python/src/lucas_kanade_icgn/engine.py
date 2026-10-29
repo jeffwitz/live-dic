@@ -33,6 +33,7 @@ from PIL import Image
 
 from .interpolation import normalize_interpolation
 from .motion import normalize_motion_model
+from .subset import DEFAULT_SUBSET_SIZE, normalize_subset_size
 
 MIN_FRAME_DIMENSION: Final = 16
 PARAMETER_ORDER: Final = ("tx", "du_dx", "du_dy", "ty", "dv_dx", "dv_dy")
@@ -774,7 +775,8 @@ class ICGNWebGL:
 
     ``interpolation`` selects ``"bspline"`` (historical default), direct
     ``"linear"``, or direct Keys ``"cubic"`` reconstruction. The deprecated
-    GPU-IO backend supports only ``"bspline"``.
+    GPU-IO backend supports only ``"bspline"``. ``subset_size`` selects an 8,
+    16, or 32 pixel square and also sets the field spacing.
     """
 
     def __init__(
@@ -793,6 +795,7 @@ class ICGNWebGL:
         tolerance_per_level: Iterable[float] | None = None,
         interpolation: str = "bspline",
         motion_model: str = "affine",
+        subset_size: int = DEFAULT_SUBSET_SIZE,
     ) -> None:
         if startup_timeout <= 0:
             raise ValueError("startup_timeout must be greater than zero")
@@ -804,6 +807,7 @@ class ICGNWebGL:
             raise ValueError("force_three_webgl is supported only by the 'three-tsl' backend")
         self.interpolation = normalize_interpolation(interpolation)
         self.motion_model = normalize_motion_model(motion_model)
+        self.subset_size = normalize_subset_size(subset_size)
         if backend == "gpuio" and self.interpolation != "bspline":
             raise ValueError("The deprecated 'gpuio' backend supports only interpolation='bspline'")
         if backend == "gpuio" and self.motion_model != "affine":
@@ -900,6 +904,7 @@ class ICGNWebGL:
         log_path = Path(self._temporary.name) / "chromium.log"
         self._log_handle = log_path.open("wb")
         page_url = f"http://127.0.0.1:{self._server.port}/{self._headless_path}?headless=1"
+        page_url += f"&subsetSize={self.subset_size}"
         if self.backend != "gpuio":
             page_url += f"&binaryToken={self._server.transport_token}"
         if self.force_three_webgl:
@@ -1369,6 +1374,7 @@ def register_pair(
     tolerance_per_level: Iterable[float] | None = None,
     interpolation: str = "bspline",
     motion_model: str = "affine",
+    subset_size: int = DEFAULT_SUBSET_SIZE,
     iterations: int | None = None,
     tolerance: float | None = None,
     zncc_min: float | None = None,
@@ -1385,6 +1391,7 @@ def register_pair(
         tolerance_per_level=tolerance_per_level,
         interpolation=interpolation,
         motion_model=motion_model,
+        subset_size=subset_size,
     ) as engine:
         return engine.register_pair(
             reference,

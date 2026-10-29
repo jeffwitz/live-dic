@@ -3,7 +3,7 @@ GPU tiling and grouping strategies
 
 All active backends evaluate the same selected IC-GN motion model, but WebGPU and WebGL2
 offer different synchronization models. This page distinguishes three notions
-that older descriptions sometimes conflated: the 16 x 16 *numerical subset*,
+that older descriptions sometimes conflated: the configurable *numerical subset*,
 the rectangular *FIR output tile*, and the one-dimensional *solver workgroup*.
 They are independent scheduling choices.
 
@@ -34,13 +34,13 @@ compatibility while reducing arithmetic inside each iteration.
      - 256 (one-dimensional)
      - 46 x 16 or 16 x 46 shared source tile, 31 taps
    * - Portable shared-WGSL IC-GN
-     - one 16 x 16 subset
+     - one 8 x 8, 16 x 16, or 32 x 32 subset
      - 16
-     - workgroup-memory reduction
+     - 4, 16, or 64 pixels per lane, then workgroup-memory reduction
    * - Three.js specialized IC-GN on the validation GPU
-     - one 16 x 16 subset
+     - one selected square subset
      - 32
-     - one hardware subgroup, eight pixels per lane
+     - one hardware subgroup, size-specialized pixel distribution
    * - Pyramid reduction, each separable pass
      - 16 x 16 destination pixels
      - 16 x 16
@@ -53,8 +53,8 @@ compatibility while reducing arithmetic inside each iteration.
 Common numerical tile
 ---------------------
 
-One output grid point owns one 16 x 16 reference subset and one six-parameter
-affine warp. In the default mode, the target value at each of the 256 pixels is
+One output grid point owns one square reference subset and one six-parameter
+affine warp. With the qualified default size 16, the target value at each of the 256 pixels is
 reconstructed from a 4 x 4 neighbourhood of cubic B-spline coefficients. The
 direct ``cubic`` mode also uses 4 x 4 samples, while ``linear`` uses four. The
 reference image, gradients, inverse Hessian, ``J^T F``, and ``sum(J)`` are
@@ -65,7 +65,7 @@ prepared once and reused for every target.
    output grid point (gx, gy)
               |
               v
-   reference tile: 16 columns x 16 rows
+   reference tile for default S=16: 16 columns x 16 rows
 
         x=0   1   2                         15
       +----+----+----+--------------------+----+
@@ -315,7 +315,7 @@ Three.js/WebGL2: serial TSL through transform feedback
 
 When WebGPU is unavailable, Three.js compiles a separate TSL solver to a
 WebGL2 vertex program and captures its outputs with transform feedback. One
-invocation owns one subset and performs the complete 16 x 16 accumulation and
+invocation owns one subset and performs the complete selected-square accumulation and
 iteration loop serially. It calls the same TSL interpolation, Hessian solve,
 inverse composition, convergence, and median helpers as the WebGPU variants,
 but contains no workgroup arrays, barriers, or subgroup operations.
@@ -324,7 +324,7 @@ but contains no workgroup arrays, barriers, or subgroup operations.
 
    one transform-feedback invocation / subset
               |
-              +--> serial 16 x 16 accumulation
+              +--> serial S x S accumulation
               +--> affine inverse-compositional update
               +--> repeat until convergence or iteration ceiling
               |
@@ -348,17 +348,17 @@ GPU-IO/WebGL2: one fused fragment per subset
 WebGL2 fragment shaders do not expose WebGPU workgroups, shared workgroup
 memory, subgroup collectives, or a barrier between neighbouring fragments.
 GPU-IO therefore maps one output fragment to one subset. That fragment scans
-all 16 columns and 16 rows serially, while the GPU still processes many
+all selected columns and rows serially, while the GPU still processes many
 independent subsets in parallel.
 
 .. code-block:: text
 
    fragment (gx, gy)
           |
-          +--> scan row 0:  pixels 0 ... 15
-          +--> scan row 1:  pixels 0 ... 15
+          +--> scan row 0:  pixels 0 ... S-1
+          +--> scan row 1:  pixels 0 ... S-1
           |          ...
-          +--> scan row 15: pixels 0 ... 15
+          +--> scan row S-1: pixels 0 ... S-1
           |
           +--> update six affine parameters
           +--> repeat in the same fragment until convergence
@@ -374,7 +374,7 @@ The current implementation applies four WebGL-specific optimizations:
 * cubic interpolation is evaluated as four horizontal dot products followed by
   one vertical combination;
 * image statistics and all six ``J^T g`` terms are accumulated during the same
-  16 x 16 scan.
+  square scan.
 
 The solver writes three multiple-render-target attachments only after the
 subset converges, is rejected, or reaches the iteration limit. The following
@@ -390,7 +390,7 @@ warp. It would require at least two draws per IC-GN iteration and repeated
 partial-sum/state traffic. There is no portable cross-fragment synchronization
 that can keep the reduction and the next iteration inside one draw.
 
-For this 16 x 16 problem the extra render-target bandwidth and roughly 60 draw
+For these small square subsets the extra render-target bandwidth and roughly 60 draw
 submissions at the 30-iteration limit are a worse fit than the fused serial
 fragment. The implementation therefore chooses fewer submissions and less
 global memory traffic over artificial lane-level parallelism. This is the main

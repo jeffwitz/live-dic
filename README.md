@@ -76,8 +76,8 @@ The implementation in [`DIC/LucasKanadeICGN/`](./DIC/LucasKanadeICGN/) adds:
   direct bilinear, or direct Keys cubic convolution;
 - reference gradients and a constant inverse Hessian prepared once;
 - ZNCC validation and spatial median replacement;
-- a dynamic 16-pixel grid of 16 x 16 subsets, including 32 x 32 at 512 pixels
-  and 240 x 135 at UHD;
+- configurable square subsets of 8, 16, or 32 pixels; the selected width is
+  also the grid spacing, with 16 x 16 retained as the qualified default;
 - target prefiltering and registration on Three.js/TSL WebGPU by default;
 - a fused, dynamically sized GPU-IO/WebGL2 implementation as an optional
   backend;
@@ -181,13 +181,13 @@ layout is documented in the [native backend explanation](./DIC/LucasKanadeICGN/d
 
 The specialized Three.js/WebGPU solver fuses the IC-GN iterations into one
 compute dispatch and fills the measured hardware subgroup. On the validation
-GPU, 32 lanes each process eight pixels of a 16 x 16 subset. Its portable
+GPU, 32 lanes each process eight pixels of a default 16 x 16 subset. Its portable
 fallback instead uses one 16-lane workgroup per subset and shared-memory
 reductions. These solver groups are independent of the FIR tiles: the shared
 WGSL prefilter uses 32 x 8 horizontal and 8 x 32 vertical output tiles.
 
 The GPU-IO solver uses the WebGL2 execution model: one fragment owns one subset
-and scans its 16 x 16 pixels serially. Its iterations are fused into one draw,
+and scans the selected square serially. Its iterations are fused into one draw,
 the affine state and reference atlases stay in registers, and three result
 attachments are written once. The complete tiling and grouping diagrams are in
 the [GPU optimization documentation](./DIC/LucasKanadeICGN/docs/explanation/gpu-optimization.rst).
@@ -380,8 +380,9 @@ available from [`index.html`](./index.html).
 ## Current limitations
 
 - dynamic grayscale frame dimensions in all backends; GPU-IO requires width
-  and height to be multiples of 16;
-- fixed 16 x 16 subsets on a 16-pixel grid;
+  and height to be multiples of the selected subset size;
+- 8 x 8, 16 x 16, or 32 x 32 subsets, with grid spacing equal to the selected
+  width; an independent grid-step option is not yet available;
 - Three.js/TSL and historical GPU-IO remain single-scale; the raw WGSL browser
   backend and native full-pyramid backend default to two levels and support
   three explicitly;

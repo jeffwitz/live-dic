@@ -79,6 +79,13 @@ def _parser() -> argparse.ArgumentParser:
         help="estimated warp model (translation uses an analytic 2x2 inverse Hessian)",
     )
     parser.add_argument(
+        "--subset-size",
+        type=int,
+        choices=(8, 16, 32),
+        default=16,
+        help="square subset width and grid spacing in pixels",
+    )
+    parser.add_argument(
         "--force-three-webgl",
         action="store_true",
         help="force the Three.js backend to use its WebGL2 compatibility path",
@@ -323,6 +330,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             tolerance_per_level=args.tolerance_per_level,
             interpolation=args.interpolation,
             motion_model=args.motion_model,
+            subset_size=args.subset_size,
         ) as engine:
             info = engine.info()
             payload = (

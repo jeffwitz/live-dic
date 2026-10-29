@@ -24,11 +24,13 @@ Geometry and input
 
 * All current backends support dynamic frame dimensions and have been validated
   at 3840 x 2160. Reference and target dimensions must match.
-* GPU-IO dimensions must be exact multiples of 16 because its texture grid is
+* GPU-IO dimensions must be exact multiples of the selected subset size because its texture grid is
   allocated when the private headless page starts. A dimension change rebuilds
   that page automatically.
-* Grid spacing and subset size are fixed at 16 pixels.
-* Grid dimensions are ``floor(width / 16)`` by ``floor(height / 16)``;
+* ``subset_size`` supports 8, 16, and 32 pixels and also sets the grid spacing.
+  Independent subset width and grid-step controls are not implemented.
+* Grid dimensions are ``floor(width / subset_size)`` by
+  ``floor(height / subset_size)``;
   uncovered right or bottom pixels are not assigned to a subset.
 * Inputs are converted to 8-bit grayscale.
 * Three.js and raw WGSL browser targets use a persistent binary loopback

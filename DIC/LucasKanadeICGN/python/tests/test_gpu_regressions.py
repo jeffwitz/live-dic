@@ -211,6 +211,29 @@ class GPURegressionTests(unittest.TestCase):
                     engine.close()
                     engine.device.destroy()
 
+    def test_configurable_subset_sizes_run_the_full_pyramid(self) -> None:
+        truth = (0.5, -0.375)
+        reference, target = _fractional_pair(256, 256, truth)
+        for subset_size in (8, 32):
+            with self.subTest(subset_size=subset_size):
+                engine = ICGNWGPUFullPyramid(
+                    pyramid_levels=2,
+                    subset_size=subset_size,
+                    interpolation="linear",
+                )
+                try:
+                    info = engine.set_reference(reference)
+                    result = engine.register(target)
+                    expected_grid = (256 // subset_size, 256 // subset_size)
+                    self.assertEqual(info.subset_size, subset_size)
+                    self.assertEqual(result.subset_size, subset_size)
+                    self.assertEqual(result.parameters.shape[:2], expected_grid[::-1])
+                    self.assertGreater(result.accepted, 0)
+                    self.assertLess(result.rmse(truth), 0.08)
+                finally:
+                    engine.close()
+                    engine.device.destroy()
+
     def test_full_pyramid_stream_preserves_order_and_synchronous_results(self) -> None:
         translations = ((0.25, -0.125), (0.5, -0.375), (-0.375, 0.25))
         pairs = [_fractional_pair(128, 128, truth) for truth in translations]
