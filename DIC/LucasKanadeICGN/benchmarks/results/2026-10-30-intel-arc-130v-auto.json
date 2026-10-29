@@ -1,0 +1,142 @@
+{
+  "provenance": {
+    "git_commit": "481516a7c3223b8c58be0b9bf45a79cafe2c70d6",
+    "git_dirty": false,
+    "command": [
+      "/tmp/dicrt-wgsl-baseline/bin/python",
+      "DIC/LucasKanadeICGN/benchmarks/compare_native_wgpu.py",
+      "--native-only",
+      "--native-solver",
+      "auto",
+      "--warmups",
+      "8",
+      "--repeats",
+      "50",
+      "--output",
+      "DIC/LucasKanadeICGN/benchmarks/results/2026-10-30-intel-arc-130v-auto.json"
+    ],
+    "python": "3.12.3",
+    "platform": "Linux-7.0.0-38-generic-x86_64-with-glibc2.39",
+    "numpy": "2.5.4",
+    "wgpu": "0.32.0",
+    "dic_rt": "0.1.0"
+  },
+  "inputs": {
+    "reference": "/home/jeff/Code/tests_gpuio/DIC/LucasKanadeICGN/assets/frame_000.png",
+    "reference_sha256": "0f2542b8f0cf8a2c412327425bc40f3eed356b83f1d788008f529953c4d12959",
+    "target": "/home/jeff/Code/tests_gpuio/DIC/LucasKanadeICGN/assets/frame_010.png",
+    "target_sha256": "5ae599789c8c77d3a1d79106a4fabc3809bbb0aa830e35360030ec687b8fda22"
+  },
+  "resolution": [
+    512,
+    512
+  ],
+  "repeats": 50,
+  "warmups": 8,
+  "webgpu_wgsl_pyramid_levels": 1,
+  "wgpu-native": {
+    "full_call_median_ms": 1.7212890088558197,
+    "full_call_p95_ms": 2.5814032545895316,
+    "full_call_samples_ms": [
+      1.5494279796257615,
+      2.1935359982308,
+      1.6220980032812804,
+      1.353036001091823,
+      1.4214449911378324,
+      1.6709130140952766,
+      2.4803539854474366,
+      1.6336639819201082,
+      1.5567330119665712,
+      1.394178019836545,
+      1.472189003834501,
+      2.063640975393355,
+      1.6136179910972714,
+      1.292250002734363,
+      1.7793040024116635,
+      2.1851589845027775,
+      1.5482910093851388,
+      1.5169859980233014,
+      1.4454750053118914,
+      1.4322590141091496,
+      1.4130250201560557,
+      2.875306992791593,
+      1.8418859981466085,
+      2.194230997702107,
+      2.185568999266252,
+      2.140546013833955,
+      1.8019200069829822,
+      1.6576350026298314,
+      1.877690985566005,
+      2.1196979796513915,
+      1.644979027332738,
+      1.7248410149477422,
+      2.054861019132659,
+      2.092523005558178,
+      1.7177370027638972,
+      1.6373020189348608,
+      1.6222610138356686,
+      1.794031006284058,
+      3.228446003049612,
+      1.6041089838836342,
+      1.7902550171129405,
+      2.602029009722173,
+      1.9854909915011376,
+      1.7597949772607535,
+      1.6696969978511333,
+      1.8276000046171248,
+      2.556193998316303,
+      1.638256013393402,
+      1.5906619955785573,
+      1.8885320168919861
+    ],
+    "accepted": 900,
+    "replaced": 0,
+    "configuration": {
+      "iterations": 30,
+      "tolerance": 0.001,
+      "znccMin": 0.8,
+      "interpolation": "bspline",
+      "motionModel": "affine",
+      "outlierPolicy": "replace",
+      "subsetStride": 16,
+      "spatialWeighting": "uniform",
+      "gaussianSigma": 4.0
+    },
+    "mean_translation": [
+      1.9999931820233663,
+      -0.9999963466326396
+    ],
+    "mean_iterations": 5.956666666666667,
+    "truth_rmse_px": 2.6867571287942146e-05,
+    "device": "wgpu-native Vulkan (Intel(R) Graphics (LNL))",
+    "solver": "portable-workgroup",
+    "subgroup_width": 16,
+    "solver_tuning_ms": {
+      "portable-workgroup": 1.721944019664079,
+      "subgroup": 1.9941370119340718
+    },
+    "solver_validation": {
+      "portable-workgroup": {
+        "valid": true,
+        "reason": "compatible",
+        "accepted_portable": 900,
+        "accepted_candidate": 900,
+        "accepted_mismatch": 0,
+        "parameter_rmse": 0.0,
+        "parameter_max_abs": 0.0
+      },
+      "subgroup": {
+        "valid": true,
+        "reason": "compatible",
+        "accepted_portable": 900,
+        "accepted_candidate": 900,
+        "accepted_mismatch": 0,
+        "parameter_rmse": 3.959361171670023e-06,
+        "parameter_max_abs": 6.186962127685547e-05
+      }
+    },
+    "preparation_wall_ms": 149.9272880028002,
+    "upload_median_ms": 0.08609701762907207,
+    "execute_readback_median_ms": 1.436293008737266
+  }
+}

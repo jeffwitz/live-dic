@@ -268,13 +268,22 @@ Camera acquisition and downstream consumers remain excluded.
 See :doc:`../reference/performance` for the current timing boundaries,
 reproduction commands, and browser comparison.
 
-The subgroup migration was qualified separately on the same Intel Arc 130V.
-On the 512 x 512 affine fixture with 8 warmups and 50 registrations, portable
-WGSL measured 1.475 ms median and 2.191 ms p95; subgroup WGSL measured 1.583 ms
-median and 1.995 ms p95. Both accepted 900 subsets and reported a displacement
-RMSE below ``2.7e-5`` pixel. The automatic policy retained the portable solver
-because its median was lower. These figures qualify selection on this adapter;
-they do not predict subgroup performance on another GPU.
+The subgroup migration was qualified separately on the same Intel Arc 130V at
+commit ``481516a``. On the 512 x 512 affine fixture with 8 warmups and 50
+registrations, forced portable WGSL measured 1.836 ms median and 2.694 ms p95;
+forced subgroup WGSL measured 1.816 ms median and 2.208 ms p95. Both accepted
+900 subsets and reported a displacement RMSE below ``2.7e-5`` pixel. The
+automatic preparation-time comparison measured 1.722 ms portable and 1.994 ms
+subgroup and therefore retained the portable solver; its subsequent 50 calls
+measured 1.721 ms median. The forced medians are close enough to demonstrate
+run-to-run variability rather than a universal winner. These figures qualify
+selection on this adapter and do not predict subgroup performance elsewhere.
+The complete samples and provenance are preserved in the :download:`portable
+report <../../benchmarks/results/2026-10-30-intel-arc-130v-portable.json>`,
+:download:`subgroup report
+<../../benchmarks/results/2026-10-30-intel-arc-130v-subgroup.json>`, and
+:download:`automatic report
+<../../benchmarks/results/2026-10-30-intel-arc-130v-auto.json>`.
 
 The retired SPIR-V specialization was not used as a numerical performance
 reference. On the starting commit its two-dimensional host dispatch was
@@ -285,12 +294,6 @@ indexing during the port and matched all 36 portable results, with a parameter
 RMSE of ``1.5e-7`` and a maximum absolute difference of ``8.4e-7``.
 
 The recommended full-pyramid path does not request or load subgroup support.
-A paired UHD image-to-field check with the same command, data, 3 warmups,
-12 frames, and 3 campaigns measured 18.317 ms median on the starting commit
-and 18.598 ms after the migration. The individual campaign medians ranged from
-16.533 to 18.832 ms on the starting commit and from 18.356 to 18.837 ms after
-the migration. A preceding paired run measured 17.462 and 17.469 ms. These
-overlapping results show no reproducible migration regression, but they also
-show that the machine's current power or thermal state prevents using this
-short run as a new absolute 60 FPS qualification.
+Its UHD figures above measure a different GPU-resident, two-level workload and
+must not be compared directly with these 512 x 512 single-scale solver reports.
 
