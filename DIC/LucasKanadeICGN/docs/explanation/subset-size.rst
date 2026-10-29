@@ -98,26 +98,28 @@ B-spline interpolation, stride 16, a moderate noise-free curvature field, and
      - Curvature RMSE per component
    * - 32 x 32, uniform
      - **0.00623**
-     - **0.000573**
-     - **5.73e-5**
+     - **0.000649**
+     - **3.97e-5**
    * - 32 x 32, Gaussian
      - 0.00667
-     - 0.000633
-     - 6.27e-5
+     - 0.000719
+     - 4.23e-5
    * - 31 x 31, uniform
      - 0.00648
-     - 0.000623
-     - 6.31e-5
+     - 0.000710
+     - 4.41e-5
    * - 31 x 31, Gaussian
      - 0.00689
-     - 0.000679
-     - 6.85e-5
+     - 0.000782
+     - 4.64e-5
 
 The 32 x 32 uniform window was also best in the strong clean and noisy cases
 of this campaign. The experiment therefore does not justify changing the
-default. More importantly, the moderate-field curvature RMSE remains about
-twice the RMS magnitude of the injected curvature, so the direct quadratic
-coefficients are not yet a qualified curvature measurement.
+default. Component-wise median rejection reduces the moderate uniform-window
+curvature error relative to the previous translation-triggered filter, but its
+RMSE still exceeds the RMS magnitude of the injected curvature. The direct
+quadratic coefficients are therefore not yet a qualified curvature
+measurement.
 
 Reproduce the comparison from the repository root with::
 

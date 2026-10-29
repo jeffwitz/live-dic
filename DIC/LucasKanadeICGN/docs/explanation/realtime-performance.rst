@@ -47,7 +47,7 @@ The authoritative machine-specific measurements are maintained on
 UHD sequence, three warm-ups, and 12 measured resident-image to field calls.
 
 On a changing four-image sequence, the recommended two-level native full
-pyramid measured 11.920 ms median and 13.072 ms p95 for the affine
+pyramid measured 12.069 ms median and 13.163 ms p95 for the affine
 resident-image to materialized-field call. Translation mode measured 10.526 ms
 median and 11.170 ms p95. Across the four fixtures, the affine path accepted
 31,252 to 31,654 subsets and the translation path 31,312 to 31,654. Their
@@ -56,8 +56,8 @@ native p95 values are below the 16.667 ms 60 Hz period, but acquisition and
 downstream work remain excluded.
 
 At the same complete Python boundary, the raw-browser two-level WGSL path
-measured 40.873 / 44.782 ms in affine mode and 40.213 / 45.024 ms in
-translation mode. Three.js measured 43.297 / 59.107 ms and 39.966 / 45.706 ms
+measured 45.369 / 52.165 ms in affine mode and 40.213 / 45.024 ms in
+translation mode. Three.js measured 46.763 / 62.198 ms and 39.966 / 45.706 ms
 respectively. These figures use the persistent binary target and packed-result
 transport: no per-frame PNG, image decoding, DevTools frame payload, or JSON
 field remains. The browser process boundary and the required GPU upload still
@@ -84,13 +84,13 @@ campaign:
      - Throughput
      - Median result age
    * - Affine, depth 1
-     - 11.561 ms
-     - 86.53 FPS
-     - **11.478 ms**
+     - 12.168 ms
+     - 82.18 FPS
+     - **11.955 ms**
    * - Affine, depth 2
-     - **10.735 ms**
-     - **93.16 FPS**
-     - 21.408 ms
+     - **11.433 ms**
+     - **87.50 FPS**
+     - 22.616 ms
    * - Translation, depth 1
      - 10.373 ms
      - 96.42 FPS
@@ -101,9 +101,9 @@ campaign:
      - 18.888 ms
 
 Pipelining improves throughput by keeping the queue occupied, but it allows
-additional frames to remain in flight. A two-slot affine period of 10.735 ms
-does not mean that an individual result is 10.735 ms old. A third slot reached
-94.97 FPS affine and 106.16 FPS translation, but median result age was 31.894
+additional frames to remain in flight. A two-slot affine period of 11.433 ms
+does not mean that an individual result is 11.433 ms old. A third slot reached
+86.78 FPS affine and 106.16 FPS translation, but median result age was 35.322
 and 29.705 ms. Pipeline depth is unrelated to image-pyramid depth.
 
 Frame-rate budgets

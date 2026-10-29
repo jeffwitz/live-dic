@@ -37,7 +37,7 @@ complete field is required in Python, use native wgpu.
 
 The long-term objective is sustained 3840 x 2160 DIC at 60 FPS over the full
 acquisition-to-result path. On a changing four-image sequence, the recommended
-two-level native full pyramid measured 11.920 ms median / 13.072 ms p95 in
+two-level native full pyramid measured 12.069 ms median / 13.163 ms p95 in
 affine mode and 10.526 / 11.170 ms in translation mode. The boundary starts
 with a resident NumPy image and ends with the materialized NumPy field; direct
 upload, GPU pyramid construction and solving, packed readback, and result
@@ -46,9 +46,9 @@ this repository does not yet claim a qualified camera-to-consumer 4K60
 application.
 
 For sustained native input, the same two-level graph now supports a bounded
-full-pyramid stream. With two targets in flight it sustained **93.16 FPS** in
+full-pyramid stream. With two targets in flight it sustained **87.50 FPS** in
 affine mode and **105.58 FPS** in translation mode on this machine. Median
-result age was 21.408 and 18.888 ms; use one slot for the lower 11.478 and
+result age was 22.616 and 18.888 ms; use one slot for the lower 11.955 and
 10.331 ms median ages. Throughput and result age are reported separately.
 
 ## Browser backend policy
@@ -196,11 +196,11 @@ the recommended full pyramid, each slot owns the finest target, reduced
 targets, reduction intermediates, per-level solver states and seeds, and final
 readback; immutable reference data and pipelines remain shared. Two slots are
 the default throughput compromise. On the current 50-frame changing UHD
-campaign, affine throughput increased from 86.53 FPS at depth one to 93.16 FPS
+campaign, affine throughput increased from 82.18 FPS at depth one to 87.50 FPS
 at depth two, while translation increased from 96.42 to 105.58 FPS. Median
-result ages increased from 11.478 to 21.408 ms affine and from 10.331 to 18.888
+result ages increased from 11.955 to 22.616 ms affine and from 10.331 to 18.888
 ms translation. The third slot brought little additional throughput and raised
-median age beyond 32 ms. Slot depth is unrelated to image-pyramid depth.
+median age beyond 35 ms. Slot depth is unrelated to image-pyramid depth.
 
 The remaining differences are platform constraints: the browser backends use
 single precision and do not expose the same register controls or queue model as
@@ -219,7 +219,7 @@ levels in one command buffer and performs one final readback. Iterations and
 tolerances are configurable per scale from coarse to fine. Two levels are the
 recommended native default. Three levels remain available explicitly for
 larger expected displacements. On the changing-frame, resident-image to
-materialized-field campaign, the two-level graph measured **11.920 / 13.072
+materialized-field campaign, the two-level graph measured **12.069 / 13.163
 ms** in affine mode and **10.526 / 11.170 ms** in translation mode. Both p95
 values are below the 16.667 ms 60 FPS period on this machine. Repeated-target
 and GPU-only figures are retained only as diagnostic kernel measurements. See

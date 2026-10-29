@@ -511,6 +511,58 @@ class GPURegressionTests(unittest.TestCase):
         ).reshape(image.shape)
         np.testing.assert_allclose(actual, _cpu_prefilter(image), rtol=2e-6, atol=2e-5)
 
+    def test_median_filter_replaces_only_aberrant_motion_components(self) -> None:
+        reference = np.random.default_rng(20261029).integers(0, 256, (48, 48), dtype=np.uint8)
+        cases = (
+            ("affine", 8, 6, ((1, 0.5),)),
+            ("quadratic", 16, 12, ((1, 0.5), (6, 0.01))),
+        )
+        for motion_model, state_width, status_index, outliers in cases:
+            with self.subTest(motion_model=motion_model):
+                engine = ICGNWGPU(
+                    interpolation="linear",
+                    motion_model=motion_model,
+                    prefer_subgroups=False,
+                )
+                try:
+                    engine.set_reference(reference)
+                    self.assertEqual((engine.grid_width, engine.grid_height), (3, 3))
+                    state = np.zeros((9, state_width), dtype=np.float32)
+                    state[:, status_index] = 1.0
+                    state[:, status_index + 1] = 4.0
+                    center = 4
+                    state[center, 0] = 0.05
+                    for component, value in outliers:
+                        state[center, component] = value
+
+                    slot = engine._pipeline_slots[0]
+                    engine.device.queue.write_buffer(slot.buffers["state"], 0, state)
+                    encoder = engine.device.create_command_encoder(
+                        label="GPU component-wise median regression"
+                    )
+                    encoder.clear_buffer(slot.buffers["filtered_state"])
+                    compute_pass = encoder.begin_compute_pass()
+                    compute_pass.set_pipeline(engine._median_filter)
+                    compute_pass.set_bind_group(0, slot.bind_group)
+                    compute_pass.dispatch_workgroups(1, 1, 1)
+                    compute_pass.end()
+                    engine.device.queue.submit([encoder.finish()])
+                    actual = np.frombuffer(
+                        engine.device.queue.read_buffer(slot.buffers["filtered_state"]),
+                        dtype=np.float32,
+                    ).reshape(state.shape)
+
+                    self.assertAlmostEqual(float(actual[center, 0]), 0.05, places=6)
+                    for component, _ in outliers:
+                        self.assertAlmostEqual(float(actual[center, component]), 0.0)
+                    self.assertEqual(actual[center, status_index], 2.0)
+                    self.assertEqual(actual[center, status_index + 1], 4.0)
+                    np.testing.assert_array_equal(actual[:center], state[:center])
+                    np.testing.assert_array_equal(actual[center + 1 :], state[center + 1 :])
+                finally:
+                    engine.close()
+                    engine.device.destroy()
+
     def _seeded_state(self, *, retry: bool) -> tuple[np.ndarray, ...]:
         """Read solver state directly, before median filtering can hide a loss.
 

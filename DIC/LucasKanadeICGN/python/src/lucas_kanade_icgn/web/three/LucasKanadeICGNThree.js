@@ -1015,32 +1015,54 @@ const makeMedianKernel = () => Fn(() => {
   }
   If(count.lessThan(4), () => Return());
 
-  const valuesX = array('float', 8).toVar();
-  const valuesY = array('float', 8).toVar();
-  Loop(8, ({ i }) => {
-    valuesX.element(i).assign(predictedX.element(i));
-    valuesY.element(i).assign(predictedY.element(i));
+  const filteredTranslation = translation.toVar();
+  const filteredLinear = linear.toVar();
+  const filteredStatus = status.toVar();
+  const derivativeFloor = 0.001 / Math.max(0.5 * (SUBSET_SIZE - 1), 1);
+  const filterComponent = (samples, ownValue, robustnessFloor, replace) => {
+    const values = array('float', 8).toVar();
+    Loop(8, ({ i }) => {
+      values.element(i).assign(samples.element(i));
+    });
+    const median = float(median8Node(values, count)).toVar();
+    Loop(8, ({ i }) => {
+      values.element(i).assign(samples.element(i).sub(median).abs());
+    });
+    const spread = median8Node(values, count);
+    const flagged = ownValue.sub(median).abs()
+      .div(spread.add(robustnessFloor)).greaterThan(2);
+    If(flagged, () => {
+      replace(median);
+      filteredStatus.x.assign(2);
+    });
+  };
+
+  filterComponent(predictedX, translation.x, 0.1, (median) => {
+    filteredTranslation.x.assign(median);
   });
-  const medianX = float(median8Node(valuesX, count)).toVar();
-  const medianY = float(median8Node(valuesY, count)).toVar();
-  Loop(8, ({ i }) => {
-    valuesX.element(i).assign(predictedX.element(i).sub(medianX).abs());
-    valuesY.element(i).assign(predictedY.element(i).sub(medianY).abs());
+  if (configuration.motionModel === 'affine') {
+    filterComponent(p1, linear.x, derivativeFloor, (median) => {
+      filteredLinear.x.assign(median);
+    });
+    filterComponent(p2, linear.y, derivativeFloor, (median) => {
+      filteredLinear.y.assign(median);
+    });
+  }
+  filterComponent(predictedY, translation.y, 0.1, (median) => {
+    filteredTranslation.y.assign(median);
   });
-  const spreadX = median8Node(valuesX, count);
-  const spreadY = median8Node(valuesY, count);
-  const flagged = translation.x.sub(medianX).abs().div(spreadX.add(0.1)).greaterThan(2)
-    .or(translation.y.sub(medianY).abs().div(spreadY.add(0.1)).greaterThan(2));
-  If(flagged, () => {
-    filteredTranslationNode.element(subsetIndex).assign(vec2(medianX, medianY));
-    filteredLinearNode.element(subsetIndex).assign(vec4(
-      median8Node(p1, count),
-      median8Node(p2, count),
-      median8Node(p4, count),
-      median8Node(p5, count),
-    ));
-    filteredStatusNode.element(subsetIndex).assign(vec2(2, status.y));
-  });
+  if (configuration.motionModel === 'affine') {
+    filterComponent(p4, linear.z, derivativeFloor, (median) => {
+      filteredLinear.z.assign(median);
+    });
+    filterComponent(p5, linear.w, derivativeFloor, (median) => {
+      filteredLinear.w.assign(median);
+    });
+  }
+
+  filteredTranslationNode.element(subsetIndex).assign(filteredTranslation);
+  filteredLinearNode.element(subsetIndex).assign(filteredLinear);
+  filteredStatusNode.element(subsetIndex).assign(filteredStatus);
 })().compute(GRID_COUNT, [64]).setName('DIC-RT median replacement');
 
 const buildKernels = () => {

@@ -672,17 +672,41 @@ const medianReplaceProgram = new GPUProgram(composer, {
       }
       float spreadX = median8(valuesX, count);
       float spreadY = median8(valuesY, count);
-      bool flagged = abs(translation.x - medianX) / (spreadX + 0.1) > 2.0 ||
-        abs(translation.y - medianY) / (spreadY + 0.1) > 2.0;
-      if (!flagged) return;
-      out_translation = vec2(medianX, medianY);
-      out_linear = vec4(
-        median8(p1, count),
-        median8(p2, count),
-        median8(p4, count),
-        median8(p5, count)
-      );
-      out_status.x = 2.0;
+      float medianP1 = median8(p1, count);
+      float medianP2 = median8(p2, count);
+      float medianP4 = median8(p4, count);
+      float medianP5 = median8(p5, count);
+      for (int index = 0; index < 8; ++index) {
+        p1[index] = abs(p1[index] - medianP1);
+        p2[index] = abs(p2[index] - medianP2);
+        p4[index] = abs(p4[index] - medianP4);
+        p5[index] = abs(p5[index] - medianP5);
+      }
+      float derivativeFloor = 0.001 / max(0.5 * (${SUBSET_SIZE}.0 - 1.0), 1.0);
+      if (abs(translation.x - medianX) / (spreadX + 0.1) > 2.0) {
+        out_translation.x = medianX;
+        out_status.x = 2.0;
+      }
+      if (abs(linear.x - medianP1) / (median8(p1, count) + derivativeFloor) > 2.0) {
+        out_linear.x = medianP1;
+        out_status.x = 2.0;
+      }
+      if (abs(linear.y - medianP2) / (median8(p2, count) + derivativeFloor) > 2.0) {
+        out_linear.y = medianP2;
+        out_status.x = 2.0;
+      }
+      if (abs(translation.y - medianY) / (spreadY + 0.1) > 2.0) {
+        out_translation.y = medianY;
+        out_status.x = 2.0;
+      }
+      if (abs(linear.z - medianP4) / (median8(p4, count) + derivativeFloor) > 2.0) {
+        out_linear.z = medianP4;
+        out_status.x = 2.0;
+      }
+      if (abs(linear.w - medianP5) / (median8(p5, count) + derivativeFloor) > 2.0) {
+        out_linear.w = medianP5;
+        out_status.x = 2.0;
+      }
     }
   `,
   uniforms: [

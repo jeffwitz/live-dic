@@ -258,10 +258,10 @@ Measured effect
 ---------------
 
 On the validation machine, the changing-frame UHD synchronous campaign
-measured the recommended two-level full pyramid at 11.920 ms median and 13.072
+measured the recommended two-level full pyramid at 12.069 ms median and 13.163
 ms p95 in affine mode. Translation mode measured 10.526 / 11.170 ms. In the
-four-run, 50-frame bounded campaign, two slots sustained 93.16 FPS affine and
-105.58 FPS translation, with median result ages of 21.408 and 18.888 ms. This
+four-run, 50-frame bounded campaign, two slots sustained 87.50 FPS affine and
+105.58 FPS translation, with median result ages of 22.616 and 18.888 ms. This
 boundary starts with a resident ``uint8`` NumPy image and ends with a
 materialized NumPy field; it includes direct target upload, GPU pyramid
 construction and solving, packed result readback, and result statistics.

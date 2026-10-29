@@ -36,11 +36,11 @@ correct architecture.
 The project goal is sustained digital image correlation on 3840 x 2160 frames
 at 60 frames per second, measured across the complete acquisition-to-result
 pipeline. On the changing UHD sequence, the recommended two-level
-GPU-resident pyramid measures **11.920 / 13.072 ms median / p95** in affine
+GPU-resident pyramid measures **12.069 / 13.163 ms median / p95** in affine
 mode and **10.526 / 11.170 ms** in translation mode at the complete
 resident-NumPy-image to materialized-field boundary. A bounded two-slot stream
-sustains **93.16 FPS affine** and **105.58 FPS translation**; its median result
-ages are 21.408 and 18.888 ms, so throughput is not presented as latency. The
+sustains **87.50 FPS affine** and **105.58 FPS translation**; its median result
+ages are 22.616 and 18.888 ms, so throughput is not presented as latency. The
 boundary includes direct target upload, GPU pyramid construction,
 coarse-to-fine IC-GN computation, packed readback, and NumPy result
 construction.

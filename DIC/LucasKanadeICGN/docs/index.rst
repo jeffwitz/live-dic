@@ -33,12 +33,12 @@ Python-supervised real-time DIC toward 4K60
    The engineering objective is sustained DIC on 3840 x 2160 frames at 60
    frames per second over the complete acquisition-to-result pipeline. On a
    changing four-image sequence, the recommended two-level native full
-   pyramid measured 11.920 ms median / 13.072 ms p95 in affine mode and
+   pyramid measured 12.069 ms median / 13.163 ms p95 in affine mode and
    10.526 / 11.170 ms in translation mode. These resident-NumPy-image to
    materialized-NumPy-field boundaries are below the 16.667 ms frame period.
    Camera acquisition and downstream consumers are not included. The bounded
-   two-slot full-pyramid stream sustains 93.16 FPS affine and 105.58 FPS
-   translation, with 21.408 and 18.888 ms median result ages. 4K60 processing
+   two-slot full-pyramid stream sustains 87.50 FPS affine and 105.58 FPS
+   translation, with 22.616 and 18.888 ms median result ages. 4K60 processing
    throughput is therefore demonstrated offline, while end-to-end acquisition
    remains to be qualified.
 

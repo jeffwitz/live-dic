@@ -99,7 +99,7 @@ Status field
      - Meaning
      - Included by ``accepted_mask``
    * - ``2``
-     - accepted after spatial median replacement
+     - accepted after one or more component-wise spatial median replacements
      - yes
    * - ``1``
      - converged and accepted by ZNCC

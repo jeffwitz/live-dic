@@ -58,11 +58,11 @@ change.
 
 | Backend and model | Median / p95 image-to-field latency | Sustained throughput |
 |---|---:|---:|
-| Native full pyramid, 2 levels, affine | **11.920 / 13.072 ms** | **83.37 FPS** |
+| Native full pyramid, 2 levels, affine | **12.069 / 13.163 ms** | **82.80 FPS** |
 | Native full pyramid, 2 levels, translation | **10.526 / 11.170 ms** | **94.03 FPS** |
-| Raw browser WGSL, 2 levels, affine | **40.873 / 44.782 ms** | **24.03 FPS** |
+| Raw browser WGSL, 2 levels, affine | **45.369 / 52.165 ms** | **21.98 FPS** |
 | Raw browser WGSL, 2 levels, translation | **40.213 / 45.024 ms** | **24.21 FPS** |
-| Three.js/TSL, 1 scale, affine | **43.297 / 59.107 ms** | **21.74 FPS** |
+| Three.js/TSL, 1 scale, affine | **46.763 / 62.198 ms** | **20.21 FPS** |
 | Three.js/TSL, 1 scale, translation | **39.966 / 45.706 ms** | **24.54 FPS** |
 
 The native and raw-browser WGSL rows execute the same two-level algorithm. The
@@ -76,9 +76,9 @@ the image path and remains excluded from this boundary.
 
 This does not make Chromium memory and NumPy memory identical. The UHD frame
 still crosses into Chromium, then into a GPU resource, and the result crosses
-back. In the affine campaign the browser body copy took about 8.5--9.1 ms
-median and the synchronized GPU graph about 16--19 ms. The complete browser
-paths therefore sustain about 22--24 FPS, not 60 FPS. Native wgpu remains the
+back. In the affine campaign the browser body copy took about 9.8 ms median
+and the synchronized GPU graph about 17--20 ms. The complete browser paths
+therefore sustain about 20--22 FPS, not 60 FPS. Native wgpu remains the
 real-time NumPy path.
 
 The native path uploads the NumPy bytes directly to an `r8unorm` texture and
@@ -112,17 +112,18 @@ statistics exist. Stream period is total wall time divided by 50.
 
 | Model and targets in flight | Median / p95 result age | Stream period | Throughput |
 |---|---:|---:|---:|
-| Affine, depth 1 | **11.478 / 12.400 ms** | 11.561 ms | 86.53 FPS |
-| Affine, depth 2 | 21.408 / 22.644 ms | **10.735 ms** | **93.16 FPS** |
-| Affine, depth 3 | 31.894 / 39.452 ms | 10.530 ms | 94.97 FPS |
+| Affine, depth 1 | **11.955 / 13.620 ms** | 12.168 ms | 82.18 FPS |
+| Affine, depth 2 | 22.616 / 25.208 ms | **11.433 ms** | **87.50 FPS** |
+| Affine, depth 3 | 35.322 / 42.598 ms | 11.524 ms | 86.78 FPS |
 | Translation, depth 1 | **10.331 / 11.164 ms** | 10.373 ms | 96.42 FPS |
 | Translation, depth 2 | 18.888 / 19.827 ms | **9.474 ms** | **105.58 FPS** |
 | Translation, depth 3 | 29.705 / 35.718 ms | 9.420 ms | 106.16 FPS |
 
 Depth one minimizes result age. Depth two is the recommended throughput
-setting: it gains 7.7% affine throughput and 9.5% translation throughput while
-approximately doubling result age. The third slot adds little throughput and
-raises median age beyond 32 ms.
+setting: it gains 6.5% affine throughput and 9.5% translation throughput while
+approximately doubling result age. The third slot does not improve affine
+throughput in the current rerun; it adds only 0.6 FPS in translation mode and
+raises median age beyond 35 ms.
 
 ```console
 PYTHONPATH=DIC/LucasKanadeICGN/python/src \
@@ -215,8 +216,9 @@ depth is unrelated to image-pyramid depth.
 
 The opt-in GPU regressions validate partial FIR tiles, exact integer pyramid
 reduction, fresh seeded state, selective-retry neighbour preservation, and the
-translation-only fractional-displacement contract. All 80 tests pass when GPU
-execution is enabled.
+translation-only fractional-displacement contract. They also inject isolated
+affine-gradient and quadratic-curvature outliers to verify component-wise
+median replacement. All 99 tests pass when GPU execution is enabled.
 
 ## Reproduce the current measurements
 

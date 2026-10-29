@@ -94,20 +94,20 @@ campaigns after the binary transport change.
      - Median / p95 latency
      - Sustained throughput
    * - Native full pyramid, 2 levels, affine
-     - **11.920 / 13.072 ms**
-     - **83.37 FPS**
+     - **12.069 / 13.163 ms**
+     - **82.80 FPS**
    * - Native full pyramid, 2 levels, translation
      - **10.526 / 11.170 ms**
      - **94.03 FPS**
    * - Raw browser WGSL, 2 levels, affine
-     - **40.873 / 44.782 ms**
-     - **24.03 FPS**
+     - **45.369 / 52.165 ms**
+     - **21.98 FPS**
    * - Raw browser WGSL, 2 levels, translation
      - **40.213 / 45.024 ms**
      - **24.21 FPS**
    * - Three.js/TSL, 1 scale, affine
-     - **43.297 / 59.107 ms**
-     - **21.74 FPS**
+     - **46.763 / 62.198 ms**
+     - **20.21 FPS**
    * - Three.js/TSL, 1 scale, translation
      - **39.966 / 45.706 ms**
      - **24.54 FPS**
@@ -131,11 +131,11 @@ direct Keys-cubic interpolation, one target in flight, three warm-ups, and 12
 changing UHD frames per campaign. The resident NumPy image to materialized
 12-component NumPy field boundary measured:
 
-* campaign median latencies of 65.465, 69.988, and 56.844 ms;
-* campaign p95 latencies of 107.406, 87.772, and 91.490 ms;
-* sustained throughput of 14.50, 15.40, and 16.72 FPS;
-* 7,524 to 7,788 accepted subsets on the 120 x 67 grid;
-* approximately 1.16 s of excluded one-time reference preparation.
+* campaign median latencies of 61.940, 56.017, and 71.522 ms;
+* campaign p95 latencies of 85.279, 78.054, and 107.940 ms;
+* sustained throughput of 16.98, 17.31, and 14.64 FPS;
+* 7,580 to 7,788 accepted subsets on the 120 x 67 grid;
+* approximately 3.17 s of excluded one-time reference preparation.
 
 This is a correctness-oriented first implementation, not a 4K60 quadratic
 result. Its exact second-order composition currently inverts a lifted 6 by 6
@@ -150,8 +150,8 @@ Reproduce it from the repository root with::
      --subset-size 32 --interpolation cubic --pyramid-levels 2 \
      --pipeline-depth 1 --warmups 3 --frames 12 --campaigns 3
 
-Across the four changing fixtures, affine native and raw WGSL accepted 31,252
-to 31,654 subsets with 0.06275 px maximum truth RMSE. Translation native
+Across the four changing fixtures, affine native and raw WGSL accepted 31,258
+to 31,654 subsets with 0.06466 px maximum truth RMSE. Translation native
 accepted 31,312 to 31,654 with 0.04063 px maximum RMSE; raw WGSL differed by at
 most one accepted subset and less than ``2e-6`` px in maximum RMSE. Three.js is
 single-scale, so its difficult-frame acceptance is not algorithmically
@@ -160,8 +160,8 @@ comparable to the two-level paths.
 The binary path removes the former hundreds of milliseconds of serialization,
 but an UHD frame still crosses the Python/Chromium process boundary, is copied
 into a GPU resource, and the field crosses back. In the current affine runs,
-the browser body copy took about 8.5--9.1 ms median and the synchronized GPU
-graph about 16--19 ms. Complete calls sustain about 22--24 FPS, so the browser
+the browser body copy took about 9.8 ms median and the synchronized GPU graph
+about 17--20 ms. Complete calls sustain about 20--22 FPS, so the browser
 path is still not a 60 Hz NumPy stream. The current native timing contract
 separates input normalization, direct texture
 upload, command encoding, queue submission, blocking completion wait,
@@ -204,17 +204,17 @@ completed results arrive in short bursts.
      - Stream period
      - Throughput
    * - Affine, depth 1
-     - **11.478 / 12.400 ms**
-     - 11.561 ms
-     - 86.53 FPS
+     - **11.955 / 13.620 ms**
+     - 12.168 ms
+     - 82.18 FPS
    * - Affine, depth 2
-     - 21.408 / 22.644 ms
-     - **10.735 ms**
-     - **93.16 FPS**
+     - 22.616 / 25.208 ms
+     - **11.433 ms**
+     - **87.50 FPS**
    * - Affine, depth 3
-     - 31.894 / 39.452 ms
-     - 10.530 ms
-     - 94.97 FPS
+     - 35.322 / 42.598 ms
+     - 11.524 ms
+     - 86.78 FPS
    * - Translation, depth 1
      - **10.331 / 11.164 ms**
      - 10.373 ms
@@ -229,10 +229,10 @@ completed results arrive in short bursts.
      - 106.16 FPS
 
 Depth one remains the low-age choice. Depth two is the recommended
-throughput/latency compromise: it gains 7.7% affine throughput and 9.5%
+throughput/latency compromise: it gains 6.5% affine throughput and 9.5%
 translation throughput over depth one, while approximately doubling result
-age. A third slot adds only 1.8 FPS in affine mode and 0.6 FPS in translation
-mode while increasing median age beyond 32 ms.
+age. A third slot adds 0.6 FPS in translation mode, does not improve affine
+throughput in the current rerun, and increases median age beyond 35 ms.
 
 Reproduce one row with:
 
@@ -427,8 +427,9 @@ Kernel configuration represented by the results
 
 The opt-in GPU tests validate partial FIR tiles, exact integer pyramid
 reduction, fresh seeded state, selective-retry neighbour preservation, and the
-translation-only fractional-displacement contract. All 80 tests pass when GPU
-execution is enabled.
+translation-only fractional-displacement contract. They also inject isolated
+affine-gradient and quadratic-curvature outliers to verify component-wise
+median replacement. All 99 tests pass when GPU execution is enabled.
 
 Timing boundaries
 -----------------

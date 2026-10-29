@@ -1042,25 +1042,34 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
             }
             medians[component] = median_eight(&values, count);
         }
-        for (var index = 0u; index < count; index += 1u) {
-            values[index] = abs(neighbours[index][0] - medians[0]);
+        let own_c = state.values[state_index + 2u];
+        var filtered = array<f32, 12>(
+            own_a.x, own_a.y, own_a.z, own_a.w,
+            own_b.x, own_b.y, own_b.z, own_b.w,
+            own_c.x, own_c.y, own_c.z, own_c.w,
+        );
+        var any_flagged = false;
+        for (var component = 0u; component < 12u; component += 1u) {
+            for (var index = 0u; index < count; index += 1u) {
+                values[index] = abs(neighbours[index][component] - medians[component]);
+            }
+            let spread = median_eight(&values, count);
+            let score = abs(filtered[component] - medians[component])
+                / (spread + parameter_outlier_floor(component));
+            if score > 2.0 {
+                filtered[component] = medians[component];
+                any_flagged = true;
+            }
         }
-        let spread_x = median_eight(&values, count);
-        for (var index = 0u; index < count; index += 1u) {
-            values[index] = abs(neighbours[index][3] - medians[3]);
-        }
-        let spread_y = median_eight(&values, count);
-        let flagged = abs(own_a.x - medians[0]) / (spread_x + 0.1) > 2.0
-            || abs(own_a.w - medians[3]) / (spread_y + 0.1) > 2.0;
-        if flagged {
+        if any_flagged {
             filtered_state.values[state_index] = vec4<f32>(
-                medians[0], medians[1], medians[2], medians[3],
+                filtered[0], filtered[1], filtered[2], filtered[3],
             );
             filtered_state.values[state_index + 1u] = vec4<f32>(
-                medians[4], medians[5], medians[6], medians[7],
+                filtered[4], filtered[5], filtered[6], filtered[7],
             );
             filtered_state.values[state_index + 2u] = vec4<f32>(
-                medians[8], medians[9], medians[10], medians[11],
+                filtered[8], filtered[9], filtered[10], filtered[11],
             );
             filtered_state.values[state_index + 3u] = vec4<f32>(
                 2.0, state.values[state_index + 3u].y, 0.0, 0.0,
@@ -1069,12 +1078,7 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
         return;
     }
 
-    var predicted_x = array<f32, 8>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-    var predicted_y = array<f32, 8>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-    var parameter_1 = array<f32, 8>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-    var parameter_2 = array<f32, 8>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-    var parameter_4 = array<f32, 8>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-    var parameter_5 = array<f32, 8>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+    var neighbours: array<array<f32, 6>, 8>;
     var count = 0u;
     for (var dy = -1; dy <= 1; dy = dy + 1) {
         for (var dx = -1; dx <= 1; dx = dx + 1) {
@@ -1100,12 +1104,12 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
             let p2 = neighbor_a.z;
             let p4 = neighbor_b.x;
             let p5 = neighbor_b.y;
-            predicted_x[count] = neighbor_a.x + p1 * delta_x + p2 * delta_y;
-            predicted_y[count] = neighbor_a.w + p4 * delta_x + p5 * delta_y;
-            parameter_1[count] = p1;
-            parameter_2[count] = p2;
-            parameter_4[count] = p4;
-            parameter_5[count] = p5;
+            neighbours[count][0] = neighbor_a.x + p1 * delta_x + p2 * delta_y;
+            neighbours[count][1] = p1;
+            neighbours[count][2] = p2;
+            neighbours[count][3] = neighbor_a.w + p4 * delta_x + p5 * delta_y;
+            neighbours[count][4] = p4;
+            neighbours[count][5] = p5;
             count = count + 1u;
         }
     }
@@ -1113,38 +1117,65 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
         return;
     }
 
-    var values_x = predicted_x;
-    var values_y = predicted_y;
-    let median_x = median_eight(&values_x, count);
-    let median_y = median_eight(&values_y, count);
-    for (var index = 0u; index < count; index = index + 1u) {
-        values_x[index] = abs(predicted_x[index] - median_x);
-        values_y[index] = abs(predicted_y[index] - median_y);
-    }
-    let spread_x = median_eight(&values_x, count);
-    let spread_y = median_eight(&values_y, count);
-    let flagged = abs(own_a.x - median_x) / (spread_x + 0.1) > 2.0
-        || abs(own_a.w - median_y) / (spread_y + 0.1) > 2.0;
-    if !flagged {
-        return;
-    }
-
-    filtered_state.values[state_index] = vec4<f32>(
-        median_x,
-        median_eight(&parameter_1, count),
-        median_eight(&parameter_2, count),
-        median_y,
+    var filtered = array<f32, 6>(
+        own_a.x, own_a.y, own_a.z, own_a.w, own_b.x, own_b.y,
     );
-    filtered_state.values[state_index + 1u] = vec4<f32>(
-        median_eight(&parameter_4, count),
-        median_eight(&parameter_5, count),
-        2.0,
-        own_b.w,
-    );
+    var values: array<f32, 8>;
+    var any_flagged = false;
+    let component_order = array<u32, 6>(0u, 3u, 1u, 2u, 4u, 5u);
+    let active_component_count = select(6u, 2u, MOTION_MODEL == 1u);
+    for (var active_index = 0u; active_index < active_component_count; active_index += 1u) {
+        let component = component_order[active_index];
+        for (var index = 0u; index < count; index += 1u) {
+            values[index] = neighbours[index][component];
+        }
+        let median = median_eight(&values, count);
+        for (var index = 0u; index < count; index += 1u) {
+            values[index] = abs(neighbours[index][component] - median);
+        }
+        let spread = median_eight(&values, count);
+        let score = abs(filtered[component] - median)
+            / (spread + parameter_outlier_floor(component));
+        if score > 2.0 {
+            filtered[component] = median;
+            any_flagged = true;
+        }
+    }
+    if any_flagged {
+        filtered_state.values[state_index] = vec4<f32>(
+            filtered[0], filtered[1], filtered[2], filtered[3],
+        );
+        filtered_state.values[state_index + 1u] = vec4<f32>(
+            filtered[4], filtered[5], 2.0, own_b.w,
+        );
+    }
 }
 
 fn subset_half_extent() -> f32 {
     return 0.5 * (f32(SUBSET_SIZE) - 1.0);
+}
+
+// Return a unit-aware robustness floor for one motion parameter. Translation
+// keeps the historical 0.1-pixel floor. Derivative floors correspond to a
+// 0.001-pixel displacement at the subset edge, so the same physical threshold
+// applies to affine gradients and quadratic curvatures.
+fn parameter_outlier_floor(component: u32) -> f32 {
+    if component == 0u || component == 3u {
+        return 0.1;
+    }
+    let half_extent = max(subset_half_extent(), 1.0);
+    if component < 6u {
+        return 0.001 / half_extent;
+    }
+    let half_extent_squared = half_extent * half_extent;
+    let is_pure_curvature = component == 6u || component == 8u
+        || component == 9u || component == 11u;
+    let displacement_scale = select(
+        half_extent_squared,
+        0.5 * half_extent_squared,
+        is_pure_curvature,
+    );
+    return 0.001 / max(displacement_scale, 1.0);
 }
 
 fn subset_pixel_count() -> f32 {

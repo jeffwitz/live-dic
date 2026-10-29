@@ -77,10 +77,19 @@ Spatial consistency
 -------------------
 
 After IC-GN, the median pass compares each accepted subset with predictions from
-its accepted 3 x 3 neighbors. A normalized deviation above the configured rule
-replaces the active model coefficients with neighbor medians and assigns
-status 2. Quadratic neighbor polynomials are first recentered at the current
-subset centre before their coefficients are compared.
+its accepted direct 3 x 3 neighbours. Affine and quadratic neighbour
+polynomials are first recentered at the current subset centre. Each active
+coefficient is then tested independently against its neighbour median and
+median absolute deviation (MAD). An aberrant coefficient is replaced by its
+median without discarding the subset's other, locally consistent coefficients;
+any replacement assigns status 2.
+
+The robustness floor is expressed in displacement units. Translation keeps a
+0.1-pixel floor. Affine-gradient and quadratic-curvature floors correspond to a
+0.001-pixel effect at the subset edge, accounting for their different units and
+the configured subset size. A component is replaced when its deviation exceeds
+twice the sum of its MAD and that floor. At least four accepted neighbours are
+required, so sparse boundaries are left unchanged rather than extrapolated.
 
 Numerical equivalence
 ---------------------
