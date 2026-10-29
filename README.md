@@ -126,6 +126,12 @@ headless Chromium / WebGPU or WebGL2
 Python target frame
         |
         v
+same-origin binary uint8 transfer
+        |
+        v
+packed GPU upload / texture write
+        |
+        v
 GPU target FIR prefilter
         |
         v
@@ -135,8 +141,13 @@ affine IC-GN iterations
 median consistency pass
         |
         v
-GPU readback --> NumPy arrays
+GPU readback --> packed binary field --> NumPy views
 ```
+
+The reference remains a one-time encoded setup operation. Steady-state targets
+do not use PNG, data URLs, DevTools payloads, image decoding, or JSON result
+arrays. Browser memory is still separate from NumPy memory, so the binary
+loopback transfer and GPU upload remain measurable.
 
 The native path is shorter: `NumPy uint8 → r8unorm texture → WGSL FIR/IC-GN/
 median → packed readback → NumPy views`. Its detailed resource and workgroup
@@ -202,8 +213,8 @@ single-scale subsets consuming their iteration ceiling. GPU-IO is intentionally
 absent, and no SYSCL row is currently claimed without a new equivalent run.
 
 These values do **not** prove a sustained 60 Hz Python system:
-the browser benchmark excludes Python PNG encoding, DevTools transport, image
-decoding, result transfer, and camera acquisition. Real-time qualification must
+the browser kernel benchmark excludes binary process transfer, result transfer,
+and camera acquisition. Real-time qualification must
 measure the complete `engine.register(frame)` call and the acquisition-to-result
 latency on the target machine.
 
@@ -351,8 +362,9 @@ available from [`index.html`](./index.html).
 - no temporal or extrapolated initialization;
 - no Aitken acceleration or predictive-tolerance guard;
 - no camera, trigger, synchronization, or codec ownership;
-- PNG and DevTools transport between Python and browser GPU runtimes; the
-  native path removes both;
+- binary loopback transfer between NumPy and the separate Chromium process;
+  per-frame PNG, DevTools payloads, decoding, and JSON fields have been removed,
+  while the native path also removes the browser process copy;
 - full result-field readback for every `register` call;
 - soft real-time behavior only, with no operating-system deadline guarantee.
 

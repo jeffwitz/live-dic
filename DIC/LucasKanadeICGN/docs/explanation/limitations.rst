@@ -25,8 +25,14 @@ Geometry and input
 * Grid dimensions are ``floor(width / 16)`` by ``floor(height / 16)``;
   uncovered right or bottom pixels are not assigned to a subset.
 * Inputs are converted to 8-bit grayscale.
-* Every Python frame is encoded as PNG before browser transfer. The native
-  ``ICGNWGPU`` path instead uploads contiguous 8-bit grayscale bytes directly.
+* Three.js and raw WGSL browser targets use a persistent binary loopback
+  transport; per-frame PNG and JSON field serialization have been removed.
+  Chromium still owns separate CPU memory, so the frame crosses a process
+  boundary before its GPU upload and the result crosses back. Native
+  ``ICGNWGPU`` avoids the browser process and uploads contiguous 8-bit
+  grayscale bytes in-process.
+* The one-time browser reference setup still uses the encoded image path. It is
+  excluded from steady-state target registration measurements.
 
 Registration range
 ------------------

@@ -68,9 +68,11 @@ Measure the correct boundary
 
 ``result.timing`` reports stages measured inside the browser. The
 ``perf_counter`` measurement in this tutorial also includes Python image
-normalization, PNG encoding, DevTools transport, JavaScript image decoding, and
-result transfer back to Python. This outer measurement is the relevant one for
-a Python processing loop.
+normalization, binary loopback transfer into Chromium, GPU upload, packed
+result transfer, and NumPy result construction. Targets are not PNG-encoded
+and their fields do not return as JSON. The outer measurement remains the
+relevant one for a Python processing loop because the browser and GPU copies
+are still real work.
 
 The next step is to replace the file list with NumPy frames produced by an
 acquisition source. See :doc:`../how-to/process-live-frames`.

@@ -15,6 +15,11 @@
     </script>
   </head>
   <body>
-    <script type="module" src="./LucasKanadeICGNThree.js"></script>
+    <script type="module">
+      import './LucasKanadeICGNThree.js';
+      import { installBinaryTransport } from '../common/BinaryTransport.js';
+
+      installBinaryTransport();
+    </script>
   </body>
 </html>

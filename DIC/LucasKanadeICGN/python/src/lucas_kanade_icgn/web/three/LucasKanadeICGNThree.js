@@ -17,11 +17,13 @@ import {
   Loop,
   Return,
   array,
+  bitAnd,
   float,
   int,
   ivec2,
   localId,
   select,
+  shiftRight,
   storage,
   subgroupAdd,
   subgroupSize,
@@ -77,6 +79,7 @@ let GRID_WIDTH = Math.floor(FRAME_WIDTH / SUBSET_SIZE);
 let GRID_HEIGHT = Math.floor(FRAME_HEIGHT / SUBSET_SIZE);
 let GRID_COUNT = GRID_WIDTH * GRID_HEIGHT;
 let attributes = null;
+let sourcePackedNode = null;
 let sourceNode = null;
 let temporaryNode = null;
 let coefficientsNode = null;
@@ -97,6 +100,7 @@ let useSubgroupSolver = false;
 let solverKind = 'uninitialized';
 let runtimeInterpolation = null;
 let runtimeMotionModel = null;
+let targetUsesPackedBytes = false;
 
 /** Allocate all resolution-dependent storage and rebuild the TSL compute graph. */
 const initializeRuntime = (width, height) => {
@@ -134,11 +138,14 @@ const initializeRuntime = (width, height) => {
   const StorageAttribute = renderer.backend.isWebGPUBackend === true
     ? THREE.StorageBufferAttribute
     : THREE.StorageInstancedBufferAttribute;
-  const storageAttribute = (length, itemSize) => new StorageAttribute(
-    new Float32Array(length),
+  const storageAttribute = (length, itemSize, ArrayType = Float32Array) => new StorageAttribute(
+    new ArrayType(length),
     itemSize,
   );
   attributes = {
+    sourcePacked: renderer.backend.isWebGPUBackend === true
+      ? storageAttribute(Math.ceil(PIXEL_COUNT / 4), 1, Uint32Array)
+      : null,
     source: storageAttribute(PIXEL_COUNT, 1),
     temporary: storageAttribute(PIXEL_COUNT, 1),
     coefficients: storageAttribute(PIXEL_COUNT, 1),
@@ -154,6 +161,9 @@ const initializeRuntime = (width, height) => {
     subgroupDiagnostic: storageAttribute(1, 1),
   };
 
+  sourcePackedNode = attributes.sourcePacked
+    ? storage(attributes.sourcePacked, 'uint', Math.ceil(PIXEL_COUNT / 4)).toReadOnly()
+    : null;
   sourceNode = storage(attributes.source, 'float', PIXEL_COUNT);
   temporaryNode = storage(attributes.temporary, 'float', PIXEL_COUNT);
   coefficientsNode = storage(attributes.coefficients, 'float', PIXEL_COUNT);
@@ -188,6 +198,7 @@ const initializeRuntime = (width, height) => {
   runtimeInterpolation = configuration.interpolation;
   runtimeMotionModel = configuration.motionModel;
   referenceReady = false;
+  targetUsesPackedBytes = false;
   return true;
 };
 
@@ -294,6 +305,15 @@ const makePrefilterKernel = (input, output, horizontal) => {
   })().compute(tileColumns * tileRows * 256, [256])
     .setName(horizontal ? 'DIC-RT tiled prefilter X' : 'DIC-RT tiled prefilter Y');
 };
+
+/** Expand four packed uint8 pixels per word into the float source buffer. */
+const makeUnpackKernel = () => Fn(() => {
+  const index = instanceIndex;
+  const packed = sourcePackedNode.element(index.div(uint(4)));
+  const shift = index.mod(uint(4)).mul(uint(8));
+  const value = bitAnd(shiftRight(packed, shift), uint(255));
+  sourceNode.element(index).assign(float(value).div(255));
+})().compute(PIXEL_COUNT, [256]).setName('DIC-RT unpack uint8 target');
 
 const packedComponent = (buffer, itemIndex, componentIndex) => {
   const packed = buffer.element(itemIndex);
@@ -1011,6 +1031,7 @@ const buildKernels = () => {
     ? (useSubgroupSolver ? 'subgroup-pending-validation' : 'portable-workgroup')
     : 'serial-webgl2';
   return {
+    unpack: webgpu ? makeUnpackKernel() : null,
     prefilterX: makePrefilterKernel(sourceNode, temporaryNode, true),
     prefilterY: makePrefilterKernel(temporaryNode, coefficientsNode, false),
     solver: webgpu
@@ -1067,6 +1088,29 @@ const setTarget = (image) => {
   const gray = imageToGray(image, FRAME_WIDTH, FRAME_HEIGHT);
   for (let index = 0; index < PIXEL_COUNT; ++index) attributes.source.array[index] = gray[index];
   attributes.source.needsUpdate = true;
+  targetUsesPackedBytes = false;
+};
+
+/** Upload an already-grayscale frame without decoding an intermediate image. */
+const setTargetBytes = (pixels, width, height) => {
+  if (!attributes) throw new Error('A reference image must be configured first');
+  if (width !== FRAME_WIDTH || height !== FRAME_HEIGHT) {
+    throw new Error(
+      `Target dimensions ${width}x${height} do not match the reference ${FRAME_WIDTH}x${FRAME_HEIGHT}`,
+    );
+  }
+  if (!(pixels instanceof Uint8Array) || pixels.byteLength !== PIXEL_COUNT) {
+    throw new Error(`Expected ${PIXEL_COUNT} grayscale bytes`);
+  }
+  if (renderer.backend.isWebGPUBackend === true) {
+    new Uint8Array(attributes.sourcePacked.array.buffer).set(pixels);
+    attributes.sourcePacked.needsUpdate = true;
+    targetUsesPackedBytes = true;
+    return;
+  }
+  for (let index = 0; index < PIXEL_COUNT; ++index) attributes.source.array[index] = pixels[index] / 255;
+  attributes.source.needsUpdate = true;
+  targetUsesPackedBytes = false;
 };
 
 const resetSolver = () => {
@@ -1115,9 +1159,10 @@ const resolveGpuTimestamp = async () => {
 
 const executePipeline = async ({ measureGpu = false } = {}) => {
   resetSolver();
+  const inputKernels = targetUsesPackedBytes ? [kernels.unpack] : [];
   const computeKernels = configuration.interpolation === 'bspline'
-    ? [kernels.prefilterX, kernels.prefilterY, kernels.solver, kernels.median]
-    : [kernels.solver, kernels.median];
+    ? [...inputKernels, kernels.prefilterX, kernels.prefilterY, kernels.solver, kernels.median]
+    : [...inputKernels, kernels.solver, kernels.median];
   if (renderer.backend.isWebGPUBackend !== true) {
     await renderer.computeAsync(computeKernels);
     if (measureGpu) return resolveGpuTimestamp();
@@ -1199,6 +1244,18 @@ const register = async (dataUrl, options = {}) => {
   } finally {
     image.close();
   }
+  const wallStart = performance.now();
+  const gpuMs = await executePipeline({ measureGpu: true });
+  const wallMs = performance.now() - wallStart;
+  return readResult({ gpuMs, wallMs });
+};
+
+/** Register a raw contiguous uint8 grayscale frame received from Python. */
+const registerBytes = async (pixels, width, height, options = {}) => {
+  await ensureRenderer();
+  if (!referenceReady) throw new Error('A reference image must be configured first');
+  configure(options);
+  setTargetBytes(pixels, width, height);
   const wallStart = performance.now();
   const gpuMs = await executePipeline({ measureGpu: true });
   const wallMs = performance.now() - wallStart;
@@ -1354,6 +1411,13 @@ const info = async () => {
   };
 };
 
-window.ICGNHeadless = { info, configure, setReference, register, benchmark };
+window.ICGNHeadless = {
+  info,
+  configure,
+  setReference,
+  register,
+  registerBytes,
+  benchmark,
+};
 window.ICGNHeadlessReady = ensureRenderer();
 

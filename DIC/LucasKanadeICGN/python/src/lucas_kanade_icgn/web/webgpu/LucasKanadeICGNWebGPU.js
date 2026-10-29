@@ -653,6 +653,24 @@ const setTarget = (image) => {
   );
 };
 
+/** Upload an already-grayscale frame without decoding an intermediate image. */
+const setTargetBytes = (pixels, width, height) => {
+  if (width !== FRAME_WIDTH || height !== FRAME_HEIGHT) {
+    throw new Error(
+      `Target dimensions ${width}x${height} do not match the reference ${FRAME_WIDTH}x${FRAME_HEIGHT}`,
+    );
+  }
+  if (!(pixels instanceof Uint8Array) || pixels.byteLength !== PIXEL_COUNT) {
+    throw new Error(`Expected ${PIXEL_COUNT} grayscale bytes`);
+  }
+  device.queue.writeTexture(
+    { texture: sourceTexture },
+    pixels,
+    { bytesPerRow: FRAME_WIDTH, rowsPerImage: FRAME_HEIGHT },
+    [FRAME_WIDTH, FRAME_HEIGHT, 1],
+  );
+};
+
 const executePipeline = async ({ measureGpu = false } = {}) => {
   const encoder = device.createCommandEncoder({ label: 'DIC-RT full-pyramid registration' });
   levels.forEach((level) => {
@@ -889,6 +907,18 @@ const register = async (dataUrl, options = {}) => {
   return readResult({ gpuMs, wallMs });
 };
 
+/** Register a raw contiguous uint8 grayscale frame received from Python. */
+const registerBytes = async (pixels, width, height, options = {}) => {
+  await ensureDevice();
+  if (!referenceReady) throw new Error('A reference image must be configured first');
+  configure(options);
+  setTargetBytes(pixels, width, height);
+  const started = performance.now();
+  const gpuMs = await executePipeline({ measureGpu: true });
+  const wallMs = performance.now() - started;
+  return readResult({ gpuMs, wallMs });
+};
+
 const percentile = (values, probability) => {
   const sorted = [...values].sort((left, right) => left - right);
   return sorted[Math.min(sorted.length - 1, Math.ceil(probability * sorted.length) - 1)];
@@ -963,5 +993,12 @@ const info = async () => {
   };
 };
 
-window.ICGNHeadless = { info, configure, setReference, register, benchmark };
+window.ICGNHeadless = {
+  info,
+  configure,
+  setReference,
+  register,
+  registerBytes,
+  benchmark,
+};
 window.ICGNHeadlessReady = ensureDevice();

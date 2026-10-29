@@ -6,6 +6,7 @@ import io
 import json
 import operator
 import os
+import secrets
 import shutil
 import socket
 import subprocess
@@ -15,6 +16,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from collections import deque
 from collections.abc import Coroutine, Iterable, Mapping, Sequence
 from concurrent.futures import Future
 from dataclasses import dataclass
@@ -38,6 +40,7 @@ ImageInput: TypeAlias = str | os.PathLike[str] | bytes | Image.Image | npt.Array
 _MAX_CDP_MESSAGE_BYTES: Final = 128 * 1024 * 1024
 _POLL_INTERVAL_SECONDS: Final = 0.05
 _CHROMIUM_LOG_TAIL_BYTES: Final = 4_000
+_MAX_BINARY_RESULT_BYTES: Final = 256 * 1024 * 1024
 
 _T = TypeVar("_T")
 
@@ -168,6 +171,56 @@ class RegistrationResult:
             subset_size=int(payload["subsetSize"]),
         )
 
+    @classmethod
+    def from_packed_browser_result(
+        cls,
+        raw: bytes,
+        payload: Mapping[str, Any],
+    ) -> RegistrationResult:
+        """Build a result from the browser's interleaved binary state field."""
+
+        grid_x, grid_y = map(int, payload["grid"])
+        expected_bytes = grid_x * grid_y * 8 * np.dtype(np.float32).itemsize
+        if len(raw) != expected_bytes:
+            raise ICGNError(
+                "Browser binary result size mismatch: "
+                f"expected {expected_bytes} bytes, received {len(raw)}"
+            )
+        # bytearray keeps the public NumPy field writable while all component
+        # arrays remain zero-copy views of one compact allocation.
+        packed = np.frombuffer(bytearray(raw), dtype="<f4").reshape(grid_y, grid_x, 8)
+        parameters = packed[..., :6]
+        status = packed[..., 6]
+        iterations = packed[..., 7]
+        accepted_mask = status > 0.5
+        accepted = int(np.count_nonzero(accepted_mask))
+        mean_translation = None
+        mean_iterations = None
+        if accepted:
+            mean_translation = (
+                float(np.mean(parameters[..., 0][accepted_mask], dtype=np.float64)),
+                float(np.mean(parameters[..., 3][accepted_mask], dtype=np.float64)),
+            )
+            mean_iterations = float(np.mean(iterations[accepted_mask], dtype=np.float64))
+        return cls(
+            parameters=parameters,
+            status=status,
+            iterations=iterations,
+            accepted=accepted,
+            replaced=int(np.count_nonzero(status > 1.5)),
+            mean_translation=mean_translation,
+            mean_iterations=mean_iterations,
+            timing={
+                key: float(value)
+                for key, value in payload.get("timing", {}).items()
+                if value is not None
+            },
+            config=dict(payload.get("config", {})),
+            width=int(payload["width"]),
+            height=int(payload["height"]),
+            subset_size=int(payload["subsetSize"]),
+        )
+
 
 @dataclass(slots=True)
 class BenchmarkResult:
@@ -212,18 +265,205 @@ class _QuietHandler(SimpleHTTPRequestHandler):
 
 
 class _StaticServer:
-    """Small loopback-only HTTP server used by the headless browser."""
+    """Loopback asset server with ephemeral binary frame/result exchange."""
 
     def __init__(self, root: Path) -> None:
-        handler = partial(_QuietHandler, directory=str(root))
+        self.transport_token = secrets.token_urlsafe(24)
+        self._inputs: dict[str, tuple[memoryview, int, int, str]] = {}
+        self._input_queue: deque[str] = deque()
+        self._results: dict[str, bytes] = {}
+        self._errors: dict[str, str] = {}
+        self._condition = threading.Condition()
+        self._closed = False
+        transport = self
+
+        class _TransportHandler(_QuietHandler):
+            protocol_version = "HTTP/1.1"
+
+            def do_GET(self) -> None:
+                if transport._serve_next_binary_input(self):
+                    return
+                if transport._serve_binary_input(self):
+                    return
+                super().do_GET()
+
+            def do_POST(self) -> None:
+                if transport._receive_binary_result(self):
+                    return
+                if transport._receive_binary_failure(self):
+                    return
+                self.send_error(404)
+
+        handler = partial(_TransportHandler, directory=str(root))
         self._server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
         self.port = int(self._server.server_address[1])
         self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
+
+    def _transport_ticket(self, path: str, operation: str) -> str | None:
+        prefix = f"/__icgn_binary__/{self.transport_token}/{operation}/"
+        if not path.startswith(prefix):
+            return None
+        ticket = path[len(prefix) :]
+        if not ticket or "/" in ticket or "?" in ticket:
+            return None
+        return ticket
+
+    def _serve_binary_input(self, handler: SimpleHTTPRequestHandler) -> bool:
+        ticket = self._transport_ticket(handler.path, "input")
+        if ticket is None:
+            return False
+        with self._condition:
+            entry = self._inputs.pop(ticket, None)
+        if entry is None:
+            handler.send_error(404, "Unknown or expired binary input")
+            return True
+        self._send_binary_input(handler, ticket, entry)
+        return True
+
+    def _serve_next_binary_input(self, handler: SimpleHTTPRequestHandler) -> bool:
+        path = f"/__icgn_binary__/{self.transport_token}/next"
+        if handler.path != path:
+            return False
+        with self._condition:
+            entry: tuple[memoryview, int, int, str] | None = None
+            ticket: str | None = None
+            while entry is None and not self._closed:
+                while self._input_queue and entry is None:
+                    ticket = self._input_queue.popleft()
+                    entry = self._inputs.pop(ticket, None)
+                if entry is None:
+                    self._condition.wait()
+            if entry is None or ticket is None:
+                handler.send_response(204)
+                handler.send_header("Content-Length", "0")
+                handler.send_header("Cache-Control", "no-store")
+                handler.end_headers()
+                return True
+        self._send_binary_input(handler, ticket, entry)
+        return True
+
+    @staticmethod
+    def _send_binary_input(
+        handler: SimpleHTTPRequestHandler,
+        ticket: str,
+        entry: tuple[memoryview, int, int, str],
+    ) -> None:
+        payload, width, height, options = entry
+        handler.send_response(200)
+        handler.send_header("Content-Type", "application/octet-stream")
+        handler.send_header("Content-Length", str(payload.nbytes))
+        handler.send_header("Cache-Control", "no-store")
+        handler.send_header("X-ICGN-Ticket", ticket)
+        handler.send_header("X-ICGN-Width", str(width))
+        handler.send_header("X-ICGN-Height", str(height))
+        handler.send_header("X-ICGN-Options", options)
+        handler.end_headers()
+        handler.wfile.write(payload)
+
+    def _receive_binary_result(self, handler: SimpleHTTPRequestHandler) -> bool:
+        ticket = self._transport_ticket(handler.path, "result")
+        if ticket is None:
+            return False
+        try:
+            length = int(handler.headers.get("Content-Length", "-1"))
+        except ValueError:
+            length = -1
+        if not 0 <= length <= _MAX_BINARY_RESULT_BYTES:
+            handler.send_error(413, "Invalid binary result size")
+            return True
+        payload = handler.rfile.read(length)
+        if len(payload) != length:
+            handler.send_error(400, "Incomplete binary result")
+            return True
+        with self._condition:
+            self._results[ticket] = payload
+            self._condition.notify_all()
+        handler.send_response(204)
+        handler.send_header("Content-Length", "0")
+        handler.send_header("Cache-Control", "no-store")
+        handler.end_headers()
+        return True
+
+    def _receive_binary_failure(self, handler: SimpleHTTPRequestHandler) -> bool:
+        ticket = self._transport_ticket(handler.path, "failure")
+        if ticket is None:
+            return False
+        try:
+            length = int(handler.headers.get("Content-Length", "-1"))
+        except ValueError:
+            length = -1
+        if not 0 <= length <= 64 * 1024:
+            handler.send_error(413, "Invalid binary transport failure size")
+            return True
+        message = handler.rfile.read(length).decode("utf-8", errors="replace")
+        with self._condition:
+            self._errors[ticket] = message
+            self._condition.notify_all()
+        handler.send_response(204)
+        handler.send_header("Content-Length", "0")
+        handler.send_header("Cache-Control", "no-store")
+        handler.end_headers()
+        return True
+
+    def publish_input(
+        self,
+        frame: npt.NDArray[np.uint8],
+        options: Mapping[str, Any] | None = None,
+    ) -> str:
+        """Expose one contiguous frame once and return its unguessable ticket."""
+
+        if frame.dtype != np.uint8 or frame.ndim != 2 or not frame.flags.c_contiguous:
+            raise ValueError("Binary browser input must be a contiguous 2D uint8 array")
+        ticket = secrets.token_urlsafe(18)
+        height, width = frame.shape
+        serialized_options = json.dumps(options or {}, separators=(",", ":"))
+        with self._condition:
+            if self._closed:
+                raise ICGNError("The browser binary transport is closed")
+            self._inputs[ticket] = (
+                memoryview(frame).cast("B"),
+                width,
+                height,
+                serialized_options,
+            )
+            self._input_queue.append(ticket)
+            self._condition.notify_all()
+        return ticket
+
+    def take_result(self, ticket: str, timeout: float) -> bytes:
+        """Wait for and consume one binary result posted by the browser."""
+
+        deadline = time.monotonic() + timeout
+        with self._condition:
+            while ticket not in self._results and ticket not in self._errors:
+                if self._closed:
+                    raise ICGNError("The browser binary transport was closed")
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise ICGNError("Timed out waiting for the browser binary result")
+                self._condition.wait(remaining)
+            if ticket in self._errors:
+                message = self._errors.pop(ticket)
+                raise ICGNError(f"Browser binary registration failed: {message}")
+            return self._results.pop(ticket)
+
+    def discard_exchange(self, ticket: str) -> None:
+        with self._condition:
+            self._inputs.pop(ticket, None)
+            self._results.pop(ticket, None)
+            self._errors.pop(ticket, None)
 
     def start(self) -> None:
         self._thread.start()
 
     def close(self) -> None:
+        with self._condition:
+            self._closed = True
+            self._inputs.clear()
+            self._input_queue.clear()
+            self._results.clear()
+            self._errors.clear()
+            self._condition.notify_all()
         self._server.shutdown()
         self._server.server_close()
         self._thread.join(timeout=2)
@@ -660,6 +900,8 @@ class ICGNWebGL:
         log_path = Path(self._temporary.name) / "chromium.log"
         self._log_handle = log_path.open("wb")
         page_url = f"http://127.0.0.1:{self._server.port}/{self._headless_path}?headless=1"
+        if self.backend != "gpuio":
+            page_url += f"&binaryToken={self._server.transport_token}"
         if self.force_three_webgl:
             page_url += "&forceWebGL=1"
         if self.backend == "gpuio" and self._requested_dimensions is not None:
@@ -726,9 +968,14 @@ class ICGNWebGL:
         )
 
     def _wait_until_ready(self, deadline: float) -> bool:
+        expression = (
+            "Boolean(window.ICGNHeadless)"
+            if self.backend == "gpuio"
+            else "Boolean(window.ICGNHeadless && window.ICGNBinaryTransport)"
+        )
         while time.monotonic() < deadline:
             try:
-                if self._evaluate("Boolean(window.ICGNHeadless)"):
+                if self._evaluate(expression):
                     return True
             except ICGNError:
                 pass
@@ -894,6 +1141,13 @@ class ICGNWebGL:
 
         if not self._reference_ready:
             raise ICGNError("Call set_reference() before register().")
+        if self.backend != "gpuio":
+            return self._register_binary(
+                target,
+                iterations=iterations,
+                tolerance=tolerance,
+                zncc_min=zncc_min,
+            )
         total_start = time.perf_counter()
         encoding_start = time.perf_counter()
         data_url = _data_url(target)
@@ -906,6 +1160,51 @@ class ICGNWebGL:
             **result.timing,
             "encodingWallMs": encoding_wall_ms,
             "pythonCallWallMs": total_wall_ms,
+        }
+        return result
+
+    def _register_binary(
+        self,
+        target: ImageInput,
+        *,
+        iterations: int | None,
+        tolerance: float | None,
+        zncc_min: float | None,
+    ) -> RegistrationResult:
+        """Register through same-origin raw-byte input and packed output routes."""
+
+        if self._server is None:
+            raise ICGNError("The headless engine is not running.")
+        total_started = time.perf_counter()
+        preparation_started = time.perf_counter()
+        frame = _as_uint8_gray(target)
+        input_preparation_wall_ms = (time.perf_counter() - preparation_started) * 1_000.0
+        options = self._options(iterations=iterations, tolerance=tolerance, zncc_min=zncc_min)
+        ticket = self._server.publish_input(frame, options)
+        try:
+            response = self._server.take_result(ticket, self.call_timeout)
+        finally:
+            self._server.discard_exchange(ticket)
+        if len(response) < 4:
+            raise ICGNError("Browser binary response is missing its metadata header")
+        metadata_size = int.from_bytes(response[:4], byteorder="little", signed=False)
+        metadata_end = 4 + metadata_size
+        if metadata_end > len(response):
+            raise ICGNError("Browser binary response has truncated metadata")
+        try:
+            payload = json.loads(response[4:metadata_end].decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ICGNError("Browser binary response metadata is invalid") from exc
+        raw = response[metadata_end:]
+        result_started = time.perf_counter()
+        result = RegistrationResult.from_packed_browser_result(raw, payload)
+        result_build_wall_ms = (time.perf_counter() - result_started) * 1_000.0
+        result.timing = {
+            **result.timing,
+            "inputPreparationWallMs": input_preparation_wall_ms,
+            "resultBuildWallMs": result_build_wall_ms,
+            "encodingWallMs": 0.0,
+            "pythonCallWallMs": (time.perf_counter() - total_started) * 1_000.0,
         }
         return result
 
@@ -1021,6 +1320,11 @@ class ICGNWebGL:
     def close(self) -> None:
         """Release the Chromium process, server, log, and temporary profile."""
 
+        # End the long poll before terminating Chromium so the browser transport
+        # exits normally instead of reporting a connection failure on shutdown.
+        if self._server is not None:
+            self._server.close()
+            self._server = None
         process, self._process = self._process, None
         if process is not None and process.poll() is None:
             process.terminate()
@@ -1032,9 +1336,6 @@ class ICGNWebGL:
         if self._log_handle is not None:
             self._log_handle.close()
             self._log_handle = None
-        if self._server is not None:
-            self._server.close()
-            self._server = None
         if self._temporary is not None:
             self._temporary.cleanup()
             self._temporary = None

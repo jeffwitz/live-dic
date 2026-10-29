@@ -3,7 +3,10 @@ from __future__ import annotations
 import asyncio
 import inspect
 import tempfile
+import threading
 import unittest
+import urllib.error
+import urllib.request
 from pathlib import Path
 from unittest import mock
 
@@ -24,6 +27,7 @@ from lucas_kanade_icgn.engine import (
     _find_chromium,
     _find_runtime_assets,
     _run_async_blocking,
+    _StaticServer,
     _subprocess_session_arguments,
     register_pair,
 )
@@ -136,6 +140,95 @@ class RegistrationResultTests(unittest.TestCase):
         np.testing.assert_allclose(result.gpu_times_ms, [3.5, 3.7])
         np.testing.assert_allclose(result.wall_times_ms, [16.0, 17.0])
         self.assertEqual(result.registration.parameters.shape, (1, 1, 6))
+
+    def test_packed_browser_result_is_writable_and_keeps_component_views(self) -> None:
+        packed = np.zeros((1, 2, 8), dtype="<f4")
+        packed[0, :, 0] = [2.0, 4.0]
+        packed[0, :, 3] = [-1.0, -3.0]
+        packed[0, :, 6] = [1.0, 2.0]
+        packed[0, :, 7] = [3.0, 5.0]
+        payload = {
+            "grid": [2, 1],
+            "width": 32,
+            "height": 16,
+            "subsetSize": 16,
+            "timing": {"gpuMs": 1.25, "unsupported": None},
+            "config": {"iterations": 5},
+        }
+
+        result = RegistrationResult.from_packed_browser_result(packed.tobytes(), payload)
+
+        self.assertTrue(result.parameters.flags.writeable)
+        self.assertIs(result.parameters.base, result.status.base)
+        self.assertIs(result.parameters.base, result.iterations.base)
+        np.testing.assert_allclose(result.mean_translation, (3.0, -2.0))
+        self.assertEqual(result.mean_iterations, 4.0)
+        self.assertEqual(result.accepted, 2)
+        self.assertEqual(result.replaced, 1)
+        self.assertEqual(result.timing, {"gpuMs": 1.25})
+
+
+class BinaryTransportServerTests(unittest.TestCase):
+    def test_raw_input_is_one_shot_and_result_is_returned(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            server = _StaticServer(Path(directory))
+            server.start()
+            try:
+                frame = np.arange(24, dtype=np.uint8).reshape(4, 6)
+                ticket = server.publish_input(frame)
+                base = f"http://127.0.0.1:{server.port}/__icgn_binary__/{server.transport_token}"
+                input_url = f"{base}/input/{ticket}"
+                with urllib.request.urlopen(input_url, timeout=2) as response:
+                    self.assertEqual(response.read(), frame.tobytes())
+                    self.assertEqual(response.headers["Content-Type"], "application/octet-stream")
+                with self.assertRaises(urllib.error.HTTPError) as error:
+                    urllib.request.urlopen(input_url, timeout=2)
+                self.assertEqual(error.exception.code, 404)
+
+                expected_result = np.arange(16, dtype="<f4").tobytes()
+                request = urllib.request.Request(
+                    f"{base}/result/{ticket}",
+                    data=expected_result,
+                    headers={"Content-Type": "application/octet-stream"},
+                    method="POST",
+                )
+                with urllib.request.urlopen(request, timeout=2) as response:
+                    self.assertEqual(response.status, 204)
+                self.assertEqual(server.take_result(ticket, 2), expected_result)
+            finally:
+                server.close()
+
+    def test_long_poll_delivers_frame_dimensions_and_options(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            server = _StaticServer(Path(directory))
+            server.start()
+            received: dict[str, object] = {}
+            next_url = (
+                f"http://127.0.0.1:{server.port}/__icgn_binary__/{server.transport_token}/next"
+            )
+
+            def receive() -> None:
+                with urllib.request.urlopen(next_url, timeout=2) as response:
+                    received["body"] = response.read()
+                    received["ticket"] = response.headers["X-ICGN-Ticket"]
+                    received["width"] = response.headers["X-ICGN-Width"]
+                    received["height"] = response.headers["X-ICGN-Height"]
+                    received["options"] = response.headers["X-ICGN-Options"]
+
+            thread = threading.Thread(target=receive)
+            thread.start()
+            try:
+                frame = np.arange(35, dtype=np.uint8).reshape(5, 7)
+                ticket = server.publish_input(frame, {"iterations": 7})
+                thread.join(timeout=2)
+                self.assertFalse(thread.is_alive())
+                self.assertEqual(received["body"], frame.tobytes())
+                self.assertEqual(received["ticket"], ticket)
+                self.assertEqual(received["width"], "7")
+                self.assertEqual(received["height"], "5")
+                self.assertEqual(received["options"], '{"iterations":7}')
+            finally:
+                server.close()
 
 
 class NotebookLoopTests(unittest.TestCase):
@@ -310,6 +403,7 @@ class RuntimeAssetTests(unittest.TestCase):
             "three/vendor/three.webgpu.js",
             "three/vendor/three.tsl.js",
             "three/vendor/THREE-LICENSE.txt",
+            "common/BinaryTransport.js",
             "common/ReferencePreparation.js",
         ):
             self.assertTrue((assets.root / filename).is_file(), filename)
@@ -340,6 +434,7 @@ class RuntimeAssetTests(unittest.TestCase):
         for filename in (
             "web/webgpu/headless.html",
             "web/webgpu/LucasKanadeICGNWebGPU.js",
+            "web/common/BinaryTransport.js",
             "web/common/ReferencePreparation.js",
             "shaders/icgn.wgsl",
             "shaders/full_pyramid.wgsl",

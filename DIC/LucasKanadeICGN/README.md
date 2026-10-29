@@ -196,9 +196,12 @@ the performance reference for the exact boundaries, protocol, and caveats.
 Contiguous grayscale ``uint8`` NumPy arrays are passed directly to wgpu-py's
 texture upload; a conforming camera buffer does not undergo PNG, Pillow, or
 browser conversion. A CPU-to-GPU copy remains necessary because ordinary
-NumPy memory is not GPU texture memory. The browser Python adapter still uses
-PNG/DevTools input and JSON result transport and is therefore a compatibility
-path for NumPy streams, not the low-latency path.
+NumPy memory is not GPU texture memory. The Three.js and raw WGSL browser
+adapters now use a persistent same-origin binary transport: target bytes cross
+unchanged and one packed float field returns. There is no per-frame PNG,
+DevTools image payload, decode, or JSON field. Chromium nevertheless owns
+separate memory, so the loopback copy and GPU upload remain. Current complete
+UHD calls are about 40--43 ms median; native wgpu remains the 60 Hz NumPy path.
 
 The raw browser ``webgpu-wgsl`` backend now runs that same GPU-resident
 full-pyramid graph. It defaults to two levels with schedules ``(8, 16)`` and

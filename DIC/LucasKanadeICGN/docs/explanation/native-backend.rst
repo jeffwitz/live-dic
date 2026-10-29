@@ -6,8 +6,10 @@ Why a native path exists
 
 The browser backends preserve the original GPU-IO implementation and provide
 portable WebGPU execution, but a Python frame crosses several representation
-boundaries: NumPy, PNG, the DevTools protocol, JavaScript, and finally a GPU
-resource. ``ICGNWGPU`` removes that browser transport. It uses `wgpu-py
+boundaries: NumPy, a binary loopback response, a Chromium ``Uint8Array``, and
+finally a GPU resource. The binary browser path no longer encodes each target
+as PNG or carries the field through DevTools/JSON, but the inter-process copies
+remain. ``ICGNWGPU`` removes that browser transport. It uses `wgpu-py
 <https://wgpu-py.readthedocs.io/>`_ to submit the project's WGSL and SPIR-V
 kernels directly through wgpu-native.
 

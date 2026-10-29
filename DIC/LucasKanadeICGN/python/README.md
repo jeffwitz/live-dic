@@ -209,8 +209,9 @@ parameter order do not change.
 
 ## Native WebGPU engine
 
-Use `ICGNWGPU` when the input already exists as a NumPy array and browser
-transport would dominate the latency:
+Use `ICGNWGPU` when the input already exists as a NumPy array and the remaining
+browser process transfer would dominate the latency. Browser targets already
+use binary rather than PNG, but native wgpu also removes the Chromium copy:
 
 ```python
 from lucas_kanade_icgn import ICGNWGPU
@@ -361,8 +362,7 @@ print(benchmark.wall_median_ms, benchmark.wall_p95_ms)
 
 GPU time uses WebGL timer queries for GPU-IO and WebGPU timestamp queries for
 Three.js/TSL and raw WGSL. It includes target prefiltering, IC-GN, and median replacement.
-Wall time excludes PNG conversion in Python, DevTools transport, and result
-readback.
+Wall time excludes Python-to-browser binary transport and result readback.
 
 This explicit two-step form keeps reference construction out of the measured
 optical-flow runs. `benchmark(reference, target, ...)` remains a convenience

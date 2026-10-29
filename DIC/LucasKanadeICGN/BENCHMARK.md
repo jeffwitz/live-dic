@@ -44,25 +44,34 @@ camera acquisition, and decoding are excluded.
 The sequence cycles the four distinct qualified `frame_001`, `frame_005`,
 `frame_010`, and `frame_020` fixtures. Every row uses three changing-frame
 warm-ups followed by 12 measured frames. Execution is synchronous, so the
-reported latency is also the result age and the inverse stream period.
+reported latency is also the result age and the inverse stream period. The
+browser rows report the median of three campaigns after the binary transport
+change.
 
 | Backend and model | Median / p95 image-to-field latency | Sustained throughput |
 |---|---:|---:|
 | Native full pyramid, 2 levels, affine | **11.920 / 13.072 ms** | **83.37 FPS** |
 | Native full pyramid, 2 levels, translation | **10.526 / 11.170 ms** | **94.03 FPS** |
-| Raw browser WGSL, 2 levels, affine | 585.594 / 612.275 ms | 1.71 FPS |
-| Raw browser WGSL, 2 levels, translation | 470.765 / 494.262 ms | 2.11 FPS |
-| Three.js/TSL, 1 scale, affine | 596.772 / 613.626 ms | 1.68 FPS |
-| Three.js/TSL, 1 scale, translation | 482.453 / 496.790 ms | 2.08 FPS |
+| Raw browser WGSL, 2 levels, affine | **40.873 / 44.782 ms** | **24.03 FPS** |
+| Raw browser WGSL, 2 levels, translation | **40.213 / 45.024 ms** | **24.21 FPS** |
+| Three.js/TSL, 1 scale, affine | **43.297 / 59.107 ms** | **21.74 FPS** |
+| Three.js/TSL, 1 scale, translation | **39.966 / 45.706 ms** | **24.54 FPS** |
 
 The native and raw-browser WGSL rows execute the same two-level algorithm. The
-large browser difference is host transport, not kernel speed. The current
-Python browser API encodes every NumPy frame as PNG, transfers a data URL over
-DevTools, decodes and uploads it in Chromium, then serializes the complete
-field back through JSON. In translation mode, PNG encoding alone measured
-about 167 ms median; the browser GPU graph measured about 17 ms, while the
-complete Python call measured 471 ms. This path is functional and useful for
-compatibility, but it is not a real-time Python streaming transport.
+browser API now keeps the persistent Chromium process but removes per-frame
+PNG, data URLs, DevTools payloads, image decoding, and JSON fields. A
+same-origin long poll transfers the contiguous grayscale bytes unchanged and
+one packed eight-float state returns as binary. Three.js uploads four pixels
+per 32-bit word and expands them on the GPU, avoiding its former 33 MB
+JavaScript float conversion at UHD. The one-time reference setup still uses
+the image path and remains excluded from this boundary.
+
+This does not make Chromium memory and NumPy memory identical. The UHD frame
+still crosses into Chromium, then into a GPU resource, and the result crosses
+back. In the affine campaign the browser body copy took about 8.5--9.1 ms
+median and the synchronized GPU graph about 16--19 ms. The complete browser
+paths therefore sustain about 22--24 FPS, not 60 FPS. Native wgpu remains the
+real-time NumPy path.
 
 The native path uploads the NumPy bytes directly to an `r8unorm` texture and
 reads one packed result buffer. The current timing contract separately reports
@@ -75,7 +84,8 @@ Reproduce this boundary with:
 ```console
 PYTHONPATH=DIC/LucasKanadeICGN/python/src \
   python3 DIC/LucasKanadeICGN/benchmarks/benchmark_image_to_field.py \
-  --width 3840 --height 2160 --frames 12 --warmups 3 \
+  --width 3840 --height 2160 --frames 12 --warmups 3 --campaigns 3 \
+  --backend three-tsl --backend webgpu-wgsl \
   --motion-model translation
 ```
 
@@ -120,7 +130,7 @@ These rows isolate kernels or repeat a target for optimization work; they are
 not interchangeable image-to-field performance claims. Each row uses eight
 warm-ups and 50 measured registrations. Native rows are complete Python
 `register()` calls. Browser rows are GPU timestamps and therefore exclude
-PNG/DevTools transport and result readback.
+binary host transport and result readback.
 
 | Boundary and translation | Current median / p95 | Current numerical result |
 |---|---:|---:|

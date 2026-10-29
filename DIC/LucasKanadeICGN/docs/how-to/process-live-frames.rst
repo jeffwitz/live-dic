@@ -100,7 +100,14 @@ original object when the input already satisfies that contract, so there is no
 PNG or grayscale conversion in the normal camera path. One CPU-to-GPU upload
 is still required because ordinary NumPy memory is not GPU texture memory.
 
-The browser Python transport still converts each NumPy frame to PNG before
-sending it to Chromium and returns the field through JSON. It is a
-compatibility path, not the current real-time NumPy stream path; those costs
-must be included whenever that backend is qualified.
+The Three.js and raw WGSL browser transports send each contiguous grayscale
+NumPy frame as unchanged binary bytes over the private loopback server and
+return one packed binary field. They do not encode targets as PNG or return
+large JSON arrays. Three.js/WebGPU additionally unpacks four 8-bit pixels per
+word on the GPU instead of building a UHD float array in JavaScript.
+
+This is still not shared memory: Chromium receives its own byte buffer, uploads
+it to the GPU, and sends the result back to Python. Current UHD complete-call
+measurements are about 40--43 ms median, so native wgpu remains the 60 Hz NumPy
+stream path. Include this inter-process cost whenever a browser backend is
+qualified.

@@ -31,7 +31,10 @@ Data flow
    Python target frame
            |
            v
-   grayscale PNG data URL -----> target upload
+   contiguous grayscale uint8
+           |
+           v
+   same-origin binary long poll -----> target upload
                                       |
                                       v
                     selected reconstruction preparation
@@ -47,10 +50,13 @@ Data flow
                           parameter/status GPU readback
                                       |
                                       v
-                               NumPy result arrays
+                            packed binary state
+                                      |
+                                      v
+                               NumPy result views
 
-The native path replaces the PNG and DevTools stages with a direct buffer-
-protocol upload:
+The native path removes the browser process and loopback stage with a direct
+buffer-protocol upload:
 
 .. code-block:: text
 
@@ -104,16 +110,29 @@ measured trade-offs.
 Control path
 ------------
 
-Python communicates with the headless page through the Chromium DevTools
-Protocol over a loopback WebSocket. The returned JavaScript arrays are converted
-to NumPy without changing their floating-point values. This design preserves
-the existing browser implementations, but PNG serialization and DevTools transfer
-are visible costs in the complete Python latency.
+Python uses the Chromium DevTools Protocol to start and configure the headless
+page and to prepare the reference. Per-frame targets do not cross DevTools.
+The page instead maintains a same-origin binary long poll against the private
+loopback asset server. Python exposes the contiguous ``uint8`` storage without
+PNG encoding; Chromium receives an ``Uint8Array`` and posts one interleaved
+eight-float state field after registration. Options and small timing metadata
+travel in HTTP headers or a short JSON prefix, never as image or field JSON.
+
+Raw WebGPU writes the received bytes directly to its ``r8unorm`` texture.
+Three.js keeps four input pixels in each ``uint32`` upload word, then a small
+compute pass expands them into its float source buffer. This avoids a UHD-sized
+JavaScript scalar conversion and reduces the Three.js upload from about 33 MB
+to about 8.3 MB. WebGL2 cannot use that WebGPU unpack pass and retains the
+scalar conversion after the binary transfer.
+
+The browser still runs in another process: the input crosses the loopback
+boundary, a CPU-to-GPU upload remains, and the result crosses back. Binary
+transport removes serialization, not those necessary copies.
 
 ``ICGNWGPU`` calls wgpu-native in-process. It uploads the grayscale NumPy
-buffer to a texture and reads one packed binary state buffer. This removes PNG,
-WebSocket, JavaScript-array, and JSON boundaries, while retaining the required
-GPU resource copy.
+buffer to a texture and reads one packed binary state buffer. This also removes
+the browser process and loopback copies, while retaining the required GPU
+resource copy.
 
 Concurrency model
 -----------------

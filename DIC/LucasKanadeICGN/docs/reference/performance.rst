@@ -73,7 +73,8 @@ The persistent engines process a changing sequence which cycles the four
 distinct qualified ``frame_001``, ``frame_005``, ``frame_010``, and
 ``frame_020`` fixtures. Three warm-ups precede 12 measured frames. Calls are
 synchronous, so latency, result age, and stream period describe the same
-one-frame-at-a-time execution.
+one-frame-at-a-time execution. Browser rows report the median of three
+campaigns after the binary transport change.
 
 .. list-table:: UHD resident-image to materialized-field performance
    :header-rows: 1
@@ -88,23 +89,26 @@ one-frame-at-a-time execution.
      - **10.526 / 11.170 ms**
      - **94.03 FPS**
    * - Raw browser WGSL, 2 levels, affine
-     - 585.594 / 612.275 ms
-     - 1.71 FPS
+     - **40.873 / 44.782 ms**
+     - **24.03 FPS**
    * - Raw browser WGSL, 2 levels, translation
-     - 470.765 / 494.262 ms
-     - 2.11 FPS
+     - **40.213 / 45.024 ms**
+     - **24.21 FPS**
    * - Three.js/TSL, 1 scale, affine
-     - 596.772 / 613.626 ms
-     - 1.68 FPS
+     - **43.297 / 59.107 ms**
+     - **21.74 FPS**
    * - Three.js/TSL, 1 scale, translation
-     - 482.453 / 496.790 ms
-     - 2.08 FPS
+     - **39.966 / 45.706 ms**
+     - **24.54 FPS**
 
 The native and raw-browser WGSL rows execute the same two-level algorithm.
-Their host paths are very different. Native wgpu uploads NumPy bytes directly
-and reads one packed state buffer. The current browser Python API encodes each
-frame as PNG, sends a data URL over DevTools, decodes and uploads it in
-Chromium, and returns the field through JSON.
+Their host paths remain different. Native wgpu uploads NumPy bytes in-process
+and reads one packed state buffer. The browser API now transfers each
+contiguous grayscale frame unchanged over a persistent same-origin binary long
+poll and returns one packed binary state field. It no longer performs
+per-frame PNG encoding, data-URL transport, image decoding, or JSON field
+serialization. Three.js also keeps the upload packed at four 8-bit pixels per
+word and expands it on the GPU.
 
 Across the four changing fixtures, affine native and raw WGSL accepted 31,252
 to 31,654 subsets with 0.06275 px maximum truth RMSE. Translation native
@@ -113,10 +117,13 @@ most one accepted subset and less than ``2e-6`` px in maximum RMSE. Three.js is
 single-scale, so its difficult-frame acceptance is not algorithmically
 comparable to the two-level paths.
 
-For browser translation mode, PNG encoding measured about 167 ms median, the
-GPU graph about 17 ms, and the complete Python call 471 ms. The browser path is
-therefore a compatibility path, not a real-time Python stream transport. The
-current native timing contract separates input normalization, direct texture
+The binary path removes the former hundreds of milliseconds of serialization,
+but an UHD frame still crosses the Python/Chromium process boundary, is copied
+into a GPU resource, and the field crosses back. In the current affine runs,
+the browser body copy took about 8.5--9.1 ms median and the synchronized GPU
+graph about 16--19 ms. Complete calls sustain about 22--24 FPS, so the browser
+path is still not a 60 Hz NumPy stream. The current native timing contract
+separates input normalization, direct texture
 upload, command encoding, queue submission, blocking completion wait,
 mapped-buffer copy, and NumPy result construction. For a synchronous
 translation call in a four-run sequence campaign, representative medians were
@@ -129,7 +136,8 @@ Reproduce this campaign with:
 .. code-block:: bash
 
    python benchmarks/benchmark_image_to_field.py \
-     --width 3840 --height 2160 --frames 12 --warmups 3 \
+     --width 3840 --height 2160 --frames 12 --warmups 3 --campaigns 3 \
+     --backend three-tsl --backend webgpu-wgsl \
      --motion-model translation
 
 Native full-pyramid bounded stream
@@ -288,7 +296,7 @@ and after the fractional translation ``(0.5, -0.375)``. It therefore does not
 use ``np.roll`` or preselect one reconstruction method while generating the
 target. Native figures use eight warm-ups and 50 complete ``register()``
 calls. Raw-browser figures use three warm-ups and seven GPU timestamp samples;
-Three.js figures use five warm-ups and ten timestamp samples. PNG/DevTools
+Three.js figures use five warm-ups and ten timestamp samples. Binary host
 transport and readback are excluded from browser rows.
 
 .. list-table:: UHD interpolation modes on the current kernels

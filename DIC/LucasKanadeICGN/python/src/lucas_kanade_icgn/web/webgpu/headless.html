@@ -6,6 +6,11 @@
     <title>DIC-RT shared WGSL WebGPU backend</title>
   </head>
   <body>
-    <script type="module" src="./LucasKanadeICGNWebGPU.js"></script>
+    <script type="module">
+      import './LucasKanadeICGNWebGPU.js';
+      import { installBinaryTransport } from '../common/BinaryTransport.js';
+
+      installBinaryTransport();
+    </script>
   </body>
 </html>

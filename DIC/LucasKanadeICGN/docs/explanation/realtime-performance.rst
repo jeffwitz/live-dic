@@ -47,12 +47,13 @@ native p95 values are below the 16.667 ms 60 Hz period, but acquisition and
 downstream work remain excluded.
 
 At the same complete Python boundary, the raw-browser two-level WGSL path
-measured 585.594 / 612.275 ms in affine mode and 470.765 / 494.262 ms in
-translation mode. Three.js measured 596.772 / 613.626 ms and 482.453 / 496.790
-ms respectively. The browser kernels themselves take tens rather than hundreds
-of milliseconds; PNG encoding, DevTools transport, browser decoding, JSON
-readback, and conversion dominate. GPU timestamps remain useful diagnostics,
-but they are not stream performance claims.
+measured 40.873 / 44.782 ms in affine mode and 40.213 / 45.024 ms in
+translation mode. Three.js measured 43.297 / 59.107 ms and 39.966 / 45.706 ms
+respectively. These figures use the persistent binary target and packed-result
+transport: no per-frame PNG, image decoding, DevTools frame payload, or JSON
+field remains. The browser process boundary and the required GPU upload still
+keep these paths above the 16.667 ms target. GPU timestamps remain useful
+diagnostics, but they are not stream performance claims.
 
 Throughput is not latency
 -------------------------

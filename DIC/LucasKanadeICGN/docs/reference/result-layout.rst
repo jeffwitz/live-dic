@@ -98,8 +98,16 @@ A normal Three.js ``register`` call reports these timing keys:
      - WebGPU timestamp for target prefiltering, IC-GN, and median replacement
    * - ``wallMs``
      - browser-side synchronization around the same GPU pipeline
+   * - ``binaryInputWallMs``
+     - browser-side materialization of the binary target body
+   * - ``binaryPackingWallMs``
+     - browser-side packing of the returned eight-float subset states
+   * - ``inputPreparationWallMs``
+     - Python validation and contiguous grayscale conversion before publication
    * - ``encodingWallMs``
-     - Python grayscale conversion and PNG encoding
+     - compatibility key; zero for Three.js and raw WGSL binary targets
+   * - ``resultBuildWallMs``
+     - construction of writable NumPy component views and summary statistics
    * - ``pythonCallWallMs``
      - complete Python ``register`` call, including transport and readback
 
