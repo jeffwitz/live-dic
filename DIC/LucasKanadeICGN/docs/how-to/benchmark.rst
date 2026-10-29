@@ -97,6 +97,22 @@ results on the validation machine, see :doc:`../reference/performance`. For the
 interpretation of timing boundaries, see
 :doc:`../explanation/realtime-performance`.
 
+For the comparable deployable boundary, use changing frames and time the public
+call from a resident NumPy image until its complete NumPy field is returned:
+
+.. code-block:: console
+
+   $ PYTHONPATH=DIC/LucasKanadeICGN/python/src \
+       python3 DIC/LucasKanadeICGN/benchmarks/benchmark_image_to_field.py \
+       --width 3840 --height 2160 --frames 12 --warmups 3 \
+       --motion-model affine
+
+This persistent-engine benchmark excludes one-time reference preparation and
+fixture generation. It includes every per-frame transfer, synchronization,
+readback, and Python result conversion. Its synchronous stream period is also
+the result age. Use this measurement for backend selection; use GPU timestamps
+only to diagnose kernels.
+
 From a repository checkout, reproduce the UHD campaign for either browser
 backend with:
 

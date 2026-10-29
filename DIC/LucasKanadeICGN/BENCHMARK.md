@@ -32,11 +32,58 @@ when a kernel, driver, browser, or measurement boundary changes.
 The offline validation texture is tiled to 3840 × 2160, producing 240 × 135,
 or 32,400, 16 × 16 subsets. No camera or H.264 stage is included.
 
-## Current UHD kernel audit
+## Primary UHD image-to-field stream boundary
 
-Each row uses eight warm-ups and 50 measured registrations. Native rows are
-complete Python `register()` calls. Browser rows are GPU timestamps and
-therefore exclude PNG/DevTools transport and result readback.
+This is the deployable Python boundary used for performance claims. A
+persistent engine receives an already acquired, contiguous `uint8` NumPy image
+and the timer stops only when the complete `(135, 240, 6)` NumPy parameter
+field, status, iterations, and statistics are available. Reference preparation,
+camera acquisition, and decoding are excluded.
+
+The sequence cycles the four distinct qualified `frame_001`, `frame_005`,
+`frame_010`, and `frame_020` fixtures. Every row uses three changing-frame
+warm-ups followed by 12 measured frames. Execution is synchronous, so the
+reported latency is also the result age and the inverse stream period.
+
+| Backend and model | Median / p95 image-to-field latency | Sustained throughput |
+|---|---:|---:|
+| Native full pyramid, 2 levels, affine | **11.920 / 13.072 ms** | **83.37 FPS** |
+| Native full pyramid, 2 levels, translation | **10.526 / 11.170 ms** | **94.03 FPS** |
+| Raw browser WGSL, 2 levels, affine | 585.594 / 612.275 ms | 1.71 FPS |
+| Raw browser WGSL, 2 levels, translation | 470.765 / 494.262 ms | 2.11 FPS |
+| Three.js/TSL, 1 scale, affine | 596.772 / 613.626 ms | 1.68 FPS |
+| Three.js/TSL, 1 scale, translation | 482.453 / 496.790 ms | 2.08 FPS |
+
+The native and raw-browser WGSL rows execute the same two-level algorithm. The
+large browser difference is host transport, not kernel speed. The current
+Python browser API encodes every NumPy frame as PNG, transfers a data URL over
+DevTools, decodes and uploads it in Chromium, then serializes the complete
+field back through JSON. In translation mode, PNG encoding alone measured
+about 167 ms median; the browser GPU graph measured about 17 ms, while the
+complete Python call measured 471 ms. This path is functional and useful for
+compatibility, but it is not a real-time Python streaming transport.
+
+The native path uploads the NumPy bytes directly to an `r8unorm` texture and
+reads one packed result buffer. In translation mode its median components were
+0.409 ms upload, 0.255 ms command encoding, and 9.500 ms combined execution
+plus readback, within a 10.516 ms internal total.
+
+Reproduce this boundary with:
+
+```console
+PYTHONPATH=DIC/LucasKanadeICGN/python/src \
+  python3 DIC/LucasKanadeICGN/benchmarks/benchmark_image_to_field.py \
+  --width 3840 --height 2160 --frames 12 --warmups 3 \
+  --motion-model translation
+```
+
+## Diagnostic UHD kernel audit
+
+These rows isolate kernels or repeat a target for optimization work; they are
+not interchangeable image-to-field performance claims. Each row uses eight
+warm-ups and 50 measured registrations. Native rows are complete Python
+`register()` calls. Browser rows are GPU timestamps and therefore exclude
+PNG/DevTools transport and result readback.
 
 | Boundary and translation | Current median / p95 | Current numerical result |
 |---|---:|---:|

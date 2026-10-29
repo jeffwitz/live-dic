@@ -54,18 +54,85 @@ Validation machine
 Current workload and protocol
 -----------------------------
 
-The offline validation texture is tiled to 3840 x 2160. The resulting grid is
-240 x 135, or 32,400 subsets of 16 x 16 pixels. The solver uses six affine
-parameters, Gaussian/inverse-spline target filtering, 4 x 4 cubic B-spline
-interpolation, a ``5e-3`` fine-scale tolerance, minimum ZNCC ``0.8``, and
-spatial median consistency. No camera or H.264 stage is included.
+The offline validation images are tiled to 3840 x 2160. The resulting grid is
+240 x 135, or 32,400 subsets of 16 x 16 pixels. Both motion models use
+Gaussian/inverse-spline target filtering, 4 x 4 cubic B-spline interpolation,
+a ``5e-3`` fine-scale tolerance, minimum ZNCC ``0.8``, and spatial median
+consistency. No camera or H.264 stage is included.
 
-Every row uses eight warm-ups and 50 measured registrations. Native rows are
-complete Python ``register()`` wall times. Browser rows are GPU timestamp
-durations and exclude PNG/DevTools transport and result readback.
+Primary image-to-field stream measurements
+------------------------------------------
 
-Current UHD results
--------------------
+The primary deployable boundary starts with an already acquired, contiguous
+``uint8`` NumPy grayscale image and stops only after the complete NumPy
+parameter field, status, iterations, and statistics are available to Python.
+Reference preparation, camera acquisition, and decoding are excluded.
+
+The persistent engines process a changing sequence which cycles the four
+distinct qualified ``frame_001``, ``frame_005``, ``frame_010``, and
+``frame_020`` fixtures. Three warm-ups precede 12 measured frames. Calls are
+synchronous, so latency, result age, and stream period describe the same
+one-frame-at-a-time execution.
+
+.. list-table:: UHD resident-image to materialized-field performance
+   :header-rows: 1
+
+   * - Backend and model
+     - Median / p95 latency
+     - Sustained throughput
+   * - Native full pyramid, 2 levels, affine
+     - **11.920 / 13.072 ms**
+     - **83.37 FPS**
+   * - Native full pyramid, 2 levels, translation
+     - **10.526 / 11.170 ms**
+     - **94.03 FPS**
+   * - Raw browser WGSL, 2 levels, affine
+     - 585.594 / 612.275 ms
+     - 1.71 FPS
+   * - Raw browser WGSL, 2 levels, translation
+     - 470.765 / 494.262 ms
+     - 2.11 FPS
+   * - Three.js/TSL, 1 scale, affine
+     - 596.772 / 613.626 ms
+     - 1.68 FPS
+   * - Three.js/TSL, 1 scale, translation
+     - 482.453 / 496.790 ms
+     - 2.08 FPS
+
+The native and raw-browser WGSL rows execute the same two-level algorithm.
+Their host paths are very different. Native wgpu uploads NumPy bytes directly
+and reads one packed state buffer. The current browser Python API encodes each
+frame as PNG, sends a data URL over DevTools, decodes and uploads it in
+Chromium, and returns the field through JSON.
+
+Across the four changing fixtures, affine native and raw WGSL accepted 31,252
+to 31,654 subsets with 0.06275 px maximum truth RMSE. Translation native
+accepted 31,312 to 31,654 with 0.04063 px maximum RMSE; raw WGSL differed by at
+most one accepted subset and less than ``2e-6`` px in maximum RMSE. Three.js is
+single-scale, so its difficult-frame acceptance is not algorithmically
+comparable to the two-level paths.
+
+For browser translation mode, PNG encoding measured about 167 ms median, the
+GPU graph about 17 ms, and the complete Python call 471 ms. The browser path is
+therefore a compatibility path, not a real-time Python stream transport. The
+native translation median comprises about 0.409 ms upload, 0.255 ms command
+encoding, and 9.500 ms combined GPU execution plus readback, within a 10.516 ms
+internal total.
+
+Reproduce this campaign with:
+
+.. code-block:: bash
+
+   python benchmarks/benchmark_image_to_field.py \
+     --width 3840 --height 2160 --frames 12 --warmups 3 \
+     --motion-model translation
+
+Diagnostic repeated-target and kernel results
+---------------------------------------------
+
+The following measurements remain useful for kernel optimization, but the
+browser rows are GPU timestamps with a target uploaded before the timed loop.
+They must not be compared directly with the complete native call above.
 
 .. list-table:: October 29 current kernels
    :header-rows: 1

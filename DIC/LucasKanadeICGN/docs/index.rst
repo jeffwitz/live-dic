@@ -13,12 +13,12 @@ Real-Time DIC in Python toward 4K60
 
    The engineering objective is sustained DIC on 3840 x 2160 frames at 60
    frames per second over the complete acquisition-to-result pipeline. The
-   recommended two-level native full pyramid measured 10.684 ms median and
-   13.238 ms p95 on the validation machine after convergence-schedule tuning.
-   Both are below the 16.667 ms frame period.
-   Direct upload, GPU computation, packed readback, and NumPy result
-   construction are included; camera acquisition and downstream consumers are
-   not. A bounded two-slot single-scale sequence reaches an 11.026 ms median
+   On a changing four-image sequence, the recommended two-level native full
+   pyramid measured 11.920 ms median / 13.072 ms p95 in affine mode and
+   10.526 / 11.170 ms in translation mode. These resident-NumPy-image to
+   materialized-NumPy-field boundaries are below the 16.667 ms frame period.
+   Camera acquisition and downstream consumers are not included. A bounded
+   two-slot single-scale sequence reaches an 11.026 ms median
    period (90.7 FPS) but 21.963 ms median result latency. 4K60 processing throughput is
    therefore demonstrated offline, while end-to-end acquisition remains to be
    qualified.
@@ -44,10 +44,10 @@ The recommended native coarse-to-fine engine is
 seed transfer, solving, and final readback on the GPU.  The older
 ``ICGNWGPU(pyramid_levels=2 or 3)`` selective-recovery mode remains available
 only as an optional exception path: it first runs a fine solve and performs
-CPU-orchestrated recovery for failures.  The current ``(+4, -2)`` UHD campaign
-measured 10.684 ms median / 13.238 ms p95 for the recommended two-level graph
-and 10.891 / 13.161 ms for three levels.  These figures qualify offline
-compute on that pair, not camera-to-consumer latency.
+CPU-orchestrated recovery for failures. The current changing-frame UHD
+campaign measures the complete resident-image to materialized-field boundary;
+kernel-only browser timings are retained only as diagnostics. These figures
+qualify offline processing from a NumPy frame, not camera-to-consumer latency.
 
 The engineering objective is sustained, measurable DIC processing from Python.
 That means keeping the GPU runtime alive, preparing the reference only once,

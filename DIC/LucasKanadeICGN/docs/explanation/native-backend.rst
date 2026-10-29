@@ -219,13 +219,13 @@ without forking the WGSL kernels.
 Measured effect
 ---------------
 
-On the validation machine, the latest 50-run UHD campaign measured the
-recommended two-level full pyramid at 10.684 ms median and 13.238 ms p95 for
-the complete Python call. It accepted 31,724 of 32,400 subsets on the difficult
-``(4, -2)`` pair with ``0.001873`` px truth RMSE. Three levels measured 10.891
-ms median and 13.161 ms p95. These boundaries include direct target upload,
-GPU pyramid construction and solving, packed result readback, and NumPy result
-construction, but exclude camera acquisition and downstream consumers.
+On the validation machine, the changing-frame UHD campaign measured the
+recommended two-level full pyramid at 11.920 ms median and 13.072 ms p95 in
+affine mode. Translation mode measured 10.526 / 11.170 ms. This boundary starts
+with a resident ``uint8`` NumPy image and ends with a materialized NumPy field;
+it includes direct target upload, GPU pyramid construction and solving, packed
+result readback, and result statistics. Camera acquisition and downstream
+consumers remain excluded.
 
 See :doc:`../reference/performance` for the current timing boundaries,
 reproduction commands, and browser comparison.

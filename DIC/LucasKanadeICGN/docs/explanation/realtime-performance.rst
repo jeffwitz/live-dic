@@ -34,20 +34,25 @@ Current validated result
 ------------------------
 
 The authoritative machine-specific measurements are maintained on
-:doc:`../reference/performance`. The current October 29 audit uses UHD frames,
-eight warm-ups, and 50 measured registrations.
+:doc:`../reference/performance`. The primary October 29 audit uses a changing
+UHD sequence, three warm-ups, and 12 measured resident-image to field calls.
 
-The recommended two-level native full pyramid measured 10.684 ms median and
-13.238 ms p95 for the complete Python call on the ``(4, -2)`` pair.
-It accepted 31,724 of 32,400 subsets with 0.001873 px truth RMSE. Three levels
-measured 10.891 / 13.161 ms. Both p95 values are below the 16.667 ms 60 Hz
-period on the validation GPU, but acquisition and downstream work remain
-excluded.
+On a changing four-image sequence, the recommended two-level native full
+pyramid measured 11.920 ms median and 13.072 ms p95 for the affine
+resident-image to materialized-field call. Translation mode measured 10.526 ms
+median and 11.170 ms p95. Across the four fixtures, the affine path accepted
+31,252 to 31,654 subsets and the translation path 31,312 to 31,654. Their
+maximum truth RMSE values were 0.0627 px and 0.0406 px respectively. Both
+native p95 values are below the 16.667 ms 60 Hz period, but acquisition and
+downstream work remain excluded.
 
-The raw-browser two-level WGSL graph measured 8.681 / 11.698 ms on the GPU and
-10.7 / 12.6 ms at the synchronized browser boundary. The nominal ``(2, -1)``
-Three.js path measured 12.568 / 14.552 ms GPU and 14.3 / 16.0 ms browser wall.
-These browser numbers do not include the complete Python transport boundary.
+At the same complete Python boundary, the raw-browser two-level WGSL path
+measured 585.594 / 612.275 ms in affine mode and 470.765 / 494.262 ms in
+translation mode. Three.js measured 596.772 / 613.626 ms and 482.453 / 496.790
+ms respectively. The browser kernels themselves take tens rather than hundreds
+of milliseconds; PNG encoding, DevTools transport, browser decoding, JSON
+readback, and conversion dominate. GPU timestamps remain useful diagnostics,
+but they are not stream performance claims.
 
 Throughput is not latency
 -------------------------

@@ -12,12 +12,14 @@
 ## 4K60 engineering objective
 
 The long-term objective is sustained 3840 x 2160 DIC at 60 FPS over the full
-acquisition-to-result path. The latest recommended two-level native
-full-pyramid affine campaign measured 10.684 ms median and 13.238 ms p95 for the
-complete Python registration call on the validation machine. Direct upload,
-GPU pyramid construction and solving, packed readback, and NumPy result
+acquisition-to-result path. On a changing four-image sequence, the recommended
+two-level native full pyramid measured 11.920 ms median / 13.072 ms p95 in
+affine mode and 10.526 / 11.170 ms in translation mode. The boundary starts
+with a resident NumPy image and ends with the materialized NumPy field; direct
+upload, GPU pyramid construction and solving, packed readback, and result
 construction are included. Acquisition and downstream work are excluded, so
-this repository does not yet claim a qualified 4K60 application.
+this repository does not yet claim a qualified camera-to-consumer 4K60
+application.
 
 ## Browser backend policy
 
@@ -177,12 +179,12 @@ coarse-to-fine affine seeds, and solver states on one GPU. It encodes all
 levels in one command buffer and performs one final readback. Iterations and
 tolerances are configurable per scale from coarse to fine. Two levels are the
 recommended native default. Three levels remain available explicitly for
-larger expected displacements. After the October 29 FIR tiling optimization,
-a 50-run UHD campaign measured **10.684 ms median /
-13.238 ms p95 (93.6 FPS from the median)** for two levels and **10.891 / 13.161
-ms** for three levels. Both are below the 16.667 ms 60 FPS period on this
-machine; two levels remain the lower-cost default. See the performance
-reference for the exact boundaries, protocol, and caveats.
+larger expected displacements. On the changing-frame, resident-image to
+materialized-field campaign, the two-level graph measured **11.920 / 13.072
+ms** in affine mode and **10.526 / 11.170 ms** in translation mode. Both p95
+values are below the 16.667 ms 60 FPS period on this machine. Repeated-target
+and GPU-only figures are retained only as diagnostic kernel measurements. See
+the performance reference for the exact boundaries, protocol, and caveats.
 
 The raw browser ``webgpu-wgsl`` backend now runs that same GPU-resident
 full-pyramid graph. It defaults to two levels with schedules ``(8, 16)`` and
