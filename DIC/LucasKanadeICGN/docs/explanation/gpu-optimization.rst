@@ -265,12 +265,12 @@ neighbours provides an estimate, the finer subset is still executed from a
 zero affine seed instead of being suppressed.
 
 Iteration limits are ceilings rather than fixed costs: each subset exits as
-soon as its corner-change and ZNCC criteria converge. On the measured 4K
-three-level case, accepted fine subsets required only 2.45 iterations on
-average. A descending ``(12, 8, 6)`` latency profile saved about 0.55 ms but
-lost 421 accepted subsets, so it remains opt-in. The remaining extra-level
-cost is dominated by fixed reduction, prefilter, seed-transfer, and dispatch
-work rather than the fine iteration ceiling.
+soon as its corner-change and ZNCC criteria converge. The robust defaults are
+``(12, 30)`` for two levels and ``(6, 8, 20)`` for three. Lower custom ceilings
+must be qualified against accepted subsets and displacement error, because a
+shorter schedule can terminate valid fine-scale refinements. Reduction,
+prefilter, seed-transfer, and dispatch work remains fixed even when iteration
+ceilings are reduced.
 
 Three.js/WebGL2: serial TSL through transform feedback
 ------------------------------------------------------

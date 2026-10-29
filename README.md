@@ -174,21 +174,8 @@ The images, source hashes, format, and motion parameters are recorded in
 
 ## Performance
 
-Measurements on an Intel Lunar Lake GPU use three campaigns of 30 runs after
-five warm-ups. At 512 x 512, the median campaign summaries are:
-
-| Backend | GPU median | GPU p95 | Browser wall median |
-|---|---:|---:|---:|
-| Three.js/TSL WebGPU | **0.675 ms** | **1.227 ms** | **2.7 ms** |
-| GPU-IO/WebGL2 | 3.301 ms | 4.210 ms | 10.3 ms |
-
-At the complete Python-call boundary on the same 512 x 512 pair, native
-wgpu-py measured **1.882 ms median / 2.382 ms p95**, versus 56.203 / 59.117 ms
-for Three.js through Chromium and 61.877 / 65.655 ms for GPU-IO. The browser
-calls include their PNG and DevTools transport, so this comparison measures the
-architectural transport change rather than kernel speed alone.
-
-The current UHD audit uses 32,400 subsets. Native values are complete Python
+The current Intel Lunar Lake audit uses eight warm-ups, 50 measured UHD
+registrations, and 32,400 subsets. Native values are complete Python
 calls; browser values are GPU timestamps and therefore exclude Python
 transport and result readback:
 
@@ -201,10 +188,8 @@ transport and result readback:
 
 The difficult `(4, -2)` pair demonstrates why the full pyramid is the native
 recommendation: it both recovers substantially more subsets and avoids failed
-single-scale subsets consuming their iteration ceiling. Historical SYCL and
-GPU-IO comparisons remain in the benchmark report with their original timing
-boundaries; they must not be mixed with this newer campaign as if all rows were
-measured together.
+single-scale subsets consuming their iteration ceiling. GPU-IO is intentionally
+absent, and no SYSCL row is currently claimed without a new equivalent run.
 
 These values do **not** prove a sustained 60 Hz Python system:
 the browser benchmark excludes Python PNG encoding, DevTools transport, image
@@ -212,7 +197,7 @@ decoding, result transfer, and camera acquisition. Real-time qualification must
 measure the complete `engine.register(frame)` call and the acquisition-to-result
 latency on the target machine.
 
-The timing protocol, preparation measurements, and full SYCL comparison are documented in
+The timing protocol, current measurements, and reproduction commands are documented in
 [`DIC/LucasKanadeICGN/BENCHMARK.md`](./DIC/LucasKanadeICGN/BENCHMARK.md).
 
 ## Installation
@@ -337,7 +322,7 @@ DIC/LucasKanadeICGN/
 ├── native/                 experimental Rust wgpu/PyO3 host
 ├── benchmarks/             reproducible backend and UHD campaigns
 ├── docs/                   Sphinx/Diátaxis documentation
-├── BENCHMARK.md            measurement protocol and SYCL comparison
+├── BENCHMARK.md            current measurements and reproduction protocol
 └── README.md               detailed implementation overview
 ```
 
@@ -363,7 +348,7 @@ available from [`index.html`](./index.html).
 The direct `t=0 -> 20` displacement of `(4, -2)` pixels is outside the robust
 local basin for many single-scale subsets. The current two-level native
 full-pyramid campaign returned 31,724 accepted subsets out of 32,400 at UHD
-with a translation RMSE of 0.00182 pixel. These values refer to that campaign's
+with a translation RMSE of 0.001874 pixel. These values refer to that campaign's
 accepted population. Larger motions can select three levels
 or provide a better initial estimate.
 

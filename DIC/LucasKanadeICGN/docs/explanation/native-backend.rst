@@ -227,15 +227,12 @@ ms median and 11.151 ms p95. These boundaries include direct target upload,
 GPU pyramid construction and solving, packed result readback, and NumPy result
 construction, but exclude camera acquisition and downstream consumers.
 
-Earlier one-scale campaigns measured 1.812 / 2.187 ms at 512 x 512 and 14.621
-/ 15.748 ms at UHD on the nominal ``(2, -1)`` pair. They remain useful
-historical single-scale baselines, not the current recommended configuration.
-See :doc:`../reference/performance` for exact boundaries and the browser/SYCL
-comparison.
+See :doc:`../reference/performance` for the current timing boundaries,
+reproduction commands, and browser comparison.
 
-The initial PyO3-only UHD upload probe measured 1.783 ms median. It does not
-yet demonstrate an advantage over the wgpu-py upload in the complete solver.
-Its value at this stage is architectural: the Rust boundary is working,
-offline-buildable, and shares the validated shader. Further migration should
-be accepted only when the complete-call distribution improves.
+The PyO3 upload probe does not yet demonstrate an advantage in a complete
+solver. Its value at this stage is architectural: the Rust boundary is
+working, offline-buildable, and shares the validated shader. Publish a Rust
+performance claim only after complete solver orchestration is implemented and
+rerun against the same current workload and timing boundary.
 

@@ -156,7 +156,7 @@ a 50-run UHD campaign measured **10.194 ms median /
 11.073 ms p95 (98.1 FPS from the median)** for two levels and **10.280 / 11.151
 ms** for three levels. Both are below the 16.667 ms 60 FPS period on this
 machine; two levels remain the lower-cost default. See the performance
-reference for the exact boundary, revalidation ranges, and caveats.
+reference for the exact boundaries, protocol, and caveats.
 
 The raw browser ``webgpu-wgsl`` backend now runs that same GPU-resident
 full-pyramid graph. It defaults to two levels with schedules ``(12, 30)`` and
@@ -232,10 +232,10 @@ ZNCC of `0.8`, and at most 30 iterations with per-subset early convergence.
 
 Measured accuracy and performance are recorded in
 [`BENCHMARK.md`](./BENCHMARK.md). The Sphinx
-[`performance reference`](./docs/reference/performance.rst) compares Three.js,
-GPU-IO, and the external
-[`DIC_FROM_H264` SYCL implementation](https://github.com/jeffwitz/DIC_FROM_H264)
-on the validation machine.
+[`performance reference`](./docs/reference/performance.rst) contains only the
+current native, raw-WGSL, Three.js, and bounded-stream measurements. The
+related [`DIC_FROM_H264` SYSCL implementation](https://github.com/jeffwitz/DIC_FROM_H264)
+remains referenced for provenance, but no stale timing row is retained.
 
 [`GPU tiling and grouping`](./docs/explanation/gpu-optimization.rst) explains
 the axis-oriented FIR tiles, the 16-lane portable WGSL reduction, the

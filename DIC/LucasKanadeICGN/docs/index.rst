@@ -62,8 +62,8 @@ Choose the section that matches your task:
 * :doc:`how-to/process-live-frames` for NumPy frames from an acquisition source;
 * :doc:`how-to/benchmark` to measure throughput and latency correctly;
 * :doc:`reference/api` for the exact Python interface;
-* :doc:`reference/performance` for measured native wgpu-py, Three.js, GPU-IO,
-  PyO3, and SYCL results on the validation machine;
+* :doc:`reference/performance` for the current native wgpu-py, raw-WGSL,
+  Three.js, and bounded-sequence results on the validation machine;
 * :doc:`explanation/backend-selection` for the exact defaults and recommended
   execution path for each public engine;
 * :doc:`explanation/gpu-optimization` for the backend tiling, lane grouping,

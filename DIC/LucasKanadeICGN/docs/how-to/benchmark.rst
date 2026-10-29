@@ -92,8 +92,8 @@ Benchmark the expected motion and image quality, not only the analytical test
 pair. Report at least median and p95 latency, accepted-subset count, and mean
 iteration count.
 
-For the measured native wgpu-py, Three.js, GPU-IO, PyO3, and SYCL results on
-the validation machine, see :doc:`../reference/performance`. For the
+For the current native wgpu-py, raw-WGSL, Three.js, and bounded-sequence
+results on the validation machine, see :doc:`../reference/performance`. For the
 interpretation of timing boundaries, see
 :doc:`../explanation/realtime-performance`.
 
@@ -104,7 +104,7 @@ backend with:
 
    $ PYTHONPATH=DIC/LucasKanadeICGN/python/src \
        python3 DIC/LucasKanadeICGN/benchmarks/benchmark_4k.py \
-       --backend three-tsl --repeats 30 --warmups 5
+       --backend three-tsl --repeats 50 --warmups 8
 
 Use ``--backend webgpu-wgsl`` for the canonical portable shaders and default
 two-level pyramid in Chromium. Add
@@ -112,8 +112,6 @@ two-level pyramid in Chromium. Add
 ``--pyramid-levels 3`` to measure the larger-capture-range graph.
 Use ``--backend three-tsl --force-three-webgl`` to measure the Three.js WebGL2
 fallback separately from its normal WebGPU path.
-Use the deprecated ``--backend gpuio`` only when reproducing the historical
-WebGL2 baseline or checking replacement regressions.
 Use ``--backend wgpu-native`` for the browser-free complete Python-call path.
 Add ``--native-solver portable`` or ``--native-solver subgroup`` to bypass
 automatic selection during a diagnostic campaign.
@@ -131,21 +129,6 @@ The reported period is total sequence wall time divided by the number of
 frames. It must not be presented as result latency when more than one slot is
 in flight.
 
-Measure the older optional selective-recovery path only when maintaining or
-qualifying that compatibility mode. It is not the recommended pyramid
-benchmark:
-
-.. code-block:: console
-
-   $ PYTHONPATH=DIC/LucasKanadeICGN/python/src \
-       python3 DIC/LucasKanadeICGN/benchmarks/benchmark_wgpu_pyramid.py \
-       --warmups 3 --repeats 10 --levels 1 2
-
-This benchmark applies an exact ``(4, -2)`` pixel translation. Add
-``--width 3840 --height 2160`` for UHD. ``--levels 1`` isolates the
-single-scale/streaming engine and proves that no selective retry path is
-active; it is not the normal coarse-to-fine recommendation.
-
 Measure the recommended GPU-resident native full-pyramid path with:
 
 .. code-block:: console
@@ -154,7 +137,7 @@ Measure the recommended GPU-resident native full-pyramid path with:
        python3 DIC/LucasKanadeICGN/benchmarks/benchmark_wgpu_full_pyramid.py \
        --width 3840 --height 2160 --levels 2 3 --warmups 8 --repeats 50
 
-This command reports the one-scale baseline and each requested full-pyramid
-depth on the same exact ``(4, -2)`` target. It also records the coarse-to-fine
+This command reports each requested full-pyramid depth on the same exact
+``(4, -2)`` target. It also records the coarse-to-fine
 iteration schedule, accepted subset count, truth RMSE, and number of queue
 submissions.
