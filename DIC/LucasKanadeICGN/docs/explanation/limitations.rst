@@ -13,6 +13,12 @@ planned for GPU-IO.
 Three.js/TSL is the supported browser path. Its automatic WebGL2 fallback
 removes the need to select GPU-IO merely because WebGPU is unavailable.
 
+The supported application supervisor is currently Python. The repository does
+not provide a persistent JavaScript supervisor for browser-native acquisition,
+bounded frame scheduling, and local result consumption. Consequently,
+``ICGNWebGL`` performance includes the Python/Chromium process boundary. Direct
+Three.js GPU timings must not be presented as complete Python-stream timing.
+
 Geometry and input
 ------------------
 

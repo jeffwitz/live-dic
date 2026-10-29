@@ -1,4 +1,4 @@
-# IC-GN GPU backends toward 4K60
+# Python-supervised IC-GN GPU backends toward 4K60
 
 > **Foundational acknowledgement — Pierre Margerit.** This work would not exist
 > without [Pierre Margerit's original `tests_gpuio`
@@ -8,6 +8,30 @@
 > continuation of that foundation.
 
 [![Documentation](https://github.com/jeffwitz/tests_gpuio/actions/workflows/docs.yml/badge.svg)](https://github.com/jeffwitz/tests_gpuio/actions/workflows/docs.yml)
+
+## Project purpose: a Python-supervised numerical engine
+
+DIC-RT is built to sit inside a Python measurement application. Python is the
+supervisor: it prepares and replaces references, configures the algorithm,
+connects acquisition, bounds queues, records timing, handles failures, and
+consumes NumPy fields. The recommended resident-NumPy path is
+``ICGNWGPUFullPyramid`` because it runs WebGPU in-process and keeps the complete
+image-to-field boundary under Python control.
+
+The Three.js and raw-WGSL browser backends serve portability, browser-native
+deployment, and numerical qualification. ``ICGNWebGL`` makes them callable
+from Python, but it necessarily copies each target into Chromium and returns
+the result to Python. Binary transport has reduced that complete UHD boundary
+to roughly 40--43 ms median, but it does not make the browser process share
+NumPy memory.
+
+A competitive Three.js streaming deployment therefore needs a persistent
+JavaScript supervisor in the browser process. That supervisor would own frame
+ingestion, reference and GPU-resource lifetime, bounded scheduling, and local
+result consumption; Python would be a configuration and monitoring plane, not
+the per-frame image and full-field transport. This repository does not yet
+provide that JavaScript supervisor. When NumPy is the per-frame source and the
+complete field is required in Python, use native wgpu.
 
 ## 4K60 engineering objective
 
@@ -29,7 +53,7 @@ result age was 21.408 and 18.888 ms; use one slot for the lower 11.478 and
 
 ## Browser backend policy
 
-`three-tsl` is the supported browser backend for new applications. It uses
+`three-tsl` is the supported browser backend for browser applications. It uses
 WebGPU when available and automatically falls back to Three.js' WebGL2
 transform-feedback implementation when WebGPU is unavailable. Applications
 therefore no longer need GPU-IO to retain WebGL2 compatibility.
@@ -129,10 +153,10 @@ The word *default* is scoped to an engine class:
 
 | Use case | Construction | Default graph |
 |---|---|---|
-| Browser API | `ICGNWebGL()` | Three.js/TSL, one scale, automatic WebGL2 fallback |
-| Shared WGSL in Chromium | `ICGNWebGL(backend="webgpu-wgsl")` | two-level GPU-resident full pyramid |
-| Recommended native coarse-to-fine path | `ICGNWGPUFullPyramid()` | two-level GPU-resident full pyramid |
+| **Python-supervised NumPy stream** | `ICGNWGPUFullPyramid()` | two-level GPU-resident full pyramid |
 | Native single-scale/selective path | `ICGNWGPU()` | one scale |
+| Python-controlled browser compatibility | `ICGNWebGL()` | Three.js/TSL, one scale, automatic WebGL2 fallback |
+| Python-controlled shared WGSL in Chromium | `ICGNWebGL(backend="webgpu-wgsl")` | two-level GPU-resident full pyramid |
 | Historical comparison | `ICGNWebGL(backend="gpuio")` | deprecated one-scale GPU-IO |
 
 The `pyramid_levels` option on `ICGNWGPU` controls an older selective recovery
@@ -240,12 +264,14 @@ All HTML and JavaScript runtime assets are embedded in the Python wheel, so an
 installed package does not need this repository or network access at runtime.
 See [`python/README.md`](./python/README.md) for installation and API examples.
 
-Three.js/TSL is the default and recommended Python and command-line backend.
+Three.js/TSL is the default and recommended **browser** backend exposed by the
+Python adapter and command-line tool. For the primary Python-supervised NumPy
+pipeline, ``ICGNWGPUFullPyramid`` is the recommended backend.
 The deprecated GPU-IO implementation can still be selected explicitly with
 `ICGNWebGL(backend="gpuio")` or `--backend gpuio` for regression and
 reproducibility work only. Select the canonical shared shaders and default
 two-level pyramid in Chromium with `ICGNWebGL(backend="webgpu-wgsl")`, or the
-browser-free path with `ICGNWGPU()`.
+recommended browser-free path with `ICGNWGPUFullPyramid()`.
 All return the same NumPy result schema.
 
 Three.js chooses WebGPU first and falls back to WebGL2 when necessary. Use

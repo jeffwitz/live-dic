@@ -1,4 +1,4 @@
-"""Sphinx configuration for the real-time DIC Python documentation."""
+"""Sphinx configuration for the Python-supervised DIC-RT documentation."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ PROJECT_ROOT = DOCUMENTATION_ROOT.parent
 PYTHON_SOURCE = PROJECT_ROOT / "python" / "src"
 sys.path.insert(0, str(PYTHON_SOURCE))
 
-project = "Real-Time DIC in Python"
+project = "Python-supervised DIC-RT"
 author = "Real-Time DIC contributors"
 copyright = "2026, Real-Time DIC contributors"
 version = "0.1"
@@ -33,7 +33,7 @@ autosectionlabel_prefix_document = True
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 html_theme = "sphinx_rtd_theme"
-html_title = "Real-Time DIC in Python"
+html_title = "Python-supervised DIC-RT"
 html_theme_options = {
     "collapse_navigation": False,
     "navigation_depth": 4,

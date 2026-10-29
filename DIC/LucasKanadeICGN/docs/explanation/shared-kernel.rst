@@ -28,6 +28,12 @@ WebGL2. The deprecated GPU-IO backend remains a separate historical
 implementation because WebGL cannot execute the canonical WGSL compute
 shaders directly. It is not a target for further kernel development.
 
+This source-sharing policy is independent of supervision. The current product
+supervisor is Python, so native wgpu is the low-latency NumPy path. Exploiting
+Three.js kernel performance without the Python/Chromium copies requires a
+persistent JavaScript supervisor and browser-local frame/result ownership; see
+:doc:`supervision`.
+
 Architecture
 ------------
 

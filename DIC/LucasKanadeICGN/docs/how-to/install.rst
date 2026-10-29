@@ -20,11 +20,20 @@ or a network connection at runtime.
 Install the package
 -------------------
 
-From the repository root:
+From the repository root, install the native extra for the intended
+Python-supervised NumPy pipeline:
 
 .. code-block:: console
 
    $ python3 -m venv .venv-icgn
+   $ .venv-icgn/bin/pip install -e 'DIC/LucasKanadeICGN/python[native]'
+
+This provides ``ICGNWGPUFullPyramid``, the recommended two-level native
+backend. Install the base package without ``[native]`` only when the browser
+compatibility backends are sufficient:
+
+.. code-block:: console
+
    $ .venv-icgn/bin/pip install -e DIC/LucasKanadeICGN/python
 
 Verify the command-line interface:
@@ -52,9 +61,22 @@ Defaults are scoped to the chosen engine. See
 :doc:`../explanation/backend-selection` for the complete browser, native, and
 pyramid decision table.
 
-Three.js/TSL is the default backend. A standard engine therefore selects it:
+For Python-supervised NumPy processing, select the native full pyramid:
 
 .. code-block:: python
+
+   from lucas_kanade_icgn import ICGNWGPUFullPyramid
+
+
+   engine = ICGNWGPUFullPyramid()
+
+Three.js/TSL is the default only within the ``ICGNWebGL`` browser-control
+class. A browser compatibility engine selects it as follows:
+
+.. code-block:: python
+
+   from lucas_kanade_icgn import ICGNWebGL
+
 
    engine = ICGNWebGL()
 

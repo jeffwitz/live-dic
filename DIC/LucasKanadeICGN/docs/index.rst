@@ -1,5 +1,5 @@
-Real-Time DIC in Python toward 4K60
-===================================
+Python-supervised real-time DIC toward 4K60
+============================================
 
 .. important:: Foundational work by Pierre Margerit
 
@@ -8,6 +8,25 @@ Real-Time DIC in Python toward 4K60
    experiments, repository structure, and WebGL groundwork are the foundation
    on which this Python real-time DIC implementation is built. The work
    documented here is a continuation of that foundation.
+
+.. important:: Primary product boundary: Python supervision
+
+   DIC-RT is designed to run inside a long-lived Python measurement
+   application. Python owns reference changes, configuration, acquisition
+   integration, bounded queues, timing, failure handling, and consumption of
+   the NumPy displacement and parameter fields. For resident NumPy streams,
+   ``ICGNWGPUFullPyramid`` is the recommended backend because WebGPU remains
+   in-process.
+
+   The browser adapters are maintained for portability, browser-native use,
+   and numerical qualification. Their binary transport removes PNG and JSON,
+   but it cannot share NumPy memory with Chromium. A competitive Three.js
+   streaming deployment would require a persistent JavaScript supervisor to
+   own browser-native frame ingestion, GPU scheduling, backpressure, and local
+   result consumption. Python could configure and monitor that supervisor
+   without carrying every UHD image and complete field. This JavaScript
+   supervisor is not implemented here today. See
+   :doc:`explanation/supervision`.
 
 .. admonition:: Long-term target: qualified 4K at 60 FPS
 
@@ -25,13 +44,15 @@ Real-Time DIC in Python toward 4K60
 
 .. important:: Browser backend policy
 
-   ``three-tsl`` is the supported browser backend for new applications. It
+   ``three-tsl`` is the supported backend for browser applications. It
    selects WebGPU first and automatically falls back to Three.js/WebGL2.
+   ``ICGNWebGL`` is a Python compatibility and qualification adapter, not the
+   recommended low-latency NumPy data plane.
    ``gpuio`` is deprecated and remains available temporarily only for
    historical reproducibility and replacement qualification. See
    :doc:`how-to/migrate-from-gpuio`.
 
-This documentation describes a Python workflow for GPU-accelerated digital
+This documentation describes a Python-supervised workflow for GPU-accelerated digital
 image correlation (DIC). The current implementation performs affine or
 translation-only inverse-compositional Gauss-Newton registration on grayscale frames through
 Three.js/TSL with WebGPU and WebGL2 backends, raw browser WebGPU with shared
@@ -66,6 +87,8 @@ Choose the section that matches your task:
   Three.js, and bounded-sequence results on the validation machine;
 * :doc:`explanation/backend-selection` for the exact defaults and recommended
   execution path for each public engine;
+* :doc:`explanation/supervision` for the Python product boundary and the
+  JavaScript supervisor required by a competitive browser-native stream;
 * :doc:`explanation/gpu-optimization` for the backend tiling, lane grouping,
   and reduction strategies;
 * :doc:`explanation/interpolation` for the selectable B-spline, bilinear, and
@@ -128,6 +151,7 @@ path.
 
    explanation/pipeline
    explanation/backend-selection
+   explanation/supervision
    explanation/icgn
    explanation/interpolation
    explanation/motion-models

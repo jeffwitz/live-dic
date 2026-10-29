@@ -4,6 +4,11 @@ Native WebGPU and PyO3 path
 Why a native path exists
 ------------------------
 
+DIC-RT is intended to be supervised from Python. When acquisition produces
+NumPy arrays and downstream code consumes NumPy fields, the GPU runtime should
+therefore remain in the Python process. This is the product boundary for which
+the native backend exists.
+
 The browser backends preserve the original GPU-IO implementation and provide
 portable WebGPU execution, but a Python frame crosses several representation
 boundaries: NumPy, a binary loopback response, a Chromium ``Uint8Array``, and

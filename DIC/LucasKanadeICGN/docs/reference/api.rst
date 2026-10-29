@@ -1,13 +1,23 @@
 Python API reference
 ====================
 
+Supervision contract
+--------------------
+
+The public API is designed for a persistent Python supervisor. The application
+owns engine lifetime, reference changes, bounded frame scheduling, timing,
+errors, and NumPy result consumption. ``ICGNWGPUFullPyramid`` is the
+recommended engine for resident NumPy streams. ``ICGNWebGL`` controls a
+separate browser process and is intended for compatibility, qualification, and
+browser-specific deployments. See :doc:`../explanation/supervision`.
+
 Public package
 --------------
 
 .. automodule:: lucas_kanade_icgn
 
-Engine
-------
+Browser control engine
+----------------------
 
 .. autoclass:: lucas_kanade_icgn.ICGNWebGL
    :members: start, info, set_reference, register, register_pair, register_many, benchmark, close
@@ -29,8 +39,8 @@ enter the per-frame critical path.
 
 ``backend="gpuio"`` is deprecated. It remains callable for historical
 reproducibility and cross-backend regression tests, but new applications
-should use ``three-tsl``. The Three.js fallback provides WebGL2 compatibility
-without changing the public result schema.
+that require a browser should use ``three-tsl``. The Three.js fallback provides
+WebGL2 compatibility without changing the public result schema.
 
 All active engines accept ``interpolation="bspline"``, ``"linear"``, or
 ``"cubic"`` at construction. ``bspline`` is the historical default. The two

@@ -12,6 +12,30 @@ the raw WebGPU shared-WGSL backend, and the deprecated GPU-IO compatibility
 backend. The optional `ICGNWGPU` and `ICGNWGPUFullPyramid` backends run
 in-process and do not start Chromium.
 
+## Intended supervision model
+
+The package is primarily a Python-supervised numerical engine. A long-running
+Python application is expected to own acquisition integration, reference
+changes, algorithm configuration, bounded queues, timing, error handling, and
+the downstream use of NumPy result fields. For that deployment model,
+`ICGNWGPUFullPyramid` is the recommended coarse-to-fine backend: it submits
+WebGPU work in-process and does not route each frame through Chromium.
+
+`ICGNWebGL` is a Python control adapter for the Three.js, raw-WGSL, and legacy
+GPU-IO browser runtimes. Three.js itself can execute the GPU graph quickly, but
+Python-supervised browser calls still cross a process boundary in both
+directions. The binary transport removes PNG and JSON serialization; it does
+not provide shared memory. Current complete UHD calls are about 40--43 ms
+median.
+
+Reaching competitive browser-stream performance would require a persistent
+JavaScript supervisor that acquires or receives browser-native frames, owns the
+GPU resources and queue, applies backpressure, and consumes results without
+returning every full field to Python. Python may remain the configuration and
+monitoring plane. That JavaScript supervisor is not currently part of this
+package. If the source is NumPy and full fields are required in Python, select
+the native backend.
+
 ## Requirements and installation
 
 - Python 3.10 or newer;
@@ -25,7 +49,7 @@ python3 -m venv .venv-icgn
 .venv-icgn/bin/pip install -e DIC/LucasKanadeICGN/python
 ```
 
-For the experimental native WebGPU path, use Python 3.11 or newer and install
+For the native WebGPU path, use Python 3.11 or newer and install
 the optional dependency group:
 
 ```bash
@@ -60,10 +84,10 @@ Defaults are scoped to the selected engine, not to the whole package:
 
 | Use case | Construction | Default pyramid |
 |---|---|---|
-| Browser with automatic WebGPU/WebGL2 fallback | `ICGNWebGL()` | Three.js/TSL, one scale |
-| Browser shared WGSL | `ICGNWebGL(backend="webgpu-wgsl")` | full pyramid, two levels |
-| Recommended native coarse-to-fine processing and streaming | `ICGNWGPUFullPyramid()` | full pyramid, two levels |
+| **Python-supervised NumPy processing and streaming** | `ICGNWGPUFullPyramid()` | full pyramid, two levels |
 | Native single-scale/selective processing | `ICGNWGPU()` | one scale |
+| Python-controlled browser with automatic WebGPU/WebGL2 fallback | `ICGNWebGL()` | Three.js/TSL, one scale |
+| Python-controlled browser shared WGSL | `ICGNWebGL(backend="webgpu-wgsl")` | full pyramid, two levels |
 
 `ICGNWGPU(pyramid_levels=2 or 3)` selects the older selective-recovery path.
 It is retained for exceptional failures and compatibility, but it is not the
@@ -101,13 +125,13 @@ to `du/dx`, `du/dy`, `dv/dx`, and `dv/dy`. Use it for rigid displacement-only
 work, not for strain measurement. The deprecated GPU-IO backend is affine-only.
 Changing the model requires a new engine and new reference preparation.
 
-## Persistent engine
+## Persistent Python supervisor
 
-Reuse one engine for an image sequence. This keeps Chromium alive and prepares
-the reference only once:
+Reuse one native engine for an image sequence. This keeps the wgpu device,
+pipelines, and reference pyramid alive while Python supervises the stream:
 
 ```python
-from lucas_kanade_icgn import ICGNWebGL
+from lucas_kanade_icgn import ICGNWGPUFullPyramid
 
 reference = "DIC/LucasKanadeICGN/assets/frame_000.png"
 targets = [
@@ -115,15 +139,11 @@ targets = [
     "DIC/LucasKanadeICGN/assets/frame_010.png",
 ]
 
-with ICGNWebGL() as engine:
-    engine_info = engine.info()
+with ICGNWGPUFullPyramid() as engine:
     reference_info = engine.set_reference(reference)
     results = [engine.register(target) for target in targets]
 
 result = results[-1]
-print(engine_info.device)
-print(engine_info.solver, engine_info.subgroup_width)
-print(reference_info.reference_build_wall_ms)
 print(reference_info.total_wall_ms)
 print(result.parameters.shape)  # (32, 32, 6)
 print(result.displacement.shape)  # (32, 32, 2)
@@ -132,6 +152,11 @@ print(result.accepted, result.replaced)
 print(result.timing)
 print(result.rmse((2.0, -1.0)))
 ```
+
+Use ``ICGNWebGL`` in the same persistent pattern when browser compatibility is
+required. It keeps Chromium alive and the reference prepared, but each frame
+and full result still crosses the process boundary. It is not the recommended
+low-latency NumPy stream.
 
 The affine parameter order is:
 

@@ -6,6 +6,31 @@
 > project. His GPU-IO experiments, repository structure, and WebGL groundwork
 > are the foundation on which the work presented here is built.
 
+## Product boundary: Python-supervised DIC
+
+DIC-RT is designed to be supervised by a Python application. Python owns the
+reference lifecycle, solver configuration, acquisition integration, bounded
+queues, timing, error handling, and consumption of the NumPy displacement and
+parameter fields. For resident NumPy streams, the recommended production path
+is therefore `ICGNWGPUFullPyramid()`: it keeps WebGPU in-process and avoids a
+browser data-plane boundary.
+
+The browser backends remain important for WebGPU/WebGL2 portability, numerical
+cross-checks, and browser deployments. Their Python adapter is not the intended
+4K60 data plane. Even with the new binary transport, every UHD target crosses
+from Python into Chromium and every full field crosses back; current complete
+calls measure about 40--43 ms median. To turn the faster Three.js GPU graph
+into a competitive streaming application, a persistent **JavaScript
+supervisor** would need to own frame ingestion, GPU submission, backpressure,
+and result consumption in the browser process. Python could configure and
+monitor that supervisor, but it should not marshal every 4K frame and full
+field across the process boundary.
+
+That JavaScript supervisor is an integration direction, not a component
+provided by this repository today. If every input is a NumPy array and every
+full result must be materialized in Python, the native wgpu backend remains the
+correct architecture.
+
 ## Long-term target: qualified 4K at 60 FPS
 
 The project goal is sustained digital image correlation on 3840 x 2160 frames
@@ -22,15 +47,15 @@ construction.
 
 This is an encouraging compute result, not yet a 4K60 system qualification.
 Camera acquisition and downstream consumers are still excluded. The browser
-GPU timer also excludes input upload, Python/DevTools transport, and readback.
+GPU timer also excludes input upload, binary Python/Chromium transport, and readback.
 Those stages must all be integrated and measured without growing queues before
 the 4K60 objective can be claimed.
 
-This fork adds a Python-accessible, GPU-accelerated digital image correlation
+This fork adds a Python-supervised, GPU-accelerated digital image correlation
 (DIC) implementation to `tests_gpuio`. It performs affine
-inverse-compositional Gauss-Newton registration through a default Three.js/TSL
-WebGPU backend, an optional GPU-IO/WebGL2 backend, and an experimental native
-wgpu-py backend. All paths accept dynamic dimensions and have been validated
+inverse-compositional Gauss-Newton registration through a native wgpu-py path,
+a Three.js/TSL browser path with automatic WebGPU/WebGL2 selection, and an
+optional historical GPU-IO/WebGL2 backend. All paths accept dynamic dimensions and have been validated
 from 512 x 512 through UHD 3840 x 2160. Three.js remains the browser-facing API
 default. For native NumPy processing, the recommended default is the two-level
 `ICGNWGPUFullPyramid` path; the previous single-scale and selective-recovery
@@ -83,10 +108,10 @@ There is no global default independent of the selected class:
 
 | Intended use | Construction | Pyramid policy |
 |---|---|---|
-| Browser with automatic WebGPU/WebGL2 compatibility | `ICGNWebGL()` | Three.js/TSL, single scale |
-| Browser using the canonical shared WGSL | `ICGNWebGL(backend="webgpu-wgsl")` | Full pyramid, **2 levels by default** |
-| Native robust coarse-to-fine DIC and streaming | `ICGNWGPUFullPyramid()` | Full pyramid, **2 levels by default and recommended** |
+| **Python-supervised NumPy DIC and streaming** | `ICGNWGPUFullPyramid()` | Full pyramid, **2 levels by default and recommended** |
 | Native single-scale/selective path | `ICGNWGPU()` | Single scale by default |
+| Python-controlled browser compatibility | `ICGNWebGL()` | Three.js/TSL, single scale |
+| Python-controlled browser using canonical WGSL | `ICGNWebGL(backend="webgpu-wgsl")` | Full pyramid, **2 levels by default** |
 | Historical reproduction only | `ICGNWebGL(backend="gpuio")` | Deprecated single scale |
 
 `ICGNWGPU(pyramid_levels=2 or 3)` is the older selective-recovery mechanism.
@@ -106,8 +131,9 @@ GPU-IO backend supports only `bspline`. See the
 
 The Python package exposes the browser implementations through one headless
 contract and the native implementation through the same result schema.
-Three.js/TSL is the default; GPU-IO remains selectable for regression
-comparisons, and `ICGNWGPU` selects the browser-free path:
+Three.js/TSL is the default inside the browser-control class; GPU-IO remains
+selectable for regression comparisons, and `ICGNWGPUFullPyramid` selects the
+recommended browser-free Python path:
 
 ```text
 Python reference image

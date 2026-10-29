@@ -9,8 +9,9 @@ when a kernel, driver, browser, or measurement boundary changes.
 
 ## Current backend policy
 
-- `ICGNWGPUFullPyramid()` with two levels is the recommended native
-  coarse-to-fine path.
+- DIC-RT is measured first as a Python-supervised NumPy pipeline.
+- `ICGNWGPUFullPyramid()` with two levels is the recommended product
+  coarse-to-fine path for that boundary.
 - `ICGNWebGL(backend="webgpu-wgsl")` runs the same two-level full-pyramid WGSL
   graph in Chromium.
 - `ICGNWebGL()` remains the default browser entry point and uses the optimized
@@ -40,6 +41,12 @@ persistent engine receives an already acquired, contiguous `uint8` NumPy image
 and the timer stops only when the complete `(135, 240, 6)` NumPy parameter
 field, status, iterations, and statistics are available. Reference preparation,
 camera acquisition, and decoding are excluded.
+
+This boundary reflects the product's intended Python supervisor. Browser rows
+measure Python controlling a separate Chromium worker; they are not estimates
+of a future JavaScript-supervised Three.js stream. Such a supervisor would keep
+browser-native input, scheduling, and result consumers in Chromium and needs a
+separate implementation and campaign.
 
 The sequence cycles the four distinct qualified `frame_001`, `frame_005`,
 `frame_010`, and `frame_020` fixtures. Every row uses three changing-frame

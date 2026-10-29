@@ -6,6 +6,11 @@ browser path because it uses WebGPU when available and retains compatibility
 through its own WebGL2 transform-feedback solver. GPU-IO remains packaged
 temporarily for historical reproducibility and replacement qualification.
 
+This guide concerns browser compatibility only. For the intended
+Python-supervised NumPy pipeline, ``ICGNWGPUFullPyramid`` remains the
+recommended execution path. A performance-oriented browser-native stream
+would need the JavaScript supervisor described in :doc:`../explanation/supervision`.
+
 Update Python code
 ------------------
 

@@ -6,6 +6,13 @@ public engine class selected by the application.  This distinction matters
 because the browser API, the low-latency native API, and the native
 coarse-to-fine API intentionally expose different execution graphs.
 
+The project itself does have a primary supervision model: Python owns the
+measurement workflow. For NumPy input and NumPy fields, native wgpu is the
+recommended data plane. A browser backend can be controlled from Python for
+compatibility and qualification, but competitive browser-native streaming
+requires a JavaScript supervisor that keeps the per-frame path inside
+Chromium. See :doc:`supervision`.
+
 Current recommendation
 ----------------------
 
@@ -17,27 +24,29 @@ Current recommendation
      - Construction
      - Default pyramid
      - Policy
-   * - Browser application with automatic compatibility
-     - ``ICGNWebGL()``
-     - one scale
-     - Recommended browser entry point.  It selects Three.js/WebGPU and falls
-       back to Three.js/WebGL2.
-   * - Browser execution of the canonical shared WGSL
-     - ``ICGNWebGL(backend="webgpu-wgsl")``
-     - two full-pyramid levels
-     - Recommended when browser/native source identity is more important than
-       the specialized Three.js subgroup path.
    * - Native NumPy coarse-to-fine registration
      - ``ICGNWGPUFullPyramid()``
      - two full-pyramid levels
-     - Recommended native path for the validated displacement range, bounded
-       NumPy streams, and 4K60 compute objective.
+     - Recommended product path for Python supervision, the validated
+       displacement range, bounded NumPy streams, and the 4K60 compute
+       objective.
    * - Native single-scale or selective processing
      - ``ICGNWGPU()``
      - one scale
      - Use for automatic subgroup tuning or a one-scale graph. Its optional
        selective recovery is a compatibility/exception mode, not the
        recommended normal pyramid. It also retains its bounded stream API.
+   * - Python-controlled browser compatibility
+     - ``ICGNWebGL()``
+     - one scale
+     - Selects Three.js/WebGPU and falls back to Three.js/WebGL2. Useful for
+       compatibility and qualification, but not the recommended low-latency
+       NumPy data plane.
+   * - Python-controlled canonical WGSL in Chromium
+     - ``ICGNWebGL(backend="webgpu-wgsl")``
+     - two full-pyramid levels
+     - Use when browser/native source identity is more important than the
+       specialized Three.js subgroup path. The process-copy cost remains.
    * - Historical GPU-IO reproduction
      - ``ICGNWebGL(backend="gpuio")``
      - one scale

@@ -12,12 +12,15 @@ performance guarantees.
 Current backend policy
 ----------------------
 
-* ``ICGNWGPUFullPyramid()`` with two levels is the recommended native
-  coarse-to-fine configuration.
+* DIC-RT is evaluated first as a Python-supervised NumPy pipeline. See
+  :doc:`../explanation/supervision`.
+* ``ICGNWGPUFullPyramid()`` with two levels is the recommended product
+  configuration for that boundary.
 * ``ICGNWebGL(backend="webgpu-wgsl")`` executes the same two-level
   full-pyramid WGSL graph in Chromium.
-* ``ICGNWebGL()`` remains the browser entry-point default and selects the
-  optimized Three.js/TSL single-scale solver with automatic WebGL2 fallback.
+* ``ICGNWebGL()`` is the Python-controlled browser compatibility entry point
+  and selects the optimized Three.js/TSL single-scale solver with automatic
+  WebGL2 fallback. It is not the low-latency NumPy recommendation.
 * Both native engines expose bounded sequence execution. ``ICGNWGPU()`` is
   the single-scale engine; its optional selective recovery is not the normal
   pyramid path.

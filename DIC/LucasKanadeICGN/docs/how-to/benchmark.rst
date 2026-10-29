@@ -1,6 +1,12 @@
 Benchmark the DIC pipeline
 ==========================
 
+For the Python-supervised product boundary, the primary measurement is the
+complete call from a resident NumPy image to a materialized NumPy field. Time
+``engine.register(frame)`` or use ``benchmark_image_to_field.py``. The
+browser-only benchmark below is a diagnostic for the GPU graph; it must not be
+used as the Python stream result. See :doc:`../explanation/supervision`.
+
 Use the built-in benchmark to characterize the GPU prefilter and solver under a
 stable workload:
 
@@ -52,8 +58,7 @@ Interpret the timers
 ``wall_times_ms``
    Browser-side elapsed time around the same prefilter-and-solve operation. It
    includes synchronization while waiting for the GPU query, but excludes
-   Python image conversion, DevTools transport, target decoding, and result
-   readback.
+   Python input preparation, binary process transport, and result readback.
 
 ``ReferenceInfo``
    ``runtime_build_wall_ms`` measures resolution-dependent host storage and TSL
@@ -67,7 +72,8 @@ Interpret the timers
 Complete Python call
    Measure ``engine.register(frame)`` with ``time.perf_counter``. This includes
    the Python-to-browser and browser-to-Python path and is the correct boundary
-   for a Python application.
+   for the current Python supervisor. A future JavaScript-supervised Three.js
+   stream would need a separate browser-native end-to-end benchmark.
 
 Native timing fields
    ``ICGNWGPU.register`` reports ``uploadWallMs``,

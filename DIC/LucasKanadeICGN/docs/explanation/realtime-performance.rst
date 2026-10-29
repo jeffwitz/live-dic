@@ -5,6 +5,15 @@ Real-time performance and latency
 in isolation. A DIC system must define its deadline, sustain it over time, and
 report late or dropped frames.
 
+DIC-RT's primary deployment is Python-supervised: Python owns acquisition
+integration, engine lifetime, bounded queues, timing, and NumPy outputs. The
+native wgpu path is the reference performance architecture for that boundary.
+The browser adapter is deliberately measured as a complete Python call, not
+only as a Three.js timestamp. A future JavaScript supervisor could remove the
+per-frame Python/Chromium copies by keeping browser-native frames and result
+consumers in Chromium; it is not currently implemented. See
+:doc:`supervision`.
+
 Latency boundaries
 ------------------
 
@@ -54,6 +63,11 @@ transport: no per-frame PNG, image decoding, DevTools frame payload, or JSON
 field remains. The browser process boundary and the required GPU upload still
 keep these paths above the 16.667 ms target. GPU timestamps remain useful
 diagnostics, but they are not stream performance claims.
+
+These browser figures qualify the current **Python supervisor controlling a
+browser worker**. They do not predict the boundary of a JavaScript-supervised
+Three.js application whose input and consumers remain in the browser process.
+That architecture needs a separate implementation and campaign.
 
 Throughput is not latency
 -------------------------

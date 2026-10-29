@@ -1,9 +1,10 @@
 Build a persistent sequence loop
 ================================
 
-A real-time-oriented DIC loop must not restart Chromium or rebuild the reference
-for every frame. This tutorial reuses one engine and measures the complete
-Python call for each target.
+A real-time-oriented Python supervisor must not rebuild the device or reference
+for every frame. This tutorial reuses the recommended native full-pyramid
+engine and measures the complete Python call for each target. It represents the
+project's intended NumPy deployment, not a browser-kernel microbenchmark.
 
 Create ``sequence_loop.py`` in the repository root:
 
@@ -14,7 +15,7 @@ Create ``sequence_loop.py`` in the repository root:
 
    import numpy as np
 
-   from lucas_kanade_icgn import ICGNWebGL
+   from lucas_kanade_icgn import ICGNWGPUFullPyramid
 
 
    asset_dir = Path("DIC/LucasKanadeICGN/assets")
@@ -29,7 +30,7 @@ Create ``sequence_loop.py`` in the repository root:
    call_times_ms = []
    translations = []
 
-   with ICGNWebGL() as engine:
+   with ICGNWGPUFullPyramid() as engine:
        engine.set_reference(reference)
 
        for target in targets:
@@ -53,15 +54,23 @@ Run the script:
 Why the engine stays open
 -------------------------
 
-The context manager owns three resources:
+The context manager owns the persistent native resources:
 
-* a loopback HTTP server for the WebGL assets;
-* a headless Chromium process;
-* the GPU textures containing the prepared reference.
+* the wgpu adapter, device, and queue;
+* compiled compute pipelines and immutable reference buffers;
+* the GPU textures containing the prepared reference and target pyramid.
 
-Keeping the context open avoids process startup and reference preparation on
-every frame. ``register_many(reference, targets)`` provides the same reuse as a
-convenience method, but an explicit loop is better when frames arrive over time.
+Keeping the context open avoids device/runtime startup and reference preparation on
+every frame. ``register_stream(targets, pipeline_depth=1)`` provides the same
+ordered one-frame-at-a-time behavior as a convenience method; its default
+two-slot configuration instead improves sustained throughput. An explicit
+loop remains useful when frames arrive interactively over time.
+
+``ICGNWebGL`` can replace the native class when browser or WebGL2
+compatibility is the deployment requirement. Its binary transport is suitable
+for qualification, but every frame and field still crosses the
+Python/Chromium boundary. A high-throughput Three.js deployment needs the
+JavaScript supervision model described in :doc:`../explanation/supervision`.
 
 Measure the correct boundary
 ----------------------------

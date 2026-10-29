@@ -1,6 +1,13 @@
 Command-line reference
 ======================
 
+``icgn-webgl`` is the browser-control command used for compatibility,
+qualification, and offline file processing. DIC-RT's primary deployment is a
+Python supervisor using ``ICGNWGPUFullPyramid`` for resident NumPy streams.
+The command-line default must therefore be read as the default *browser*
+backend, not as the recommended 4K60 Python data plane. See
+:doc:`../explanation/supervision`.
+
 Synopsis
 --------
 
@@ -96,7 +103,8 @@ Runtime options
    Browser startup timeout. Default: 20 seconds.
 
 ``--call-timeout SECONDS``
-   Timeout for one DevTools operation. Default: 120 seconds.
+   Timeout for one browser-control or binary-registration operation. Default:
+   120 seconds.
 
 ``--enable-chromium-sandbox``
    Do not pass ``--no-sandbox`` to Chromium.

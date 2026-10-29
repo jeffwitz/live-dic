@@ -3,13 +3,28 @@ Pipeline architecture
 
 The Python API controls an optimized Three.js/TSL backend that selects WebGPU
 or falls back to WebGL2, a raw WebGPU adapter using the canonical WGSL, or the
-experimental native wgpu-py backend. The deprecated GPU-IO/WebGL2 backend is
+native wgpu-py backend. The deprecated GPU-IO/WebGL2 backend is
 retained only for historical comparison and migration qualification.
 Chromium is an execution environment
 for the first three, not a user interface:
 each headless page loads only its numerical runtime, creates no controls, and
 never attaches a canvas to the visible document. The native path does not
 start Chromium.
+
+Supervision boundary
+--------------------
+
+The intended application supervisor is Python. It owns acquisition
+integration, reference changes, configuration, bounded scheduling, timing, and
+the returned NumPy fields. The native wgpu path is therefore the recommended
+data plane for resident NumPy images.
+
+The browser adapters expose the same numerical work to Python, but Chromium is
+a separate process. A future performance-oriented Three.js deployment should
+move per-frame supervision into JavaScript so that browser-native inputs and
+result consumers stay beside the GPU runtime. Python may remain a control and
+monitoring plane. See :doc:`supervision` for the exact boundary and decision
+rule.
 
 Data flow
 ---------
@@ -140,4 +155,7 @@ Concurrency model
 One engine instance owns one browser process or native device/queue and is not
 thread-safe. A real-time application should keep GPU calls on one processing
 thread and use a bounded queue to exchange frames and results with acquisition
-and persistence workers.
+and persistence workers. This describes the current Python supervisor. A
+browser-native implementation needs the equivalent bounded queue and failure
+policy in a persistent JavaScript supervisor; simply wrapping each frame in a
+Python browser call preserves the inter-process bottleneck.

@@ -5,6 +5,12 @@ This tutorial runs one affine DIC registration, inspects the displacement
 field, and checks it against a known translation. It uses the images shipped in
 the repository, so no camera is required.
 
+This introductory example uses the broadly compatible Three.js browser
+adapter. DIC-RT's intended production boundary is nevertheless a
+Python-supervised NumPy pipeline; use ``ICGNWGPUFullPyramid`` for the native
+coarse-to-fine path once the optional native dependencies are installed. See
+:doc:`../explanation/supervision` before choosing a deployment backend.
+
 Prerequisites
 -------------
 
