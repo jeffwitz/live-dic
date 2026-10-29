@@ -64,6 +64,9 @@ override INTERPOLATION_MODE: u32 = 0u;
 // 0: six-parameter affine warp, 1: translation-only warp,
 // 2: twelve-parameter quadratic warp.
 override MOTION_MODEL: u32 = 0u;
+// 0: validate and replace centre displacements only; 1: validate every active
+// affine or quadratic coefficient independently.
+override MEDIAN_SCOPE: u32 = 1u;
 // Square subset width. Repository hosts expose the validated 8, 16, and 32
 // specializations while preserving 16 as the default pipeline constant.
 override SUBSET_SIZE: i32 = 16;
@@ -1034,30 +1037,34 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
         if count < 4u {
             return;
         }
-        var medians: array<f32, 12>;
-        var values: array<f32, 8>;
-        for (var component = 0u; component < 12u; component += 1u) {
-            for (var index = 0u; index < count; index += 1u) {
-                values[index] = neighbours[index][component];
-            }
-            medians[component] = median_eight(&values, count);
-        }
         let own_c = state.values[state_index + 2u];
         var filtered = array<f32, 12>(
             own_a.x, own_a.y, own_a.z, own_a.w,
             own_b.x, own_b.y, own_b.z, own_b.w,
             own_c.x, own_c.y, own_c.z, own_c.w,
         );
+        var values: array<f32, 8>;
         var any_flagged = false;
-        for (var component = 0u; component < 12u; component += 1u) {
+        let component_order = array<u32, 12>(
+            0u, 3u, 1u, 2u, 4u, 5u, 6u, 7u, 8u, 9u, 10u, 11u,
+        );
+        let active_component_count = select(2u, 12u, MEDIAN_SCOPE != 0u);
+        for (var active_index = 0u;
+             active_index < active_component_count;
+             active_index += 1u) {
+            let component = component_order[active_index];
             for (var index = 0u; index < count; index += 1u) {
-                values[index] = abs(neighbours[index][component] - medians[component]);
+                values[index] = neighbours[index][component];
+            }
+            let component_median = median_eight(&values, count);
+            for (var index = 0u; index < count; index += 1u) {
+                values[index] = abs(neighbours[index][component] - component_median);
             }
             let spread = median_eight(&values, count);
-            let score = abs(filtered[component] - medians[component])
+            let score = abs(filtered[component] - component_median)
                 / (spread + parameter_outlier_floor(component));
             if score > 2.0 {
-                filtered[component] = medians[component];
+                filtered[component] = component_median;
                 any_flagged = true;
             }
         }
@@ -1123,7 +1130,8 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var values: array<f32, 8>;
     var any_flagged = false;
     let component_order = array<u32, 6>(0u, 3u, 1u, 2u, 4u, 5u);
-    let active_component_count = select(6u, 2u, MOTION_MODEL == 1u);
+    let displacement_only = MOTION_MODEL == 1u || MEDIAN_SCOPE == 0u;
+    let active_component_count = select(6u, 2u, displacement_only);
     for (var active_index = 0u; active_index < active_component_count; active_index += 1u) {
         let component = component_order[active_index];
         for (var index = 0u; index < count; index += 1u) {

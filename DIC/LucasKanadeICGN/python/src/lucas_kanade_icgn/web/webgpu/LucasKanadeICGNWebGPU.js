@@ -45,6 +45,7 @@ const INTERPOLATION_CONSTANTS = {
   cubic: 2,
 };
 const MOTION_MODEL_CONSTANTS = { affine: 0, translation: 1, quadratic: 2 };
+const MEDIAN_SCOPE_CONSTANTS = { displacement: 0, all: 1 };
 
 const configuration = {
   subsetStride: SUBSET_STRIDE,
@@ -56,6 +57,7 @@ const configuration = {
   tolerancePerLevel: [...TOLERANCE_SCHEDULES[DEFAULT_PYRAMID_LEVELS]],
   interpolation: 'bspline',
   motionModel: 'affine',
+  medianScope: 'all',
 };
 
 let adapter = null;
@@ -80,6 +82,7 @@ let reductionEdges = [];
 let seedEdges = new Map();
 let runtimePyramidLevels = 0;
 let runtimeMotionModel = null;
+let runtimeMedianScope = null;
 let FRAME_WIDTH = 0;
 let FRAME_HEIGHT = 0;
 let PIXEL_COUNT = 0;
@@ -194,7 +197,8 @@ const createRuntime = async (width, height) => {
   }
   if (buffers && width === FRAME_WIDTH && height === FRAME_HEIGHT
       && runtimePyramidLevels === levelCount
-      && runtimeMotionModel === configuration.motionModel) return false;
+      && runtimeMotionModel === configuration.motionModel
+      && runtimeMedianScope === configuration.medianScope) return false;
   await ensureDevice();
   if (levelCount > 1 && device.limits.maxStorageBuffersPerShaderStage < 10) {
     throw new Error(
@@ -362,6 +366,7 @@ const createRuntime = async (width, height) => {
       'DIC-RT shared median filter', 'median_filter', shaderModule, layout,
       {
         MOTION_MODEL: MOTION_MODEL_CONSTANTS[configuration.motionModel],
+        MEDIAN_SCOPE: MEDIAN_SCOPE_CONSTANTS[configuration.medianScope],
         SUBSET_SIZE,
         SUBSET_STRIDE,
       },
@@ -559,6 +564,7 @@ const createRuntime = async (width, height) => {
   bindGroup = levels[0].bindGroup;
   runtimePyramidLevels = levelCount;
   runtimeMotionModel = configuration.motionModel;
+  runtimeMedianScope = configuration.medianScope;
   if (timestampQueries) {
     const passCount = 7 * levelCount - 3;
     querySet = device.createQuerySet({ type: 'timestamp', count: 2 * passCount });
@@ -619,6 +625,14 @@ const configure = (options = {}, allowPyramidRebuild = false) => {
   if (!allowPyramidRebuild && referenceReady && motionModel !== configuration.motionModel) {
     throw new Error('Changing motionModel requires setReference()');
   }
+  const medianScope = options.medianScope === undefined
+    ? configuration.medianScope : String(options.medianScope).toLowerCase();
+  if (!(medianScope in MEDIAN_SCOPE_CONSTANTS)) {
+    throw new Error("medianScope must be 'displacement' or 'all'");
+  }
+  if (!allowPyramidRebuild && referenceReady && medianScope !== configuration.medianScope) {
+    throw new Error('Changing medianScope requires setReference()');
+  }
   const changedLevels = pyramidLevels !== configuration.pyramidLevels;
   const iterationsPerLevel = options.iterationsPerLevel === undefined
     ? (changedLevels
@@ -646,6 +660,7 @@ const configure = (options = {}, allowPyramidRebuild = false) => {
     tolerancePerLevel,
     interpolation,
     motionModel,
+    medianScope,
   };
   next.iterationsPerLevel[pyramidLevels - 1] = next.iterations;
   next.tolerancePerLevel[pyramidLevels - 1] = next.tolerance;
@@ -1023,6 +1038,7 @@ const info = async () => {
     pyramidLevels: configuration.pyramidLevels,
     interpolation: configuration.interpolation,
     motionModel: configuration.motionModel,
+    medianScope: configuration.medianScope,
     iterationsPerLevel: [...configuration.iterationsPerLevel],
     tolerancePerLevel: [...configuration.tolerancePerLevel],
     solver: configuration.pyramidLevels > 1

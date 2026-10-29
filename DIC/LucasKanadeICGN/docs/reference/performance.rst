@@ -66,12 +66,12 @@ Gaussian/inverse-spline target filtering, 4 x 4 cubic B-spline interpolation,
 a ``5e-3`` fine-scale tolerance, minimum ZNCC ``0.8``, and spatial median
 consistency. No camera or H.264 stage is included.
 
-All current affine and quadratic measurements include component-wise
-normalized median replacement. Its isolated analytic A/B qualification shows
-a 29.6--36.3% reduction in curvature RMSE, including the noisy case, with a
-12.9--20.5% gradient-RMSE trade-off. See
+All current affine and quadratic measurements use the default
+``median_scope="all"``. Against ``median_scope="displacement"``, its isolated
+analytic A/B qualification shows a 29.6--36.3% reduction in curvature RMSE,
+including the noisy case, with a 12.9--20.5% gradient-RMSE trade-off. See
 :doc:`../explanation/component-wise-median` for the exact protocol, equations,
-and legacy/current commit comparison. Quadratic performance remains reported
+and selectable-scope comparison. Quadratic performance remains reported
 separately because its state and solver cost differ from affine mode.
 
 Primary image-to-field stream measurements
@@ -430,8 +430,9 @@ Kernel configuration represented by the results
 The opt-in GPU tests validate partial FIR tiles, exact integer pyramid
 reduction, fresh seeded state, selective-retry neighbour preservation, and the
 translation-only fractional-displacement contract. They also inject isolated
-affine-gradient and quadratic-curvature outliers to verify component-wise
-median replacement. All 99 tests pass when GPU execution is enabled.
+affine-gradient and quadratic-curvature outliers to verify both median scopes
+and component-wise replacement. All 102 tests pass when GPU execution is
+enabled.
 
 Timing boundaries
 -----------------

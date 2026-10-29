@@ -16,6 +16,9 @@ The ``MOTION_MODEL`` override similarly specializes the same source for the
 two-parameter translation, six-parameter affine, or twelve-parameter
 quadratic model. Pipeline specialization removes unused branches from the
 per-subset loop.
+``MEDIAN_SCOPE`` independently specializes the post-pass for either the two
+centre displacements or every active polynomial coefficient. The native and
+raw-browser hosts therefore execute the same selectable robustness rule.
 
 Three.js remains the default *browser entry point* because its
 subgroup-specialized TSL solver is faster on the validation GPU and it supplies

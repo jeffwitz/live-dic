@@ -154,6 +154,14 @@ when within-subset displacement curvature is required. See
 [`Motion models`](./docs/explanation/motion-models.rst) for the equations,
 backend coverage, and current A/B results.
 
+The spatial robustness pass is independently configurable. The default
+``median_scope="all"`` tests and replaces every active affine or quadratic
+coefficient separately. ``median_scope="displacement"`` tests and changes
+only ``tx`` and ``ty`` while leaving all gradients and curvatures untouched.
+Both modes recenter neighbour polynomials before testing the centre
+displacements. See
+[`Component-wise median replacement`](./docs/explanation/component-wise-median.rst).
+
 Quadratic mode is currently a correctness-first path, not the 4K60 default.
 On this machine, a dedicated two-level UHD run with 32 x 32 subsets and direct
 cubic interpolation measured 56.8--70.0 ms campaign medians and 14.5--16.7

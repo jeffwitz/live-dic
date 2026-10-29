@@ -37,12 +37,11 @@ below uses overlapping subsets. No camera or H.264 stage is included.
 
 ## Primary UHD image-to-field stream boundary
 
-Current affine and quadratic measurements include the component-wise
-normalized median rule. Against the immediately preceding
-translation-triggered rule, the analytic 32 x 32 uniform quadratic benchmark
-measured these changes:
+Current affine and quadratic measurements use the default
+`median_scope="all"`. Against `median_scope="displacement"`, the analytic
+32 x 32 uniform quadratic benchmark measured these changes:
 
-| Analytic field | Curvature RMSE/component before | Current | Change |
+| Analytic field | `displacement` | `all` | Change |
 |---|---:|---:|---:|
 | Moderate clean | 5.727e-5 | **3.970e-5** | **-30.7%** |
 | Strong clean | 6.428e-5 | **4.525e-5** | **-29.6%** |
@@ -234,8 +233,9 @@ depth is unrelated to image-pyramid depth.
 The opt-in GPU regressions validate partial FIR tiles, exact integer pyramid
 reduction, fresh seeded state, selective-retry neighbour preservation, and the
 translation-only fractional-displacement contract. They also inject isolated
-affine-gradient and quadratic-curvature outliers to verify component-wise
-median replacement. All 99 tests pass when GPU execution is enabled.
+affine-gradient and quadratic-curvature outliers to verify both median scopes
+and component-wise replacement. All 102 tests pass when GPU execution is
+enabled.
 
 ## Reproduce the current measurements
 

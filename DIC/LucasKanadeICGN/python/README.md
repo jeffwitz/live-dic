@@ -167,6 +167,21 @@ available in native wgpu and `backend="webgpu-wgsl"`; Three.js and deprecated
 GPU-IO reject it.
 Changing the model requires a new engine and new reference preparation.
 
+## Median-filter scope
+
+The default validates every active polynomial coefficient independently:
+
+```python
+with ICGNWGPUFullPyramid(median_scope="all") as engine:
+    engine.set_reference(reference)
+    result = engine.register(target)
+```
+
+Use `median_scope="displacement"` to test and replace only `tx` and `ty`.
+Gradients and curvatures are then preserved even when they disagree with their
+direct neighbourhood. Both scopes use recentered neighbour polynomials for the
+translation test. The selected scope is returned as `config["medianScope"]`.
+
 ## Persistent Python supervisor
 
 Reuse one native engine for an image sequence. This keeps the wgpu device,

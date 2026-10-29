@@ -67,6 +67,7 @@ const configuration = {
   znccMin: DEFAULT_ZNCC_MIN,
   interpolation: 'bspline',
   motionModel: 'affine',
+  medianScope: 'all',
 };
 const toleranceNode = uniform(DEFAULT_TOLERANCE);
 const znccMinNode = uniform(DEFAULT_ZNCC_MIN);
@@ -104,6 +105,7 @@ let useSubgroupSolver = false;
 let solverKind = 'uninitialized';
 let runtimeInterpolation = null;
 let runtimeMotionModel = null;
+let runtimeMedianScope = null;
 let targetUsesPackedBytes = false;
 
 /** Allocate all resolution-dependent storage and rebuild the TSL compute graph. */
@@ -114,7 +116,8 @@ const initializeRuntime = (width, height) => {
   }
   if (attributes && width === FRAME_WIDTH && height === FRAME_HEIGHT
       && runtimeInterpolation === configuration.interpolation
-      && runtimeMotionModel === configuration.motionModel) return false;
+      && runtimeMotionModel === configuration.motionModel
+      && runtimeMedianScope === configuration.medianScope) return false;
 
   FRAME_WIDTH = width;
   FRAME_HEIGHT = height;
@@ -201,6 +204,7 @@ const initializeRuntime = (width, height) => {
   kernels = buildKernels();
   runtimeInterpolation = configuration.interpolation;
   runtimeMotionModel = configuration.motionModel;
+  runtimeMedianScope = configuration.medianScope;
   referenceReady = false;
   targetUsesPackedBytes = false;
   return true;
@@ -1040,7 +1044,7 @@ const makeMedianKernel = () => Fn(() => {
   filterComponent(predictedX, translation.x, 0.1, (median) => {
     filteredTranslation.x.assign(median);
   });
-  if (configuration.motionModel === 'affine') {
+  if (configuration.motionModel === 'affine' && configuration.medianScope === 'all') {
     filterComponent(p1, linear.x, derivativeFloor, (median) => {
       filteredLinear.x.assign(median);
     });
@@ -1051,7 +1055,7 @@ const makeMedianKernel = () => Fn(() => {
   filterComponent(predictedY, translation.y, 0.1, (median) => {
     filteredTranslation.y.assign(median);
   });
-  if (configuration.motionModel === 'affine') {
+  if (configuration.motionModel === 'affine' && configuration.medianScope === 'all') {
     filterComponent(p4, linear.z, derivativeFloor, (median) => {
       filteredLinear.z.assign(median);
     });
@@ -1360,6 +1364,14 @@ function configure(options = {}, allowInterpolationRebuild = false) {
   if (!allowInterpolationRebuild && referenceReady && motionModel !== configuration.motionModel) {
     throw new Error('Changing motionModel requires setReference()');
   }
+  const medianScope = options.medianScope === undefined
+    ? configuration.medianScope : String(options.medianScope).toLowerCase();
+  if (!['displacement', 'all'].includes(medianScope)) {
+    throw new Error("medianScope must be 'displacement' or 'all'");
+  }
+  if (!allowInterpolationRebuild && referenceReady && medianScope !== configuration.medianScope) {
+    throw new Error('Changing medianScope requires setReference()');
+  }
   const next = {
     iterations: options.iterations === undefined
       ? configuration.iterations : Number(options.iterations),
@@ -1368,6 +1380,7 @@ function configure(options = {}, allowInterpolationRebuild = false) {
     znccMin: options.znccMin === undefined ? configuration.znccMin : Number(options.znccMin),
     interpolation,
     motionModel,
+    medianScope,
   };
   if (!Number.isInteger(next.iterations) || next.iterations < 1 || next.iterations > 30) {
     throw new Error('iterations must be an integer between 1 and 30');
@@ -1447,6 +1460,7 @@ const info = async () => {
     subgroupSolverWidth,
     subgroupValidation,
     motionModel: configuration.motionModel,
+    medianScope: configuration.medianScope,
     solver: solverKind,
   };
 };

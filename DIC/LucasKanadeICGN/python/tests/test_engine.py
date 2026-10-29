@@ -434,6 +434,19 @@ class RuntimeAssetTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "requires backend='webgpu-wgsl'"):
             ICGNWebGL(backend="three-tsl", motion_model="quadratic")
 
+    def test_browser_median_scope_is_validated_and_forwarded(self) -> None:
+        for scope in ("displacement", "all"):
+            with self.subTest(scope=scope):
+                engine = ICGNWebGL(backend="webgpu-wgsl", median_scope=scope)
+                self.assertEqual(engine.median_scope, scope)
+                self.assertEqual(
+                    engine._options(iterations=None, tolerance=None, zncc_min=None)["medianScope"],
+                    scope,
+                )
+        with self.assertRaisesRegex(ValueError, "median_scope"):
+            ICGNWebGL(median_scope="translation")
+        self.assertIn("median_scope", inspect.signature(register_pair).parameters)
+
     def test_three_webgl_fallback_is_explicitly_testable(self) -> None:
         engine = ICGNWebGL(backend="three-tsl", force_three_webgl=True)
         self.assertTrue(engine.force_three_webgl)

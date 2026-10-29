@@ -81,6 +81,11 @@ def _arguments() -> argparse.Namespace:
         default="affine",
     )
     parser.add_argument(
+        "--median-scope",
+        choices=("displacement", "all"),
+        default="all",
+    )
+    parser.add_argument(
         "--spatial-weighting",
         choices=("uniform", "gaussian"),
         default="uniform",
@@ -148,6 +153,7 @@ def _engine(
     pyramid_levels: int,
     interpolation: str,
     motion_model: str,
+    median_scope: str,
     subset_size: int,
     subset_stride: int | None,
     spatial_weighting: str,
@@ -158,6 +164,7 @@ def _engine(
             pyramid_levels=pyramid_levels,
             interpolation=interpolation,
             motion_model=motion_model,
+            median_scope=median_scope,
             subset_size=subset_size,
             subset_stride=subset_stride,
             spatial_weighting=spatial_weighting,
@@ -169,6 +176,7 @@ def _engine(
         force_three_webgl=backend == "three-webgl",
         interpolation=interpolation,
         motion_model=motion_model,
+        median_scope=median_scope,
         subset_size=subset_size,
         subset_stride=subset_stride,
         startup_timeout=120,
@@ -321,6 +329,7 @@ def main() -> int:
             pyramid_levels=args.pyramid_levels,
             interpolation=args.interpolation,
             motion_model=args.motion_model,
+            median_scope=args.median_scope,
             subset_size=args.subset_size,
             subset_stride=args.subset_stride,
             spatial_weighting=args.spatial_weighting,
@@ -362,6 +371,7 @@ def main() -> int:
                 "subset_stride": args.subset_stride or args.subset_size,
                 "interpolation": args.interpolation,
                 "motion_model": args.motion_model,
+                "median_scope": args.median_scope,
                 "spatial_weighting": args.spatial_weighting,
                 "gaussian_sigma": (
                     args.gaussian_sigma

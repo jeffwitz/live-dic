@@ -32,6 +32,7 @@ import websockets
 from PIL import Image
 
 from .interpolation import normalize_interpolation
+from .median import normalize_median_scope
 from .motion import AFFINE_PARAMETER_ORDER, normalize_motion_model, parameter_order
 from .subset import DEFAULT_SUBSET_SIZE, normalize_subset_size, normalize_subset_stride
 
@@ -67,6 +68,7 @@ class EngineInfo:
     subgroup_solver_width: int = 0
     subgroup_validation: str = "unavailable"
     motion_model: str = "affine"
+    median_scope: str = "all"
 
 
 @dataclass(frozen=True, slots=True)
@@ -812,6 +814,7 @@ class ICGNWebGL:
         tolerance_per_level: Iterable[float] | None = None,
         interpolation: str = "bspline",
         motion_model: str = "affine",
+        median_scope: str = "all",
         subset_size: int = DEFAULT_SUBSET_SIZE,
         subset_stride: int | None = None,
     ) -> None:
@@ -825,6 +828,7 @@ class ICGNWebGL:
             raise ValueError("force_three_webgl is supported only by the 'three-tsl' backend")
         self.interpolation = normalize_interpolation(interpolation)
         self.motion_model = normalize_motion_model(motion_model)
+        self.median_scope = normalize_median_scope(median_scope)
         self.subset_size = normalize_subset_size(subset_size)
         self.subset_stride = normalize_subset_stride(
             subset_stride,
@@ -1086,6 +1090,7 @@ class ICGNWebGL:
         options: dict[str, Any] = {}
         options["interpolation"] = self.interpolation
         options["motionModel"] = self.motion_model
+        options["medianScope"] = self.median_scope
         if iterations is not None:
             options["iterations"] = int(iterations)
         if tolerance is not None:
@@ -1118,6 +1123,7 @@ class ICGNWebGL:
             subgroup_solver_width=int(payload.get("subgroupSolverWidth", 0)),
             subgroup_validation=str(payload.get("subgroupValidation", "unavailable")),
             motion_model=str(payload.get("motionModel", self.motion_model)),
+            median_scope=str(payload.get("medianScope", self.median_scope)),
         )
 
     def set_reference(
@@ -1411,6 +1417,7 @@ def register_pair(
     tolerance_per_level: Iterable[float] | None = None,
     interpolation: str = "bspline",
     motion_model: str = "affine",
+    median_scope: str = "all",
     subset_size: int = DEFAULT_SUBSET_SIZE,
     subset_stride: int | None = None,
     iterations: int | None = None,
@@ -1429,6 +1436,7 @@ def register_pair(
         tolerance_per_level=tolerance_per_level,
         interpolation=interpolation,
         motion_model=motion_model,
+        median_scope=median_scope,
         subset_size=subset_size,
         subset_stride=subset_stride,
     ) as engine:

@@ -57,6 +57,13 @@ followed by six second derivatives. Native wgpu and browser
 affine, and deprecated GPU-IO is affine-only. See
 :doc:`../explanation/motion-models`.
 
+Every engine accepts ``median_scope="all"`` (the default) or
+``median_scope="displacement"``. The default validates and replaces each
+active coefficient independently. The displacement scope validates and
+replaces only ``tx`` and ``ty`` while preserving all gradients and curvatures.
+See :doc:`../explanation/component-wise-median` for the equations, accuracy
+trade-off, and backend contract.
+
 Native shared-WGSL engines accept ``subset_size`` values 8, 15, 16, 17, 31,
 32, and 33. The odd widths have an exact centre pixel. They also accept
 ``spatial_weighting="gaussian"`` and an optional ``gaussian_sigma`` in pixels;
@@ -157,6 +164,8 @@ Constants and input types
 .. autodata:: lucas_kanade_icgn.QUADRATIC_PARAMETER_ORDER
 
 .. autodata:: lucas_kanade_icgn.MOTION_MODELS
+
+.. autodata:: lucas_kanade_icgn.MEDIAN_SCOPES
 
 .. autodata:: lucas_kanade_icgn.DEFAULT_IN_FLIGHT_FRAMES
 

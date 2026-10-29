@@ -54,9 +54,11 @@ Python-supervised real-time DIC toward 4K60
 
 .. important:: Coefficient-wise robustness result
 
-   DIC-RT applies a normalized median test independently to recentered affine
-   gradients and quadratic curvatures, replacing only the coefficients that
-   disagree with their direct neighbourhood. On the analytic quadratic
+   The default ``median_scope="all"`` applies a normalized median test
+   independently to recentered affine gradients and quadratic curvatures,
+   replacing only the coefficients that disagree with their direct
+   neighbourhood. The alternative ``"displacement"`` scope changes only
+   ``tx`` and ``ty``. On the analytic quadratic
    qualification, curvature RMSE decreased by 29.6--36.3%; the largest gain
    occurred with one-gray-level image noise. Displacement RMSE was unchanged,
    while gradient RMSE increased by 12.9--20.5%. This measured trade-off and

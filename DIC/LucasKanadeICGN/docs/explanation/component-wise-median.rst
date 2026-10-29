@@ -94,6 +94,32 @@ accepted neighbours are required. Otherwise the subset is left unchanged.
 Status 2 means that at least one coefficient was replaced; it does not imply
 that the complete polynomial was replaced.
 
+Selecting the filtered coefficients
+-----------------------------------
+
+The filter scope is fixed when the engine is constructed. Two choices are
+available on every backend:
+
+.. code-block:: python
+
+   # Default: test and replace every active polynomial coefficient.
+   engine = ICGNWGPUFullPyramid(median_scope="all")
+
+   # Test and replace tx and ty only; preserve every derivative coefficient.
+   engine = ICGNWGPUFullPyramid(median_scope="displacement")
+
+``median_scope="displacement"`` still recentres each neighbouring affine or
+quadratic polynomial before computing the two centre-displacement medians.
+If :math:`t_x` is an outlier, only :math:`t_x` is replaced; :math:`t_y`, all
+gradients, and all curvatures are retained. ``median_scope="all"`` applies the
+same independent decision to every active coefficient and remains the default.
+
+For ``motion_model="translation"`` the two scopes are numerically equivalent
+because :math:`t_x` and :math:`t_y` are the only active coefficients. The
+selected value is reported as ``medianScope`` in reference and registration
+configuration dictionaries. Changing it requires constructing the intended
+engine configuration and preparing the reference for that engine.
+
 Unit-aware robustness floors
 ----------------------------
 
@@ -128,13 +154,13 @@ choice and must be qualified for the intended images and metrology.
 Measured curvature result
 -------------------------
 
-The comparison below uses exactly the same analytic image generator and GPU.
-The only code change is the median rule:
+The comparison below uses exactly the same analytic image generator, GPU, and
+current implementation. The only changed setting is ``median_scope``:
 
-* legacy commit ``e18e134``: translation-triggered whole-polynomial
-  replacement;
-* component-wise commit ``44067db``: independent coefficient validation and
-  replacement;
+* ``displacement``: independently validate and replace only :math:`t_x` and
+  :math:`t_y`;
+* ``all``: independently validate and replace all twelve quadratic
+  coefficients;
 * 768 x 768 continuous analytic texture rasterized to 8-bit grayscale;
 * 32 x 32 uniform subsets, stride 16, B-spline interpolation;
 * eight measured registrations after three warm-ups;
@@ -149,8 +175,8 @@ The only code change is the median rule:
    :header-rows: 1
 
    * - Field and image condition
-     - Legacy rule
-     - Component-wise rule
+     - ``displacement``
+     - ``all``
      - Relative change
    * - Displacement RMSE, moderate clean (px)
      - 0.00623126
@@ -200,18 +226,18 @@ must remain visible when the method is reported.
 Runtime cost
 ------------
 
-The filter adds a median and a median absolute deviation for every active
-coefficient. The synchronous native UHD boundary changed from 11.920 to
-12.069 ms median and from 13.072 to 13.163 ms p95: approximately 0.15 ms, or
-1.3% of the median call. It remains below the 16.667 ms period of 60 FPS on the
-validation machine.
+``displacement`` specializes the shared WGSL median pass to two components;
+``all`` evaluates six affine or twelve quadratic components. The saving is
+small relative to the complete image-to-field graph. In the UHD affine check
+on the validation machine (five campaigns, 20 frames each), the complete
+single-slot medians were 11.62 ms for ``displacement`` and 11.49 ms for
+``all``. Their campaign ranges overlapped, so this check does not establish a
+significant end-to-end speed difference. Select the scope for its metrological
+behaviour, not for a claimed frame-rate gain. Both remain below the 16.667 ms
+period of 60 FPS on this machine.
 
-The bounded two-slot affine stream changed from 93.16 to 87.50 FPS, with
-median result age changing from 21.408 to 22.616 ms. The robustness is thus
-cheap for the synchronous native image-to-field latency, but it is not free in
-a saturated throughput pipeline. Browser-supervised calls show larger and
-more variable changes because browser transport and synchronization dominate
-their complete boundary. See :doc:`../reference/performance` for the current
+Browser-supervised calls have additional transport and synchronization noise.
+See :doc:`../reference/performance` for the qualified default ``all``
 measurements.
 
 Backend coverage

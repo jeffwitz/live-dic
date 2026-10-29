@@ -78,6 +78,12 @@ def _parser() -> argparse.ArgumentParser:
         help="estimated warp model (quadratic adds six second-derivative terms)",
     )
     parser.add_argument(
+        "--median-scope",
+        choices=("displacement", "all"),
+        default="all",
+        help="motion coefficients checked and replaced by the spatial median filter",
+    )
+    parser.add_argument(
         "--subset-size",
         type=int,
         choices=(8, 15, 16, 17, 31, 32, 33),
@@ -334,6 +340,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             tolerance_per_level=args.tolerance_per_level,
             interpolation=args.interpolation,
             motion_model=args.motion_model,
+            median_scope=args.median_scope,
             subset_size=args.subset_size,
             subset_stride=args.subset_stride,
         ) as engine:

@@ -12,6 +12,7 @@ from .engine import (
     register_pair,
 )
 from .full_pyramid_backend import DEFAULT_FULL_PYRAMID_LEVELS, ICGNWGPUFullPyramid
+from .median import MEDIAN_SCOPES
 from .motion import AFFINE_PARAMETER_ORDER, MOTION_MODELS, QUADRATIC_PARAMETER_ORDER
 from .wgpu_backend import DEFAULT_IN_FLIGHT_FRAMES, DEFAULT_PYRAMID_LEVELS, ICGNWGPU
 
@@ -27,6 +28,7 @@ __all__ = [
     "ICGNWebGL",
     "ICGNWGPU",
     "ICGNWGPUFullPyramid",
+    "MEDIAN_SCOPES",
     "MOTION_MODELS",
     "PARAMETER_ORDER",
     "QUADRATIC_PARAMETER_ORDER",

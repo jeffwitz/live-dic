@@ -53,6 +53,12 @@ Solver options
    by ``webgpu-wgsl``; the independent Three.js and deprecated GPU-IO browser
    backends reject it. Default: ``affine``.
 
+``--median-scope {displacement,all}``
+   Select the coefficients checked and replaced by the normalized median
+   filter. ``displacement`` changes only ``tx`` and ``ty``; ``all`` treats
+   every active affine or quadratic coefficient independently. Default:
+   ``all``.
+
 ``--subset-size {8,16,32}``
    Select the square numerical subset width. Default: ``16``.
 

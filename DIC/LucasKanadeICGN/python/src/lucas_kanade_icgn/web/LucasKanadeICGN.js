@@ -54,6 +54,7 @@ const PARAMS = {
     iterations: 30,
     tolerance: 0.001,
     znccMin: 0.8,
+    medianScope: 'all',
     vectorScale: 2,
   },
   dataset: {
@@ -598,6 +599,7 @@ const medianReplaceProgram = new GPUProgram(composer, {
     uniform sampler2D u_linear;
     uniform sampler2D u_status;
     uniform vec2 u_grid_size;
+    uniform int u_median_all;
 
     layout(location = 0) out vec2 out_translation;
     layout(location = 1) out vec4 out_linear;
@@ -649,10 +651,12 @@ const medianReplaceProgram = new GPUProgram(composer, {
           float deltaY = -${SUBSET_SIZE}.0 * float(dy);
           predictedX[count] = nt.x + nl.x * deltaX + nl.y * deltaY;
           predictedY[count] = nt.y + nl.z * deltaX + nl.w * deltaY;
-          p1[count] = nl.x;
-          p2[count] = nl.y;
-          p4[count] = nl.z;
-          p5[count] = nl.w;
+          if (u_median_all != 0) {
+            p1[count] = nl.x;
+            p2[count] = nl.y;
+            p4[count] = nl.z;
+            p5[count] = nl.w;
+          }
           count += 1;
         }
       }
@@ -672,40 +676,42 @@ const medianReplaceProgram = new GPUProgram(composer, {
       }
       float spreadX = median8(valuesX, count);
       float spreadY = median8(valuesY, count);
-      float medianP1 = median8(p1, count);
-      float medianP2 = median8(p2, count);
-      float medianP4 = median8(p4, count);
-      float medianP5 = median8(p5, count);
-      for (int index = 0; index < 8; ++index) {
-        p1[index] = abs(p1[index] - medianP1);
-        p2[index] = abs(p2[index] - medianP2);
-        p4[index] = abs(p4[index] - medianP4);
-        p5[index] = abs(p5[index] - medianP5);
-      }
-      float derivativeFloor = 0.001 / max(0.5 * (${SUBSET_SIZE}.0 - 1.0), 1.0);
       if (abs(translation.x - medianX) / (spreadX + 0.1) > 2.0) {
         out_translation.x = medianX;
-        out_status.x = 2.0;
-      }
-      if (abs(linear.x - medianP1) / (median8(p1, count) + derivativeFloor) > 2.0) {
-        out_linear.x = medianP1;
-        out_status.x = 2.0;
-      }
-      if (abs(linear.y - medianP2) / (median8(p2, count) + derivativeFloor) > 2.0) {
-        out_linear.y = medianP2;
         out_status.x = 2.0;
       }
       if (abs(translation.y - medianY) / (spreadY + 0.1) > 2.0) {
         out_translation.y = medianY;
         out_status.x = 2.0;
       }
-      if (abs(linear.z - medianP4) / (median8(p4, count) + derivativeFloor) > 2.0) {
-        out_linear.z = medianP4;
-        out_status.x = 2.0;
-      }
-      if (abs(linear.w - medianP5) / (median8(p5, count) + derivativeFloor) > 2.0) {
-        out_linear.w = medianP5;
-        out_status.x = 2.0;
+      if (u_median_all != 0) {
+        float medianP1 = median8(p1, count);
+        float medianP2 = median8(p2, count);
+        float medianP4 = median8(p4, count);
+        float medianP5 = median8(p5, count);
+        for (int index = 0; index < 8; ++index) {
+          p1[index] = abs(p1[index] - medianP1);
+          p2[index] = abs(p2[index] - medianP2);
+          p4[index] = abs(p4[index] - medianP4);
+          p5[index] = abs(p5[index] - medianP5);
+        }
+        float derivativeFloor = 0.001 / max(0.5 * (${SUBSET_SIZE}.0 - 1.0), 1.0);
+        if (abs(linear.x - medianP1) / (median8(p1, count) + derivativeFloor) > 2.0) {
+          out_linear.x = medianP1;
+          out_status.x = 2.0;
+        }
+        if (abs(linear.y - medianP2) / (median8(p2, count) + derivativeFloor) > 2.0) {
+          out_linear.y = medianP2;
+          out_status.x = 2.0;
+        }
+        if (abs(linear.z - medianP4) / (median8(p4, count) + derivativeFloor) > 2.0) {
+          out_linear.z = medianP4;
+          out_status.x = 2.0;
+        }
+        if (abs(linear.w - medianP5) / (median8(p5, count) + derivativeFloor) > 2.0) {
+          out_linear.w = medianP5;
+          out_status.x = 2.0;
+        }
       }
     }
   `,
@@ -714,6 +720,7 @@ const medianReplaceProgram = new GPUProgram(composer, {
     { name: 'u_linear', value: 1, type: INT },
     { name: 'u_status', value: 2, type: INT },
     { name: 'u_grid_size', value: gridDimensions(), type: FLOAT },
+    { name: 'u_median_all', value: 1, type: INT },
   ],
 });
 
@@ -1423,10 +1430,19 @@ const configureHeadless = (options = {}) => {
     PARAMS.tracking.znccMin = znccMin;
     affineICGNProgram.setUniform('u_zncc_min', znccMin);
   }
+  if (options.medianScope !== undefined) {
+    const medianScope = String(options.medianScope).toLowerCase();
+    if (!['displacement', 'all'].includes(medianScope)) {
+      throw new Error("medianScope must be 'displacement' or 'all'.");
+    }
+    PARAMS.tracking.medianScope = medianScope;
+    medianReplaceProgram.setUniform('u_median_all', medianScope === 'all' ? 1 : 0);
+  }
   return {
     iterations: PARAMS.tracking.iterations,
     tolerance: PARAMS.tracking.tolerance,
     znccMin: PARAMS.tracking.znccMin,
+    medianScope: PARAMS.tracking.medianScope,
   };
 };
 
@@ -1526,6 +1542,7 @@ if (HEADLESS_MODE) {
       timerQuery: Boolean(timerQueryExtension),
       solver: 'fused-fragment',
       subgroupWidth: 0,
+      medianScope: PARAMS.tracking.medianScope,
     }),
     configure: configureHeadless,
     setReference: headlessSetReference,
