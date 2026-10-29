@@ -266,6 +266,9 @@ class SeededPipelineTests(unittest.TestCase):
             "subgroup_width",
             "_shader",
             "_bind_group_layout",
+            "_pipeline_layout",
+            "_prefilter_x_fast",
+            "_prefilter_y_fast",
             "_prefilter_x",
             "_prefilter_y",
             "_portable_solver",
@@ -276,6 +279,7 @@ class SeededPipelineTests(unittest.TestCase):
             "_retry_solver",
         ):
             setattr(engine, name, object())
+        engine._prefilter_safe_pipelines = {}
         engine._wgpu = SimpleNamespace(TextureFormat=SimpleNamespace(r8unorm="r8unorm"))
 
         level = engine._new_shared_level()
@@ -284,6 +288,7 @@ class SeededPipelineTests(unittest.TestCase):
         self.assertIs(level._seeded_solver, engine._seeded_solver)
         self.assertIs(level._retry_solver, engine._retry_solver)
         self.assertIs(level._seeded_bind_group_layout, engine._seeded_bind_group_layout)
+        self.assertIs(level._prefilter_safe_pipelines, engine._prefilter_safe_pipelines)
         self.assertFalse(level._reference_ready)
 
 

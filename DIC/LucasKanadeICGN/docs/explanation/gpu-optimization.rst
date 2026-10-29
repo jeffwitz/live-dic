@@ -110,6 +110,21 @@ for the horizontal pass and 16 x 46 for the vertical pass. WebGL2 keeps its
 serial prefilter because workgroup memory and barriers are not available
 through that fallback.
 
+Partial edge workgroups still execute every halo load before their barrier,
+including a few cells that no valid output consumes. After applying the mirror
+border rule, both tiled implementations clamp those speculative coordinates to
+the image extent. Coordinates required by valid convolution outputs are already
+in range after reflection, so this guard changes no coefficient used by the
+solver. It only prevents an unused edge invocation from forming an out-of-range
+buffer address on small images or pyramid levels.
+
+This robustness guard is specialized when the pipeline is compiled rather
+than evaluated for every UHD load. The shared WGSL hosts use the original fast
+pipeline for axes of at least 44 pixels and compile a clamped variant only
+when a configured pyramid contains smaller levels. Three.js makes the same decision while
+building TSL because its image dimensions are host constants. The normal UHD
+critical path therefore keeps the pre-existing filter instructions.
+
 These FIR tiling rules apply only to ``interpolation="bspline"``. The direct
 ``linear`` and ``cubic`` graphs skip both passes. Their trade-off moves into
 the solver: bilinear sampling performs four direct image reads per warped
@@ -151,8 +166,14 @@ Three.js specialized subgroup reduction
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 At startup the runtime probes the hardware subgroup width. When a subgroup can
-contain the subset, the TSL kernel fills the measured subgroup rather than
-leaving lanes idle. On the validation adapter, 32 lanes each process eight of
+contain the subset, that result nominates a TSL kernel that fills the measured
+subgroup rather than leaving lanes idle. During reference preparation, the
+actual production solver writes its own ``subgroupSize`` to a diagnostic
+buffer. The subgroup kernel is accepted only when that value matches the
+candidate workgroup width; otherwise the runtime replaces it with the portable
+workgroup-memory solver. This matters because a lightweight probe and a more
+complex solver need not receive the same compiler-selected subgroup width. On
+the validation adapter, both report 32 lanes, so each lane processes eight of
 the 256 pixels. Subgroup collectives then reduce the partial vectors without
 workgroup-memory round trips.
 
@@ -195,9 +216,12 @@ iteration loop early while every barrier that is reached remains in uniform
 control flow. This path does not depend on a particular subgroup width and is
 executed unchanged by raw browser WebGPU and wgpu-py.
 
-Three.js selects the subgroup path when the width probe permits it and falls
-back to its TSL workgroup-memory variant otherwise. The raw browser adapter
-deliberately selects the portable shared WGSL. Native
+Three.js selects the subgroup path only when the width probe permits it and the
+production-pipeline validation agrees. ``EngineInfo.subgroup_probe_width``,
+``subgroup_solver_width``, and ``subgroup_validation`` expose that decision;
+``EngineInfo.solver`` reports ``portable-workgroup-subgroup-mismatch`` when the
+check triggers the fallback. The raw browser adapter deliberately selects the
+portable shared WGSL. Native
 ``ICGNWGPU`` goes one step further: during reference preparation it measures
 the complete portable shared-WGSL and subgroup SPIR-V pipelines on a
 representative shifted frame, then retains the faster one. This matters

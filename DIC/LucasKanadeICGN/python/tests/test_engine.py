@@ -301,6 +301,9 @@ class RuntimeAssetTests(unittest.TestCase):
         implementation = (assets.root / "three/LucasKanadeICGNThree.js").read_text(encoding="utf-8")
         self.assertIn("makeSerialSolverKernel", implementation)
         self.assertIn("forceWebGL", implementation)
+        self.assertIn("reflected.clamp(0, size - 1)", implementation)
+        self.assertIn("validateSubgroupSolver", implementation)
+        self.assertIn("portable-workgroup-subgroup-mismatch", implementation)
         page = (assets.root / assets.headless_path).read_text(encoding="utf-8")
         self.assertNotIn("https://", page)
         self.assertNotIn("http://", page)
@@ -332,6 +335,8 @@ class RuntimeAssetTests(unittest.TestCase):
         self.assertNotIn("http://", page)
         runtime = (assets.root / "web/webgpu/LucasKanadeICGNWebGPU.js").read_text(encoding="utf-8")
         self.assertIn("format: 'r32float'", runtime)
+        self.assertIn("PREFILTER_CLAMP_HALO", runtime)
+        self.assertIn("prefilterXSafe", runtime)
         self.assertNotIn("rgba16float", runtime)
 
     def test_checkout_three_entry_point_delegates_to_packaged_source(self) -> None:

@@ -57,6 +57,9 @@ class EngineInfo:
     timer_query: bool
     solver: str = "unknown"
     subgroup_width: int = 0
+    subgroup_probe_width: int = 0
+    subgroup_solver_width: int = 0
+    subgroup_validation: str = "unavailable"
 
 
 @dataclass(frozen=True, slots=True)
@@ -816,6 +819,9 @@ class ICGNWebGL:
             timer_query=bool(payload["timerQuery"]),
             solver=str(payload.get("solver", "unknown")),
             subgroup_width=int(payload.get("subgroupWidth", 0)),
+            subgroup_probe_width=int(payload.get("subgroupProbeWidth", 0)),
+            subgroup_solver_width=int(payload.get("subgroupSolverWidth", 0)),
+            subgroup_validation=str(payload.get("subgroupValidation", "unavailable")),
         )
 
     def set_reference(

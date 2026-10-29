@@ -88,7 +88,11 @@ let statusNode = null;
 let filteredTranslationNode = null;
 let filteredLinearNode = null;
 let filteredStatusNode = null;
-let subgroupWidth = 0;
+let subgroupDiagnosticNode = null;
+let subgroupProbeWidth = 0;
+let subgroupSolverWidth = 0;
+let subgroupValidation = 'unavailable';
+let useSubgroupSolver = false;
 let solverKind = 'uninitialized';
 let runtimeInterpolation = null;
 
@@ -144,6 +148,7 @@ const initializeRuntime = (width, height) => {
     filteredTranslation: storageAttribute(GRID_COUNT * 2, 2),
     filteredLinear: storageAttribute(GRID_COUNT * 4, 4),
     filteredStatus: storageAttribute(GRID_COUNT * 2, 2),
+    subgroupDiagnostic: storageAttribute(1, 1),
   };
 
   sourceNode = storage(attributes.source, 'float', PIXEL_COUNT);
@@ -158,6 +163,7 @@ const initializeRuntime = (width, height) => {
   filteredTranslationNode = storage(attributes.filteredTranslation, 'vec2', GRID_COUNT);
   filteredLinearNode = storage(attributes.filteredLinear, 'vec4', GRID_COUNT);
   filteredStatusNode = storage(attributes.filteredStatus, 'vec2', GRID_COUNT);
+  subgroupDiagnosticNode = storage(attributes.subgroupDiagnostic, 'float', 1);
   if (renderer.backend.isWebGPUBackend !== true) {
     [
       sourceNode,
@@ -171,6 +177,10 @@ const initializeRuntime = (width, height) => {
       statusNode,
     ].forEach((node) => node.setPBO(true));
   }
+  useSubgroupSolver = renderer.backend.isWebGPUBackend === true
+    && subgroupProbeWidth >= SOLVER_LANES;
+  subgroupSolverWidth = 0;
+  subgroupValidation = useSubgroupSolver ? 'pending' : 'unavailable';
   kernels = buildKernels();
   runtimeInterpolation = configuration.interpolation;
   referenceReady = false;
@@ -196,11 +206,19 @@ const prepareReference = (image) => {
 
 const FIR_WEIGHTS = makeFIRWeights();
 
-const mirrorNode = (coordinate, size) => select(
-  coordinate.lessThan(0),
-  coordinate.negate(),
-  select(coordinate.greaterThanEqual(size), int(2 * size - 2).sub(coordinate), coordinate),
-);
+const mirrorNode = (coordinate, size) => {
+  const reflected = select(
+    coordinate.lessThan(0),
+    coordinate.negate(),
+    select(coordinate.greaterThanEqual(size), int(2 * size - 2).sub(coordinate), coordinate),
+  );
+  // Extra halo cells in a partial tile may remain outside the image after one
+  // reflection. They are not used by valid outputs, but their loads must still
+  // be in bounds because every invocation participates in the following barrier.
+  // The tile geometry needs the guard only below 31 pixels; keep larger kernels
+  // free of the additional GPU clamp because `size` is a host-side constant.
+  return size < 31 ? reflected.clamp(0, size - 1) : reflected;
+};
 
 const makePrefilterKernel = (input, output, horizontal) => {
   if (renderer.backend.isWebGPUBackend !== true) {
@@ -737,11 +755,16 @@ const makeFusedCooperativeSolverKernel = () => Fn(() => {
  * round-trips; converged subsets skip the expensive interpolation and update.
  */
 const makeSubgroupSolverKernel = () => {
-  const solverLanes = Math.min(subgroupWidth, SUBSET_PIXELS);
+  const solverLanes = Math.min(subgroupProbeWidth, SUBSET_PIXELS);
   const pixelsPerLane = Math.ceil(SUBSET_PIXELS / solverLanes);
   return Fn(() => {
   const subsetIndex = uint(workgroupId.x);
   const lane = int(localId.x);
+  If(subsetIndex.equal(0).and(lane.equal(0)), () => {
+    // This value comes from the actual solver pipeline, not the lightweight
+    // discovery shader. The host validates it before accepting this kernel.
+    subgroupDiagnosticNode.element(int(0)).assign(float(subgroupSize));
+  });
   const currentTranslation = translationNode.element(subsetIndex).toVar();
   const currentLinear = linearNode.element(subsetIndex).toVar();
   const initialStatus = statusNode.element(subsetIndex).toVar();
@@ -962,13 +985,13 @@ const makeMedianKernel = () => Fn(() => {
 const buildKernels = () => {
   const webgpu = renderer.backend.isWebGPUBackend === true;
   solverKind = webgpu
-    ? (subgroupWidth >= SOLVER_LANES ? 'subgroup' : 'portable-workgroup')
+    ? (useSubgroupSolver ? 'subgroup-pending-validation' : 'portable-workgroup')
     : 'serial-webgl2';
   return {
     prefilterX: makePrefilterKernel(sourceNode, temporaryNode, true),
     prefilterY: makePrefilterKernel(temporaryNode, coefficientsNode, false),
     solver: webgpu
-      ? (subgroupWidth >= SOLVER_LANES
+      ? (useSubgroupSolver
         ? makeSubgroupSolverKernel()
         : makeFusedCooperativeSolverKernel())
       : makeSerialSolverKernel(),
@@ -1000,9 +1023,10 @@ const ensureRenderer = async () => {
       forceWebGL: FORCE_WEBGL,
     });
     await renderer.init();
-    subgroupWidth = await measureSubgroupWidth();
+    subgroupProbeWidth = await measureSubgroupWidth();
+    useSubgroupSolver = subgroupProbeWidth >= SOLVER_LANES;
     solverKind = renderer.backend.isWebGPUBackend === true
-      ? (subgroupWidth >= SOLVER_LANES ? 'subgroup' : 'portable-workgroup')
+      ? (useSubgroupSolver ? 'subgroup-pending-validation' : 'portable-workgroup')
       : 'serial-webgl2';
     return renderer;
   })();
@@ -1037,6 +1061,28 @@ const synchronize = async () => {
   } else {
     renderer.backend.gl.finish();
   }
+};
+
+/** Validate the subgroup size selected for the production solver pipeline. */
+const validateSubgroupSolver = async () => {
+  if (!useSubgroupSolver || renderer.backend.isWebGPUBackend !== true) return;
+  attributes.subgroupDiagnostic.array[0] = 0;
+  attributes.subgroupDiagnostic.needsUpdate = true;
+  resetSolver();
+  renderer.compute(kernels.solver);
+  await synchronize();
+  const data = await renderer.getArrayBufferAsync(attributes.subgroupDiagnostic);
+  subgroupSolverWidth = Math.trunc(new Float32Array(data)[0]);
+  const expectedWidth = Math.min(subgroupProbeWidth, SUBSET_PIXELS);
+  if (subgroupSolverWidth !== expectedWidth) {
+    useSubgroupSolver = false;
+    subgroupValidation = 'mismatch';
+    kernels.solver = makeFusedCooperativeSolverKernel();
+    solverKind = 'portable-workgroup-subgroup-mismatch';
+    return;
+  }
+  subgroupValidation = 'validated';
+  solverKind = 'subgroup';
 };
 
 const resolveGpuTimestamp = async () => {
@@ -1217,7 +1263,7 @@ const setReference = async (dataUrl, options = {}) => {
   const start = performance.now();
   const runtimeStart = performance.now();
   initializeRuntime(image.width, image.height);
-  const runtimeBuildWallMs = performance.now() - runtimeStart;
+  let runtimeBuildWallMs = performance.now() - runtimeStart;
   const referenceStart = performance.now();
   try {
     prepareReference(image);
@@ -1225,6 +1271,9 @@ const setReference = async (dataUrl, options = {}) => {
     image.close();
   }
   const referenceBuildWallMs = performance.now() - referenceStart;
+  const subgroupValidationStart = performance.now();
+  await validateSubgroupSolver();
+  runtimeBuildWallMs += performance.now() - subgroupValidationStart;
   const preparationWallMs = performance.now() - start;
   const details = await info();
   return {
@@ -1264,7 +1313,10 @@ const info = async () => {
     adapterDevice: adapterInfo.device || null,
     description: adapterInfo.description || null,
     subgroups: isWebGPU && renderer.backend.device.features.has('subgroups'),
-    subgroupWidth,
+    subgroupWidth: subgroupSolverWidth || subgroupProbeWidth,
+    subgroupProbeWidth,
+    subgroupSolverWidth,
+    subgroupValidation,
     solver: solverKind,
   };
 };

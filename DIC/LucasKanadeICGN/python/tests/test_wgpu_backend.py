@@ -321,6 +321,8 @@ class NativeReferenceTests(unittest.TestCase):
         pyramid_shader = files("lucas_kanade_icgn").joinpath("shaders/full_pyramid.wgsl")
         shader_text = shader.read_text(encoding="utf-8")
         self.assertIn("fn solve", shader_text)
+        self.assertIn("override PREFILTER_CLAMP_HALO", shader_text)
+        self.assertIn("return clamp(reflected, 0, size - 1)", shader_text)
         self.assertIn("array<vec4<f32>>", shader_text)
         for helper in (
             "solve_increment",

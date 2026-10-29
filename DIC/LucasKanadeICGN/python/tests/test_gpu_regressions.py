@@ -211,6 +211,19 @@ class GPURegressionTests(unittest.TestCase):
                     engine.close()
                     engine.device.destroy()
 
+    def test_three_level_pyramid_prefilter_handles_small_halo_levels(self) -> None:
+        truth = (0.5, -0.375)
+        reference, target = _fractional_pair(64, 64, truth)
+        engine = ICGNWGPUFullPyramid(pyramid_levels=3)
+        try:
+            engine.set_reference(reference)
+            result = engine.register(target)
+            self.assertGreater(result.accepted, 0)
+            self.assertTrue(np.isfinite(result.parameters).all())
+        finally:
+            engine.close()
+            engine.device.destroy()
+
     def test_reduction_matches_cpu_and_integer_oracle(self) -> None:
         # Every uint8 value appears in a flat band wide enough to contain
         # interior samples. The odd final row/column also exercises truncation.

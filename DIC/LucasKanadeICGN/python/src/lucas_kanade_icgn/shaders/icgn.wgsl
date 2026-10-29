@@ -55,6 +55,9 @@ const PREFILTER_TILE_PIXELS: u32 = 448u;
 // 1: direct bilinear interpolation
 // 2: direct Keys cubic convolution (a = -0.5)
 override INTERPOLATION_MODE: u32 = 0u;
+// Keep standalone consumers safe. Repository hosts specialize this override
+// to zero for dimensions where one reflection already covers every tile load.
+override PREFILTER_CLAMP_HALO: u32 = 1u;
 
 var<workgroup> partial_a: array<vec4<f32>, 16>;
 var<workgroup> partial_b: array<vec4<f32>, 16>;
@@ -65,13 +68,20 @@ var<workgroup> shared_status: vec2<f32>;
 var<workgroup> prefilter_tile: array<f32, 496>;
 
 fn mirror_coordinate(coordinate: i32, size: i32) -> i32 {
+    var reflected = coordinate;
     if coordinate < 0 {
-        return -coordinate;
+        reflected = -coordinate;
+    } else if coordinate >= size {
+        reflected = 2 * size - 2 - coordinate;
     }
-    if coordinate >= size {
-        return 2 * size - 2 - coordinate;
+    // Partial edge workgroups load a few halo cells that no valid output uses.
+    // A single reflection can leave those speculative coordinates out of range
+    // only below 44 pixels. Hosts specialize this override per axis so the
+    // common large-image pipeline retains the original arithmetic exactly.
+    if PREFILTER_CLAMP_HALO != 0u {
+        return clamp(reflected, 0, size - 1);
     }
-    return coordinate;
+    return reflected;
 }
 
 @compute @workgroup_size(32, 8)

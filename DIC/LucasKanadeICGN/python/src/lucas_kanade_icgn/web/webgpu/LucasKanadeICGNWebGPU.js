@@ -313,9 +313,30 @@ const createRuntime = async (width, height) => {
       constants,
     ) : null;
   }
+  const prefilterXFast = await pipeline(
+    'DIC-RT shared prefilter X', 'prefilter_x', shaderModule, layout,
+    { PREFILTER_CLAMP_HALO: 0 },
+  );
+  const prefilterYFast = await pipeline(
+    'DIC-RT shared prefilter Y', 'prefilter_y', shaderModule, layout,
+    { PREFILTER_CLAMP_HALO: 0 },
+  );
+  const smallestScale = 2 ** (configuration.pyramidLevels - 1);
+  const needsSafeX = Math.floor(FRAME_WIDTH / smallestScale) < 44;
+  const needsSafeY = Math.floor(FRAME_HEIGHT / smallestScale) < 44;
+  const prefilterXSafe = needsSafeX ? await pipeline(
+    'DIC-RT shared safe-halo prefilter X', 'prefilter_x', shaderModule, layout,
+    { PREFILTER_CLAMP_HALO: 1 },
+  ) : prefilterXFast;
+  const prefilterYSafe = needsSafeY ? await pipeline(
+    'DIC-RT shared safe-halo prefilter Y', 'prefilter_y', shaderModule, layout,
+    { PREFILTER_CLAMP_HALO: 1 },
+  ) : prefilterYFast;
   pipelines = {
-    prefilterX: await pipeline('DIC-RT shared prefilter X', 'prefilter_x'),
-    prefilterY: await pipeline('DIC-RT shared prefilter Y', 'prefilter_y'),
+    prefilterXFast,
+    prefilterYFast,
+    prefilterXSafe,
+    prefilterYSafe,
     solvers,
     seededSolvers,
     median: await pipeline('DIC-RT shared median filter', 'median_filter'),
@@ -647,12 +668,12 @@ const executePipeline = async ({ measureGpu = false } = {}) => {
   const appendLevel = (level, seeded) => {
     if (configuration.interpolation === 'bspline') {
       jobs.push({
-        pipeline: pipelines.prefilterX,
+        pipeline: level.width < 44 ? pipelines.prefilterXSafe : pipelines.prefilterXFast,
         bindGroup: level.bindGroup,
         group: 0,
         workgroups: [Math.ceil(level.width / 32), Math.ceil(level.height / 8), 1],
       }, {
-        pipeline: pipelines.prefilterY,
+        pipeline: level.height < 44 ? pipelines.prefilterYSafe : pipelines.prefilterYFast,
         bindGroup: level.bindGroup,
         group: 0,
         workgroups: [Math.ceil(level.width / 8), Math.ceil(level.height / 32), 1],

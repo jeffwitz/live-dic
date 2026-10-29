@@ -61,9 +61,11 @@ inverse-compositional update.
 
 The Three.js backend implements those same operations as TSL storage-buffer
 compute kernels: two target prefilter passes, the six-parameter affine IC-GN
-solver, and the final median consistency pass. A startup probe selects a fused
-subgroup solver sized to the measured hardware subgroup; a portable
-workgroup-memory solver remains available automatically. When WebGPU is not
+solver, and the final median consistency pass. A startup probe nominates a
+fused subgroup solver sized to the measured hardware subgroup. Reference
+preparation then checks the subgroup width reported by that actual solver
+pipeline; a mismatch selects the portable workgroup-memory solver
+automatically. When WebGPU is not
 available, the same TSL implementation now falls back to Three.js' WebGL2
 transform-feedback backend and selects a serial one-invocation-per-subset
 solver. The WebGL2 path shares the mathematical helpers and result layout but
@@ -88,7 +90,10 @@ The shared WGSL prefilter stages axis-oriented tiles in workgroup memory. It
 keeps the 31-value radius-15 weight buffer for compatibility and evaluates the
 central 25 taps; the omitted tails total less than ``7e-8`` in absolute weight.
 Three.js retains all 31 taps and fills the measured subgroup width when its
-specialized WebGPU path is available.
+specialized WebGPU path is available. Both tiled implementations clamp
+speculative partial-tile halo loads after border reflection. This leaves every
+sample used by a valid output unchanged while keeping the extra invocations
+that participate in a workgroup barrier inside the image buffers.
 
 The interpolation mode is fixed when an engine is created. ``bspline`` keeps
 the historical Gaussian/FIR coefficient path. ``linear`` and ``cubic`` use

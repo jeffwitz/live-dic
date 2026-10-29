@@ -21,6 +21,11 @@ rejected by the independent Three.js/TSL and GPU-IO implementations.
 to Three.js' WebGL2 transform-feedback backend. Set ``force_three_webgl=True``
 to test that compatibility path explicitly. ``EngineInfo.solver`` then reports
 ``serial-webgl2`` instead of ``subgroup`` or ``portable-workgroup``.
+For WebGPU, ``subgroup_probe_width`` records the lightweight discovery result,
+``subgroup_solver_width`` records the value observed in the production solver,
+and ``subgroup_validation`` is ``"validated"`` or ``"mismatch"``. A mismatch
+automatically selects ``portable-workgroup-subgroup-mismatch`` and does not
+enter the per-frame critical path.
 
 ``backend="gpuio"`` is deprecated. It remains callable for historical
 reproducibility and cross-backend regression tests, but new applications

@@ -67,8 +67,11 @@ Runtime
   pipelining or the subgroup solver.
 * Browser GPU shader arithmetic is single precision.
 * The fastest Three.js solver requires a WebGPU subgroup capable of covering
-  the subset and sizes its workgroup to the measured subgroup width. Other
-  adapters use the validated 16-lane workgroup-memory fallback.
+  the subset and sizes its workgroup to the measured subgroup width. Reference
+  preparation confirms the width inside the actual solver pipeline and selects
+  the validated 16-lane workgroup-memory fallback if it differs from the
+  discovery probe. This validation is performed for each rebuilt runtime, not
+  in the per-target loop. Other adapters use the portable fallback directly.
   Browsers without WebGPU use the serial Three.js/WebGL2 transform-feedback
   solver instead; this compatibility path is not a 4K60 implementation.
 * The raw ``webgpu-wgsl`` browser backend prioritizes source sharing and uses

@@ -563,14 +563,26 @@ class ICGNWGPU:
         pipeline_layout = self.device.create_pipeline_layout(
             bind_group_layouts=[self._bind_group_layout]
         )
-        self._prefilter_x = self.device.create_compute_pipeline(
+        self._pipeline_layout = pipeline_layout
+        self._prefilter_x_fast = self.device.create_compute_pipeline(
             layout=pipeline_layout,
-            compute={"module": shader, "entry_point": "prefilter_x"},
+            compute={
+                "module": shader,
+                "entry_point": "prefilter_x",
+                "constants": {"PREFILTER_CLAMP_HALO": 0},
+            },
         )
-        self._prefilter_y = self.device.create_compute_pipeline(
+        self._prefilter_y_fast = self.device.create_compute_pipeline(
             layout=pipeline_layout,
-            compute={"module": shader, "entry_point": "prefilter_y"},
+            compute={
+                "module": shader,
+                "entry_point": "prefilter_y",
+                "constants": {"PREFILTER_CLAMP_HALO": 0},
+            },
         )
+        self._prefilter_safe_pipelines: dict[str, Any] = {}
+        self._prefilter_x = self._prefilter_x_fast
+        self._prefilter_y = self._prefilter_y_fast
         self._portable_solver = self.device.create_compute_pipeline(
             layout=pipeline_layout,
             compute={
@@ -636,6 +648,10 @@ class ICGNWGPU:
             "subgroup_width",
             "_shader",
             "_bind_group_layout",
+            "_pipeline_layout",
+            "_prefilter_x_fast",
+            "_prefilter_y_fast",
+            "_prefilter_safe_pipelines",
             "_prefilter_x",
             "_prefilter_y",
             "_portable_solver",
@@ -672,6 +688,24 @@ class ICGNWGPU:
         level.grid_height = 0
         level._config = {"iterations": 30, "tolerance": 1e-3, "znccMin": 0.8}
         return level
+
+    def _prefilter_pipeline(self, axis: str, *, safe_halo: bool) -> Any:
+        """Return a dimension-specialized FIR pipeline, compiling safety lazily."""
+
+        if not safe_halo:
+            return self._prefilter_x_fast if axis == "x" else self._prefilter_y_fast
+        pipeline = self._prefilter_safe_pipelines.get(axis)
+        if pipeline is None:
+            pipeline = self.device.create_compute_pipeline(
+                layout=self._pipeline_layout,
+                compute={
+                    "module": self._shader,
+                    "entry_point": f"prefilter_{axis}",
+                    "constants": {"PREFILTER_CLAMP_HALO": 1},
+                },
+            )
+            self._prefilter_safe_pipelines[axis] = pipeline
+        return pipeline
 
     def _measure_subgroup_width(self) -> int:
         """Return the hardware subgroup width for a 16-lane workgroup."""
@@ -811,6 +845,8 @@ class ICGNWGPU:
         metadata: npt.NDArray[np.float32],
     ) -> None:
         self._destroy_runtime()
+        self._prefilter_x = self._prefilter_pipeline("x", safe_halo=self.width < 44)
+        self._prefilter_y = self._prefilter_pipeline("y", safe_halo=self.height < 44)
         shared_buffers = {
             "reference": self._storage_buffer(reference),
             "inverse": self._storage_buffer(inverse),
