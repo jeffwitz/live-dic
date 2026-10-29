@@ -13,8 +13,8 @@ Real-Time DIC in Python toward 4K60
 
    The engineering objective is sustained DIC on 3840 x 2160 frames at 60
    frames per second over the complete acquisition-to-result pipeline. The
-   recommended two-level native full pyramid measured 10.194 ms median and
-   11.073 ms p95 on the validation machine after the October 29 kernel pass.
+   recommended two-level native full pyramid measured 10.863 ms median and
+   12.915 ms p95 on the validation machine after convergence-schedule tuning.
    Both are below the 16.667 ms frame period.
    Direct upload, GPU computation, packed readback, and NumPy result
    construction are included; camera acquisition and downstream consumers are
@@ -45,8 +45,8 @@ seed transfer, solving, and final readback on the GPU.  The older
 ``ICGNWGPU(pyramid_levels=2 or 3)`` selective-recovery mode remains available
 only as an optional exception path: it first runs a fine solve and performs
 CPU-orchestrated recovery for failures.  The current ``(+4, -2)`` UHD campaign
-measured 10.194 ms median / 11.073 ms p95 for the recommended two-level graph
-and 10.280 / 11.151 ms for three levels.  These figures qualify offline
+measured 10.863 ms median / 12.915 ms p95 for the recommended two-level graph
+and 11.354 / 13.172 ms for three levels.  These figures qualify offline
 compute on that pair, not camera-to-consumer latency.
 
 The engineering objective is sustained, measurable DIC processing from Python.

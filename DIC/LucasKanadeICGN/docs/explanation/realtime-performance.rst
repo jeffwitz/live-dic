@@ -37,15 +37,15 @@ The authoritative machine-specific measurements are maintained on
 :doc:`../reference/performance`. The current October 29 audit uses UHD frames,
 eight warm-ups, and 50 measured registrations.
 
-The recommended two-level native full pyramid measured 10.194 ms median and
-11.073 ms p95 for the complete Python call on the difficult ``(4, -2)`` pair.
-It accepted 31,724 of 32,400 subsets with 0.001874 px truth RMSE. Three levels
-measured 10.280 / 11.151 ms. Both p95 values are below the 16.667 ms 60 Hz
+The recommended two-level native full pyramid measured 10.863 ms median and
+12.915 ms p95 for the complete Python call on the ``(4, -2)`` pair.
+It accepted 31,724 of 32,400 subsets with 0.001873 px truth RMSE. Three levels
+measured 11.354 / 13.172 ms. Both p95 values are below the 16.667 ms 60 Hz
 period on the validation GPU, but acquisition and downstream work remain
 excluded.
 
-The raw-browser two-level WGSL graph measured 8.789 / 9.375 ms on the GPU and
-10.4 / 11.5 ms at the synchronized browser boundary. The nominal ``(2, -1)``
+The raw-browser two-level WGSL graph measured 9.277 / 10.681 ms on the GPU and
+10.7 / 12.6 ms at the synchronized browser boundary. The nominal ``(2, -1)``
 Three.js path measured 11.893 / 12.798 ms GPU and 13.5 / 14.7 ms browser wall.
 These browser numbers do not include the complete Python transport boundary.
 

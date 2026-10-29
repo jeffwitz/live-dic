@@ -55,7 +55,7 @@ Two different native pyramid strategies
 ``ICGNWGPUFullPyramid`` executes every configured level for every frame.  It
 uploads the finest target once, constructs reduced targets on the GPU,
 prefilters and solves from coarse to fine, transfers affine seeds on the GPU,
-and reads back only the final fine field.  Two levels with the ``(12, 30)``
+and reads back only the final fine field.  Two levels with the ``(8, 16)``
 coarse-to-fine iteration ceilings are the current native recommendation.
 
 ``ICGNWGPU(pyramid_levels=2 or 3)`` is older selective recovery.  It first

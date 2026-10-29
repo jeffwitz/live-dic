@@ -26,7 +26,9 @@ Solver options
    Maximum IC-GN iterations, from 1 to 30. Default: 30.
 
 ``--tolerance PX``
-   Positive corner-update convergence threshold in pixels. Default: ``1e-3``.
+   Positive corner-update convergence threshold in pixels. When omitted, the
+   selected backend applies its default: ``1e-3`` for single-scale execution
+   and ``5e-3`` at the fine level of the default full pyramid.
 
 ``--zncc-min VALUE``
    Minimum accepted ZNCC in ``[0, 1]``. Default: ``0.8``.

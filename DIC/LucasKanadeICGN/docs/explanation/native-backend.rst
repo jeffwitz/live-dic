@@ -147,7 +147,7 @@ GPU-resident full pyramid
 part of the normal registration path. It deliberately leaves the low-latency
 and streaming-oriented ``ICGNWGPU`` behaviour unchanged.
 
-The full-pyramid class defaults to two levels with the ``(12, 30)``
+The full-pyramid class defaults to two levels with the ``(8, 16)``
 coarse-to-fine iteration schedule. This is the recommended native path. After
 axis-oriented FIR tiling, both two and three levels retained a p95 margin under
 the 16.667 ms period on the validation GPU; two levels remain the default
@@ -220,10 +220,10 @@ Measured effect
 ---------------
 
 On the validation machine, the latest 50-run UHD campaign measured the
-recommended two-level full pyramid at 10.194 ms median and 11.073 ms p95 for
+recommended two-level full pyramid at 10.863 ms median and 12.915 ms p95 for
 the complete Python call. It accepted 31,724 of 32,400 subsets on the difficult
-``(4, -2)`` pair with ``0.001874`` px truth RMSE. Three levels measured 10.280
-ms median and 11.151 ms p95. These boundaries include direct target upload,
+``(4, -2)`` pair with ``0.001873`` px truth RMSE. Three levels measured 11.354
+ms median and 13.172 ms p95. These boundaries include direct target upload,
 GPU pyramid construction and solving, packed result readback, and NumPy result
 construction, but exclude camera acquisition and downstream consumers.
 

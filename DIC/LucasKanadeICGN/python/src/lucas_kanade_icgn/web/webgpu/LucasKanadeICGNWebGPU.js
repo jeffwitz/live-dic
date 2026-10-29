@@ -23,13 +23,13 @@ const PYRAMID_SHADER_URL = new URL('../../shaders/full_pyramid.wgsl', import.met
 const DEFAULT_PYRAMID_LEVELS = 2;
 const ITERATION_SCHEDULES = {
   1: [30],
-  2: [12, 30],
-  3: [6, 8, 20],
+  2: [8, 16],
+  3: [6, 8, 16],
 };
 const TOLERANCE_SCHEDULES = {
   1: [1e-3],
-  2: [5e-3, 1e-3],
-  3: [1e-2, 5e-3, 1e-3],
+  2: [5e-3, 5e-3],
+  3: [1e-2, 5e-3, 5e-3],
 };
 const INTERPOLATION_CONSTANTS = {
   bspline: 0,

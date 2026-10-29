@@ -96,12 +96,21 @@ finite accepted results. The reproducible benchmark is:
      --width 512 --height 512 --levels 2 \
      --translation 0.5 -0.375 --warmups 3 --repeats 10
 
-On the validation GPU, two-level native RMSE remained between 0.0090 and
-0.0094 px for ``bspline``, 0.0107 and 0.0113 px for ``cubic``, and 0.0166 and
-0.0199 px for ``linear`` across the tested fractional translations
+On the validation GPU, two-level native RMSE remained between 0.0086 and
+0.0089 px for ``bspline``, 0.0103 and 0.0107 px for ``cubic``, and 0.0165 and
+0.0194 px for ``linear`` across the tested fractional translations
 ``(0.25, -0.25)``, ``(0.5, -0.375)``, ``(0.75, -0.625)``, and
 ``(1.25, -0.75)``. These values qualify this deterministic texture, not every
 experimental image spectrum.
+
+The full-pyramid defaults use ``(8, 16)`` iteration ceilings and
+``(5e-3, 5e-3)`` convergence tolerances from coarse to fine. The previous
+``(12, 30)`` / ``(5e-3, 1e-3)`` schedule spent additional fine iterations on
+changes below the useful precision of the quantized inputs. Across the cases
+above, the new schedule preserved or improved RMSE and increased the number of
+converged linear subsets. Three.js remains single-scale and keeps its existing
+30-iteration, ``1e-3`` defaults; applying the pyramid ceilings there reduced
+the number of converged subsets.
 
 Selection guidance
 ------------------

@@ -82,8 +82,10 @@ Geometry
 * affine parameter order: ``[tx, du/dx, du/dy, ty, dv/dx, dv/dy]``.
 
 The convergence value is the maximum Euclidean displacement caused by the
-increment at the four subset corners. The default threshold is ``1e-3`` pixel,
-the default minimum ZNCC is ``0.8``, and the hard iteration limit is 30.
+increment at the four subset corners. Single-scale engines default to a
+``1e-3`` pixel threshold and a hard limit of 30 iterations. Full-pyramid hosts
+provide their qualified per-level schedules, currently ``5e-3`` at the fine
+level with a limit of 16 iterations. The default minimum ZNCC is ``0.8``.
 
 GPU buffers
 ~~~~~~~~~~~

@@ -244,8 +244,8 @@ calculation:
 Pass boundaries provide device-wide ordering without a host synchronization
 point. Reference pixels, gradients, inverse Hessians, metadata, target spline
 coefficients, affine states, and transferred seeds are allocated once and stay
-on the same device. The two-level default uses ``(12, 30)`` maximum iterations
-from coarse to fine. Three levels use the robust ``(6, 8, 20)`` schedule.
+on the same device. The two-level default uses ``(8, 16)`` maximum iterations
+from coarse to fine. Three levels use the ``(6, 8, 16)`` schedule.
 Setting one level creates only the original fine-level resources and
 dispatches; no reduction or seed transfer is encoded.
 
@@ -271,10 +271,12 @@ neighbours provides an estimate, the finer subset is still executed from a
 zero affine seed instead of being suppressed.
 
 Iteration limits are ceilings rather than fixed costs: each subset exits as
-soon as its corner-change and ZNCC criteria converge. The robust defaults are
-``(12, 30)`` for two levels and ``(6, 8, 20)`` for three. Lower custom ceilings
-must be qualified against accepted subsets and displacement error, because a
-shorter schedule can terminate valid fine-scale refinements. Reduction,
+soon as its corner-change and ZNCC criteria converge. The qualified defaults
+are ``(8, 16)`` for two levels and ``(6, 8, 16)`` for three, with fine-scale
+tolerance ``5e-3``. The former ``1e-3`` fine tolerance over-resolved the
+quantized fractional validation images: it increased fine iterations without
+improving displacement RMSE. Lower custom ceilings or tighter tolerances must
+still be qualified against accepted subsets and displacement error. Reduction,
 prefilter, seed-transfer, and dispatch work remains fixed even when iteration
 ceilings are reduced.
 

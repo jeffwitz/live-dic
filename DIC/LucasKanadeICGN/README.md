@@ -13,7 +13,7 @@
 
 The long-term objective is sustained 3840 x 2160 DIC at 60 FPS over the full
 acquisition-to-result path. The latest recommended two-level native
-full-pyramid campaign measured 10.194 ms median and 11.073 ms p95 for the
+full-pyramid campaign measured 10.863 ms median and 12.915 ms p95 for the
 complete Python registration call on the validation machine. Direct upload,
 GPU pyramid construction and solving, packed readback, and NumPy result
 construction are included. Acquisition and downstream work are excluded, so
@@ -161,15 +161,15 @@ levels in one command buffer and performs one final readback. Iterations and
 tolerances are configurable per scale from coarse to fine. Two levels are the
 recommended native default. Three levels remain available explicitly for
 larger expected displacements. After the October 29 FIR tiling optimization,
-a 50-run UHD campaign measured **10.194 ms median /
-11.073 ms p95 (98.1 FPS from the median)** for two levels and **10.280 / 11.151
+a 50-run UHD campaign measured **10.863 ms median /
+12.915 ms p95 (92.1 FPS from the median)** for two levels and **11.354 / 13.172
 ms** for three levels. Both are below the 16.667 ms 60 FPS period on this
 machine; two levels remain the lower-cost default. See the performance
 reference for the exact boundaries, protocol, and caveats.
 
 The raw browser ``webgpu-wgsl`` backend now runs that same GPU-resident
-full-pyramid graph. It defaults to two levels with schedules ``(12, 30)`` and
-``(5e-3, 1e-3)`` from coarse to fine. Set ``pyramid_levels=1`` to select the
+full-pyramid graph. It defaults to two levels with schedules ``(8, 16)`` and
+``(5e-3, 5e-3)`` from coarse to fine. Set ``pyramid_levels=1`` to select the
 unchanged single-scale dispatch path, or choose three levels for a larger
 capture range. Three.js/TSL and GPU-IO remain single-scale implementations.
 The deprecated GPU-IO backend is retained temporarily as a historical WebGL2
@@ -236,8 +236,10 @@ Versions, hashes, and licence locations are recorded in
 [`THIRD_PARTY.md`](./THIRD_PARTY.md).
 
 Default parameters match the SYCL geometry: a 16-pixel grid spacing, 16 x 16
-subsets centered at `(8 + 16i, 8 + 16j)`, a `1e-3` pixel tolerance, a minimum
-ZNCC of `0.8`, and at most 30 iterations with per-subset early convergence.
+subsets centered at `(8 + 16i, 8 + 16j)` and a minimum ZNCC of `0.8`.
+Single-scale engines use a `1e-3` pixel tolerance and at most 30 iterations;
+the qualified two-level full pyramid uses `(5e-3, 5e-3)` tolerances and
+`(8, 16)` iteration ceilings from coarse to fine.
 
 Measured accuracy and performance are recorded in
 [`BENCHMARK.md`](./BENCHMARK.md). The Sphinx

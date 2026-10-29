@@ -193,6 +193,24 @@ class GPURegressionTests(unittest.TestCase):
                     engine.close()
                     engine.device.destroy()
 
+    def test_tuned_full_pyramid_defaults_recover_fractional_translation(self) -> None:
+        truth = (0.5, -0.375)
+        reference, target = _fractional_pair(256, 256, truth)
+        thresholds = {"bspline": 0.03, "linear": 0.05, "cubic": 0.03}
+        for mode, threshold in thresholds.items():
+            with self.subTest(mode=mode):
+                engine = ICGNWGPUFullPyramid(pyramid_levels=2, interpolation=mode)
+                try:
+                    self.assertEqual(engine.iterations_per_level, (8, 16))
+                    self.assertEqual(engine.tolerance_per_level, (5e-3, 5e-3))
+                    engine.set_reference(reference)
+                    result = engine.register(target)
+                    self.assertGreater(result.accepted, 180)
+                    self.assertLess(result.rmse(truth), threshold)
+                finally:
+                    engine.close()
+                    engine.device.destroy()
+
     def test_reduction_matches_cpu_and_integer_oracle(self) -> None:
         # Every uint8 value appears in a flat band wide enough to contain
         # interior samples. The odd final row/column also exercises truncation.

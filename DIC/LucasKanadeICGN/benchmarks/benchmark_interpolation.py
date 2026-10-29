@@ -25,6 +25,8 @@ def _arguments() -> argparse.Namespace:
     )
     parser.add_argument("--warmups", type=int, default=3)
     parser.add_argument("--repeats", type=int, default=10)
+    parser.add_argument("--iterations-per-level", type=int, nargs="+")
+    parser.add_argument("--tolerance-per-level", type=float, nargs="+")
     parser.add_argument(
         "--interpolation",
         nargs="+",
@@ -102,22 +104,41 @@ def main() -> int:
         raise ValueError("width and height must each be at least 64 pixels")
     if args.warmups < 0 or args.repeats < 1:
         raise ValueError("warmups must be non-negative and repeats must be positive")
+    for values, name in (
+        (args.iterations_per_level, "iterations-per-level"),
+        (args.tolerance_per_level, "tolerance-per-level"),
+    ):
+        if values is not None and len(values) != args.levels:
+            raise ValueError(f"{name} must contain one value per pyramid level")
     truth = tuple(float(value) for value in args.translation)
     reference, target = fractional_pair(args.width, args.height, truth)
     measurements = {}
     device = None
     for interpolation in args.interpolation:
         options = {"interpolation": interpolation}
+        reference_options = {}
         if args.backend == "native":
             engine_type = ICGNWGPU if args.levels == 1 else ICGNWGPUFullPyramid
             if args.levels == 1:
                 options.update(prefer_subgroups=False, pyramid_levels=1)
+                if args.iterations_per_level is not None:
+                    reference_options["iterations"] = args.iterations_per_level[0]
+                if args.tolerance_per_level is not None:
+                    reference_options["tolerance"] = args.tolerance_per_level[0]
             else:
                 options.update(pyramid_levels=args.levels)
+                if args.iterations_per_level is not None:
+                    options["iterations_per_level"] = tuple(args.iterations_per_level)
+                if args.tolerance_per_level is not None:
+                    options["tolerance_per_level"] = tuple(args.tolerance_per_level)
         else:
             engine_type = ICGNWebGL
             if args.backend == "webgpu-wgsl":
                 options.update(backend="webgpu-wgsl", pyramid_levels=args.levels)
+                if args.iterations_per_level is not None:
+                    options["iterations_per_level"] = tuple(args.iterations_per_level)
+                if args.tolerance_per_level is not None:
+                    options["tolerance_per_level"] = tuple(args.tolerance_per_level)
             else:
                 if args.levels != 1:
                     raise ValueError(
@@ -127,11 +148,16 @@ def main() -> int:
                     backend="three-tsl",
                     force_three_webgl=args.backend == "three-webgl",
                 )
+                if args.iterations_per_level is not None:
+                    reference_options["iterations"] = args.iterations_per_level[0]
+                if args.tolerance_per_level is not None:
+                    reference_options["tolerance"] = args.tolerance_per_level[0]
         with engine_type(**options) as engine:
-            preparation = engine.set_reference(reference)
+            preparation = engine.set_reference(reference, **reference_options)
             device = preparation.device
             measurements[interpolation] = {
                 "preparation_ms": preparation.total_wall_ms,
+                "config": dict(preparation.config),
                 **_measure(engine, target, truth, args.warmups, args.repeats),
             }
     print(

@@ -40,19 +40,19 @@ therefore exclude PNG/DevTools transport and result readback.
 
 | Boundary and translation | Current median / p95 | Current numerical result |
 |---|---:|---:|
-| Native full pyramid, 2 levels, `(4, -2)` | **10.194 / 11.073 ms** | 31,724 accepted; 0.001874 px RMSE |
-| Native full pyramid, 3 levels, `(4, -2)` | **10.280 / 11.151 ms** | 31,734 accepted; 0.001939 px RMSE |
-| Raw browser WGSL, 2 levels, `(4, -2)` | **8.789 / 9.375 ms** | 31,724 accepted; 0.001804 px RMSE |
+| Native full pyramid, 2 levels, `(4, -2)` | **10.863 / 12.915 ms** | 31,724 accepted; 0.001873 px RMSE |
+| Native full pyramid, 3 levels, `(4, -2)` | **11.354 / 13.172 ms** | 31,734 accepted; 0.001937 px RMSE |
+| Raw browser WGSL, 2 levels, `(4, -2)` | **9.277 / 10.681 ms** | 31,724 accepted; 0.001804 px RMSE |
 | Three.js/TSL subgroup, `(4, -2)` | **24.300 / 26.627 ms** | 22,401 accepted; 0.096354 px RMSE |
 | Three.js/TSL subgroup, `(2, -1)` | **11.893 / 12.798 ms** | 31,654 accepted; 0.0000305 px RMSE |
 
-The native two-level result corresponds to 98.1 calls/s from the median and
-90.3 calls/s from p95. Its complete-call boundary includes target upload, GPU
+The native two-level result corresponds to 92.1 calls/s from the median and
+77.4 calls/s from p95. Its complete-call boundary includes target upload, GPU
 pyramid construction, all coarse-to-fine solves, packed readback, and NumPy
 result construction. It excludes acquisition and downstream consumers.
 
-The raw-browser two-level GPU boundary corresponds to 113.8 frames/s from the
-median. Its synchronized browser wall time was 10.4 ms median and 11.5 ms p95.
+The raw-browser two-level GPU boundary corresponds to 107.8 frames/s from the
+median. Its synchronized browser wall time was 10.7 ms median and 12.6 ms p95.
 The Three.js nominal browser wall time was 13.5 / 14.7 ms; the difficult
 single-scale pair measured 26.2 / 28.7 ms.
 

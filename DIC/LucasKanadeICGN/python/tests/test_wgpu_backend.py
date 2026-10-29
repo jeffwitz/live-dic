@@ -15,7 +15,11 @@ from lucas_kanade_icgn import (
     ICGNWGPUFullPyramid,
     RegistrationResult,
 )
-from lucas_kanade_icgn.full_pyramid_backend import _DEFAULT_ITERATION_SCHEDULES, _schedule
+from lucas_kanade_icgn.full_pyramid_backend import (
+    _DEFAULT_ITERATION_SCHEDULES,
+    _DEFAULT_TOLERANCES,
+    _schedule,
+)
 from lucas_kanade_icgn.wgpu_backend import (
     FIR_RADIUS,
     FIR_RUNTIME_RADIUS,
@@ -82,8 +86,9 @@ class NativeReferenceTests(unittest.TestCase):
         self.assertEqual(default, DEFAULT_FULL_PYRAMID_LEVELS)
         self.assertEqual(default, 2)
         self.assertEqual(_DEFAULT_ITERATION_SCHEDULES[1], (30,))
-        self.assertEqual(_DEFAULT_ITERATION_SCHEDULES[2], (12, 30))
-        self.assertEqual(_DEFAULT_ITERATION_SCHEDULES[3], (6, 8, 20))
+        self.assertEqual(_DEFAULT_ITERATION_SCHEDULES[2], (8, 16))
+        self.assertEqual(_DEFAULT_ITERATION_SCHEDULES[3], (6, 8, 16))
+        self.assertEqual(_DEFAULT_TOLERANCES, (1e-2, 5e-3, 5e-3))
         self.assertEqual(
             _schedule(None, level_count=2, defaults=(8, 12, 30), name="iterations"),
             (12, 30),

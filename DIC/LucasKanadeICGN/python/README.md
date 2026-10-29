@@ -163,8 +163,8 @@ defaults to two levels. Configure its coarse-to-fine schedules on the engine:
 with ICGNWebGL(
     backend="webgpu-wgsl",
     pyramid_levels=3,
-    iterations_per_level=(6, 8, 20),
-    tolerance_per_level=(1e-2, 5e-3, 1e-3),
+    iterations_per_level=(6, 8, 16),
+    tolerance_per_level=(1e-2, 5e-3, 5e-3),
 ) as engine:
     engine.set_reference(reference)
     result = engine.register(target)
@@ -262,8 +262,8 @@ from lucas_kanade_icgn import ICGNWGPUFullPyramid
 
 with ICGNWGPUFullPyramid(
     pyramid_levels=2,
-    iterations_per_level=(12, 30),
-    tolerance_per_level=(5e-3, 1e-3),
+    iterations_per_level=(8, 16),
+    tolerance_per_level=(5e-3, 5e-3),
 ) as engine:
     engine.set_reference(reference_frame)
     result = engine.register(target_frame)
@@ -278,7 +278,7 @@ path and avoids its CPU reductions and intermediate readbacks.
 
 Two levels are the default because they provided the best measured 4K60 margin
 on the validation GPU. Select three levels explicitly for a larger expected
-capture range; its robust default iteration schedule is `(6, 8, 20)`.
+capture range; its default iteration schedule is `(6, 8, 16)`.
 
 ## One-shot function
 
@@ -300,7 +300,8 @@ persistent engine when processing more than one target.
 `benchmark_target` accept these keyword arguments:
 
 - `iterations`: integer from 1 to 30, default 30;
-- `tolerance`: positive convergence threshold in pixels, default `1e-3`;
+- `tolerance`: positive convergence threshold in pixels; single-scale default
+  `1e-3`, while full-pyramid engines use their per-level schedule;
 - `zncc_min`: accepted ZNCC range threshold in `[0, 1]`, default `0.8`.
 
 The runtime validates these values before launching the GPU calculation.

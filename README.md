@@ -12,7 +12,7 @@ The project goal is sustained digital image correlation on 3840 x 2160 frames
 at 60 frames per second, measured across the complete acquisition-to-result
 pipeline. The latest GPU-qualified campaign processed the reproducible UHD
 `(4, -2)` test pair with the recommended two-level GPU-resident pyramid in a
-**10.194 ms median complete Python call** with an **11.073 ms p95**.
+**10.863 ms median complete Python call** with a **12.915 ms p95**.
 This boundary includes direct target upload,
 GPU pyramid construction, coarse-to-fine IC-GN computation, packed readback,
 and NumPy result construction. Both measurements are below the 16.667 ms
@@ -189,8 +189,8 @@ transport and result readback:
 
 | UHD path | Translation | Median | p95 | Accepted | RMSE |
 |---|---:|---:|---:|---:|---:|
-| Native full pyramid, 2 levels | `(4, -2)` | **10.194 ms** | **11.073 ms** | 31,724 | `1.874e-3` px |
-| Raw browser WGSL, 2 levels | `(4, -2)` | **8.789 ms** | **9.375 ms** | 31,724 | `1.804e-3` px |
+| Native full pyramid, 2 levels | `(4, -2)` | **10.863 ms** | **12.915 ms** | 31,724 | `1.873e-3` px |
+| Raw browser WGSL, 2 levels | `(4, -2)` | **9.277 ms** | **10.681 ms** | 31,724 | `1.804e-3` px |
 | Three.js/TSL subgroup | `(4, -2)` | 24.300 ms | 26.627 ms | 22,401 | `9.635e-2` px |
 | Three.js/TSL subgroup | `(2, -1)` | **11.893 ms** | **12.798 ms** | 31,654 | `3.05e-5` px |
 
@@ -357,7 +357,7 @@ available from [`index.html`](./index.html).
 The direct `t=0 -> 20` displacement of `(4, -2)` pixels is outside the robust
 local basin for many single-scale subsets. The current two-level native
 full-pyramid campaign returned 31,724 accepted subsets out of 32,400 at UHD
-with a translation RMSE of 0.001874 pixel. These values refer to that campaign's
+with a translation RMSE of 0.001873 pixel. These values refer to that campaign's
 accepted population. Larger motions can select three levels
 or provide a better initial estimate.
 

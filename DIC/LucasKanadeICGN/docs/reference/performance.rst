@@ -57,7 +57,7 @@ Current workload and protocol
 The offline validation texture is tiled to 3840 x 2160. The resulting grid is
 240 x 135, or 32,400 subsets of 16 x 16 pixels. The solver uses six affine
 parameters, Gaussian/inverse-spline target filtering, 4 x 4 cubic B-spline
-interpolation, a ``1e-3`` fine-scale tolerance, minimum ZNCC ``0.8``, and
+interpolation, a ``5e-3`` fine-scale tolerance, minimum ZNCC ``0.8``, and
 spatial median consistency. No camera or H.264 stage is included.
 
 Every row uses eight warm-ups and 50 measured registrations. Native rows are
@@ -75,13 +75,13 @@ Current UHD results
      - Current median / p95
      - Current numerical result
    * - Native full pyramid, 2 levels, ``(4, -2)``
-     - **10.194 / 11.073 ms**
-     - 31,724 accepted; 0.001874 px RMSE
+     - **10.863 / 12.915 ms**
+     - 31,724 accepted; 0.001873 px RMSE
    * - Native full pyramid, 3 levels, ``(4, -2)``
-     - **10.280 / 11.151 ms**
-     - 31,734 accepted; 0.001939 px RMSE
+     - **11.354 / 13.172 ms**
+     - 31,734 accepted; 0.001937 px RMSE
    * - Raw browser WGSL, 2 levels, ``(4, -2)``
-     - **8.789 / 9.375 ms**
+     - **9.277 / 10.681 ms**
      - 31,724 accepted; 0.001804 px RMSE
    * - Three.js TSL subgroup, ``(4, -2)``
      - **24.300 / 26.627 ms**
@@ -90,14 +90,14 @@ Current UHD results
      - **11.893 / 12.798 ms**
      - 31,654 accepted; 0.0000305 px RMSE
 
-The recommended native two-level result corresponds to 98.1 calls/s from the
-median and 90.3 calls/s from p95. The complete-call boundary includes target
+The recommended native two-level result corresponds to 92.1 calls/s from the
+median and 77.4 calls/s from p95. The complete-call boundary includes target
 upload, GPU pyramid construction, all coarse-to-fine solves, packed readback,
 and NumPy result construction. Camera acquisition and downstream consumers are
 excluded.
 
-The raw-browser two-level GPU boundary corresponds to 113.8 frames/s from the
-median. Its synchronized browser wall time was 10.4 ms median and 11.5 ms p95.
+The raw-browser two-level GPU boundary corresponds to 107.8 frames/s from the
+median. Its synchronized browser wall time was 10.7 ms median and 12.6 ms p95.
 The Three.js nominal browser wall time was 13.5 / 14.7 ms; the difficult
 single-scale pair measured 26.2 / 28.7 ms.
 
@@ -107,9 +107,10 @@ Current fractional-interpolation comparison
 The interpolation campaign uses a continuous analytic texture sampled before
 and after the fractional translation ``(0.5, -0.375)``. It therefore does not
 use ``np.roll`` or preselect one reconstruction method while generating the
-target. Native figures use three warm-ups and ten complete ``register()``
-calls. Browser figures use three warm-ups and seven GPU timestamp samples;
-PNG/DevTools transport and readback are excluded from those rows.
+target. Native figures use eight warm-ups and 50 complete ``register()``
+calls. Raw-browser figures use three warm-ups and seven GPU timestamp samples;
+Three.js figures use five warm-ups and ten timestamp samples. PNG/DevTools
+transport and readback are excluded from browser rows.
 
 .. list-table:: UHD interpolation modes on the current kernels
    :header-rows: 1
@@ -119,24 +120,24 @@ PNG/DevTools transport and readback are excluded from those rows.
      - ``linear`` median / p95
      - ``cubic`` median / p95
    * - Native full pyramid, 2 levels, complete call
-     - 19.433 / 21.199 ms
-     - **15.118 / 16.224 ms**
-     - 19.677 / 21.717 ms
+     - **11.962 / 13.724 ms**
+     - **7.844 / 9.149 ms**
+     - **9.162 / 10.830 ms**
    * - Raw browser WGSL, 2 levels, GPU timestamp
-     - 33.126 / 36.084 ms
-     - **23.371 / 26.789 ms**
-     - 34.996 / 36.136 ms
+     - 20.935 / 22.427 ms
+     - **10.586 / 13.528 ms**
+     - 15.633 / 17.616 ms
    * - Three.js/TSL, 1 scale, GPU timestamp
-     - 38.843 / 48.645 ms
-     - **29.310 / 32.192 ms**
-     - 42.357 / 42.785 ms
+     - 45.115 / 51.933 ms
+     - **29.357 / 32.276 ms**
+     - 37.381 / 42.067 ms
 
-The matching native RMSE values were 0.00925 px for ``bspline``, 0.01990 px
-for ``linear``, and 0.01089 px for ``cubic``. The linear native p95 is below
-the 16.667 ms frame period on this workload, but the margin is only 0.44 ms;
-this is not a portable 4K60 guarantee. Direct cubic preserved most B-spline
-accuracy but did not improve native time here because it still performs 16
-target reads and required more iterations. See
+The matching native RMSE values were 0.00866 px for ``bspline``, 0.01934 px
+for ``linear``, and 0.01024 px for ``cubic``. All three native p95 values are
+below the 16.667 ms frame period on this workload. The tuned schedules reduce
+the average fine solve from 6.43 to 2.30 iterations for B-spline, 11.35 to 4.17
+for linear, and 7.56 to 2.60 for direct cubic. This is not a portable 4K60
+guarantee. See
 :doc:`../explanation/interpolation` for the implementation and selection
 guidance.
 
@@ -146,7 +147,7 @@ Reproduce the native row with:
 
    python benchmarks/benchmark_interpolation.py \
      --width 3840 --height 2160 --levels 2 \
-     --translation 0.5 -0.375 --warmups 3 --repeats 10
+     --translation 0.5 -0.375 --warmups 8 --repeats 50
 
 Current native sequence throughput
 ----------------------------------
