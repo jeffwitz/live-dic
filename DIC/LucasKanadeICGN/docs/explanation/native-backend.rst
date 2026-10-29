@@ -21,7 +21,7 @@ The native data path is:
                 v
           r8unorm GPU texture
                 |
-                +--> radius-15 FIR, horizontal then vertical
+                +--> tiled separable FIR, horizontal then vertical
                 |
                 +--> one 16-lane workgroup per subset
                 |    all affine IC-GN iterations in one dispatch
@@ -45,8 +45,11 @@ Algorithm mapping
 -----------------
 
 The native backend uses the same 16 x 16 subsets, affine parameter order,
-radius-15 target prefilter, inverse-compositional update, ZNCC test, and median
-replacement as the browser implementations. Reference-dependent values are
+31-value radius-15 target filter vector, inverse-compositional update, ZNCC
+test, and median replacement as the browser implementations. The WGSL runtime
+omits only the six outer taps whose combined absolute weight is below ``7e-8``
+and stages the remaining reads in axis-oriented workgroup tiles.
+Reference-dependent values are
 prepared once by ``set_reference`` and uploaded as persistent buffers.
 
 The portable solver assigns one 16-lane workgroup to each subset. A lane owns

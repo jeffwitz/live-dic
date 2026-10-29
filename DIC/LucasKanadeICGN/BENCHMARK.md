@@ -1,9 +1,45 @@
 # Affine IC-GN backend benchmarks
 
-Date: October 28, 2026.
+Last updated: October 29, 2026.
+
+## October 29 UHD kernel optimization audit
+
+The optimization branch was compared directly with its starting commit
+`d18d10c` on the same Intel Lunar Lake GPU. Each row uses eight warm-ups and
+50 measured registrations of the same offline UHD texture. Times are GPU
+timestamps for browser rows and complete `register()` wall time for native
+rows.
+
+| Boundary and translation | Start median / p95 | Optimized median / p95 | Median reduction | Optimized result |
+|---|---:|---:|---:|---:|
+| Native full pyramid, 2 levels, `(4, -2)` | 14.820 / 15.639 ms | **10.194 / 11.073 ms** | **31.2%** | 31,724 accepted; 0.001874 px RMSE |
+| Native full pyramid, 3 levels, `(4, -2)` | 15.946 / 16.937 ms | **10.280 / 11.151 ms** | **35.5%** | 31,734 accepted; 0.001939 px RMSE |
+| Raw browser WGSL, 2 levels, `(4, -2)` | 14.874 / 15.476 ms | **8.789 / 9.375 ms** | **40.9%** | 31,724 accepted; 0.001804 px RMSE |
+| Three.js TSL subgroup, `(4, -2)` | 29.906 / 32.261 ms | **24.300 / 26.627 ms** | **18.7%** | 22,401 accepted; 0.096354 px RMSE |
+| Three.js TSL subgroup, `(2, -1)` | 13.469 / 13.997 ms | **11.893 / 12.798 ms** | **11.7%** | 31,654 accepted; 0.0000305 px RMSE |
+
+The native two-level result corresponds to 98.1 calls/s from the median and
+90.3 calls/s from p95. The raw-browser GPU boundary corresponds to 113.8
+frames/s from the median. These are repeated-target measurements, not hard
+real-time guarantees.
+
+The single-scale sequence benchmark used four campaigns of 30 UHD frames. Its
+median period was 11.539 ms synchronously (86.7 FPS), 11.026 ms with the
+default two in-flight slots (90.7 FPS), and 10.780 ms with three slots (92.8
+FPS). Two slots keep the lower 21.963 ms median result latency; three slots
+raise it to 32.093 ms. Every configuration accepted 31,654 subsets with the
+same ``3.066e-5`` px RMSE.
+
+The gain comes from cooperative, axis-oriented FIR tiles in the shared WGSL,
+plus a numerically bounded removal of six negligible tail weights. Three.js
+uses a separate conservative FIR tile and now fills the measured 32-lane
+hardware subgroup, so every lane processes eight subset pixels instead of
+leaving half of the subgroup idle. The opt-in GPU suite validates the FIR
+coefficients on partial workgroups; all 67 tests pass with GPU execution
+enabled.
 
 The current campaign was recorded from the consolidation branch after all
-three opt-in GPU regression tests passed on the validation GPU. It therefore
+four opt-in GPU regression tests passed on the validation GPU. It therefore
 qualifies the corrected reduction arithmetic and selective-retry state
 preservation at the timing boundaries stated below.
 

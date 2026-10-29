@@ -62,7 +62,7 @@ inverse-compositional update.
 The Three.js backend implements those same operations as TSL storage-buffer
 compute kernels: two target prefilter passes, the six-parameter affine IC-GN
 solver, and the final median consistency pass. A startup probe selects a fused
-16-lane subgroup solver when the adapter supports it; a portable
+subgroup solver sized to the measured hardware subgroup; a portable
 workgroup-memory solver remains available automatically. When WebGPU is not
 available, the same TSL implementation now falls back to Three.js' WebGL2
 transform-feedback backend and selects a serial one-invocation-per-subset
@@ -83,6 +83,12 @@ optimized Three.js path keeps its TSL implementation because subgroup
 collectives are faster on the validation GPU, but it now shares named
 mathematical helpers and browser reference preparation instead of duplicating
 those operations between its workgroup and subgroup variants.
+
+The shared WGSL prefilter stages axis-oriented tiles in workgroup memory. It
+keeps the 31-value radius-15 weight buffer for compatibility and evaluates the
+central 25 taps; the omitted tails total less than ``7e-8`` in absolute weight.
+Three.js retains all 31 taps and fills the measured subgroup width when its
+specialized WebGPU path is available.
 
 All runtimes derive their buffers or textures and subset grid from the
 reference dimensions. They have been validated at both 512 × 512 and UHD 3840
@@ -105,10 +111,12 @@ For sustained native sequences, ``ICGNWGPU.register_stream`` uses a bounded
 ring of independent target, solver-state, and readback resources. Two slots
 are the default and allow Python to retire one packed result while the GPU
 processes the next frame. This slot count is unrelated to an image pyramid. On
-the validation machine this reduced the median UHD sequence period
-from 14.792 ms to 13.380 ms (74.7 FPS), while preserving bit-for-bit output;
-median result latency increased to 26.617 ms. The ordinary ``register`` method
-remains the lowest-latency path.
+the validation machine after FIR tiling, the four-campaign median UHD period
+was 11.539 ms synchronously (86.7 FPS), 11.026 ms with the default two slots
+(90.7 FPS), and 10.780 ms with three slots (92.8 FPS), while preserving the
+same accepted count and RMSE. Median result latency was 21.963 ms for two slots
+and 32.093 ms for three. The ordinary ``register`` method remains the
+lowest-latency path.
 
 The remaining differences are platform constraints: the browser backends use
 single precision and do not expose the same register controls or queue model as
@@ -124,13 +132,13 @@ For workloads that need a pyramid on every frame, the separate
 coarse-to-fine affine seeds, and solver states on one GPU. It encodes all
 levels in one command buffer and performs one final readback. Iterations and
 tolerances are configurable per scale from coarse to fine. Two levels are the
-recommended native default. On the validation machine, the current 30-run
-campaign measured 14.580 ms (68.6 FPS) at 3840 x 2160 for the controlled
-``(+4, -2)`` translation while accepting 31,724 of 32,400 subsets. Three levels remain
-available explicitly for larger expected displacements, but a repeated audit
-found that their p95 exceeded the 16.667 ms period even though their median
-remained above 60 FPS. See the performance reference for the exact boundary,
-revalidation ranges, and caveats.
+recommended native default. Three levels remain available explicitly for
+larger expected displacements. After the October 29 FIR tiling optimization,
+a 50-run UHD campaign measured **10.194 ms median /
+11.073 ms p95 (98.1 FPS from the median)** for two levels and **10.280 / 11.151
+ms** for three levels. Both are below the 16.667 ms 60 FPS period on this
+machine; two levels remain the lower-cost default. See the performance
+reference for the exact boundary, revalidation ranges, and caveats.
 
 The raw browser ``webgpu-wgsl`` backend now runs that same GPU-resident
 full-pyramid graph. It defaults to two levels with schedules ``(12, 30)`` and

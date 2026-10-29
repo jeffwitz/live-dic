@@ -25,7 +25,7 @@ Validation machine
    * - Component
      - Value
    * - Measurement date
-     - 2026-10-28
+     - 2026-10-29 (latest optimization audit)
    * - CPU
      - Intel Core Ultra 5 228V, 8 cores
    * - GPU
@@ -65,6 +65,58 @@ translation is ``(2, -1)`` pixels. The common configuration is:
 
 Revalidation audit
 ------------------
+
+The latest UHD optimization audit directly compared starting commit
+``d18d10c`` with the optimized kernels using eight warm-ups and 50 measured
+registrations. Native rows are complete Python-call wall times; browser rows
+are GPU timestamps.
+
+.. list-table:: October 29 UHD kernel optimization audit
+   :header-rows: 1
+   :widths: 31 19 19 14 17
+
+   * - Boundary and translation
+     - Starting median / p95
+     - Optimized median / p95
+     - Median reduction
+     - Optimized quality
+   * - Native full pyramid, 2 levels, ``(4, -2)``
+     - 14.820 / 15.639 ms
+     - **10.194 / 11.073 ms**
+     - **31.2%**
+     - 31,724 accepted; 0.001874 px RMSE
+   * - Native full pyramid, 3 levels, ``(4, -2)``
+     - 15.946 / 16.937 ms
+     - **10.280 / 11.151 ms**
+     - **35.5%**
+     - 31,734 accepted; 0.001939 px RMSE
+   * - Raw browser WGSL, 2 levels, ``(4, -2)``
+     - 14.874 / 15.476 ms
+     - **8.789 / 9.375 ms**
+     - **40.9%**
+     - 31,724 accepted; 0.001804 px RMSE
+   * - Three.js TSL subgroup, ``(4, -2)``
+     - 29.906 / 32.261 ms
+     - **24.300 / 26.627 ms**
+     - **18.7%**
+     - 22,401 accepted; 0.096354 px RMSE
+   * - Three.js TSL subgroup, ``(2, -1)``
+     - 13.469 / 13.997 ms
+     - **11.893 / 12.798 ms**
+     - **11.7%**
+     - 31,654 accepted; 0.0000305 px RMSE
+
+The native two- and three-level p95 values are now below the 16.667 ms period
+on this machine. This supersedes the older three-level 60 Hz warning in the
+historical revalidation table below. Browser wall time remains higher than its
+GPU timestamp because it also includes synchronization and result transport.
+
+The same optimized shader was exercised through the bounded single-scale
+sequence API in four campaigns of 30 UHD frames. The synchronous median period
+was 11.539 ms (86.7 FPS). Two in-flight slots reduced it to 11.026 ms (90.7
+FPS) with 21.963 ms median result latency; three slots reached 10.780 ms (92.8
+FPS) with 32.093 ms latency. All configurations accepted 31,654 subsets and
+reported ``3.066e-5`` px RMSE.
 
 The published tables below are campaign snapshots, not constants of the
 hardware. On 2026-10-28, after the Three.js/WebGL2 fallback and browser pyramid

@@ -17,6 +17,8 @@ from lucas_kanade_icgn import (
 )
 from lucas_kanade_icgn.full_pyramid_backend import _DEFAULT_ITERATION_SCHEDULES, _schedule
 from lucas_kanade_icgn.wgpu_backend import (
+    FIR_RADIUS,
+    FIR_RUNTIME_RADIUS,
     ICGNWGPU,
     _compare_solver_outputs,
     _fir_weights,
@@ -345,6 +347,9 @@ class NativeReferenceTests(unittest.TestCase):
         self.assertEqual(weights.dtype, np.float32)
         self.assertTrue(np.isfinite(weights).all())
         self.assertAlmostEqual(float(weights.sum()), 1.0, places=6)
+        trim = FIR_RADIUS - FIR_RUNTIME_RADIUS
+        omitted = np.concatenate((weights[:trim], weights[-trim:]))
+        self.assertLess(float(np.abs(omitted).sum()), 7e-8)
 
     def test_reference_arrays_have_gpu_buffer_layout(self) -> None:
         random = np.random.default_rng(20261028)

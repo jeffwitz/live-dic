@@ -26,6 +26,8 @@ from .engine import ICGNError, ImageInput, ReferenceInfo, RegistrationResult, _a
 SUBSET_SIZE = 16
 SUBSET_HALF_EXTENT = 7.5
 FIR_RADIUS = 15
+#: Runtime FIR half-width after removing numerically negligible outer taps.
+FIR_RUNTIME_RADIUS = 12
 MAX_ITERATIONS = 30
 #: Recommended maximum number of native sequence registrations in flight.
 DEFAULT_IN_FLIGHT_FRAMES = 2
@@ -818,7 +820,9 @@ class ICGNWGPU:
             ),
             "coefficients": self.device.create_buffer(
                 size=pixel_count * 4,
-                usage=wgpu.BufferUsage.STORAGE,
+                # COPY_SRC lets the opt-in GPU suite validate the tiled FIR
+                # coefficients directly without changing the production pass.
+                usage=wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_SRC,
             ),
             "state": self.device.create_buffer(
                 size=grid_count * 8 * 4,
@@ -1016,21 +1020,26 @@ class ICGNWGPU:
 
         encoder.clear_buffer(slot.buffers["state"])
         encoder.clear_buffer(slot.buffers["filtered_state"])
-        pixel_workgroups = (self.width * self.height + 255) // 256
+        prefilter_x_workgroups = ((self.width + 31) // 32, (self.height + 7) // 8, 1)
+        prefilter_y_workgroups = ((self.width + 7) // 8, (self.height + 31) // 32, 1)
         for pipeline, workgroups, bind_group in (
-            (self._prefilter_x, pixel_workgroups, slot.bind_group),
-            (self._prefilter_y, pixel_workgroups, slot.bind_group),
-            (solver_pipeline, self.grid_width * self.grid_height, solver_bind_group),
+            (self._prefilter_x, prefilter_x_workgroups, slot.bind_group),
+            (self._prefilter_y, prefilter_y_workgroups, slot.bind_group),
+            (
+                solver_pipeline,
+                (self.grid_width * self.grid_height, 1, 1),
+                solver_bind_group,
+            ),
             (
                 self._median_filter,
-                (self.grid_width * self.grid_height + 255) // 256,
+                ((self.grid_width * self.grid_height + 255) // 256, 1, 1),
                 slot.bind_group,
             ),
         ):
             compute_pass = encoder.begin_compute_pass()
             compute_pass.set_pipeline(pipeline)
             compute_pass.set_bind_group(0, bind_group)
-            compute_pass.dispatch_workgroups(workgroups, 1, 1)
+            compute_pass.dispatch_workgroups(*workgroups)
             compute_pass.end()
 
     def _execute_registration(self, solver_pipeline: Any) -> memoryview:
@@ -1115,25 +1124,26 @@ class ICGNWGPU:
         encoder = self.device.create_command_encoder(label="DIC-RT selective coarse solve")
         encoder.clear_buffer(slot.buffers["state"])
         encoder.clear_buffer(slot.buffers["filtered_state"])
-        pixel_workgroups = (self.width * self.height + 255) // 256
+        prefilter_x_workgroups = ((self.width + 31) // 32, (self.height + 7) // 8, 1)
+        prefilter_y_workgroups = ((self.width + 7) // 8, (self.height + 31) // 32, 1)
         for pipeline, workgroups, bind_group in (
-            (self._prefilter_x, pixel_workgroups, slot.bind_group),
-            (self._prefilter_y, pixel_workgroups, slot.bind_group),
+            (self._prefilter_x, prefilter_x_workgroups, slot.bind_group),
+            (self._prefilter_y, prefilter_y_workgroups, slot.bind_group),
             (
                 self._seeded_solver,
-                self.grid_width * self.grid_height,
+                (self.grid_width * self.grid_height, 1, 1),
                 slot.seeded_bind_group,
             ),
             (
                 self._median_filter,
-                (self.grid_width * self.grid_height + 255) // 256,
+                ((self.grid_width * self.grid_height + 255) // 256, 1, 1),
                 slot.bind_group,
             ),
         ):
             compute_pass = encoder.begin_compute_pass()
             compute_pass.set_pipeline(pipeline)
             compute_pass.set_bind_group(0, bind_group)
-            compute_pass.dispatch_workgroups(workgroups, 1, 1)
+            compute_pass.dispatch_workgroups(*workgroups)
             compute_pass.end()
         self.device.queue.submit([encoder.finish()])
         raw = self.device.queue.read_buffer(slot.buffers["filtered_state"])
