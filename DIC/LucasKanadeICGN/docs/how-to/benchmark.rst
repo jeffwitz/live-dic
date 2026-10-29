@@ -52,7 +52,7 @@ Interpret the timers
 
 ``gpu_times_ms``
    WebGL timer-query or WebGPU timestamp duration for target prefiltering plus
-   IC-GN and median replacement. It excludes Python transport and result
+   IC-GN and the optional UOD pass. It excludes Python transport and result
    readback.
 
 ``wall_times_ms``

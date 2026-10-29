@@ -23,18 +23,13 @@ import numpy.typing as npt
 
 from .engine import ICGNError, ImageInput, ReferenceInfo, RegistrationResult, _as_uint8_gray
 from .interpolation import INTERPOLATION_PIPELINE_CONSTANTS, normalize_interpolation
-from .median import (
-    MEDIAN_REPLACEMENT_PIPELINE_CONSTANTS,
-    MEDIAN_SCOPE_PIPELINE_CONSTANTS,
-    normalize_median_replacement,
-    normalize_median_scope,
-)
 from .motion import (
     MOTION_MODEL_PIPELINE_CONSTANTS,
     normalize_motion_model,
     parameter_count,
     state_float_count,
 )
+from .outlier import OUTLIER_POLICY_PIPELINE_CONSTANTS, normalize_outlier_policy
 from .subset import (
     DEFAULT_SUBSET_SIZE,
     normalize_subset_size,
@@ -655,7 +650,7 @@ def _reference_arrays(
 class ICGNWGPU:
     """Persistent native WebGPU IC-GN engine with direct NumPy transfers.
 
-    The target prefilter, affine solver, and spatial median replacement all run
+    The target prefilter, motion solver, and optional displacement UOD all run
     on the native GPU adapter. By default, reference preparation benchmarks
     the portable and subgroup solvers when both are available. Set
     ``prefer_subgroups`` to ``False`` or ``True`` to force either path for
@@ -676,8 +671,7 @@ class ICGNWGPU:
         pyramid_levels: int = DEFAULT_PYRAMID_LEVELS,
         interpolation: str = "bspline",
         motion_model: str = "affine",
-        median_scope: str = "all",
-        median_replacement: str = "flagged",
+        outlier_policy: str = "replace",
         subset_size: int = DEFAULT_SUBSET_SIZE,
         subset_stride: int | None = None,
         spatial_weighting: str = "uniform",
@@ -685,8 +679,7 @@ class ICGNWGPU:
     ) -> None:
         self.interpolation = normalize_interpolation(interpolation)
         self.motion_model = normalize_motion_model(motion_model)
-        self.median_scope = normalize_median_scope(median_scope)
-        self.median_replacement = normalize_median_replacement(median_replacement)
+        self.outlier_policy = normalize_outlier_policy(outlier_policy)
         self.subset_size = normalize_subset_size(subset_size)
         self.subset_stride = normalize_subset_stride(
             subset_stride,
@@ -849,10 +842,7 @@ class ICGNWGPU:
                 "entry_point": "median_filter",
                 "constants": {
                     "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
-                    "MEDIAN_SCOPE": MEDIAN_SCOPE_PIPELINE_CONSTANTS[self.median_scope],
-                    "MEDIAN_REPLACEMENT": MEDIAN_REPLACEMENT_PIPELINE_CONSTANTS[
-                        self.median_replacement
-                    ],
+                    "OUTLIER_POLICY": OUTLIER_POLICY_PIPELINE_CONSTANTS[self.outlier_policy],
                     "SUBSET_SIZE": self.subset_size,
                     "SUBSET_STRIDE": self.subset_stride,
                 },
@@ -909,8 +899,7 @@ class ICGNWGPU:
         level._solver_preference = False
         level.interpolation = getattr(self, "interpolation", "bspline")
         level.motion_model = getattr(self, "motion_model", "affine")
-        level.median_scope = getattr(self, "median_scope", "all")
-        level.median_replacement = getattr(self, "median_replacement", "flagged")
+        level.outlier_policy = getattr(self, "outlier_policy", "replace")
         level.subset_size = self.subset_size
         level.subset_stride = getattr(self, "subset_stride", self.subset_size)
         level.spatial_weighting = getattr(self, "spatial_weighting", "uniform")
@@ -1169,7 +1158,9 @@ class ICGNWGPU:
             ),
             "state": self.device.create_buffer(
                 size=grid_count * state_stride * 4,
-                usage=wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_DST,
+                usage=(
+                    wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_SRC | wgpu.BufferUsage.COPY_DST
+                ),
             ),
             "filtered_state": self.device.create_buffer(
                 size=grid_count * state_stride * 4,
@@ -1344,7 +1335,7 @@ class ICGNWGPU:
         )
         if copy_to_readback:
             encoder.copy_buffer_to_buffer(
-                slot.buffers["filtered_state"],
+                self._output_buffer(slot),
                 0,
                 slot.readback,
                 0,
@@ -1360,10 +1351,11 @@ class ICGNWGPU:
         *,
         solver_bind_group: Any,
     ) -> None:
-        """Append one level's prefilter, solve, and median passes."""
+        """Append one level's prefilter, solve, and optional UOD pass."""
 
         encoder.clear_buffer(slot.buffers["state"])
-        encoder.clear_buffer(slot.buffers["filtered_state"])
+        if self.outlier_policy != "disabled":
+            encoder.clear_buffer(slot.buffers["filtered_state"])
         passes = []
         if self.interpolation == "bspline":
             passes.extend(
@@ -1380,20 +1372,21 @@ class ICGNWGPU:
                     ),
                 )
             )
-        passes.extend(
+        passes.append(
             (
-                (
-                    solver_pipeline,
-                    (self.grid_width, self.grid_height, 1),
-                    solver_bind_group,
-                ),
+                solver_pipeline,
+                (self.grid_width, self.grid_height, 1),
+                solver_bind_group,
+            )
+        )
+        if self.outlier_policy != "disabled":
+            passes.append(
                 (
                     self._median_filter,
                     ((self.grid_width * self.grid_height + 255) // 256, 1, 1),
                     slot.bind_group,
-                ),
+                )
             )
-        )
         for pipeline, workgroups, bind_group in passes:
             compute_pass = encoder.begin_compute_pass()
             compute_pass.set_pipeline(pipeline)
@@ -1407,7 +1400,13 @@ class ICGNWGPU:
         slot = self._pipeline_slots[0]
         command = self._encode_registration(slot, solver_pipeline, copy_to_readback=False)
         self.device.queue.submit([command])
-        return self.device.queue.read_buffer(self._buffers["filtered_state"])
+        return self.device.queue.read_buffer(self._output_buffer(slot))
+
+    def _output_buffer(self, slot: _RegistrationSlot) -> Any:
+        """Return the raw or UOD-processed state selected by the policy."""
+
+        name = "state" if self.outlier_policy == "disabled" else "filtered_state"
+        return slot.buffers[name]
 
     def _retry_seeded(
         self,
@@ -1416,7 +1415,7 @@ class ICGNWGPU:
         active: npt.NDArray[np.uint32],
         previous: RegistrationResult,
     ) -> RegistrationResult:
-        """Retry selected subsets from transferred seeds, then median-filter."""
+        """Retry selected subsets from transferred seeds, then apply optional UOD."""
 
         if not np.any(active):
             return previous
@@ -1433,23 +1432,25 @@ class ICGNWGPU:
             np.ascontiguousarray(active, dtype=np.uint32),
         )
         encoder = self.device.create_command_encoder(label="DIC-RT seeded pyramid retry")
-        encoder.clear_buffer(slot.buffers["filtered_state"])
+        if self.outlier_policy != "disabled":
+            encoder.clear_buffer(slot.buffers["filtered_state"])
         compute_pass = encoder.begin_compute_pass()
         compute_pass.set_pipeline(self._retry_solver)
         compute_pass.set_bind_group(0, slot.seeded_bind_group)
         compute_pass.dispatch_workgroups(self.grid_width, self.grid_height, 1)
         compute_pass.end()
-        compute_pass = encoder.begin_compute_pass()
-        compute_pass.set_pipeline(self._median_filter)
-        compute_pass.set_bind_group(0, slot.bind_group)
-        compute_pass.dispatch_workgroups(
-            (self.grid_width * self.grid_height + 255) // 256,
-            1,
-            1,
-        )
-        compute_pass.end()
+        if self.outlier_policy != "disabled":
+            compute_pass = encoder.begin_compute_pass()
+            compute_pass.set_pipeline(self._median_filter)
+            compute_pass.set_bind_group(0, slot.bind_group)
+            compute_pass.dispatch_workgroups(
+                (self.grid_width * self.grid_height + 255) // 256,
+                1,
+                1,
+            )
+            compute_pass.end()
         self.device.queue.submit([encoder.finish()])
-        raw = self.device.queue.read_buffer(slot.buffers["filtered_state"])
+        raw = self.device.queue.read_buffer(self._output_buffer(slot))
         timing = dict(previous.timing)
         result = self._result_from_raw(raw, timing=timing, config=self._config)
         elapsed_ms = (time.perf_counter() - started) * 1_000.0
@@ -1482,7 +1483,8 @@ class ICGNWGPU:
         execution_started = time.perf_counter()
         encoder = self.device.create_command_encoder(label="DIC-RT selective coarse solve")
         encoder.clear_buffer(slot.buffers["state"])
-        encoder.clear_buffer(slot.buffers["filtered_state"])
+        if self.outlier_policy != "disabled":
+            encoder.clear_buffer(slot.buffers["filtered_state"])
         passes = []
         if self.interpolation == "bspline":
             passes.extend(
@@ -1499,20 +1501,21 @@ class ICGNWGPU:
                     ),
                 )
             )
-        passes.extend(
+        passes.append(
             (
-                (
-                    self._seeded_solver,
-                    (self.grid_width * self.grid_height, 1, 1),
-                    slot.seeded_bind_group,
-                ),
+                self._seeded_solver,
+                (self.grid_width * self.grid_height, 1, 1),
+                slot.seeded_bind_group,
+            )
+        )
+        if self.outlier_policy != "disabled":
+            passes.append(
                 (
                     self._median_filter,
                     ((self.grid_width * self.grid_height + 255) // 256, 1, 1),
                     slot.bind_group,
-                ),
+                )
             )
-        )
         for pipeline, workgroups, bind_group in passes:
             compute_pass = encoder.begin_compute_pass()
             compute_pass.set_pipeline(pipeline)
@@ -1520,7 +1523,7 @@ class ICGNWGPU:
             compute_pass.dispatch_workgroups(*workgroups)
             compute_pass.end()
         self.device.queue.submit([encoder.finish()])
-        raw = self.device.queue.read_buffer(slot.buffers["filtered_state"])
+        raw = self.device.queue.read_buffer(self._output_buffer(slot))
         execution_ms = (time.perf_counter() - execution_started) * 1_000.0
         result = self._result_from_raw(
             raw,
@@ -1667,8 +1670,7 @@ class ICGNWGPU:
                 **self._config,
                 "interpolation": getattr(self, "interpolation", "bspline"),
                 "motionModel": getattr(self, "motion_model", "affine"),
-                "medianScope": getattr(self, "median_scope", "all"),
-                "medianReplacement": getattr(self, "median_replacement", "flagged"),
+                "outlierPolicy": getattr(self, "outlier_policy", "replace"),
                 "subsetStride": self.subset_stride,
                 "spatialWeighting": getattr(self, "spatial_weighting", "uniform"),
                 "gaussianSigma": getattr(
@@ -1770,8 +1772,7 @@ class ICGNWGPU:
                 pyramid_levels=1,
                 interpolation=self.interpolation,
                 motion_model=self.motion_model,
-                median_scope=self.median_scope,
-                median_replacement=self.median_replacement,
+                outlier_policy=self.outlier_policy,
                 subset_size=self.subset_size,
                 subset_stride=self.subset_stride,
                 spatial_weighting=self.spatial_weighting,
@@ -1849,8 +1850,7 @@ class ICGNWGPU:
                 **self._config,
                 "interpolation": getattr(self, "interpolation", "bspline"),
                 "motionModel": getattr(self, "motion_model", "affine"),
-                "medianScope": getattr(self, "median_scope", "all"),
-                "medianReplacement": getattr(self, "median_replacement", "flagged"),
+                "outlierPolicy": getattr(self, "outlier_policy", "replace"),
                 "subsetStride": subset_stride,
                 "spatialWeighting": getattr(self, "spatial_weighting", "uniform"),
                 "gaussianSigma": getattr(
@@ -1932,8 +1932,7 @@ class ICGNWGPU:
                 **config,
                 "interpolation": getattr(self, "interpolation", "bspline"),
                 "motionModel": getattr(self, "motion_model", "affine"),
-                "medianScope": getattr(self, "median_scope", "all"),
-                "medianReplacement": getattr(self, "median_replacement", "flagged"),
+                "outlierPolicy": getattr(self, "outlier_policy", "replace"),
                 "subsetStride": subset_stride,
                 "spatialWeighting": getattr(self, "spatial_weighting", "uniform"),
                 "gaussianSigma": getattr(

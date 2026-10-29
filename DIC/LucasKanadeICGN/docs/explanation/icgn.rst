@@ -76,22 +76,17 @@ so interior curvature contributes.
 Spatial consistency
 -------------------
 
-After IC-GN, the median pass compares each accepted subset with predictions from
-its accepted direct 3 x 3 neighbours. Affine and quadratic neighbour
-polynomials are first recentered at the current subset centre. Each active
-coefficient is then tested independently against its neighbour median and
-median absolute deviation (MAD). An aberrant coefficient is replaced by its
-median without discarding the subset's other, locally consistent coefficients;
-any replacement assigns status 2.
+After IC-GN, the optional UOD pass compares ``tx`` and ``ty`` with predictions
+from accepted direct 3 x 3 neighbours. Affine and quadratic neighbour
+polynomials are first recentered at the current subset centre. A displacement
+component is flagged when its deviation exceeds twice its neighbour MAD plus a
+0.1-pixel floor. At least four accepted neighbours are required.
 
-The robustness floor is expressed in displacement units. Translation keeps a
-0.1-pixel floor. Affine-gradient and quadratic-curvature floors correspond to a
-0.001-pixel effect at the subset edge, accounting for their different units and
-the configured subset size. A component is replaced when its deviation exceeds
-twice the sum of its MAD and that floor. At least four accepted neighbours are
-required, so sparse boundaries are left unchanged rather than extrapolated.
-The derivation, literature boundary, analytic A/B results, and measured cost
-are documented in :doc:`component-wise-median`.
+The default policy replaces the complete motion state after either displacement
+component triggers. A flag-only policy preserves raw coefficients, and the
+pass can be disabled entirely. Affine gradients and quadratic curvatures do not
+participate in detection. The equation, rationale, and validation contracts
+are documented in :doc:`displacement-outliers`.
 
 Numerical equivalence
 ---------------------

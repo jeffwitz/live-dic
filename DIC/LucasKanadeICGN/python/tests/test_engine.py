@@ -106,6 +106,8 @@ class RegistrationResultTests(unittest.TestCase):
         self.assertEqual(result.parameters.shape, (2, 2, len(PARAMETER_ORDER)))
         self.assertEqual(result.displacement.shape, (2, 2, 2))
         self.assertEqual(int(result.accepted_mask.sum()), 3)
+        self.assertEqual(result.flagged, 1)
+        self.assertEqual(int(result.outlier_mask.sum()), 1)
         self.assertEqual(int(result.replaced_mask.sum()), 1)
         self.assertEqual(result.rmse((2, -1)), 0.0)
         self.assertNotIn("gpuMs", result.timing)
@@ -434,33 +436,20 @@ class RuntimeAssetTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "requires backend='webgpu-wgsl'"):
             ICGNWebGL(backend="three-tsl", motion_model="quadratic")
 
-    def test_browser_median_scope_is_validated_and_forwarded(self) -> None:
-        for scope in ("displacement", "all"):
-            with self.subTest(scope=scope):
-                engine = ICGNWebGL(backend="webgpu-wgsl", median_scope=scope)
-                self.assertEqual(engine.median_scope, scope)
-                self.assertEqual(
-                    engine._options(iterations=None, tolerance=None, zncc_min=None)["medianScope"],
-                    scope,
-                )
-        with self.assertRaisesRegex(ValueError, "median_scope"):
-            ICGNWebGL(median_scope="translation")
-        self.assertIn("median_scope", inspect.signature(register_pair).parameters)
-
-    def test_browser_median_replacement_is_validated_and_forwarded(self) -> None:
-        for replacement in ("flagged", "all"):
-            with self.subTest(replacement=replacement):
-                engine = ICGNWebGL(backend="webgpu-wgsl", median_replacement=replacement)
-                self.assertEqual(engine.median_replacement, replacement)
+    def test_browser_outlier_policy_is_validated_and_forwarded(self) -> None:
+        for policy in ("replace", "flag", "disabled"):
+            with self.subTest(policy=policy):
+                engine = ICGNWebGL(backend="webgpu-wgsl", outlier_policy=policy)
+                self.assertEqual(engine.outlier_policy, policy)
                 self.assertEqual(
                     engine._options(iterations=None, tolerance=None, zncc_min=None)[
-                        "medianReplacement"
+                        "outlierPolicy"
                     ],
-                    replacement,
+                    policy,
                 )
-        with self.assertRaisesRegex(ValueError, "median_replacement"):
-            ICGNWebGL(median_replacement="component")
-        self.assertIn("median_replacement", inspect.signature(register_pair).parameters)
+        with self.assertRaisesRegex(ValueError, "outlier_policy"):
+            ICGNWebGL(outlier_policy="all")
+        self.assertIn("outlier_policy", inspect.signature(register_pair).parameters)
 
     def test_three_webgl_fallback_is_explicitly_testable(self) -> None:
         engine = ICGNWebGL(backend="three-tsl", force_three_webgl=True)

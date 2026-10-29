@@ -24,7 +24,7 @@ Latency boundaries
      - Includes
      - Excludes
    * - browser GPU timestamp
-     - target FIR, configured pyramid passes, IC-GN, median pass
+     - target FIR, configured pyramid passes, IC-GN, optional UOD pass
      - upload, Python transport, readback
    * - browser synchronized wall time
      - the same GPU graph plus browser synchronization
@@ -47,17 +47,17 @@ The authoritative machine-specific measurements are maintained on
 UHD sequence, three warm-ups, and 12 measured resident-image to field calls.
 
 On a changing four-image sequence, the recommended two-level native full
-pyramid measured 12.069 ms median and 13.163 ms p95 for the affine
-resident-image to materialized-field call. Translation mode measured 10.526 ms
-median and 11.170 ms p95. Across the four fixtures, the affine path accepted
+pyramid measured 11.571 ms median and 12.185 ms p95 for the affine
+resident-image to materialized-field call. Translation mode measured 10.992 ms
+median and 11.397 ms p95. Across the four fixtures, the affine path accepted
 31,252 to 31,654 subsets and the translation path 31,312 to 31,654. Their
 maximum truth RMSE values were 0.0627 px and 0.0406 px respectively. Both
 native p95 values are below the 16.667 ms 60 Hz period, but acquisition and
 downstream work remain excluded.
 
 At the same complete Python boundary, the raw-browser two-level WGSL path
-measured 45.369 / 52.165 ms in affine mode and 40.213 / 45.024 ms in
-translation mode. Three.js measured 46.763 / 62.198 ms and 39.966 / 45.706 ms
+measured 41.094 / 44.423 ms in affine mode and 39.996 / 43.995 ms in
+translation mode. Three.js measured 43.203 / 56.336 ms and 39.666 / 44.002 ms
 respectively. These figures use the persistent binary target and packed-result
 transport: no per-frame PNG, image decoding, DevTools frame payload, or JSON
 field remains. The browser process boundary and the required GPU upload still
@@ -84,27 +84,27 @@ campaign:
      - Throughput
      - Median result age
    * - Affine, depth 1
-     - 12.168 ms
-     - 82.18 FPS
-     - **11.955 ms**
+     - 11.368 ms
+     - 88.00 FPS
+     - **11.354 ms**
    * - Affine, depth 2
-     - **11.433 ms**
-     - **87.50 FPS**
-     - 22.616 ms
+     - **10.471 ms**
+     - **95.51 FPS**
+     - 21.008 ms
    * - Translation, depth 1
-     - 10.373 ms
-     - 96.42 FPS
-     - **10.331 ms**
+     - 10.708 ms
+     - 93.43 FPS
+     - **10.496 ms**
    * - Translation, depth 2
-     - **9.474 ms**
-     - **105.58 FPS**
-     - 18.888 ms
+     - **9.607 ms**
+     - **104.09 FPS**
+     - 19.131 ms
 
 Pipelining improves throughput by keeping the queue occupied, but it allows
-additional frames to remain in flight. A two-slot affine period of 11.433 ms
-does not mean that an individual result is 11.433 ms old. A third slot reached
-86.78 FPS affine and 106.16 FPS translation, but median result age was 35.322
-and 29.705 ms. Pipeline depth is unrelated to image-pyramid depth.
+additional frames to remain in flight. A two-slot affine period of 10.471 ms
+does not mean that an individual result is 10.471 ms old. A third slot reached
+95.03 FPS affine and 103.57 FPS translation, but median result age was 31.761
+and 29.854 ms. Pipeline depth is unrelated to image-pyramid depth.
 
 Frame-rate budgets
 ------------------

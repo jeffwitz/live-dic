@@ -32,8 +32,8 @@ import websockets
 from PIL import Image
 
 from .interpolation import normalize_interpolation
-from .median import normalize_median_replacement, normalize_median_scope
 from .motion import AFFINE_PARAMETER_ORDER, normalize_motion_model, parameter_order
+from .outlier import normalize_outlier_policy
 from .subset import DEFAULT_SUBSET_SIZE, normalize_subset_size, normalize_subset_stride
 
 MIN_FRAME_DIMENSION: Final = 16
@@ -68,8 +68,7 @@ class EngineInfo:
     subgroup_solver_width: int = 0
     subgroup_validation: str = "unavailable"
     motion_model: str = "affine"
-    median_scope: str = "all"
-    median_replacement: str = "flagged"
+    outlier_policy: str = "replace"
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,8 +96,10 @@ class RegistrationResult:
     ``parameters[..., :]`` follows the SYCL-compatible order
     ``[tx, du/dx, du/dy, ty, dv/dx, dv/dy]``. The quadratic model appends
     ``[d2u/dx2, d2u/dxdy, d2u/dy2, d2v/dx2, d2v/dxdy, d2v/dy2]``.
-    Status values are 1 for accepted, 2 for median-replaced, 0 for
-    non-converged, and negative for rejected subsets.
+    Status values are 1 for accepted, 2 for displacement outliers, 0 for
+    non-converged, and negative for rejected subsets.  A status-2 state is
+    replaced only when ``outlierPolicy`` is ``"replace"``; ``"flag"`` keeps
+    the raw solver coefficients.
     """
 
     parameters: np.ndarray
@@ -123,15 +124,35 @@ class RegistrationResult:
 
     @property
     def accepted_mask(self) -> np.ndarray:
-        """Return a mask selecting accepted and median-replaced subsets."""
+        """Return a mask selecting accepted and UOD-flagged subsets."""
 
         return self.status > 0.5
 
     @property
-    def replaced_mask(self) -> np.ndarray:
-        """Return a mask selecting subsets replaced by the median filter."""
+    def flagged(self) -> int:
+        """Return the number of displacement outliers detected by UOD.
+
+        :attr:`replaced` is retained as a compatibility field.  Both counts
+        select status 2, even when the ``"flag"`` policy preserves raw values.
+        """
+
+        return self.replaced
+
+    @property
+    def outlier_mask(self) -> np.ndarray:
+        """Return a mask selecting displacement outliers detected by UOD."""
 
         return self.status > 1.5
+
+    @property
+    def replaced_mask(self) -> np.ndarray:
+        """Compatibility alias for :attr:`outlier_mask`.
+
+        With ``outlierPolicy="flag"`` the selected values are only flagged,
+        not replaced.
+        """
+
+        return self.outlier_mask
 
     @property
     def parameter_order(self) -> tuple[str, ...]:
@@ -815,8 +836,7 @@ class ICGNWebGL:
         tolerance_per_level: Iterable[float] | None = None,
         interpolation: str = "bspline",
         motion_model: str = "affine",
-        median_scope: str = "all",
-        median_replacement: str = "flagged",
+        outlier_policy: str = "replace",
         subset_size: int = DEFAULT_SUBSET_SIZE,
         subset_stride: int | None = None,
     ) -> None:
@@ -830,8 +850,7 @@ class ICGNWebGL:
             raise ValueError("force_three_webgl is supported only by the 'three-tsl' backend")
         self.interpolation = normalize_interpolation(interpolation)
         self.motion_model = normalize_motion_model(motion_model)
-        self.median_scope = normalize_median_scope(median_scope)
-        self.median_replacement = normalize_median_replacement(median_replacement)
+        self.outlier_policy = normalize_outlier_policy(outlier_policy)
         self.subset_size = normalize_subset_size(subset_size)
         self.subset_stride = normalize_subset_stride(
             subset_stride,
@@ -1093,8 +1112,7 @@ class ICGNWebGL:
         options: dict[str, Any] = {}
         options["interpolation"] = self.interpolation
         options["motionModel"] = self.motion_model
-        options["medianScope"] = self.median_scope
-        options["medianReplacement"] = self.median_replacement
+        options["outlierPolicy"] = self.outlier_policy
         if iterations is not None:
             options["iterations"] = int(iterations)
         if tolerance is not None:
@@ -1127,8 +1145,7 @@ class ICGNWebGL:
             subgroup_solver_width=int(payload.get("subgroupSolverWidth", 0)),
             subgroup_validation=str(payload.get("subgroupValidation", "unavailable")),
             motion_model=str(payload.get("motionModel", self.motion_model)),
-            median_scope=str(payload.get("medianScope", self.median_scope)),
-            median_replacement=str(payload.get("medianReplacement", self.median_replacement)),
+            outlier_policy=str(payload.get("outlierPolicy", self.outlier_policy)),
         )
 
     def set_reference(
@@ -1422,8 +1439,7 @@ def register_pair(
     tolerance_per_level: Iterable[float] | None = None,
     interpolation: str = "bspline",
     motion_model: str = "affine",
-    median_scope: str = "all",
-    median_replacement: str = "flagged",
+    outlier_policy: str = "replace",
     subset_size: int = DEFAULT_SUBSET_SIZE,
     subset_stride: int | None = None,
     iterations: int | None = None,
@@ -1442,8 +1458,7 @@ def register_pair(
         tolerance_per_level=tolerance_per_level,
         interpolation=interpolation,
         motion_model=motion_model,
-        median_scope=median_scope,
-        median_replacement=median_replacement,
+        outlier_policy=outlier_policy,
         subset_size=subset_size,
         subset_stride=subset_stride,
     ) as engine:

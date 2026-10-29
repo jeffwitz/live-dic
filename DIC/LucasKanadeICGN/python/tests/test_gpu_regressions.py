@@ -85,6 +85,48 @@ def _fractional_pair(
     return texture(x, y), texture(x - dx, y - dy)
 
 
+def _localized_affine_band_pair(
+    width: int,
+    height: int,
+    *,
+    translation: float = 0.3,
+    slope: float = 0.004,
+    band_width: float = 16.0,
+) -> tuple[np.ndarray, np.ndarray, tuple[float, float]]:
+    """Create a narrow, piecewise-affine horizontal displacement band.
+
+    The displacement gradient is zero outside the centered band and ``slope``
+    inside it.  The inverse map is solved explicitly by fixed-point iteration,
+    avoiding image resampling before the analytical texture is evaluated.
+    """
+
+    target_y, target_x = np.mgrid[:height, :width].astype(np.float64)
+    grid_origin = 0.5 * (16 - 1)
+    center_index = round((0.5 * width - grid_origin) / 16.0)
+    band_center = grid_origin + 16.0 * center_index
+    band_left = band_center - 0.5 * band_width
+    band_right = band_left + band_width
+
+    def texture(sample_x: np.ndarray, sample_y: np.ndarray) -> np.ndarray:
+        values = (
+            127.0
+            + 34.0 * np.sin(0.173 * sample_x + 0.071 * sample_y)
+            + 29.0 * np.cos(0.043 * sample_x - 0.191 * sample_y)
+            + 23.0 * np.sin(0.311 * sample_x - 0.137 * sample_y + 0.4)
+            + 17.0 * np.cos(0.229 * sample_x + 0.257 * sample_y - 0.8)
+        )
+        return np.clip(np.rint(values), 0, 255).astype(np.uint8)
+
+    reference_x = target_x - translation
+    for _ in range(12):
+        ramp = np.clip(reference_x - band_left, 0.0, band_width)
+        reference_x = target_x - translation - slope * ramp
+
+    reference = texture(target_x, target_y)
+    target = texture(reference_x, target_y)
+    return reference, target, (band_left, band_right)
+
+
 def _quadratic_pair(
     width: int,
     height: int,
@@ -511,209 +553,145 @@ class GPURegressionTests(unittest.TestCase):
         ).reshape(image.shape)
         np.testing.assert_allclose(actual, _cpu_prefilter(image), rtol=2e-6, atol=2e-5)
 
-    def test_median_filter_replaces_only_aberrant_motion_components(self) -> None:
+    def _filter_injected_state(
+        self,
+        *,
+        motion_model: str,
+        outlier_policy: str,
+        state: np.ndarray,
+    ) -> np.ndarray:
         reference = np.random.default_rng(20261029).integers(0, 256, (48, 48), dtype=np.uint8)
-        cases = (
-            ("affine", 8, 6, ((1, 0.5),)),
-            ("quadratic", 16, 12, ((1, 0.5), (6, 0.01))),
-        )
-        for motion_model, state_width, status_index, outliers in cases:
-            with self.subTest(motion_model=motion_model):
-                engine = ICGNWGPU(
-                    interpolation="linear",
-                    motion_model=motion_model,
-                    prefer_subgroups=False,
-                )
-                try:
-                    engine.set_reference(reference)
-                    self.assertEqual((engine.grid_width, engine.grid_height), (3, 3))
-                    state = np.zeros((9, state_width), dtype=np.float32)
-                    state[:, status_index] = 1.0
-                    state[:, status_index + 1] = 4.0
-                    center = 4
-                    state[center, 0] = 0.05
-                    for component, value in outliers:
-                        state[center, component] = value
-
-                    slot = engine._pipeline_slots[0]
-                    engine.device.queue.write_buffer(slot.buffers["state"], 0, state)
-                    encoder = engine.device.create_command_encoder(
-                        label="GPU component-wise median regression"
-                    )
-                    encoder.clear_buffer(slot.buffers["filtered_state"])
-                    compute_pass = encoder.begin_compute_pass()
-                    compute_pass.set_pipeline(engine._median_filter)
-                    compute_pass.set_bind_group(0, slot.bind_group)
-                    compute_pass.dispatch_workgroups(1, 1, 1)
-                    compute_pass.end()
-                    engine.device.queue.submit([encoder.finish()])
-                    actual = np.frombuffer(
-                        engine.device.queue.read_buffer(slot.buffers["filtered_state"]),
-                        dtype=np.float32,
-                    ).reshape(state.shape)
-
-                    self.assertAlmostEqual(float(actual[center, 0]), 0.05, places=6)
-                    for component, _ in outliers:
-                        self.assertAlmostEqual(float(actual[center, component]), 0.0)
-                    self.assertEqual(actual[center, status_index], 2.0)
-                    self.assertEqual(actual[center, status_index + 1], 4.0)
-                    np.testing.assert_array_equal(actual[:center], state[:center])
-                    np.testing.assert_array_equal(actual[center + 1 :], state[center + 1 :])
-                finally:
-                    engine.close()
-                    engine.device.destroy()
-
-    def test_displacement_median_scope_preserves_derivatives(self) -> None:
-        reference = np.random.default_rng(20261030).integers(0, 256, (48, 48), dtype=np.uint8)
-        cases = (
-            ("affine", 8, 6, ((1, 0.5),)),
-            ("quadratic", 16, 12, ((1, 0.5), (6, 0.01))),
-        )
-        for motion_model, state_width, status_index, derivative_outliers in cases:
-            with self.subTest(motion_model=motion_model):
-                engine = ICGNWGPU(
-                    interpolation="linear",
-                    motion_model=motion_model,
-                    median_scope="displacement",
-                    prefer_subgroups=False,
-                )
-                try:
-                    engine.set_reference(reference)
-                    state = np.zeros((9, state_width), dtype=np.float32)
-                    state[:, status_index] = 1.0
-                    state[:, status_index + 1] = 4.0
-                    center = 4
-                    state[center, 0] = 0.5
-                    for component, value in derivative_outliers:
-                        state[center, component] = value
-
-                    slot = engine._pipeline_slots[0]
-                    engine.device.queue.write_buffer(slot.buffers["state"], 0, state)
-                    encoder = engine.device.create_command_encoder(
-                        label="GPU displacement-only median regression"
-                    )
-                    encoder.clear_buffer(slot.buffers["filtered_state"])
-                    compute_pass = encoder.begin_compute_pass()
-                    compute_pass.set_pipeline(engine._median_filter)
-                    compute_pass.set_bind_group(0, slot.bind_group)
-                    compute_pass.dispatch_workgroups(1, 1, 1)
-                    compute_pass.end()
-                    engine.device.queue.submit([encoder.finish()])
-                    actual = np.frombuffer(
-                        engine.device.queue.read_buffer(slot.buffers["filtered_state"]),
-                        dtype=np.float32,
-                    ).reshape(state.shape)
-
-                    self.assertAlmostEqual(float(actual[center, 0]), 0.0)
-                    for component, value in derivative_outliers:
-                        self.assertAlmostEqual(float(actual[center, component]), value)
-                    self.assertEqual(actual[center, status_index], 2.0)
-                    self.assertEqual(actual[center, status_index + 1], 4.0)
-                    np.testing.assert_array_equal(actual[:center], state[:center])
-                    np.testing.assert_array_equal(actual[center + 1 :], state[center + 1 :])
-                finally:
-                    engine.close()
-                    engine.device.destroy()
-
-    def test_all_replacement_replaces_complete_motion_state(self) -> None:
-        reference = np.random.default_rng(20261031).integers(0, 256, (48, 48), dtype=np.uint8)
-        cases = (
-            ("affine", 8, 6, 1, 0.5),
-            ("quadratic", 16, 12, 6, 0.01),
-        )
-        for motion_model, state_width, status_index, trigger_component, trigger_value in cases:
-            with self.subTest(motion_model=motion_model):
-                engine = ICGNWGPU(
-                    interpolation="linear",
-                    motion_model=motion_model,
-                    median_scope="all",
-                    median_replacement="all",
-                    prefer_subgroups=False,
-                )
-                try:
-                    engine.set_reference(reference)
-                    state = np.zeros((9, state_width), dtype=np.float32)
-                    state[:, status_index] = 1.0
-                    state[:, status_index + 1] = 4.0
-                    center = 4
-                    state[center, 0] = 0.05
-                    state[center, 3] = -0.05
-                    state[center, trigger_component] = trigger_value
-
-                    slot = engine._pipeline_slots[0]
-                    engine.device.queue.write_buffer(slot.buffers["state"], 0, state)
-                    encoder = engine.device.create_command_encoder(
-                        label="GPU complete-state median regression"
-                    )
-                    encoder.clear_buffer(slot.buffers["filtered_state"])
-                    compute_pass = encoder.begin_compute_pass()
-                    compute_pass.set_pipeline(engine._median_filter)
-                    compute_pass.set_bind_group(0, slot.bind_group)
-                    compute_pass.dispatch_workgroups(1, 1, 1)
-                    compute_pass.end()
-                    engine.device.queue.submit([encoder.finish()])
-                    actual = np.frombuffer(
-                        engine.device.queue.read_buffer(slot.buffers["filtered_state"]),
-                        dtype=np.float32,
-                    ).reshape(state.shape)
-
-                    np.testing.assert_array_equal(actual[center, :status_index], 0.0)
-                    self.assertEqual(actual[center, status_index], 2.0)
-                    self.assertEqual(actual[center, status_index + 1], 4.0)
-                    np.testing.assert_array_equal(actual[:center], state[:center])
-                    np.testing.assert_array_equal(actual[center + 1 :], state[center + 1 :])
-                finally:
-                    engine.close()
-                    engine.device.destroy()
-
-    def test_displacement_trigger_can_replace_complete_motion_state(self) -> None:
-        reference = np.random.default_rng(20261101).integers(0, 256, (48, 48), dtype=np.uint8)
         engine = ICGNWGPU(
             interpolation="linear",
-            motion_model="quadratic",
-            median_scope="displacement",
-            median_replacement="all",
+            motion_model=motion_model,
+            outlier_policy=outlier_policy,
             prefer_subgroups=False,
         )
         try:
             engine.set_reference(reference)
+            self.assertEqual((engine.grid_width, engine.grid_height), (3, 3))
             slot = engine._pipeline_slots[0]
-
-            def filtered(state: np.ndarray) -> np.ndarray:
-                engine.device.queue.write_buffer(slot.buffers["state"], 0, state)
-                encoder = engine.device.create_command_encoder(
-                    label="GPU displacement-triggered complete-state median regression"
-                )
-                encoder.clear_buffer(slot.buffers["filtered_state"])
-                compute_pass = encoder.begin_compute_pass()
-                compute_pass.set_pipeline(engine._median_filter)
-                compute_pass.set_bind_group(0, slot.bind_group)
-                compute_pass.dispatch_workgroups(1, 1, 1)
-                compute_pass.end()
-                engine.device.queue.submit([encoder.finish()])
-                return np.frombuffer(
-                    engine.device.queue.read_buffer(slot.buffers["filtered_state"]),
-                    dtype=np.float32,
-                ).reshape(state.shape)
-
-            state = np.zeros((9, 16), dtype=np.float32)
-            state[:, 12] = 1.0
-            state[:, 13] = 4.0
-            center = 4
-            state[center, 6] = 0.01
-            np.testing.assert_array_equal(filtered(state), state)
-
-            state[center, 0] = 0.5
-            actual = filtered(state)
-            np.testing.assert_array_equal(actual[center, :12], 0.0)
-            self.assertEqual(actual[center, 12], 2.0)
-            self.assertEqual(actual[center, 13], 4.0)
+            engine.device.queue.write_buffer(slot.buffers["state"], 0, state)
+            encoder = engine.device.create_command_encoder(label="GPU UOD regression")
+            encoder.clear_buffer(slot.buffers["filtered_state"])
+            compute_pass = encoder.begin_compute_pass()
+            compute_pass.set_pipeline(engine._median_filter)
+            compute_pass.set_bind_group(0, slot.bind_group)
+            compute_pass.dispatch_workgroups(1, 1, 1)
+            compute_pass.end()
+            engine.device.queue.submit([encoder.finish()])
+            return np.frombuffer(
+                engine.device.queue.read_buffer(slot.buffers["filtered_state"]),
+                dtype=np.float32,
+            ).reshape(state.shape)
         finally:
             engine.close()
             engine.device.destroy()
 
+    def test_displacement_outlier_can_replace_the_complete_state(self) -> None:
+        for motion_model, state_width, status_index in (
+            ("affine", 8, 6),
+            ("quadratic", 16, 12),
+        ):
+            with self.subTest(motion_model=motion_model):
+                state = np.zeros((9, state_width), dtype=np.float32)
+                state[:, status_index] = 1.0
+                state[:, status_index + 1] = 4.0
+                center = 4
+                state[center, :status_index] = np.linspace(
+                    0.01, 0.01 * status_index, status_index, dtype=np.float32
+                )
+                state[center, 0] = 0.5
+
+                actual = self._filter_injected_state(
+                    motion_model=motion_model,
+                    outlier_policy="replace",
+                    state=state,
+                )
+
+                np.testing.assert_array_equal(actual[center, :status_index], 0.0)
+                self.assertEqual(actual[center, status_index], 2.0)
+                self.assertEqual(actual[center, status_index + 1], 4.0)
+                np.testing.assert_array_equal(actual[:center], state[:center])
+                np.testing.assert_array_equal(actual[center + 1 :], state[center + 1 :])
+
+    def test_displacement_outlier_can_be_flagged_without_replacement(self) -> None:
+        state = np.zeros((9, 16), dtype=np.float32)
+        state[:, 12] = 1.0
+        state[:, 13] = 4.0
+        center = 4
+        state[center, :12] = np.linspace(0.01, 0.12, 12, dtype=np.float32)
+        state[center, 0] = 0.5
+
+        actual = self._filter_injected_state(
+            motion_model="quadratic",
+            outlier_policy="flag",
+            state=state,
+        )
+
+        np.testing.assert_array_equal(actual[center, :12], state[center, :12])
+        self.assertEqual(actual[center, 12], 2.0)
+        self.assertEqual(actual[center, 13], 4.0)
+        np.testing.assert_array_equal(actual[:center], state[:center])
+        np.testing.assert_array_equal(actual[center + 1 :], state[center + 1 :])
+
+    def test_uod_has_no_false_positives_on_a_healthy_noisy_field(self) -> None:
+        reference, target = _fractional_pair(256, 256, (0.3, -0.2))
+        rng = np.random.default_rng(20261102)
+        noisy_target = np.clip(
+            np.rint(target.astype(np.float32) + rng.normal(0.0, 1.0, target.shape)),
+            0,
+            255,
+        ).astype(np.uint8)
+
+        for outlier_policy in ("replace", "flag"):
+            with self.subTest(outlier_policy=outlier_policy):
+                engine = ICGNWGPU(
+                    interpolation="bspline",
+                    outlier_policy=outlier_policy,
+                    prefer_subgroups=False,
+                )
+                try:
+                    engine.set_reference(reference)
+                    result = engine.register(noisy_target)
+                    accepted = result.status >= 1.0
+                    false_positive_rate = float(np.mean(result.status[accepted] == 2.0))
+                    self.assertLessEqual(false_positive_rate, 0.01)
+                finally:
+                    engine.close()
+                    engine.device.destroy()
+
+    def test_uod_preserves_a_localized_affine_band(self) -> None:
+        reference, target, (band_left, band_right) = _localized_affine_band_pair(512, 512)
+        results = {}
+        for outlier_policy in ("disabled", "replace"):
+            engine = ICGNWGPU(
+                interpolation="bspline",
+                outlier_policy=outlier_policy,
+                prefer_subgroups=False,
+            )
+            try:
+                engine.set_reference(reference)
+                results[outlier_policy] = engine.register(target)
+            finally:
+                engine.close()
+                engine.device.destroy()
+
+        raw = results["disabled"]
+        filtered = results["replace"]
+        centers_x = 0.5 * (16 - 1) + 16.0 * np.arange(raw.parameters.shape[1])
+        in_band = (centers_x >= band_left) & (centers_x < band_right)
+        self.assertEqual(int(np.count_nonzero(in_band)), 1)
+        raw_gradient = raw.parameters[:, in_band, 1]
+        filtered_gradient = filtered.parameters[:, in_band, 1]
+        usable = (raw.status[:, in_band] >= 1.0) & (filtered.status[:, in_band] >= 1.0)
+        self.assertGreater(int(np.count_nonzero(usable)), 20)
+        self.assertGreater(float(np.median(raw_gradient[usable])), 0.003)
+        np.testing.assert_allclose(filtered_gradient[usable], raw_gradient[usable], atol=1e-7)
+        self.assertFalse(np.any(filtered.status[:, in_band][usable] == 2.0))
+
     def _seeded_state(self, *, retry: bool) -> tuple[np.ndarray, ...]:
-        """Read solver state directly, before median filtering can hide a loss.
+        """Read solver state directly, before UOD processing can hide a loss.
 
         One interior subset is enabled with valid metadata and zero target
         energy. Its deterministic rejection proves that the dispatch ran; all

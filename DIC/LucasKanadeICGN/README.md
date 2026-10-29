@@ -37,8 +37,8 @@ complete field is required in Python, use native wgpu.
 
 The long-term objective is sustained 3840 x 2160 DIC at 60 FPS over the full
 acquisition-to-result path. On a changing four-image sequence, the recommended
-two-level native full pyramid measured 12.069 ms median / 13.163 ms p95 in
-affine mode and 10.526 / 11.170 ms in translation mode. The boundary starts
+two-level native full pyramid measured 11.571 ms median / 12.185 ms p95 in
+affine mode and 10.992 / 11.397 ms in translation mode. The boundary starts
 with a resident NumPy image and ends with the materialized NumPy field; direct
 upload, GPU pyramid construction and solving, packed readback, and result
 construction are included. Acquisition and downstream work are excluded, so
@@ -46,10 +46,10 @@ this repository does not yet claim a qualified camera-to-consumer 4K60
 application.
 
 For sustained native input, the same two-level graph now supports a bounded
-full-pyramid stream. With two targets in flight it sustained **87.50 FPS** in
-affine mode and **105.58 FPS** in translation mode on this machine. Median
-result age was 22.616 and 18.888 ms; use one slot for the lower 11.955 and
-10.331 ms median ages. Throughput and result age are reported separately.
+full-pyramid stream. With two targets in flight it sustained **95.51 FPS** in
+affine mode and **104.09 FPS** in translation mode on this machine. Median
+result age was 21.008 and 19.131 ms; use one slot for the lower 11.354 and
+10.496 ms median ages. Throughput and result age are reported separately.
 
 ## Browser backend policy
 
@@ -82,13 +82,13 @@ The implementation retains the main algorithmic choices of the SYCL version:
 - selectable historical B-spline, direct bilinear, and direct Keys-cubic
   target reconstruction;
 - one constant inverse Hessian prepared with the reference image;
-- ZNCC rejection and selectable normalized median replacement of spatial
-  outliers. The default component-wise policy reduced analytic curvature RMSE
-  by 31--37% while leaving displacement RMSE effectively unchanged. Optional
-  whole-state replacement reached 53--56% curvature reduction but worsened
-  displacement and gradient accuracy. The measured trade-off and literature
-  boundary are documented in the
-  [component-wise median explanation](./docs/explanation/component-wise-median.rst).
+- ZNCC rejection and displacement-only universal outlier detection (UOD).
+  The default ``outlier_policy="replace"`` replaces the complete motion state
+  when `tx` or `ty` is inconsistent with recentered neighbours. ``"flag"``
+  preserves the raw state with status 2, and ``"disabled"`` skips the pass.
+  Coefficient-wise derivative filtering was removed because it smoothed
+  healthy noisy fields rather than demonstrating outlier robustness. See
+  [displacement outlier detection](./docs/explanation/displacement-outliers.rst).
 
 The GPU-IO backend requires a different memory layout from C++/SYCL. Translation and the
 four linear affine terms are stored in two floating-point textures. Reference
@@ -100,7 +100,7 @@ inverse-compositional update.
 
 The Three.js backend implements those same operations as TSL storage-buffer
 compute kernels: two target prefilter passes, the selected IC-GN motion model,
-solver, and the final median consistency pass. A startup probe nominates a
+solver, and the final displacement UOD pass. A startup probe nominates a
 fused subgroup solver sized to the measured hardware subgroup. Reference
 preparation then checks the subgroup width reported by that actual solver
 pipeline; a mismatch selects the portable workgroup-memory solver
@@ -117,7 +117,7 @@ The raw browser adapter and wgpu-py load the same canonical
 [`icgn.wgsl`](./python/src/lucas_kanade_icgn/shaders/icgn.wgsl) and
 [`full_pyramid.wgsl`](./python/src/lucas_kanade_icgn/shaders/full_pyramid.wgsl)
 sources. They own the FIR prefilter, increment solve, inverse warp
-composition, convergence, spatial median rules, image reduction, and
+composition, convergence, displacement UOD rules, image reduction, and
 polynomial seed transfer. Their host adapters only allocate resources, transfer frames,
 dispatch kernels, and convert the common packed result. The
 optimized Three.js path keeps its TSL implementation because subgroup
@@ -155,19 +155,18 @@ when within-subset displacement curvature is required. See
 [`Motion models`](./docs/explanation/motion-models.rst) for the equations,
 backend coverage, and current A/B results.
 
-The spatial robustness pass separates detection from replacement. The default
-``median_scope="all", median_replacement="flagged"`` tests every active
-coefficient and replaces only the outliers. ``median_scope="displacement"``
-restricts triggers to ``tx`` and ``ty``; ``median_replacement="all"`` makes
-any detected outlier replace the complete local motion state. All four
-combinations recenter neighbour polynomials. See
-[`Component-wise median replacement`](./docs/explanation/component-wise-median.rst).
+The spatial robustness pass now has one detection scope and three clear
+policies. It tests only recentered ``tx`` and ``ty``. ``replace`` is the
+default and replaces the complete local motion state after a trigger;
+``flag`` leaves raw coefficients untouched and sets status 2; ``disabled``
+omits the pass. See
+[`Displacement outlier detection`](./docs/explanation/displacement-outliers.rst).
 
 Quadratic mode is currently a correctness-first path, not the 4K60 default.
-On this machine, a dedicated two-level UHD run with 32 x 32 subsets and direct
-cubic interpolation measured 56.8--70.0 ms campaign medians and 14.5--16.7
-FPS from a resident NumPy image to the materialized 12-component NumPy field.
-The affine and translation figures above must not be used for quadratic mode.
+Its previous timing campaign predates the current outlier policy and is not
+retained. The affine and translation figures above must not be used for
+quadratic mode; publish a new complete image-to-field campaign before making a
+quadratic throughput claim.
 
 ## Backend and pyramid policy
 
@@ -210,11 +209,11 @@ the recommended full pyramid, each slot owns the finest target, reduced
 targets, reduction intermediates, per-level solver states and seeds, and final
 readback; immutable reference data and pipelines remain shared. Two slots are
 the default throughput compromise. On the current 50-frame changing UHD
-campaign, affine throughput increased from 82.18 FPS at depth one to 87.50 FPS
-at depth two, while translation increased from 96.42 to 105.58 FPS. Median
-result ages increased from 11.955 to 22.616 ms affine and from 10.331 to 18.888
-ms translation. The third slot brought little additional throughput and raised
-median age beyond 35 ms. Slot depth is unrelated to image-pyramid depth.
+campaign, affine throughput increased from 88.00 FPS at depth one to 95.51 FPS
+at depth two, while translation increased from 93.43 to 104.09 FPS. Median
+result ages increased from 11.354 to 21.008 ms affine and from 10.496 to 19.131
+ms translation. The third slot did not improve throughput and raised median age
+above 29 ms. Slot depth is unrelated to image-pyramid depth.
 
 The remaining differences are platform constraints: the browser backends use
 single precision and do not expose the same register controls or queue model as
@@ -233,8 +232,8 @@ levels in one command buffer and performs one final readback. Iterations and
 tolerances are configurable per scale from coarse to fine. Two levels are the
 recommended native default. Three levels remain available explicitly for
 larger expected displacements. On the changing-frame, resident-image to
-materialized-field campaign, the two-level graph measured **12.069 / 13.163
-ms** in affine mode and **10.526 / 11.170 ms** in translation mode. Both p95
+materialized-field campaign, the two-level graph measured **11.571 / 12.185
+ms** in affine mode and **10.992 / 11.397 ms** in translation mode. Both p95
 values are below the 16.667 ms 60 FPS period on this machine. Repeated-target
 and GPU-only figures are retained only as diagnostic kernel measurements. See
 the performance reference for the exact boundaries, protocol, and caveats.

@@ -78,16 +78,10 @@ def _parser() -> argparse.ArgumentParser:
         help="estimated warp model (quadratic adds six second-derivative terms)",
     )
     parser.add_argument(
-        "--median-scope",
-        choices=("displacement", "all"),
-        default="all",
-        help="motion coefficients checked by the spatial median filter",
-    )
-    parser.add_argument(
-        "--median-replacement",
-        choices=("flagged", "all"),
-        default="flagged",
-        help="replace only flagged coefficients or the complete local motion state",
+        "--outlier-policy",
+        choices=("replace", "flag", "disabled"),
+        default="replace",
+        help="replace displacement outliers, flag them without replacement, or disable UOD",
     )
     parser.add_argument(
         "--subset-size",
@@ -178,6 +172,8 @@ def _registration_summary(
         "grid": list(result.status.shape[::-1]),
         "parameter_order": list(result.parameter_order),
         "accepted": result.accepted,
+        "flagged": result.flagged,
+        # Compatibility key retained for existing result consumers.
         "replaced": result.replaced,
         "status_counts": {
             str(int(key)): int(value) for key, value in zip(unique, counts, strict=True)
@@ -227,6 +223,7 @@ def _save_registrations(
         status=np.stack([result.status for result in results]),
         iterations=np.stack([result.iterations for result in results]),
         accepted=np.asarray([result.accepted for result in results]),
+        flagged=np.asarray([result.flagged for result in results]),
         replaced=np.asarray([result.replaced for result in results]),
         mean_translation=np.asarray(
             [result.mean_translation or (np.nan, np.nan) for result in results],
@@ -249,6 +246,7 @@ def _save_benchmark(path: Path, target: Path, result: BenchmarkResult) -> None:
         status=registration.status,
         iterations=registration.iterations,
         accepted=np.asarray(registration.accepted),
+        flagged=np.asarray(registration.flagged),
         replaced=np.asarray(registration.replaced),
         mean_translation=np.asarray(
             registration.mean_translation or (np.nan, np.nan), dtype=np.float64
@@ -346,8 +344,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             tolerance_per_level=args.tolerance_per_level,
             interpolation=args.interpolation,
             motion_model=args.motion_model,
-            median_scope=args.median_scope,
-            median_replacement=args.median_replacement,
+            outlier_policy=args.outlier_policy,
             subset_size=args.subset_size,
             subset_stride=args.subset_stride,
         ) as engine:

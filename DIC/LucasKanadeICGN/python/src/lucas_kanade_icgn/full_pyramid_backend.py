@@ -20,8 +20,8 @@ from typing import Any
 
 from .engine import ICGNError, ImageInput, ReferenceInfo, RegistrationResult, _as_uint8_gray
 from .interpolation import normalize_interpolation
-from .median import normalize_median_replacement, normalize_median_scope
 from .motion import MOTION_MODEL_PIPELINE_CONSTANTS, normalize_motion_model
+from .outlier import normalize_outlier_policy
 from .subset import DEFAULT_SUBSET_SIZE, normalize_subset_size, normalize_subset_stride
 from .weighting import normalize_gaussian_sigma, normalize_spatial_weighting
 from .wgpu_backend import (
@@ -118,7 +118,7 @@ class ICGNWGPUFullPyramid:
     ``iterations_per_level`` and ``tolerance_per_level`` are ordered from the
     coarsest level to the finest level.  Reference preparation is performed
     once per level by :meth:`set_reference`; per target, all reductions,
-    prefilters, solves, seed transfers, and median filters stay on one WebGPU
+    prefilters, solves, seed transfers, and optional UOD passes stay on one WebGPU
     device and are encoded into one command buffer. ``linear`` and ``cubic``
     interpolation omit the per-level prefilters; ``bspline`` remains the
     compatibility default. ``subset_size`` supports the established 8, 16,
@@ -138,8 +138,7 @@ class ICGNWGPUFullPyramid:
         power_preference: str = "high-performance",
         interpolation: str = "bspline",
         motion_model: str = "affine",
-        median_scope: str = "all",
-        median_replacement: str = "flagged",
+        outlier_policy: str = "replace",
         subset_size: int = DEFAULT_SUBSET_SIZE,
         subset_stride: int | None = None,
         spatial_weighting: str = "uniform",
@@ -147,8 +146,7 @@ class ICGNWGPUFullPyramid:
     ) -> None:
         self.interpolation = normalize_interpolation(interpolation)
         self.motion_model = normalize_motion_model(motion_model)
-        self.median_scope = normalize_median_scope(median_scope)
-        self.median_replacement = normalize_median_replacement(median_replacement)
+        self.outlier_policy = normalize_outlier_policy(outlier_policy)
         self.subset_size = normalize_subset_size(subset_size)
         self.subset_stride = normalize_subset_stride(
             subset_stride,
@@ -190,8 +188,7 @@ class ICGNWGPUFullPyramid:
             pyramid_levels=1,
             interpolation=self.interpolation,
             motion_model=self.motion_model,
-            median_scope=self.median_scope,
-            median_replacement=self.median_replacement,
+            outlier_policy=self.outlier_policy,
             subset_size=self.subset_size,
             subset_stride=self.subset_stride,
             spatial_weighting=self.spatial_weighting,
@@ -409,7 +406,7 @@ class ICGNWGPUFullPyramid:
             bind_group = self.device.create_bind_group(
                 layout=self._seed_layout,
                 entries=[
-                    self._buffer_resource(0, source_slot.buffers["filtered_state"]),
+                    self._buffer_resource(0, source._output_buffer(source_slot)),
                     self._buffer_resource(1, destination_slot.buffers["seed_state"]),
                     self._buffer_resource(2, destination_slot.buffers["active_mask"]),
                     self._buffer_resource(3, config),
@@ -523,8 +520,7 @@ class ICGNWGPUFullPyramid:
                 **fine._config,
                 "interpolation": self.interpolation,
                 "motionModel": self.motion_model,
-                "medianScope": self.median_scope,
-                "medianReplacement": self.median_replacement,
+                "outlierPolicy": self.outlier_policy,
                 "subsetStride": self.subset_stride,
                 "spatialWeighting": self.spatial_weighting,
                 "gaussianSigma": self.gaussian_sigma,
@@ -588,7 +584,7 @@ class ICGNWGPUFullPyramid:
             )
         fine_slot = slot.level_slots[0]
         encoder.copy_buffer_to_buffer(
-            fine_slot.buffers["filtered_state"],
+            self._root._output_buffer(fine_slot),
             0,
             fine_slot.readback,
             0,

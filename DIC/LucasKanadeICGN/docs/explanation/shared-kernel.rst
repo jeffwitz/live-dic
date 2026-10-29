@@ -11,16 +11,16 @@ translating shader code.
 ``icgn.wgsl`` also defines the ``INTERPOLATION_MODE`` pipeline override. Both
 hosts compile the same solver body into B-spline, bilinear, and Keys-cubic
 pipelines. Only the sampling function is specialized; increment solving,
-inverse composition, convergence, status, and median rules remain single-source.
+inverse composition, convergence, status, and UOD rules remain single-source.
 The ``MOTION_MODEL`` override similarly specializes the same source for the
 two-parameter translation, six-parameter affine, or twelve-parameter
 quadratic model. Pipeline specialization removes unused branches from the
 per-subset loop.
-``MEDIAN_SCOPE`` independently specializes the post-pass for either the two
-centre displacements or every active polynomial coefficient. The native and
-raw-browser hosts therefore execute the same selectable robustness rule.
-``MEDIAN_REPLACEMENT`` independently selects component-wise replacement or
-replacement of the complete active motion state after any detected outlier.
+``OUTLIER_POLICY`` specializes the displacement-only post-pass. ``replace``
+returns complete-state neighbour medians after a ``tx`` or ``ty`` trigger;
+``flag`` preserves raw coefficients and changes only the status. With
+``disabled``, native and raw-browser hosts omit the dispatch and read the raw
+solver state directly.
 
 Three.js remains the default *browser entry point* because its
 subgroup-specialized TSL solver is faster on the validation GPU and it supplies
@@ -63,7 +63,7 @@ Architecture
                        |       +--------------------+
                        |       | canonical WGSL     |
                        |       | reduce, sample, LK,|
-                       |       | seed, median       |
+                       |       | seed, UOD          |
                        |       +--------------------+
                        |                 ^
                        |                 | loads
@@ -154,7 +154,7 @@ GPU buffers
      - radius-15 FIR weights
      - 31 ``f32`` values
    * - 9
-     - median-filtered state
+     - UOD output state
      - same layout as solver state
    * - 10, optional
      - coarse-to-fine seed state
@@ -174,8 +174,10 @@ absolute weight below ``7e-8``.
 Status contract
 ~~~~~~~~~~~~~~~
 
-``1`` means accepted, ``2`` means accepted after spatial median replacement,
+``1`` means accepted, ``2`` means a displacement outlier was detected,
 ``0`` means the iteration limit was reached, and negative values mean rejected.
+Status 2 may contain a neighbour-median replacement or the raw solver state,
+depending on ``outlierPolicy``.
 ``-1`` is used for invalid geometry or a singular update; ``-2`` is used for
 insufficient normalization energy or ZNCC.
 
@@ -208,7 +210,7 @@ ten-entry bind-group layout. Optional selective recovery allocates seed
 resources lazily; the recommended full-pyramid browser and native adapters
 allocate them once for every finer level. The ``retry_seeded`` entry point uses the same equations
 and seed bindings, but preserves the existing state of disabled subsets.
-Selective recovery needs those already accepted neighbours during the median
+Selective recovery needs those already accepted neighbours during the UOD
 pass. Fresh ``solve_seeded`` dispatches instead write an explicit invalid state
 for a disabled subset, so a cleared buffer cannot be mistaken for a computed
 partial estimate.

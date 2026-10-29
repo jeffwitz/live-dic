@@ -40,13 +40,13 @@ The direct modes do not build B-spline coefficients. Their per-frame graph is:
 
 .. code-block:: text
 
-   target upload -> optional pyramid reductions -> IC-GN solves -> median -> readback
+   target upload -> optional pyramid reductions -> IC-GN solves -> optional UOD -> readback
 
 The default graph retains the two separable FIR dispatches at every scale:
 
 .. code-block:: text
 
-   target upload -> optional reductions -> FIR X -> FIR Y -> IC-GN -> median -> readback
+   target upload -> optional reductions -> FIR X -> FIR Y -> IC-GN -> optional UOD -> readback
 
 Backend coverage
 ----------------

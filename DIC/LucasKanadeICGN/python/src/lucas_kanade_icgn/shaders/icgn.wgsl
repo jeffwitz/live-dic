@@ -64,12 +64,10 @@ override INTERPOLATION_MODE: u32 = 0u;
 // 0: six-parameter affine warp, 1: translation-only warp,
 // 2: twelve-parameter quadratic warp.
 override MOTION_MODEL: u32 = 0u;
-// 0: validate and replace centre displacements only; 1: validate every active
-// affine or quadratic coefficient independently.
-override MEDIAN_SCOPE: u32 = 1u;
-// 0: replace only coefficients classified as outliers; 1: when any checked
-// coefficient is an outlier, replace the complete active motion state.
-override MEDIAN_REPLACEMENT: u32 = 0u;
+// 0: flag displacement outliers without changing parameters; 1: replace the
+// complete active motion state. Value 2 is reserved for the host-side disabled
+// policy, which skips this entry point entirely.
+override OUTLIER_POLICY: u32 = 1u;
 // Square subset width. Repository hosts expose the validated 8, 16, and 32
 // specializations while preserving 16 as the default pipeline constant.
 override SUBSET_SIZE: i32 = 16;
@@ -1052,8 +1050,8 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
         let component_order = array<u32, 12>(
             0u, 3u, 1u, 2u, 4u, 5u, 6u, 7u, 8u, 9u, 10u, 11u,
         );
-        let detection_count = select(2u, 12u, MEDIAN_SCOPE != 0u);
-        let median_count = select(detection_count, 12u, MEDIAN_REPLACEMENT != 0u);
+        let detection_count = 2u;
+        let median_count = select(2u, 12u, OUTLIER_POLICY == 1u);
         for (var active_index = 0u;
              active_index < median_count;
              active_index += 1u) {
@@ -1071,17 +1069,13 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
                 values[index] = abs(neighbours[index][component] - medians[component]);
             }
             let spread = median_eight(&values, count);
-            let score = abs(filtered[component] - medians[component])
-                / (spread + parameter_outlier_floor(component));
+            let score = abs(filtered[component] - medians[component]) / (spread + 0.1);
             if score > 2.0 {
-                if MEDIAN_REPLACEMENT == 0u {
-                    filtered[component] = medians[component];
-                }
                 any_flagged = true;
             }
         }
         if any_flagged {
-            if MEDIAN_REPLACEMENT != 0u {
+            if OUTLIER_POLICY == 1u {
                 for (var active_index = 0u; active_index < 12u; active_index += 1u) {
                     let component = component_order[active_index];
                     filtered[component] = medians[component];
@@ -1150,8 +1144,8 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var any_flagged = false;
     let component_order = array<u32, 6>(0u, 3u, 1u, 2u, 4u, 5u);
     let model_component_count = select(6u, 2u, MOTION_MODEL == 1u);
-    let detection_count = select(model_component_count, 2u, MEDIAN_SCOPE == 0u);
-    let median_count = select(detection_count, model_component_count, MEDIAN_REPLACEMENT != 0u);
+    let detection_count = 2u;
+    let median_count = select(2u, model_component_count, OUTLIER_POLICY == 1u);
     for (var active_index = 0u; active_index < median_count; active_index += 1u) {
         let component = component_order[active_index];
         for (var index = 0u; index < count; index += 1u) {
@@ -1165,17 +1159,13 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
             values[index] = abs(neighbours[index][component] - medians[component]);
         }
         let spread = median_eight(&values, count);
-        let score = abs(filtered[component] - medians[component])
-            / (spread + parameter_outlier_floor(component));
+        let score = abs(filtered[component] - medians[component]) / (spread + 0.1);
         if score > 2.0 {
-            if MEDIAN_REPLACEMENT == 0u {
-                filtered[component] = medians[component];
-            }
             any_flagged = true;
         }
     }
     if any_flagged {
-        if MEDIAN_REPLACEMENT != 0u {
+        if OUTLIER_POLICY == 1u {
             for (var active_index = 0u;
                  active_index < model_component_count;
                  active_index += 1u) {
@@ -1194,29 +1184,6 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
 fn subset_half_extent() -> f32 {
     return 0.5 * (f32(SUBSET_SIZE) - 1.0);
-}
-
-// Return a unit-aware robustness floor for one motion parameter. Translation
-// keeps the historical 0.1-pixel floor. Derivative floors correspond to a
-// 0.001-pixel displacement at the subset edge, so the same physical threshold
-// applies to affine gradients and quadratic curvatures.
-fn parameter_outlier_floor(component: u32) -> f32 {
-    if component == 0u || component == 3u {
-        return 0.1;
-    }
-    let half_extent = max(subset_half_extent(), 1.0);
-    if component < 6u {
-        return 0.001 / half_extent;
-    }
-    let half_extent_squared = half_extent * half_extent;
-    let is_pure_curvature = component == 6u || component == 8u
-        || component == 9u || component == 11u;
-    let displacement_scale = select(
-        half_extent_squared,
-        0.5 * half_extent_squared,
-        is_pure_curvature,
-    );
-    return 0.001 / max(displacement_scale, 1.0);
 }
 
 fn subset_pixel_count() -> f32 {

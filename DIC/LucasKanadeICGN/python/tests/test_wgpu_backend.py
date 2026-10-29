@@ -20,7 +20,7 @@ from lucas_kanade_icgn.full_pyramid_backend import (
     _DEFAULT_TOLERANCES,
     _schedule,
 )
-from lucas_kanade_icgn.median import normalize_median_replacement, normalize_median_scope
+from lucas_kanade_icgn.outlier import normalize_outlier_policy
 from lucas_kanade_icgn.subset import (
     SUPPORTED_SUBSET_SIZES,
     normalize_subset_stride,
@@ -41,29 +41,15 @@ from lucas_kanade_icgn.wgpu_backend import (
 
 
 class NativeReferenceTests(unittest.TestCase):
-    def test_median_scope_is_normalized_and_validated_before_gpu_creation(self) -> None:
-        self.assertEqual(normalize_median_scope(" Displacement "), "displacement")
-        self.assertEqual(normalize_median_scope("ALL"), "all")
-        for value in ("translation", "none", "", 1, None):
-            with self.subTest(value=value), self.assertRaisesRegex(ValueError, "median_scope"):
-                ICGNWGPU(median_scope=value)  # type: ignore[arg-type]
-            with self.subTest(value=value), self.assertRaisesRegex(ValueError, "median_scope"):
-                ICGNWGPUFullPyramid(median_scope=value)  # type: ignore[arg-type]
-
-    def test_median_replacement_is_normalized_and_validated_before_gpu_creation(self) -> None:
-        self.assertEqual(normalize_median_replacement(" Flagged "), "flagged")
-        self.assertEqual(normalize_median_replacement("ALL"), "all")
-        for value in ("component", "none", "", 1, None):
-            with (
-                self.subTest(value=value),
-                self.assertRaisesRegex(ValueError, "median_replacement"),
-            ):
-                ICGNWGPU(median_replacement=value)  # type: ignore[arg-type]
-            with (
-                self.subTest(value=value),
-                self.assertRaisesRegex(ValueError, "median_replacement"),
-            ):
-                ICGNWGPUFullPyramid(median_replacement=value)  # type: ignore[arg-type]
+    def test_outlier_policy_is_normalized_and_validated_before_gpu_creation(self) -> None:
+        self.assertEqual(normalize_outlier_policy(" Replace "), "replace")
+        self.assertEqual(normalize_outlier_policy("FLAG"), "flag")
+        self.assertEqual(normalize_outlier_policy("disabled"), "disabled")
+        for value in ("all", "none", "", 1, None):
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, "outlier_policy"):
+                ICGNWGPU(outlier_policy=value)  # type: ignore[arg-type]
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, "outlier_policy"):
+                ICGNWGPUFullPyramid(outlier_policy=value)  # type: ignore[arg-type]
 
     def test_solver_autotuning_accepts_numerically_equivalent_output(self) -> None:
         portable = np.zeros((200, 8), dtype=np.float32)

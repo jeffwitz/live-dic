@@ -59,7 +59,7 @@ Data flow
                               selected IC-GN iterations
                                       |
                                       v
-                              median consistency pass
+                              optional displacement UOD
                                       |
                                       v
                           parameter/status GPU readback
@@ -111,7 +111,7 @@ medians. :doc:`gpu-optimization` describes the GPU mappings,
 
 For normal native coarse-to-fine processing, ``ICGNWGPUFullPyramid`` uploads
 the finest target once and records reductions, per-level FIR passes, seeded
-solves, affine transfers, the final median pass, and one readback into one
+solves, affine transfers, the final UOD pass, and one readback into one
 ordered command graph. The older selective ``ICGNWGPU`` option instead runs a
 fine solve first and performs CPU-orchestrated recovery only after failures;
 it is an optional compatibility path. See :doc:`backend-selection` for the

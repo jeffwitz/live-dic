@@ -114,8 +114,8 @@ target pyramid, mutable solver states, seeds, and readback; immutable reference
 data remain shared. Contiguous grayscale ``uint8`` arrays are uploaded directly
 to the native texture and never pass through PNG, Chromium, DevTools, or JSON.
 
-On the validation machine, two slots sustained 87.50 FPS in affine mode and
-105.58 FPS in translation mode on the changing UHD sequence. Median result age
-was 22.616 and 18.888 ms, respectively. Depth one reduced those ages to 11.955
-and 10.331 ms. Throughput and result age are different engineering quantities;
+On the validation machine, two slots sustained 95.51 FPS in affine mode and
+104.09 FPS in translation mode on the changing UHD sequence. Median result age
+was 21.008 and 19.131 ms, respectively. Depth one reduced those ages to 11.354
+and 10.496 ms. Throughput and result age are different engineering quantities;
 choose the slot count from the needs of the measurement loop.

@@ -45,7 +45,7 @@ compatibility while reducing arithmetic inside each iteration.
      - 16 x 16 destination pixels
      - 16 x 16
      - five direct texture reads per output
-   * - Seed transfer and median consistency
+   * - Seed transfer and displacement UOD
      - one subset per invocation
      - groups of 256
      - independent one-dimensional records
@@ -260,13 +260,13 @@ calculation:
    per-level spline prefilters retained on the GPU
              |
              v
-   coarsest solve + median consistency
+   coarsest solve + optional UOD
              |
              v
    polynomial seed interpolation, recentering, and scale conversion
              |
              v
-   next solve + median --> ... --> finest solve + median
+   next solve + optional UOD --> ... --> finest solve + optional UOD
              |
              v
    one packed finest-level readback
@@ -295,7 +295,7 @@ A fresh solve writes an explicit state for every dispatched subset, including
 disabled workgroups, so an untouched zero-filled buffer cannot masquerade as
 a computed status-0 estimate. Selective retries use a separate entry point
 sharing the same equations and preserve disabled subsets' existing states;
-the median pass can therefore still use their accepted neighbours. Seed
+the UOD pass can therefore still use their accepted neighbours. Seed
 interpolation ignores unavailable coarse subsets. If none of the four coarse
 neighbours provides an estimate, the finer subset is still executed from a
 zero motion-model seed instead of being suppressed.
@@ -317,7 +317,7 @@ When WebGPU is unavailable, Three.js compiles a separate TSL solver to a
 WebGL2 vertex program and captures its outputs with transform feedback. One
 invocation owns one subset and performs the complete selected-square accumulation and
 iteration loop serially. It calls the same TSL interpolation, Hessian solve,
-inverse composition, convergence, and median helpers as the WebGPU variants,
+inverse composition, convergence, and UOD helpers as the WebGPU variants,
 but contains no workgroup arrays, barriers, or subgroup operations.
 
 .. code-block:: text
@@ -333,7 +333,7 @@ but contains no workgroup arrays, barriers, or subgroup operations.
 
 Three.js PBO-backed storage nodes provide indexed reads for the target
 coefficients, reference fields, Hessians, and neighbouring subset states. The
-horizontal prefilter, vertical prefilter, solver, and median kernels are grouped
+horizontal prefilter, vertical prefilter, solver, and UOD kernels are grouped
 in one ordered ``computeAsync`` call so buffer ping-pong remains visible between
 passes without a JavaScript synchronization after each kernel.
 
@@ -378,7 +378,7 @@ The current implementation applies four WebGL-specific optimizations:
 
 The solver writes three multiple-render-target attachments only after the
 subset converges, is rejected, or reaches the iteration limit. The following
-median pass remains separate because it needs the completed neighbouring
+UOD pass remains separate because it needs the completed neighbouring
 subset field.
 
 Why GPU-IO does not emulate WebGPU lanes

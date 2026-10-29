@@ -3,7 +3,7 @@
  *
  * This adapter deliberately contains host orchestration only. Pyramid
  * reduction and seed transfer come from full_pyramid.wgsl; FIR, affine IC-GN,
- * convergence, and median replacement come from the canonical icgn.wgsl.
+ * convergence, and displacement UOD come from the canonical icgn.wgsl.
  */
 
 import {
@@ -45,8 +45,7 @@ const INTERPOLATION_CONSTANTS = {
   cubic: 2,
 };
 const MOTION_MODEL_CONSTANTS = { affine: 0, translation: 1, quadratic: 2 };
-const MEDIAN_SCOPE_CONSTANTS = { displacement: 0, all: 1 };
-const MEDIAN_REPLACEMENT_CONSTANTS = { flagged: 0, all: 1 };
+const OUTLIER_POLICY_CONSTANTS = { flag: 0, replace: 1, disabled: 2 };
 
 const configuration = {
   subsetStride: SUBSET_STRIDE,
@@ -58,8 +57,7 @@ const configuration = {
   tolerancePerLevel: [...TOLERANCE_SCHEDULES[DEFAULT_PYRAMID_LEVELS]],
   interpolation: 'bspline',
   motionModel: 'affine',
-  medianScope: 'all',
-  medianReplacement: 'flagged',
+  outlierPolicy: 'replace',
 };
 
 let adapter = null;
@@ -84,8 +82,7 @@ let reductionEdges = [];
 let seedEdges = new Map();
 let runtimePyramidLevels = 0;
 let runtimeMotionModel = null;
-let runtimeMedianScope = null;
-let runtimeMedianReplacement = null;
+let runtimeOutlierPolicy = null;
 let FRAME_WIDTH = 0;
 let FRAME_HEIGHT = 0;
 let PIXEL_COUNT = 0;
@@ -201,8 +198,7 @@ const createRuntime = async (width, height) => {
   if (buffers && width === FRAME_WIDTH && height === FRAME_HEIGHT
       && runtimePyramidLevels === levelCount
       && runtimeMotionModel === configuration.motionModel
-      && runtimeMedianScope === configuration.medianScope
-      && runtimeMedianReplacement === configuration.medianReplacement) return false;
+      && runtimeOutlierPolicy === configuration.outlierPolicy) return false;
   await ensureDevice();
   if (levelCount > 1 && device.limits.maxStorageBuffersPerShaderStage < 10) {
     throw new Error(
@@ -367,11 +363,10 @@ const createRuntime = async (width, height) => {
     solvers,
     seededSolvers,
     median: await pipeline(
-      'DIC-RT shared median filter', 'median_filter', shaderModule, layout,
+      'DIC-RT shared displacement UOD', 'median_filter', shaderModule, layout,
       {
         MOTION_MODEL: MOTION_MODEL_CONSTANTS[configuration.motionModel],
-        MEDIAN_SCOPE: MEDIAN_SCOPE_CONSTANTS[configuration.medianScope],
-        MEDIAN_REPLACEMENT: MEDIAN_REPLACEMENT_CONSTANTS[configuration.medianReplacement],
+        OUTLIER_POLICY: OUTLIER_POLICY_CONSTANTS[configuration.outlierPolicy],
         SUBSET_SIZE,
         SUBSET_STRIDE,
       },
@@ -446,7 +441,7 @@ const createRuntime = async (width, height) => {
       state: device.createBuffer({
         label: `DIC-RT state level ${levelIndex}`,
         size: gridCount * stateStride * 4,
-        usage: storage | GPUBufferUsage.COPY_DST,
+        usage: storage | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
       }),
       fir: createBufferWithData(
         `DIC-RT FIR weights level ${levelIndex}`,
@@ -555,7 +550,13 @@ const createRuntime = async (width, height) => {
       bindGroup: device.createBindGroup({
         layout: seedTransferBindGroupLayout,
         entries: [
-          { binding: 0, resource: { buffer: source.buffers.filteredState } },
+          {
+            binding: 0,
+            resource: {
+              buffer: configuration.outlierPolicy === 'disabled'
+                ? source.buffers.state : source.buffers.filteredState,
+            },
+          },
           { binding: 1, resource: { buffer: destination.buffers.seedState } },
           { binding: 2, resource: { buffer: destination.buffers.activeMask } },
           { binding: 3, resource: { buffer: config } },
@@ -569,8 +570,7 @@ const createRuntime = async (width, height) => {
   bindGroup = levels[0].bindGroup;
   runtimePyramidLevels = levelCount;
   runtimeMotionModel = configuration.motionModel;
-  runtimeMedianScope = configuration.medianScope;
-  runtimeMedianReplacement = configuration.medianReplacement;
+  runtimeOutlierPolicy = configuration.outlierPolicy;
   if (timestampQueries) {
     const passCount = 7 * levelCount - 3;
     querySet = device.createQuerySet({ type: 'timestamp', count: 2 * passCount });
@@ -631,22 +631,14 @@ const configure = (options = {}, allowPyramidRebuild = false) => {
   if (!allowPyramidRebuild && referenceReady && motionModel !== configuration.motionModel) {
     throw new Error('Changing motionModel requires setReference()');
   }
-  const medianScope = options.medianScope === undefined
-    ? configuration.medianScope : String(options.medianScope).toLowerCase();
-  if (!(medianScope in MEDIAN_SCOPE_CONSTANTS)) {
-    throw new Error("medianScope must be 'displacement' or 'all'");
-  }
-  if (!allowPyramidRebuild && referenceReady && medianScope !== configuration.medianScope) {
-    throw new Error('Changing medianScope requires setReference()');
-  }
-  const medianReplacement = options.medianReplacement === undefined
-    ? configuration.medianReplacement : String(options.medianReplacement).toLowerCase();
-  if (!(medianReplacement in MEDIAN_REPLACEMENT_CONSTANTS)) {
-    throw new Error("medianReplacement must be 'flagged' or 'all'");
+  const outlierPolicy = options.outlierPolicy === undefined
+    ? configuration.outlierPolicy : String(options.outlierPolicy).toLowerCase();
+  if (!(outlierPolicy in OUTLIER_POLICY_CONSTANTS)) {
+    throw new Error("outlierPolicy must be 'replace', 'flag', or 'disabled'");
   }
   if (!allowPyramidRebuild && referenceReady
-      && medianReplacement !== configuration.medianReplacement) {
-    throw new Error('Changing medianReplacement requires setReference()');
+      && outlierPolicy !== configuration.outlierPolicy) {
+    throw new Error('Changing outlierPolicy requires setReference()');
   }
   const changedLevels = pyramidLevels !== configuration.pyramidLevels;
   const iterationsPerLevel = options.iterationsPerLevel === undefined
@@ -675,8 +667,7 @@ const configure = (options = {}, allowPyramidRebuild = false) => {
     tolerancePerLevel,
     interpolation,
     motionModel,
-    medianScope,
-    medianReplacement,
+    outlierPolicy,
   };
   next.iterationsPerLevel[pyramidLevels - 1] = next.iterations;
   next.tolerancePerLevel[pyramidLevels - 1] = next.tolerance;
@@ -737,7 +728,9 @@ const executePipeline = async ({ measureGpu = false } = {}) => {
   const encoder = device.createCommandEncoder({ label: 'DIC-RT full-pyramid registration' });
   levels.forEach((level) => {
     encoder.clearBuffer(level.buffers.state);
-    encoder.clearBuffer(level.buffers.filteredState);
+    if (configuration.outlierPolicy !== 'disabled') {
+      encoder.clearBuffer(level.buffers.filteredState);
+    }
   });
   const jobs = [];
   reductionEdges.forEach((edge) => {
@@ -772,22 +765,22 @@ const executePipeline = async ({ measureGpu = false } = {}) => {
         workgroups: [Math.ceil(level.width / 8), Math.ceil(level.height / 32), 1],
       });
     }
-    jobs.push(
-      {
-        pipeline: seeded
-          ? pipelines.seededSolvers[configuration.interpolation]
-          : pipelines.solvers[configuration.interpolation],
-        bindGroup: seeded ? level.seededBindGroup : level.bindGroup,
-        group: 0,
-        workgroups: [level.gridWidth, level.gridHeight, 1],
-      },
-      {
+    jobs.push({
+      pipeline: seeded
+        ? pipelines.seededSolvers[configuration.interpolation]
+        : pipelines.solvers[configuration.interpolation],
+      bindGroup: seeded ? level.seededBindGroup : level.bindGroup,
+      group: 0,
+      workgroups: [level.gridWidth, level.gridHeight, 1],
+    });
+    if (configuration.outlierPolicy !== 'disabled') {
+      jobs.push({
         pipeline: pipelines.median,
         bindGroup: level.bindGroup,
         group: 0,
         workgroups: [Math.ceil(level.gridCount / 256), 1, 1],
-      },
-    );
+      });
+    }
   };
   const coarsestIndex = levels.length - 1;
   appendLevel(levels[coarsestIndex], false);
@@ -856,7 +849,9 @@ const readResult = async (timing) => {
     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
   });
   const encoder = device.createCommandEncoder({ label: 'DIC-RT shared WGSL readback' });
-  encoder.copyBufferToBuffer(buffers.filteredState, 0, readback, 0, size);
+  const resultBuffer = configuration.outlierPolicy === 'disabled'
+    ? buffers.state : buffers.filteredState;
+  encoder.copyBufferToBuffer(resultBuffer, 0, readback, 0, size);
   device.queue.submit([encoder.finish()]);
   await readback.mapAsync(GPUMapMode.READ);
   const packed = new Float32Array(readback.getMappedRange());
@@ -1054,8 +1049,7 @@ const info = async () => {
     pyramidLevels: configuration.pyramidLevels,
     interpolation: configuration.interpolation,
     motionModel: configuration.motionModel,
-    medianScope: configuration.medianScope,
-    medianReplacement: configuration.medianReplacement,
+    outlierPolicy: configuration.outlierPolicy,
     iterationsPerLevel: [...configuration.iterationsPerLevel],
     tolerancePerLevel: [...configuration.tolerancePerLevel],
     solver: configuration.pyramidLevels > 1

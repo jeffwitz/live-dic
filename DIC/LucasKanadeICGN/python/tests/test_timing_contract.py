@@ -52,6 +52,7 @@ class _Readback:
 def _engine(clock: _Clock, *, pyramid_levels: int = 1) -> ICGNWGPU:
     engine = object.__new__(ICGNWGPU)
     engine.subset_size = 16
+    engine.outlier_policy = "replace"
     engine._reference_ready = True
     engine.pyramid_levels = pyramid_levels
     engine.height = engine.width = 16
@@ -199,6 +200,37 @@ class NativeTimingTests(unittest.TestCase):
 
 
 class SeededPipelineTests(unittest.TestCase):
+    def test_disabled_policy_reads_raw_state_and_skips_uod_dispatch(self) -> None:
+        engine = object.__new__(ICGNWGPU)
+        engine.outlier_policy = "disabled"
+        engine.interpolation = "linear"
+        engine.width = engine.height = 16
+        engine.grid_width = engine.grid_height = 1
+        engine._median_filter = object()
+        state, filtered_state = object(), object()
+        slot = _RegistrationSlot(
+            None,
+            {"state": state, "filtered_state": filtered_state},
+            object(),
+            None,
+        )
+        compute_pass = mock.Mock()
+        encoder = mock.Mock()
+        encoder.begin_compute_pass.return_value = compute_pass
+        solver = object()
+
+        engine._encode_registration_passes(
+            encoder,
+            slot,
+            solver,
+            solver_bind_group=slot.bind_group,
+        )
+
+        self.assertIs(engine._output_buffer(slot), state)
+        encoder.clear_buffer.assert_called_once_with(state)
+        compute_pass.set_pipeline.assert_called_once_with(solver)
+        compute_pass.dispatch_workgroups.assert_called_once_with(1, 1, 1)
+
     def test_fresh_and_retry_pipelines_share_layout_but_have_distinct_entry_points(self) -> None:
         engine = object.__new__(ICGNWGPU)
         engine.subset_size = 16

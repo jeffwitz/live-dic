@@ -41,7 +41,7 @@ Keep the scientific fields and the validity information together:
        status=result.status,
        iterations=result.iterations,
        accepted=result.accepted,
-       replaced=result.replaced,
+       flagged=result.flagged,
    )
 
 Preserve measurement metadata

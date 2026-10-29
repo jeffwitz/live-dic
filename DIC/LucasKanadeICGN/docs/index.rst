@@ -33,12 +33,12 @@ Python-supervised real-time DIC toward 4K60
    The engineering objective is sustained DIC on 3840 x 2160 frames at 60
    frames per second over the complete acquisition-to-result pipeline. On a
    changing four-image sequence, the recommended two-level native full
-   pyramid measured 12.069 ms median / 13.163 ms p95 in affine mode and
-   10.526 / 11.170 ms in translation mode. These resident-NumPy-image to
+   pyramid measured 11.571 ms median / 12.185 ms p95 in affine mode and
+   10.992 / 11.397 ms in translation mode. These resident-NumPy-image to
    materialized-NumPy-field boundaries are below the 16.667 ms frame period.
    Camera acquisition and downstream consumers are not included. The bounded
-   two-slot full-pyramid stream sustains 87.50 FPS affine and 105.58 FPS
-   translation, with 22.616 and 18.888 ms median result ages. 4K60 processing
+   two-slot full-pyramid stream sustains 95.51 FPS affine and 104.09 FPS
+   translation, with 21.008 and 19.131 ms median result ages. 4K60 processing
    throughput is therefore demonstrated offline, while end-to-end acquisition
    remains to be qualified.
 
@@ -52,20 +52,16 @@ Python-supervised real-time DIC toward 4K60
    historical reproducibility and replacement qualification. See
    :doc:`how-to/migrate-from-gpuio`.
 
-.. important:: Coefficient-wise robustness result
+.. important:: Displacement outlier policy
 
-   The default ``median_scope="all", median_replacement="flagged"`` applies a normalized median test
-   independently to recentered affine gradients and quadratic curvatures,
-   replacing only the coefficients that disagree with their direct
-   neighbourhood. The alternative ``"displacement"`` scope changes only
-   ``tx`` and ``ty``. On the current analytic quadratic
-   qualification, curvature RMSE decreased by 31--37%; the largest gain
-   occurred with one-gray-level image noise. Displacement RMSE was unchanged,
-   while gradient RMSE increased. The optional ``median_replacement="all"``
-   reduced curvature RMSE by 53--56%, but degraded displacement and gradient
-   accuracy enough that it is not the default. This measured trade-off and the
-   bounded literature search are documented in
-   :doc:`explanation/component-wise-median`.
+   The default ``outlier_policy="replace"`` applies a normalized UOD test only
+   to recentered ``tx`` and ``ty``. A detected wrong-basin candidate receives
+   status 2 and its complete motion state is replaced by neighbour medians.
+   ``"flag"`` preserves the raw state while setting status 2; ``"disabled"``
+   omits the post-pass. Earlier coefficient-wise modes were removed because
+   they modified 66--81% of a healthy noisy field and erased a localized
+   deformation band. The rule, validation contracts, and limitations are in
+   :doc:`explanation/displacement-outliers`.
 
 This documentation describes a Python-supervised workflow for GPU-accelerated digital
 image correlation (DIC). The current implementation performs translation,
@@ -109,8 +105,8 @@ Choose the section that matches your task:
 * :doc:`explanation/interpolation` for the selectable B-spline, bilinear, and
   Keys-cubic target reconstruction paths;
 * :doc:`explanation/motion-models` for translation, affine, and quadratic solving;
-* :doc:`explanation/component-wise-median` for the selectable robust
-  replacement policies and their measured curvature/displacement trade-off;
+* :doc:`explanation/displacement-outliers` for UOD replacement, flag-only,
+  and disabled policies and their scientific validation contracts;
 * :doc:`explanation/subset-size` for selectable subset size and overlapping stride;
 * :doc:`explanation/shared-kernel` for the common WGSL source and its exact
   host/buffer contract;
@@ -126,8 +122,8 @@ The implementation provides a resolution-dependent grid of configurable 8 x 8,
 16 x 16, or 32 x 32 subsets, with translation, six-parameter affine, or
 twelve-parameter quadratic motion,
 selectable B-spline, bilinear, or
-Keys-cubic target interpolation, ZNCC validation, and component-wise normalized
-median replacement of spatial outliers. The test dataset is offline;
+Keys-cubic target interpolation, ZNCC validation, and optional displacement
+outlier detection. The test dataset is offline;
 camera acquisition and codec integration are deliberately outside the current
 path.
 
@@ -174,7 +170,7 @@ path.
    explanation/icgn
    explanation/interpolation
    explanation/motion-models
-   explanation/component-wise-median
+   explanation/displacement-outliers
    explanation/subset-size
    explanation/gpu-optimization
    explanation/shared-kernel

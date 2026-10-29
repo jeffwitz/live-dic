@@ -167,26 +167,24 @@ available in native wgpu and `backend="webgpu-wgsl"`; Three.js and deprecated
 GPU-IO reject it.
 Changing the model requires a new engine and new reference preparation.
 
-## Median-filter policy
+## Displacement outlier policy
 
-The default validates every active polynomial coefficient independently:
+The default tests only recentered `tx` and `ty`, then replaces the complete
+motion state if either is a UOD outlier:
 
 ```python
 with ICGNWGPUFullPyramid(
-    median_scope="all",
-    median_replacement="flagged",
+    outlier_policy="replace",
 ) as engine:
     engine.set_reference(reference)
     result = engine.register(target)
 ```
 
-Use `median_scope="displacement"` to let only `tx` and `ty` trigger the
-filter. Use `median_replacement="all"` to replace the complete active motion
-state whenever any selected coefficient is an outlier. The default
-`all/flagged` combination replaces coefficients independently; `all/all` is
-the strongest smoothing option and is not the general default. Both values
-are returned as `config["medianScope"]` and
-`config["medianReplacement"]`.
+Use `outlier_policy="flag"` to keep raw coefficients and mark detected
+subsets with status 2. Use `outlier_policy="disabled"` to omit the post-pass
+entirely. The selected value is returned as `config["outlierPolicy"]`.
+Derivative coefficients are not tested: earlier component-wise modes were
+removed because they behaved as smoothing on healthy noisy data.
 
 ## Persistent Python supervisor
 
@@ -211,7 +209,7 @@ print(reference_info.total_wall_ms)
 print(result.parameters.shape)  # (32, 32, 6)
 print(result.displacement.shape)  # (32, 32, 2)
 print(result.mean_translation)
-print(result.accepted, result.replaced)
+print(result.accepted, result.flagged)
 print(result.timing)
 print(result.rmse((2.0, -1.0)))
 ```
@@ -235,10 +233,16 @@ Quadratic results append:
 
 Use `result.parameter_order` instead of assuming a fixed last-axis size.
 
+`result.flagged` and `result.outlier_mask` describe status-2 UOD detections.
+The older `replaced` and `replaced_mask` names remain compatibility aliases;
+under `outlier_policy="flag"` they select values that were flagged but not
+replaced.
+
 `status` and `iterations` both have shape `(32, 32)`. Status values are:
 
 - `1`: accepted;
-- `2`: replaced by the spatial median filter;
+- `2`: displacement outlier detected; coefficients are replaced only under
+  `outlier_policy="replace"`;
 - `0`: did not converge within the iteration limit;
 - negative: rejected.
 
@@ -324,7 +328,7 @@ print(result.displacement)
 
 The engine uploads contiguous grayscale bytes directly to an `r8unorm`
 texture and returns NumPy views backed by one packed result readback. The FIR,
-selected IC-GN solver and median replacement all run on the native GPU. The
+selected IC-GN solver and optional UOD pass all run on the native GPU. The
 result schema and parameter order are identical to `ICGNWebGL`. This backend
 is experimental and must be selected explicitly. At reference preparation,
 the default `prefer_subgroups=None` policy times both available native solvers
@@ -457,7 +461,8 @@ print(benchmark.wall_median_ms, benchmark.wall_p95_ms)
 ```
 
 GPU time uses WebGL timer queries for GPU-IO and WebGPU timestamp queries for
-Three.js/TSL and raw WGSL. It includes target prefiltering, IC-GN, and median replacement.
+Three.js/TSL and raw WGSL. It includes target prefiltering, IC-GN, and the
+optional displacement UOD pass.
 Wall time excludes Python-to-browser binary transport and result readback.
 
 This explicit two-step form keeps reference construction out of the measured

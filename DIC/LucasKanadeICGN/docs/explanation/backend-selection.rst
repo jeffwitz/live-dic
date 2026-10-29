@@ -104,7 +104,7 @@ conflated:
   the validation GPU).
 
 The full-pyramid reduction passes use 16 x 16 dispatch groups, and polynomial seed
-transfer and median filtering use 256-thread one-dimensional groups. These
+transfer and displacement UOD use 256-thread one-dimensional groups. These
 dispatch dimensions are scheduling choices and do not change with
 ``subset_size`` or ``subset_stride``. See :doc:`subset-size` for the numerical
 geometry.

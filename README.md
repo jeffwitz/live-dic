@@ -36,11 +36,11 @@ correct architecture.
 The project goal is sustained digital image correlation on 3840 x 2160 frames
 at 60 frames per second, measured across the complete acquisition-to-result
 pipeline. On the changing UHD sequence, the recommended two-level
-GPU-resident pyramid measures **12.069 / 13.163 ms median / p95** in affine
-mode and **10.526 / 11.170 ms** in translation mode at the complete
+GPU-resident pyramid measures **11.571 / 12.185 ms median / p95** in affine
+mode and **10.992 / 11.397 ms** in translation mode at the complete
 resident-NumPy-image to materialized-field boundary. A bounded two-slot stream
-sustains **87.50 FPS affine** and **105.58 FPS translation**; its median result
-ages are 22.616 and 18.888 ms, so throughput is not presented as latency. The
+sustains **95.51 FPS affine** and **104.09 FPS translation**; its median result
+ages are 21.008 and 19.131 ms, so throughput is not presented as latency. The
 boundary includes direct target upload, GPU pyramid construction,
 coarse-to-fine IC-GN computation, packed readback, and NumPy result
 construction.
@@ -75,13 +75,13 @@ The implementation in [`DIC/LucasKanadeICGN/`](./DIC/LucasKanadeICGN/) adds:
 - selectable target interpolation: historical Gaussian/cubic B-spline,
   direct bilinear, or direct Keys cubic convolution;
 - reference gradients and a constant inverse Hessian prepared once;
-- ZNCC validation and selectable normalized median replacement. Detection
-  scope (`displacement` or `all`) and replacement policy (`flagged` or `all`)
-  are independent. The default `all/flagged` policy reduced analytic
-  curvature RMSE by 31--37% while preserving displacement accuracy. The
-  optional `all/all` policy reached 53--56% but degraded displacement and
-  gradient accuracy; see the
-  [measured explanation](DIC/LucasKanadeICGN/docs/explanation/component-wise-median.rst);
+- ZNCC validation and a deliberately narrow displacement UOD pass. The default
+  `outlier_policy="replace"` detects inconsistent `tx`/`ty` values and replaces
+  the complete local motion state; `"flag"` preserves raw coefficients with
+  status 2, while `"disabled"` omits the pass. Earlier coefficient-wise modes
+  were removed after they behaved as derivative smoothing on healthy noisy
+  fields; see the
+  [validation and rationale](DIC/LucasKanadeICGN/docs/explanation/displacement-outliers.rst);
 - configurable square subsets including centred odd widths 15, 17, 31, and
   33, plus optional centred Gaussian integration on native wgpu, and an
   independent ``subset_stride`` for overlapping shared-WGSL fields;
@@ -172,7 +172,7 @@ GPU target FIR prefilter
 affine IC-GN iterations
         |
         v
-median consistency pass
+optional displacement UOD pass
         |
         v
 GPU readback --> packed binary field --> NumPy views
@@ -184,7 +184,7 @@ arrays. Browser memory is still separate from NumPy memory, so the binary
 loopback transfer and GPU upload remain measurable.
 
 The native path is shorter: `NumPy uint8 → r8unorm texture → WGSL FIR/IC-GN/
-median → packed readback → NumPy views`. Its detailed resource and workgroup
+optional UOD → packed readback → NumPy views`. Its detailed resource and workgroup
 layout is documented in the [native backend explanation](./DIC/LucasKanadeICGN/docs/explanation/native-backend.rst).
 
 The specialized Three.js/WebGPU solver fuses the IC-GN iterations into one
@@ -221,7 +221,7 @@ For the `t=0 -> 10` pair:
 | Measured mean translation | `(1.999993, -0.999996)` px |
 | Vector RMSE | `2.749e-5` px |
 | Accepted subsets | `900 / 1,024` |
-| Median-replaced subsets | `0` |
+| UOD-flagged subsets | `0` |
 | Mean iterations over accepted subsets | `5.959` |
 
 The images, source hashes, format, and motion parameters are recorded in
@@ -229,28 +229,23 @@ The images, source hashes, format, and motion parameters are recorded in
 
 ## Performance
 
-The current Intel Lunar Lake audit uses eight warm-ups, 50 measured UHD
-registrations, and 32,400 subsets. Native values are complete Python
-calls; browser values are GPU timestamps and therefore exclude Python
-transport and result readback:
+The current Intel Lunar Lake audit uses the complete resident-NumPy-image to
+materialized-NumPy-field boundary, with three warm-ups and 12 changing UHD
+frames per campaign. All rows use the default displacement UOD replacement:
 
-| UHD path | Translation | Median | p95 | Accepted | RMSE |
-|---|---:|---:|---:|---:|---:|
-| Native full pyramid, 2 levels | `(4, -2)` | **10.863 ms** | **12.915 ms** | 31,724 | `1.873e-3` px |
-| Raw browser WGSL, 2 levels | `(4, -2)` | **9.277 ms** | **10.681 ms** | 31,724 | `1.804e-3` px |
-| Three.js/TSL subgroup | `(4, -2)` | 24.300 ms | 26.627 ms | 22,401 | `9.635e-2` px |
-| Three.js/TSL subgroup | `(2, -1)` | **11.893 ms** | **12.798 ms** | 31,654 | `3.05e-5` px |
+| UHD path | Model | Median | p95 | Throughput |
+|---|---|---:|---:|---:|
+| Native full pyramid, 2 levels | affine | **11.571 ms** | **12.185 ms** | **85.37 FPS** |
+| Native full pyramid, 2 levels | translation | **10.992 ms** | **11.397 ms** | **90.72 FPS** |
+| Raw browser WGSL, 2 levels | affine | 41.094 ms | 44.423 ms | 24.27 FPS |
+| Raw browser WGSL, 2 levels | translation | 39.996 ms | 43.995 ms | 24.82 FPS |
+| Three.js/TSL, 1 scale | affine | 43.203 ms | 56.336 ms | 21.91 FPS |
+| Three.js/TSL, 1 scale | translation | 39.666 ms | 44.002 ms | 25.14 FPS |
 
-The difficult `(4, -2)` pair demonstrates why the full pyramid is the native
-recommendation: it both recovers substantially more subsets and avoids failed
-single-scale subsets consuming their iteration ceiling. GPU-IO is intentionally
-absent, and no SYSCL row is currently claimed without a new equivalent run.
-
-These values do **not** prove a sustained 60 Hz Python system:
-the browser kernel benchmark excludes binary process transfer, result transfer,
-and camera acquisition. Real-time qualification must
-measure the complete `engine.register(frame)` call and the acquisition-to-result
-latency on the target machine.
+GPU-IO is intentionally absent, and no SYSCL row is claimed without a new
+equivalent run. These values still exclude camera acquisition and downstream
+consumers; 4K60 qualification must measure the complete deployed
+acquisition-to-result path.
 
 The timing protocol, current measurements, and reproduction commands are documented in
 [`DIC/LucasKanadeICGN/BENCHMARK.md`](./DIC/LucasKanadeICGN/BENCHMARK.md).
@@ -460,7 +455,7 @@ ICGN_RUN_GPU_TESTS=1 python -m unittest discover \
 ```
 
 These tests compare GPU reductions against the CPU reference and check that
-seeded retries preserve the states needed by the median filter. When enabled,
+seeded retries preserve the states needed by the UOD pass. When enabled,
 a missing native dependency or adapter is an error, not a successful skip.
 The portable CI matrix skips these tests; its green status alone does not
 validate shader execution or performance.

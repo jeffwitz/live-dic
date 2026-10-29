@@ -57,14 +57,12 @@ followed by six second derivatives. Native wgpu and browser
 affine, and deprecated GPU-IO is affine-only. See
 :doc:`../explanation/motion-models`.
 
-Every engine accepts ``median_scope="all"`` (the default) or
-``median_scope="displacement"`` to select which coefficients can trigger the
-robustness filter. ``median_replacement="flagged"`` (the default) replaces
-only flagged coefficients; ``median_replacement="all"`` replaces the complete
-active motion state after any trigger. Thus the default remains the
-component-wise ``all/flagged`` policy.
-See :doc:`../explanation/component-wise-median` for the equations, accuracy
-trade-off, and backend contract.
+Every engine accepts ``outlier_policy="replace"`` (the default), ``"flag"``,
+or ``"disabled"``. Detection is always limited to recentered ``tx`` and
+``ty``. ``replace`` changes the complete active state after a trigger;
+``flag`` preserves raw coefficients and sets status 2; ``disabled`` skips the
+post-pass. See :doc:`../explanation/displacement-outliers` for the equations,
+validation contracts, and limits.
 
 Native shared-WGSL engines accept ``subset_size`` values 8, 15, 16, 17, 31,
 32, and 33. The odd widths have an exact centre pixel. They also accept
@@ -146,7 +144,7 @@ Results
    :members:
 
 .. autoclass:: lucas_kanade_icgn.RegistrationResult
-   :members: displacement, accepted_mask, replaced_mask, rmse
+   :members: displacement, accepted_mask, flagged, outlier_mask, replaced_mask, rmse
 
 .. autoclass:: lucas_kanade_icgn.BenchmarkResult
    :members:
@@ -167,9 +165,7 @@ Constants and input types
 
 .. autodata:: lucas_kanade_icgn.MOTION_MODELS
 
-.. autodata:: lucas_kanade_icgn.MEDIAN_SCOPES
-
-.. autodata:: lucas_kanade_icgn.MEDIAN_REPLACEMENTS
+.. autodata:: lucas_kanade_icgn.OUTLIER_POLICIES
 
 .. autodata:: lucas_kanade_icgn.DEFAULT_IN_FLIGHT_FRAMES
 

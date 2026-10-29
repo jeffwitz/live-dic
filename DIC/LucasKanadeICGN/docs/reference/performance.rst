@@ -63,18 +63,17 @@ The offline validation images are tiled to 3840 x 2160. The resulting grid is
 ``subset_stride=16``. No published timing on this page uses overlapping
 subsets. The affine and translation rows in the primary UHD campaign use
 Gaussian/inverse-spline target filtering, 4 x 4 cubic B-spline interpolation,
-a ``5e-3`` fine-scale tolerance, minimum ZNCC ``0.8``, and spatial median
-consistency. No camera or H.264 stage is included.
+a ``5e-3`` fine-scale tolerance, minimum ZNCC ``0.8``, and the default
+displacement UOD pass. No camera or H.264 stage is included.
 
-Primary backend performance measurements use the default
-``median_scope="all", median_replacement="flagged"``. Its isolated analytic
-qualification shows a 31--37% curvature-RMSE reduction relative to
-displacement-only detection. The optional whole-state ``all/all`` policy
-reaches 53--56% but degrades displacement and gradient accuracy; it is not the
-default. See
-:doc:`../explanation/component-wise-median` for the exact protocol, equations,
-and selectable-scope comparison. Quadratic performance remains reported
-separately because its state and solver cost differ from affine mode.
+Primary backend performance measurements use
+``outlier_policy="replace"``. It tests only displacement and replaces the
+complete local state after a trigger. ``flag`` and ``disabled`` are scientific
+control modes, not alternative derivative filters. See
+:doc:`../explanation/displacement-outliers` for the exact rule and the
+false-positive, injected-outlier, and localized-feature regressions.
+Quadratic performance remains reported separately because its state and solver
+cost differ from affine mode.
 
 Primary image-to-field stream measurements
 ------------------------------------------
@@ -98,23 +97,54 @@ campaigns after the binary transport change.
      - Median / p95 latency
      - Sustained throughput
    * - Native full pyramid, 2 levels, affine
-     - **12.069 / 13.163 ms**
-     - **82.80 FPS**
+     - **11.571 / 12.185 ms**
+     - **85.37 FPS**
    * - Native full pyramid, 2 levels, translation
-     - **10.526 / 11.170 ms**
-     - **94.03 FPS**
+     - **10.992 / 11.397 ms**
+     - **90.72 FPS**
    * - Raw browser WGSL, 2 levels, affine
-     - **45.369 / 52.165 ms**
-     - **21.98 FPS**
+     - **41.094 / 44.423 ms**
+     - **24.27 FPS**
    * - Raw browser WGSL, 2 levels, translation
-     - **40.213 / 45.024 ms**
-     - **24.21 FPS**
+     - **39.996 / 43.995 ms**
+     - **24.82 FPS**
    * - Three.js/TSL, 1 scale, affine
-     - **46.763 / 62.198 ms**
-     - **20.21 FPS**
+     - **43.203 / 56.336 ms**
+     - **21.91 FPS**
    * - Three.js/TSL, 1 scale, translation
-     - **39.966 / 45.706 ms**
-     - **24.54 FPS**
+     - **39.666 / 44.002 ms**
+     - **25.14 FPS**
+
+.. list-table:: Native displacement-UOD policy control
+   :header-rows: 1
+
+   * - Model and policy
+     - Median / p95 latency
+     - Throughput
+     - Median / maximum RMSE
+   * - Affine, ``replace``
+     - 11.571 / 12.185 ms
+     - 85.37 FPS
+     - 0.04161 / 0.06274 px
+   * - Affine, ``disabled``
+     - **10.851 / 11.436 ms**
+     - **92.24 FPS**
+     - 0.04161 / 0.07810 px
+   * - Translation, ``replace``
+     - 10.992 / 11.397 ms
+     - 90.72 FPS
+     - **0.03590 / 0.04063 px**
+   * - Translation, ``disabled``
+     - **10.095 / 10.539 ms**
+     - **98.63 FPS**
+     - 0.04487 / 0.06548 px
+
+Omitting the post-pass saved about 0.72 ms affine and 0.90 ms translation in
+these campaign medians. ``disabled`` is not numerically equivalent to the
+default: no wrong-basin replacement occurs, and the maximum error increased on
+this sequence. Current production tables therefore use ``replace``. The raw
+mode is intended for solver studies, explicit downstream outlier handling, and
+isolated timing.
 
 The native and raw-browser WGSL rows execute the same two-level algorithm.
 Their host paths remain different. Native wgpu uploads NumPy bytes in-process
@@ -208,35 +238,35 @@ completed results arrive in short bursts.
      - Stream period
      - Throughput
    * - Affine, depth 1
-     - **11.955 / 13.620 ms**
-     - 12.168 ms
-     - 82.18 FPS
+     - **11.354 / 11.899 ms**
+     - 11.368 ms
+     - 88.00 FPS
    * - Affine, depth 2
-     - 22.616 / 25.208 ms
-     - **11.433 ms**
-     - **87.50 FPS**
+     - 21.008 / 21.683 ms
+     - **10.471 ms**
+     - **95.51 FPS**
    * - Affine, depth 3
-     - 35.322 / 42.598 ms
-     - 11.524 ms
-     - 86.78 FPS
+     - 31.761 / 35.991 ms
+     - 10.523 ms
+     - 95.03 FPS
    * - Translation, depth 1
-     - **10.331 / 11.164 ms**
-     - 10.373 ms
-     - 96.42 FPS
+     - **10.496 / 11.229 ms**
+     - 10.708 ms
+     - 93.43 FPS
    * - Translation, depth 2
-     - 18.888 / 19.827 ms
-     - **9.474 ms**
-     - **105.58 FPS**
+     - 19.131 / 19.665 ms
+     - **9.607 ms**
+     - **104.09 FPS**
    * - Translation, depth 3
-     - 29.705 / 35.718 ms
-     - 9.420 ms
-     - 106.16 FPS
+     - 29.854 / 36.126 ms
+     - 9.655 ms
+     - 103.57 FPS
 
 Depth one remains the low-age choice. Depth two is the recommended
-throughput/latency compromise: it gains 6.5% affine throughput and 9.5%
+throughput/latency compromise: it gains 8.5% affine throughput and 11.4%
 translation throughput over depth one, while approximately doubling result
-age. A third slot adds 0.6 FPS in translation mode, does not improve affine
-throughput in the current rerun, and increases median age beyond 35 ms.
+age. A third slot does not improve throughput and increases median age above
+29 ms.
 
 Reproduce one row with:
 
@@ -246,174 +276,6 @@ Reproduce one row with:
      --backend native-pyramid --width 3840 --height 2160 \
      --campaigns 4 --frames 50 --warmups 8 --pipeline-depth 2 \
      --motion-model affine
-
-Diagnostic repeated-target and kernel results
----------------------------------------------
-
-The following measurements remain useful for kernel optimization, but the
-browser rows are GPU timestamps with a target uploaded before the timed loop.
-They must not be compared directly with the complete native call above.
-
-.. list-table:: October 29 current kernels
-   :header-rows: 1
-   :widths: 36 25 39
-
-   * - Boundary and translation
-     - Current median / p95
-     - Current numerical result
-   * - Native affine full pyramid, 2 levels, ``(4, -2)``
-     - **10.684 / 13.238 ms**
-     - 31,724 accepted; 0.001873 px RMSE
-   * - Native affine full pyramid, 3 levels, ``(4, -2)``
-     - **10.891 / 13.161 ms**
-     - 31,734 accepted; 0.001937 px RMSE
-   * - Raw browser WGSL affine, 2 levels, ``(4, -2)``
-     - **8.681 / 11.698 ms**
-     - 31,724 accepted; 0.001804 px RMSE
-   * - Three.js TSL affine subgroup, ``(4, -2)``
-     - **26.657 / 28.441 ms**
-     - 22,401 accepted; 0.096354 px RMSE
-   * - Three.js TSL affine subgroup, ``(2, -1)``
-     - **12.568 / 14.552 ms**
-     - 31,654 accepted; 0.0000305 px RMSE
-
-The recommended native two-level result corresponds to 93.6 calls/s from the
-median and 75.5 calls/s from p95. The complete-call boundary includes target
-upload, GPU pyramid construction, all coarse-to-fine solves, packed readback,
-and NumPy result construction. Camera acquisition and downstream consumers are
-excluded.
-
-The raw-browser two-level GPU boundary corresponds to 115.2 frames/s from the
-median. Its synchronized browser wall time was 10.8 ms median and 14.2 ms p95.
-The Three.js nominal browser wall time was 14.3 / 16.0 ms; the difficult
-single-scale pair measured 28.7 / 30.7 ms.
-
-Current translation-only A/B comparison
----------------------------------------
-
-The same protocol was repeated with ``motion_model="translation"``. The
-translation solver uses an analytic 2 by 2 inverse and omits all four affine
-Jacobian components and update terms. Result arrays retain the six-parameter
-layout, with the deformation components set to zero.
-
-.. list-table:: Affine versus translation-only current kernels
-   :header-rows: 1
-
-   * - Execution boundary
-     - Affine median / p95
-     - Translation median / p95
-     - Median change
-   * - Native one scale, ``(4, -2)``, complete call
-     - 34.683 / 35.766 ms
-     - **14.948 / 17.696 ms**
-     - **-56.9%**
-   * - Native full pyramid, 2 levels, ``(4, -2)``, complete call
-     - 10.684 / 13.238 ms
-     - **10.121 / 12.352 ms**
-     - **-5.3%**
-   * - Raw browser WGSL, 2 levels, ``(4, -2)``, GPU timestamp
-     - **8.681 / 11.698 ms**
-     - 8.777 / 11.099 ms
-     - +1.1%
-   * - Three.js subgroup, one scale, ``(2, -1)``, GPU timestamp
-     - 12.568 / 14.552 ms
-     - **9.087 / 10.560 ms**
-     - **-27.7%**
-
-The gain is largest when IC-GN iterations dominate. Both two-level paths
-average about one iteration per level on this pair; image reduction, B-spline
-prefiltering, upload, readback, and result construction therefore dominate.
-The raw-WGSL median difference is within run-to-run variation and does not show
-a speed-up in this campaign, although its p95 decreased by 5.1%.
-
-Translation mode accepted 30,185 subsets at 0.0000642 px RMSE in the native
-one-scale difficult case, 31,781 at 0.002110 px in the native pyramid, 31,783
-at 0.002141 px in raw WGSL, and the same 31,654 subsets at 0.0000654 px in
-Three.js. These results validate displacement only; the model cannot measure
-strain. See :doc:`../explanation/motion-models`.
-
-Current fractional-interpolation comparison
--------------------------------------------
-
-The interpolation campaign uses a continuous analytic texture sampled before
-and after the fractional translation ``(0.5, -0.375)``. It therefore does not
-use ``np.roll`` or preselect one reconstruction method while generating the
-target. Native figures use eight warm-ups and 50 complete ``register()``
-calls. Raw-browser figures use three warm-ups and seven GPU timestamp samples;
-Three.js figures use five warm-ups and ten timestamp samples. Binary host
-transport and readback are excluded from browser rows.
-
-.. list-table:: UHD interpolation modes on the current kernels
-   :header-rows: 1
-
-   * - Execution boundary
-     - ``bspline`` median / p95
-     - ``linear`` median / p95
-     - ``cubic`` median / p95
-   * - Native full pyramid, 2 levels, complete call
-     - **11.962 / 13.724 ms**
-     - **7.844 / 9.149 ms**
-     - **9.162 / 10.830 ms**
-   * - Raw browser WGSL, 2 levels, GPU timestamp
-     - 20.935 / 22.427 ms
-     - **10.586 / 13.528 ms**
-     - 15.633 / 17.616 ms
-   * - Three.js/TSL, 1 scale, GPU timestamp
-     - 45.115 / 51.933 ms
-     - **29.357 / 32.276 ms**
-     - 37.381 / 42.067 ms
-
-The matching native RMSE values were 0.00866 px for ``bspline``, 0.01934 px
-for ``linear``, and 0.01024 px for ``cubic``. All three native p95 values are
-below the 16.667 ms frame period on this workload. The tuned schedules reduce
-the average fine solve from 6.43 to 2.30 iterations for B-spline, 11.35 to 4.17
-for linear, and 7.56 to 2.60 for direct cubic. This is not a portable 4K60
-guarantee. See
-:doc:`../explanation/interpolation` for the implementation and selection
-guidance.
-
-Reproduce the native row with:
-
-.. code-block:: bash
-
-   python benchmarks/benchmark_interpolation.py \
-     --width 3840 --height 2160 --levels 2 \
-     --translation 0.5 -0.375 --warmups 8 --repeats 50
-
-Current native sequence throughput
-----------------------------------
-
-The bounded single-scale sequence API was measured in four campaigns, each
-using five warm-ups and 30 UHD targets with an exact ``(2, -1)`` translation.
-
-.. list-table:: Current bounded sequence measurements
-   :header-rows: 1
-
-   * - Execution
-     - Median period
-     - Throughput
-     - Median result latency
-   * - synchronous ``register()``
-     - 11.539 ms
-     - 86.7 FPS
-     - 11.398 ms
-   * - bounded pipeline, depth 1
-     - 11.805 ms
-     - 84.7 FPS
-     - not retained
-   * - **bounded pipeline, depth 2**
-     - **11.026 ms**
-     - **90.7 FPS**
-     - **21.963 ms**
-   * - bounded pipeline, depth 3
-     - 10.780 ms
-     - 92.8 FPS
-     - 32.093 ms
-
-All configurations accepted 31,654 subsets and reported ``3.066e-5`` px RMSE.
-Two slots remain the recommended throughput setting: a third slot adds only
-2.1 FPS while adding another processed frame of result latency. Pipeline depth
-is unrelated to image-pyramid depth.
 
 Kernel configuration represented by the results
 ------------------------------------------------
@@ -426,15 +288,16 @@ Kernel configuration represented by the results
   per lane on the validation GPU;
 * portable shared-WGSL solver: one 16-lane workgroup per subset;
 * full pyramid: GPU-resident five-tap reduction, per-level FIR coefficients,
-  affine seed transfer, seeded solves, final median pass, and one packed
+  affine seed transfer, seeded solves, final UOD pass, and one packed
   readback.
 
 The opt-in GPU tests validate partial FIR tiles, exact integer pyramid
 reduction, fresh seeded state, selective-retry neighbour preservation, and the
-translation-only fractional-displacement contract. They also inject isolated
-affine-gradient and quadratic-curvature outliers to verify both detection
-scopes and both replacement policies. All 106 tests pass when GPU execution is
-enabled.
+translation-only fractional-displacement contract. They also verify complete-
+state replacement and flag-only preservation for an injected displacement
+outlier, at most 1% false positives on a healthy noisy field, and preservation
+of a one-subset-wide affine-gradient band. All 105 tests pass when GPU
+execution is enabled.
 
 Timing boundaries
 -----------------
@@ -446,7 +309,7 @@ Timing boundaries
      - Includes
      - Excludes
    * - Browser GPU timestamp
-     - FIR, reductions when configured, IC-GN, seed transfer, median pass
+     - FIR, reductions when configured, IC-GN, seed transfer, optional UOD pass
      - upload, Python transport, readback
    * - Browser synchronized wall time
      - the same GPU graph plus browser synchronization

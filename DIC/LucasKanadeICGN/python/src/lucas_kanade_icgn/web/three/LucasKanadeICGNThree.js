@@ -67,8 +67,7 @@ const configuration = {
   znccMin: DEFAULT_ZNCC_MIN,
   interpolation: 'bspline',
   motionModel: 'affine',
-  medianScope: 'all',
-  medianReplacement: 'flagged',
+  outlierPolicy: 'replace',
 };
 const toleranceNode = uniform(DEFAULT_TOLERANCE);
 const znccMinNode = uniform(DEFAULT_ZNCC_MIN);
@@ -106,8 +105,7 @@ let useSubgroupSolver = false;
 let solverKind = 'uninitialized';
 let runtimeInterpolation = null;
 let runtimeMotionModel = null;
-let runtimeMedianScope = null;
-let runtimeMedianReplacement = null;
+let runtimeOutlierPolicy = null;
 let targetUsesPackedBytes = false;
 
 /** Allocate all resolution-dependent storage and rebuild the TSL compute graph. */
@@ -119,8 +117,7 @@ const initializeRuntime = (width, height) => {
   if (attributes && width === FRAME_WIDTH && height === FRAME_HEIGHT
       && runtimeInterpolation === configuration.interpolation
       && runtimeMotionModel === configuration.motionModel
-      && runtimeMedianScope === configuration.medianScope
-      && runtimeMedianReplacement === configuration.medianReplacement) return false;
+      && runtimeOutlierPolicy === configuration.outlierPolicy) return false;
 
   FRAME_WIDTH = width;
   FRAME_HEIGHT = height;
@@ -207,8 +204,7 @@ const initializeRuntime = (width, height) => {
   kernels = buildKernels();
   runtimeInterpolation = configuration.interpolation;
   runtimeMotionModel = configuration.motionModel;
-  runtimeMedianScope = configuration.medianScope;
-  runtimeMedianReplacement = configuration.medianReplacement;
+  runtimeOutlierPolicy = configuration.outlierPolicy;
   referenceReady = false;
   targetUsesPackedBytes = false;
   return true;
@@ -973,7 +969,7 @@ const median8Node = (values, count) => {
   );
 };
 
-/** Eight-neighbour median replacement, matching the GPU-IO post-pass. */
+/** Eight-neighbour displacement UOD, matching the shared policy. */
 const makeMedianKernel = () => Fn(() => {
   const subsetIndex = instanceIndex;
   const translation = translationNode.element(subsetIndex);
@@ -1026,76 +1022,50 @@ const makeMedianKernel = () => Fn(() => {
   const filteredTranslation = translation.toVar();
   const filteredLinear = linear.toVar();
   const filteredStatus = status.toVar();
-  const anyFlagged = int(0).toVar();
-  const derivativeFloor = 0.001 / Math.max(0.5 * (SUBSET_SIZE - 1), 1);
-  const filterComponent = (samples, ownValue, robustnessFloor, detect, replace) => {
+  const componentMedian = (samples) => {
     const values = array('float', 8).toVar();
     Loop(8, ({ i }) => {
       values.element(i).assign(samples.element(i));
     });
-    const median = float(median8Node(values, count)).toVar();
+    return float(median8Node(values, count)).toVar();
+  };
+  const displacementOutlier = (samples, ownValue, median) => {
+    const values = array('float', 8).toVar();
     Loop(8, ({ i }) => {
       values.element(i).assign(samples.element(i).sub(median).abs());
     });
-    if (detect) {
-      const spread = median8Node(values, count);
-      const flagged = ownValue.sub(median).abs()
-        .div(spread.add(robustnessFloor)).greaterThan(2);
-      If(flagged, () => {
-        anyFlagged.assign(1);
-        if (configuration.medianReplacement === 'flagged') {
-          replace(median);
-          filteredStatus.x.assign(2);
-        }
-      });
-    }
-    return median;
+    const spread = median8Node(values, count);
+    return ownValue.sub(median).abs().div(spread.add(0.1)).greaterThan(2);
   };
 
-  const medianX = filterComponent(predictedX, translation.x, 0.1, true, (median) => {
-    filteredTranslation.x.assign(median);
-  });
+  const medianX = componentMedian(predictedX);
+  const medianY = componentMedian(predictedY);
   let medianP1 = linear.x;
   let medianP2 = linear.y;
-  const needsDerivativeMedians = configuration.motionModel === 'affine'
-    && (configuration.medianScope === 'all' || configuration.medianReplacement === 'all');
-  if (needsDerivativeMedians) {
-    const detectDerivatives = configuration.medianScope === 'all';
-    medianP1 = filterComponent(p1, linear.x, derivativeFloor, detectDerivatives, (median) => {
-      filteredLinear.x.assign(median);
-    });
-    medianP2 = filterComponent(p2, linear.y, derivativeFloor, detectDerivatives, (median) => {
-      filteredLinear.y.assign(median);
-    });
-  }
-  const medianY = filterComponent(predictedY, translation.y, 0.1, true, (median) => {
-    filteredTranslation.y.assign(median);
-  });
   let medianP4 = linear.z;
   let medianP5 = linear.w;
-  if (needsDerivativeMedians) {
-    const detectDerivatives = configuration.medianScope === 'all';
-    medianP4 = filterComponent(p4, linear.z, derivativeFloor, detectDerivatives, (median) => {
-      filteredLinear.z.assign(median);
-    });
-    medianP5 = filterComponent(p5, linear.w, derivativeFloor, detectDerivatives, (median) => {
-      filteredLinear.w.assign(median);
-    });
+  if (configuration.outlierPolicy === 'replace' && configuration.motionModel === 'affine') {
+    medianP1 = componentMedian(p1);
+    medianP2 = componentMedian(p2);
+    medianP4 = componentMedian(p4);
+    medianP5 = componentMedian(p5);
   }
-  if (configuration.medianReplacement === 'all') {
-    If(anyFlagged.greaterThan(0), () => {
+  const flagged = displacementOutlier(predictedX, translation.x, medianX)
+    .or(displacementOutlier(predictedY, translation.y, medianY));
+  If(flagged, () => {
+    if (configuration.outlierPolicy === 'replace') {
       filteredTranslation.assign(vec2(medianX, medianY));
       if (configuration.motionModel === 'affine') {
         filteredLinear.assign(vec4(medianP1, medianP2, medianP4, medianP5));
       }
-      filteredStatus.x.assign(2);
-    });
-  }
+    }
+    filteredStatus.x.assign(2);
+  });
 
   filteredTranslationNode.element(subsetIndex).assign(filteredTranslation);
   filteredLinearNode.element(subsetIndex).assign(filteredLinear);
   filteredStatusNode.element(subsetIndex).assign(filteredStatus);
-})().compute(GRID_COUNT, [64]).setName('DIC-RT median replacement');
+})().compute(GRID_COUNT, [64]).setName('DIC-RT displacement UOD');
 
 const buildKernels = () => {
   const webgpu = renderer.backend.isWebGPUBackend === true;
@@ -1232,9 +1202,10 @@ const resolveGpuTimestamp = async () => {
 const executePipeline = async ({ measureGpu = false } = {}) => {
   resetSolver();
   const inputKernels = targetUsesPackedBytes ? [kernels.unpack] : [];
+  const outlierKernels = configuration.outlierPolicy === 'disabled' ? [] : [kernels.median];
   const computeKernels = configuration.interpolation === 'bspline'
-    ? [...inputKernels, kernels.prefilterX, kernels.prefilterY, kernels.solver, kernels.median]
-    : [...inputKernels, kernels.solver, kernels.median];
+    ? [...inputKernels, kernels.prefilterX, kernels.prefilterY, kernels.solver, ...outlierKernels]
+    : [...inputKernels, kernels.solver, ...outlierKernels];
   if (renderer.backend.isWebGPUBackend !== true) {
     await renderer.computeAsync(computeKernels);
     if (measureGpu) return resolveGpuTimestamp();
@@ -1251,10 +1222,13 @@ const executePipeline = async ({ measureGpu = false } = {}) => {
 };
 
 const readResult = async (timing) => {
+  const resultAttributes = configuration.outlierPolicy === 'disabled'
+    ? [attributes.translation, attributes.linear, attributes.status]
+    : [attributes.filteredTranslation, attributes.filteredLinear, attributes.filteredStatus];
   const [translationBuffer, linearBuffer, statusBuffer] = await Promise.all([
-    renderer.getArrayBufferAsync(attributes.filteredTranslation),
-    renderer.getArrayBufferAsync(attributes.filteredLinear),
-    renderer.getArrayBufferAsync(attributes.filteredStatus),
+    renderer.getArrayBufferAsync(resultAttributes[0]),
+    renderer.getArrayBufferAsync(resultAttributes[1]),
+    renderer.getArrayBufferAsync(resultAttributes[2]),
   ]);
   const translation = new Float32Array(translationBuffer);
   const linear = new Float32Array(linearBuffer);
@@ -1392,22 +1366,14 @@ function configure(options = {}, allowInterpolationRebuild = false) {
   if (!allowInterpolationRebuild && referenceReady && motionModel !== configuration.motionModel) {
     throw new Error('Changing motionModel requires setReference()');
   }
-  const medianScope = options.medianScope === undefined
-    ? configuration.medianScope : String(options.medianScope).toLowerCase();
-  if (!['displacement', 'all'].includes(medianScope)) {
-    throw new Error("medianScope must be 'displacement' or 'all'");
-  }
-  if (!allowInterpolationRebuild && referenceReady && medianScope !== configuration.medianScope) {
-    throw new Error('Changing medianScope requires setReference()');
-  }
-  const medianReplacement = options.medianReplacement === undefined
-    ? configuration.medianReplacement : String(options.medianReplacement).toLowerCase();
-  if (!['flagged', 'all'].includes(medianReplacement)) {
-    throw new Error("medianReplacement must be 'flagged' or 'all'");
+  const outlierPolicy = options.outlierPolicy === undefined
+    ? configuration.outlierPolicy : String(options.outlierPolicy).toLowerCase();
+  if (!['replace', 'flag', 'disabled'].includes(outlierPolicy)) {
+    throw new Error("outlierPolicy must be 'replace', 'flag', or 'disabled'");
   }
   if (!allowInterpolationRebuild && referenceReady
-      && medianReplacement !== configuration.medianReplacement) {
-    throw new Error('Changing medianReplacement requires setReference()');
+      && outlierPolicy !== configuration.outlierPolicy) {
+    throw new Error('Changing outlierPolicy requires setReference()');
   }
   const next = {
     iterations: options.iterations === undefined
@@ -1417,8 +1383,7 @@ function configure(options = {}, allowInterpolationRebuild = false) {
     znccMin: options.znccMin === undefined ? configuration.znccMin : Number(options.znccMin),
     interpolation,
     motionModel,
-    medianScope,
-    medianReplacement,
+    outlierPolicy,
   };
   if (!Number.isInteger(next.iterations) || next.iterations < 1 || next.iterations > 30) {
     throw new Error('iterations must be an integer between 1 and 30');
@@ -1498,8 +1463,7 @@ const info = async () => {
     subgroupSolverWidth,
     subgroupValidation,
     motionModel: configuration.motionModel,
-    medianScope: configuration.medianScope,
-    medianReplacement: configuration.medianReplacement,
+    outlierPolicy: configuration.outlierPolicy,
     solver: solverKind,
   };
 };

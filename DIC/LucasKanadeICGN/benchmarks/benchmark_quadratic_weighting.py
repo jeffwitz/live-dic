@@ -13,7 +13,6 @@ import json
 import time
 
 import numpy as np
-
 from lucas_kanade_icgn import ICGNWGPUFullPyramid
 
 
@@ -25,14 +24,9 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--warmups", type=int, default=3)
     parser.add_argument("--gaussian-sigma", type=float, default=12.0)
     parser.add_argument(
-        "--median-scope",
-        choices=("displacement", "all"),
-        default="all",
-    )
-    parser.add_argument(
-        "--median-replacement",
-        choices=("flagged", "all"),
-        default="flagged",
+        "--outlier-policy",
+        choices=("replace", "flag", "disabled"),
+        default="replace",
     )
     args = parser.parse_args()
     if args.width < 128 or args.height < 128:
@@ -245,8 +239,7 @@ def main() -> None:
         "resolution": [args.width, args.height],
         "interpolation": "bspline",
         "motion_model": "quadratic",
-        "median_scope": args.median_scope,
-        "median_replacement": args.median_replacement,
+        "outlier_policy": args.outlier_policy,
         "subset_stride": 16,
         "gaussian_sigma": args.gaussian_sigma,
         "cases": {},
@@ -270,8 +263,7 @@ def main() -> None:
                 tolerance_per_level=(5e-3, 2e-3),
                 interpolation="bspline",
                 motion_model="quadratic",
-                median_scope=args.median_scope,
-                median_replacement=args.median_replacement,
+                outlier_policy=args.outlier_policy,
                 subset_stride=16,
                 **options,
             )

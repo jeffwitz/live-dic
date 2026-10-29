@@ -99,7 +99,8 @@ Status field
      - Meaning
      - Included by ``accepted_mask``
    * - ``2``
-     - accepted after one or more component-wise spatial median replacements
+     - displacement outlier detected; state replaced or preserved according
+       to ``outlierPolicy``
      - yes
    * - ``1``
      - converged and accepted by ZNCC
@@ -132,7 +133,7 @@ A normal Three.js ``register`` call reports these timing keys:
    * - Key
      - Included work
    * - ``gpuMs``
-     - WebGPU timestamp for target prefiltering, IC-GN, and median replacement
+     - WebGPU timestamp for target prefiltering, IC-GN, and optional UOD
    * - ``wallMs``
      - browser-side synchronization around the same GPU pipeline
    * - ``binaryInputWallMs``
@@ -162,7 +163,7 @@ The native ``ICGNWGPU`` engine reports:
    * - ``uploadWallMs``
      - direct NumPy buffer to ``r8unorm`` texture submission
    * - ``executeReadbackWallMs``
-     - FIR, IC-GN, median replacement, synchronization, and packed readback
+     - FIR, IC-GN, optional UOD, synchronization, and packed readback
    * - ``totalWallMs``
      - synchronous native call through result statistics and optional pyramid recovery
 

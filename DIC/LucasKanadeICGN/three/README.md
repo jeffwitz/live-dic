@@ -19,7 +19,7 @@ The numerical pipeline is:
 3. run the affine IC-GN iterations in one fused compute dispatch, filling the
    measured hardware subgroup when available (32 lanes on the validation GPU)
    or using the portable 16-lane workgroup fallback;
-4. apply the eight-neighbour median consistency pass on the GPU;
+4. apply the optional eight-neighbour displacement UOD pass on the GPU;
 5. read the six affine parameters, status, and iteration count.
 
 `headless.html` exposes the same `window.ICGNHeadless` contract as the GPU-IO

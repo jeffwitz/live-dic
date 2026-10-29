@@ -33,7 +33,7 @@ The native data path is:
                 +--> one 16-lane workgroup per subset
                 |    all IC-GN iterations in one dispatch
                 |
-                +--> spatial median consistency pass
+                +--> optional displacement UOD pass
                 |
                 v
       packed 8-float state per subset
@@ -58,7 +58,7 @@ is the default, with centred Gaussian integration and sigma available as
 engine options.
 It retains the affine parameter order, 31-value radius-15 target filter vector,
 inverse-compositional update, ZNCC
-test, and median replacement as the browser implementations. The WGSL runtime
+test, and displacement UOD as the browser implementations. The WGSL runtime
 omits only the six outer taps whose combined absolute weight is below ``7e-8``
 and stages the remaining reads in axis-oriented workgroup tiles.
 Reference-dependent values are
@@ -191,7 +191,7 @@ then records this graph into one WebGPU command buffer:
    GPU polynomial seed transfer -> next solve -> ... -> finest solve
              |
              v
-   finest median filter -> one packed readback
+   finest optional UOD pass -> one packed readback
 
 The graph uses separate compute passes rather than one monolithic shader. Pass
 ordering provides the required device-wide dependencies while all images,
@@ -258,10 +258,10 @@ Measured effect
 ---------------
 
 On the validation machine, the changing-frame UHD synchronous campaign
-measured the recommended two-level full pyramid at 12.069 ms median and 13.163
-ms p95 in affine mode. Translation mode measured 10.526 / 11.170 ms. In the
-four-run, 50-frame bounded campaign, two slots sustained 87.50 FPS affine and
-105.58 FPS translation, with median result ages of 22.616 and 18.888 ms. This
+measured the recommended two-level full pyramid at 11.571 ms median and 12.185
+ms p95 in affine mode. Translation mode measured 10.992 / 11.397 ms. In the
+four-run, 50-frame bounded campaign, two slots sustained 95.51 FPS affine and
+104.09 FPS translation, with median result ages of 21.008 and 19.131 ms. This
 boundary starts with a resident ``uint8`` NumPy image and ends with a
 materialized NumPy field; it includes direct target upload, GPU pyramid
 construction and solving, packed result readback, and result statistics.

@@ -53,15 +53,11 @@ Solver options
    by ``webgpu-wgsl``; the independent Three.js and deprecated GPU-IO browser
    backends reject it. Default: ``affine``.
 
-``--median-scope {displacement,all}``
-   Select the coefficients that can trigger the normalized median filter.
-   ``displacement`` checks only ``tx`` and ``ty``; ``all`` checks every active
-   affine or quadratic coefficient. Default: ``all``.
-
-``--median-replacement {flagged,all}``
-   Select what a detected outlier changes. ``flagged`` replaces only flagged
-   coefficients; ``all`` replaces the complete active motion state. Default:
-   ``flagged``.
+``--outlier-policy {replace,flag,disabled}``
+   Control the displacement UOD post-pass. ``replace`` detects inconsistent
+   ``tx`` or ``ty`` and replaces the complete active motion state. ``flag``
+   preserves raw coefficients and sets status 2. ``disabled`` omits the pass.
+   Default: ``replace``.
 
 ``--subset-size {8,15,16,17,31,32,33}``
    Select the square numerical subset width. Default: ``16``.
@@ -138,7 +134,8 @@ Output
 ------
 
 Standard output is JSON containing the device name, timer availability,
-configuration, accepted and replaced counts, mean translation, iteration
+configuration, accepted and UOD-flagged counts, the legacy ``replaced`` alias,
+mean translation, iteration
 statistics, and timing summary. Reference construction is reported separately
 under ``reference_preparation``. Errors are written to standard error and
 return exit status 2.
