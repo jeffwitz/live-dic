@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "lucas-kanade-icgn-webgl"
 version = "0.1.0"
-description = "Headless Python interface for affine IC-GN GPU solvers"
+description = "Headless Python interface for GPU IC-GN motion solvers"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

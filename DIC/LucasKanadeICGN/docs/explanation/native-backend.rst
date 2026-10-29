@@ -31,7 +31,7 @@ The native data path is:
                 +--> tiled separable FIR, horizontal then vertical
                 |
                 +--> one 16-lane workgroup per subset
-                |    all affine IC-GN iterations in one dispatch
+                |    all IC-GN iterations in one dispatch
                 |
                 +--> spatial median consistency pass
                 |
@@ -138,7 +138,7 @@ subsets converge, no pyramid work is performed. Otherwise the native host:
 #. reduces the target with the SYSCL five-tap ``[1, 4, 6, 4, 1] / 16`` filter;
 #. computes the four-source interpolation closure required by failed subsets;
 #. solves only that active closure at the coarse levels;
-#. transfers affine seeds from coarse to fine coordinates; and
+#. transfers motion-model seeds from coarse to fine coordinates; and
 #. retries only failed fine subsets before the spatial consistency pass.
 
 The final merge restores the parameters, status, and iteration count of every
@@ -183,7 +183,7 @@ then records this graph into one WebGPU command buffer:
    coarsest IC-GN solve
              |
              v
-   GPU affine seed transfer -> next solve -> ... -> finest solve
+   GPU polynomial seed transfer -> next solve -> ... -> finest solve
              |
              v
    finest median filter -> one packed readback

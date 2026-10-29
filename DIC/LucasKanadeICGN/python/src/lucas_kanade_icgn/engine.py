@@ -32,11 +32,11 @@ import websockets
 from PIL import Image
 
 from .interpolation import normalize_interpolation
-from .motion import normalize_motion_model
+from .motion import AFFINE_PARAMETER_ORDER, normalize_motion_model, parameter_order
 from .subset import DEFAULT_SUBSET_SIZE, normalize_subset_size
 
 MIN_FRAME_DIMENSION: Final = 16
-PARAMETER_ORDER: Final = ("tx", "du_dx", "du_dy", "ty", "dv_dx", "dv_dy")
+PARAMETER_ORDER: Final = AFFINE_PARAMETER_ORDER
 ImageInput: TypeAlias = str | os.PathLike[str] | bytes | Image.Image | npt.ArrayLike
 _MAX_CDP_MESSAGE_BYTES: Final = 128 * 1024 * 1024
 _POLL_INTERVAL_SECONDS: Final = 0.05
@@ -87,10 +87,11 @@ class ReferenceInfo:
 
 @dataclass(slots=True)
 class RegistrationResult:
-    """Dense affine registration result over the subset grid.
+    """Dense registration result over the subset grid.
 
     ``parameters[..., :]`` follows the SYCL-compatible order
-    ``[tx, du/dx, du/dy, ty, dv/dx, dv/dy]``.
+    ``[tx, du/dx, du/dy, ty, dv/dx, dv/dy]``. The quadratic model appends
+    ``[d2u/dx2, d2u/dxdy, d2u/dy2, d2v/dx2, d2v/dxdy, d2v/dy2]``.
     Status values are 1 for accepted, 2 for median-replaced, 0 for
     non-converged, and negative for rejected subsets.
     """
@@ -126,6 +127,12 @@ class RegistrationResult:
 
         return self.status > 1.5
 
+    @property
+    def parameter_order(self) -> tuple[str, ...]:
+        """Return the names matching the last axis of :attr:`parameters`."""
+
+        return parameter_order(str(self.config.get("motionModel", "affine")))
+
     def rmse(self, truth: Sequence[float]) -> float:
         """Compute vector RMSE against a constant ``(dx, dy)`` translation."""
 
@@ -143,8 +150,9 @@ class RegistrationResult:
         """Build a typed result from a JavaScript headless API payload."""
 
         grid_x, grid_y = map(int, payload["grid"])
+        order = parameter_order(str(payload.get("config", {}).get("motionModel", "affine")))
         parameters = np.asarray(payload["parameters"], dtype=np.float32).reshape(
-            grid_y, grid_x, len(PARAMETER_ORDER)
+            grid_y, grid_x, len(order)
         )
         status = np.asarray(payload["status"], dtype=np.float32).reshape(grid_y, grid_x)
         iterations = np.asarray(payload["iterations"], dtype=np.float32).reshape(grid_y, grid_x)
@@ -181,7 +189,9 @@ class RegistrationResult:
         """Build a result from the browser's interleaved binary state field."""
 
         grid_x, grid_y = map(int, payload["grid"])
-        expected_bytes = grid_x * grid_y * 8 * np.dtype(np.float32).itemsize
+        order = parameter_order(str(payload.get("config", {}).get("motionModel", "affine")))
+        state_stride = int(payload.get("stateStride", 16 if len(order) == 12 else 8))
+        expected_bytes = grid_x * grid_y * state_stride * np.dtype(np.float32).itemsize
         if len(raw) != expected_bytes:
             raise ICGNError(
                 "Browser binary result size mismatch: "
@@ -189,10 +199,11 @@ class RegistrationResult:
             )
         # bytearray keeps the public NumPy field writable while all component
         # arrays remain zero-copy views of one compact allocation.
-        packed = np.frombuffer(bytearray(raw), dtype="<f4").reshape(grid_y, grid_x, 8)
-        parameters = packed[..., :6]
-        status = packed[..., 6]
-        iterations = packed[..., 7]
+        packed = np.frombuffer(bytearray(raw), dtype="<f4").reshape(grid_y, grid_x, state_stride)
+        parameter_count = len(order)
+        parameters = packed[..., :parameter_count]
+        status = packed[..., parameter_count]
+        iterations = packed[..., parameter_count + 1]
         accepted_mask = status > 0.5
         accepted = int(np.count_nonzero(accepted_mask))
         mean_translation = None
@@ -812,6 +823,8 @@ class ICGNWebGL:
             raise ValueError("The deprecated 'gpuio' backend supports only interpolation='bspline'")
         if backend == "gpuio" and self.motion_model != "affine":
             raise ValueError("The deprecated 'gpuio' backend supports only motion_model='affine'")
+        if self.motion_model == "quadratic" and backend != "webgpu-wgsl":
+            raise ValueError("motion_model='quadratic' currently requires backend='webgpu-wgsl'")
         pyramid_options = (pyramid_levels, iterations_per_level, tolerance_per_level)
         if backend != "webgpu-wgsl" and any(value is not None for value in pyramid_options):
             raise ValueError("Pyramid options are supported only by the 'webgpu-wgsl' backend")

@@ -48,12 +48,14 @@ direct modes skip per-target FIR coefficient construction and require matching
 raw-sample reference preparation. The deprecated GPU-IO backend accepts only
 ``bspline``. See :doc:`../explanation/interpolation`.
 
-All active engines also accept ``motion_model="affine"`` or
-``motion_model="translation"`` at construction. ``affine`` remains the
-six-parameter default. Translation mode estimates only ``tx`` and ``ty`` with
-an analytic 2 by 2 inverse while retaining the six-component result layout;
-the four deformation components are exact zeros. The deprecated GPU-IO backend
-is affine-only. See :doc:`../explanation/motion-models`.
+The shared-WGSL engines also accept ``motion_model="quadratic"`` in addition
+to ``"affine"`` and ``"translation"``. Affine remains the six-parameter
+default. Translation estimates only ``tx`` and ``ty`` while retaining the
+six-component layout. Quadratic returns twelve components: the affine terms
+followed by six second derivatives. Native wgpu and browser
+``webgpu-wgsl`` support all three models; Three.js supports translation and
+affine, and deprecated GPU-IO is affine-only. See
+:doc:`../explanation/motion-models`.
 
 Native single-scale and streaming engine
 ----------------------------------------
@@ -91,7 +93,7 @@ Full-pyramid native engine
 
 This is the recommended native coarse-to-fine backend. It runs every configured
 scale for every target. Pyramid
-reduction, affine seed transfer, and all IC-GN solves remain GPU-resident in one
+reduction, polynomial seed transfer, and all IC-GN solves remain GPU-resident in one
 command submission. Per-level iteration and tolerance tuples are ordered from
 coarse to fine. Two levels are the default and recommended native configuration;
 three levels are opt-in for a larger expected displacement range.
@@ -142,6 +144,10 @@ Constants and input types
 -------------------------
 
 .. autodata:: lucas_kanade_icgn.PARAMETER_ORDER
+
+.. autodata:: lucas_kanade_icgn.AFFINE_PARAMETER_ORDER
+
+.. autodata:: lucas_kanade_icgn.QUADRATIC_PARAMETER_ORDER
 
 .. autodata:: lucas_kanade_icgn.MOTION_MODELS
 

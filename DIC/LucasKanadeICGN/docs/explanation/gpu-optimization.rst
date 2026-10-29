@@ -263,7 +263,7 @@ calculation:
    coarsest solve + median consistency
              |
              v
-   affine seed interpolation and scale conversion
+   polynomial seed interpolation, recentering, and scale conversion
              |
              v
    next solve + median --> ... --> finest solve + median
@@ -298,7 +298,7 @@ sharing the same equations and preserve disabled subsets' existing states;
 the median pass can therefore still use their accepted neighbours. Seed
 interpolation ignores unavailable coarse subsets. If none of the four coarse
 neighbours provides an estimate, the finer subset is still executed from a
-zero affine seed instead of being suppressed.
+zero motion-model seed instead of being suppressed.
 
 Iteration limits are ceilings rather than fixed costs: each subset exits as
 soon as its corner-change and ZNCC criteria converge. The qualified defaults

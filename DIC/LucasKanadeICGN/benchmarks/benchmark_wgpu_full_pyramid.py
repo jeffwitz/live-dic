@@ -30,7 +30,9 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--warmups", type=int, default=3)
     parser.add_argument("--repeats", type=int, default=10)
     parser.add_argument(
-        "--motion-model", choices=("affine", "translation"), default="affine"
+        "--motion-model",
+        choices=("affine", "translation", "quadratic"),
+        default="affine",
     )
     return parser.parse_args()
 

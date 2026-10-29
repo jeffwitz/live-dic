@@ -63,7 +63,7 @@ Two different native pyramid strategies
 
 ``ICGNWGPUFullPyramid`` executes every configured level for every frame.  It
 uploads the finest target once, constructs reduced targets on the GPU,
-prefilters and solves from coarse to fine, transfers affine seeds on the GPU,
+prefilters and solves from coarse to fine, transfers motion-model seeds on the GPU,
 and reads back only the final fine field.  Two levels with the ``(8, 16)``
 coarse-to-fine iteration ceilings are the current native recommendation.
 
@@ -102,7 +102,7 @@ conflated:
   specialized Three.js path fills the measured hardware subgroup (32 lanes on
   the validation GPU).
 
-The full-pyramid reduction passes use 16 x 16 dispatch groups, and affine seed
+The full-pyramid reduction passes use 16 x 16 dispatch groups, and polynomial seed
 transfer and median filtering use 256-thread one-dimensional groups. These
 dispatch dimensions are scheduling choices and do not change with
 ``subset_size``. See :doc:`subset-size` for the numerical geometry.

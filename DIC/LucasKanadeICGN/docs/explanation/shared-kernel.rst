@@ -13,9 +13,9 @@ hosts compile the same solver body into B-spline, bilinear, and Keys-cubic
 pipelines. Only the sampling function is specialized; increment solving,
 inverse composition, convergence, status, and median rules remain single-source.
 The ``MOTION_MODEL`` override similarly specializes the same source for the
-six-parameter affine model or the two-parameter translation model. Pipeline
-specialization removes unused translation-mode branches from the per-subset
-loop.
+two-parameter translation, six-parameter affine, or twelve-parameter
+quadratic model. Pipeline specialization removes unused branches from the
+per-subset loop.
 
 Three.js remains the default *browser entry point* because its
 subgroup-specialized TSL solver is faster on the validation GPU and it supplies
@@ -90,10 +90,16 @@ Geometry
 * subset centre: ``(S/2 + S gx, S/2 + S gy)``;
 * local coordinates: ``[-(S-1)/2, +(S-1)/2]`` on each axis;
 * affine parameter order: ``[tx, du/dx, du/dy, ty, dv/dx, dv/dy]``.
+* quadratic extension: ``[d2u/dx2, d2u/dxdy, d2u/dy2, d2v/dx2,
+  d2v/dxdy, d2v/dy2]``.
 
 The translation model retains this layout but only indices 0 and 3 are active;
 the other four entries are zero. Its convergence value is the Euclidean norm
 of the translation increment. See :doc:`motion-models`.
+
+Quadratic mode uses the same first six entries and appends the second
+derivatives. Its geometry and convergence checks sample a 3 by 3 set over the
+subset so interior curvature is represented, not only corner motion.
 
 The convergence value is the maximum Euclidean displacement caused by the
 increment at the four subset corners. Single-scale engines default to a
@@ -127,28 +133,30 @@ GPU buffers
      - ``vec4(F, gx, gy, padding)`` per pixel
    * - 5
      - inverse Hessian
-     - nine ``vec4`` values per subset
+     - 1, 9, or 36 ``vec4`` values per subset for translation, affine, or quadratic
    * - 6
      - reference metadata
-     - four ``vec4`` values per subset
+     - two, four, or seven ``vec4`` values per subset
    * - 7
      - solver state
-     - two ``vec4`` values per subset
+     - two ``vec4`` values, or four in quadratic mode
    * - 8
      - radius-15 FIR weights
      - 31 ``f32`` values
    * - 9
      - median-filtered state
-     - two ``vec4`` values per subset
+     - same layout as solver state
    * - 10, optional
      - coarse-to-fine seed state
-     - two read-only ``vec4`` values per subset
+     - two or four read-only ``vec4`` values per subset
    * - 11, optional
      - active/retry mask for seeded solves
      - one read-only ``u32`` per subset
 
-The two packed state vectors are ``[tx, du/dx, du/dy, ty]`` and
-``[dv/dx, dv/dy, status, iterations]``. Hosts must not reinterpret this order.
+Translation and affine states use ``[tx, du/dx, du/dy, ty]`` followed by
+``[dv/dx, dv/dy, status, iterations]``. Quadratic states use three parameter
+vectors in documented public order and a fourth
+``[status, iterations, padding, padding]``. Hosts must not reinterpret this order.
 The full 31-value FIR record preserves the common buffer contract. The current
 WGSL prefilter reads its central 25 entries; the six omitted tails have a total
 absolute weight below ``7e-8``.
@@ -168,13 +176,18 @@ The WGSL file separates the algorithm into ordinary functions:
 
 * ``sample_cubic`` reconstructs the target intensity;
 * ``solve_increment`` applies the inverse Hessian;
-* ``compose_inverse_update`` composes the affine inverse update;
+* ``compose_inverse_update`` composes translation or affine inverse updates;
+* ``compose_quadratic_inverse_update`` composes the exact lifted second-order update;
 * ``corner_change`` evaluates convergence;
 * ``convergence_status`` applies tolerance and ZNCC rules.
 
 The portable solve entry point retains the GPU-specific organization: one
 16-lane workgroup owns one subset and reduces three packed partial-sum vectors.
-Each lane processes 4, 16, or 64 pixels for ``S=8``, ``16``, or ``32``. A
+Quadratic mode then reuses two of those vectors for a second reduction of its
+six curvature products. It deliberately does not declare a fourth reduction
+buffer: doing so reduced affine occupancy on the validation GPU even when the
+pipeline override selected affine mode. Each lane processes 4, 16, or 64
+pixels for ``S=8``, ``16``, or ``32``. A
 ``workgroupUniformLoad`` makes the convergence decision uniform, so completed
 subsets leave the iteration loop without violating barrier uniformity.
 
@@ -192,8 +205,8 @@ partial estimate.
 
 ``full_pyramid.wgsl`` adds three orchestration entry points without duplicating
 the IC-GN equations: ``reduce_x`` and ``reduce_y`` construct reduced targets,
-while ``transfer_seed`` interpolates the coarser affine field and rescales its
-translation for the next finer level. Pass ordering is encoded once in the
+while ``transfer_seed`` interpolates the coarser polynomial field, recentres
+it, and rescales its coefficients for the next finer level. Pass ordering is encoded once in the
 host command graph and all numerical solve operations remain in ``icgn.wgsl``.
 
 Change policy

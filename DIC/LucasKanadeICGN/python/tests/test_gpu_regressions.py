@@ -85,6 +85,60 @@ def _fractional_pair(
     return texture(x, y), texture(x - dx, y - dy)
 
 
+def _quadratic_pair(
+    width: int,
+    height: int,
+    parameters: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Sample a continuous texture through a known quadratic displacement."""
+
+    target_y, target_x = np.mgrid[:height, :width].astype(np.float64)
+    origin_x = 0.5 * (width - 1)
+    origin_y = 0.5 * (height - 1)
+
+    def texture(sample_x: np.ndarray, sample_y: np.ndarray) -> np.ndarray:
+        values = (
+            127.0
+            + 34.0 * np.sin(0.173 * sample_x + 0.071 * sample_y)
+            + 29.0 * np.cos(0.043 * sample_x - 0.191 * sample_y)
+            + 23.0 * np.sin(0.311 * sample_x - 0.137 * sample_y + 0.4)
+            + 17.0 * np.cos(0.229 * sample_x + 0.257 * sample_y - 0.8)
+        )
+        return np.clip(np.rint(values), 0, 255).astype(np.uint8)
+
+    reference_x = target_x.copy()
+    reference_y = target_y.copy()
+    for _ in range(20):
+        x = reference_x - origin_x
+        y = reference_y - origin_y
+        u = (
+            parameters[0]
+            + parameters[1] * x
+            + parameters[2] * y
+            + 0.5 * parameters[6] * x * x
+            + parameters[7] * x * y
+            + 0.5 * parameters[8] * y * y
+        )
+        v = (
+            parameters[3]
+            + parameters[4] * x
+            + parameters[5] * y
+            + 0.5 * parameters[9] * x * x
+            + parameters[10] * x * y
+            + 0.5 * parameters[11] * y * y
+        )
+        residual_x = reference_x + u - target_x
+        residual_y = reference_y + v - target_y
+        j11 = 1.0 + parameters[1] + parameters[6] * x + parameters[7] * y
+        j12 = parameters[2] + parameters[7] * x + parameters[8] * y
+        j21 = parameters[4] + parameters[9] * x + parameters[10] * y
+        j22 = 1.0 + parameters[5] + parameters[10] * x + parameters[11] * y
+        determinant = j11 * j22 - j12 * j21
+        reference_x -= (j22 * residual_x - j12 * residual_y) / determinant
+        reference_y -= (-j21 * residual_x + j11 * residual_y) / determinant
+    return texture(target_x, target_y), texture(reference_x, reference_y)
+
+
 @unittest.skipUnless(
     os.environ.get("ICGN_RUN_GPU_TESTS") == "1",
     "set ICGN_RUN_GPU_TESTS=1 to execute the native GPU regressions",
@@ -277,6 +331,72 @@ class GPURegressionTests(unittest.TestCase):
             self.assertGreater(result.accepted, 180)
             self.assertLess(result.rmse(truth), 0.03)
             np.testing.assert_array_equal(result.parameters[..., (1, 2, 4, 5)], 0.0)
+        finally:
+            engine.close()
+            engine.device.destroy()
+
+    def test_quadratic_model_recovers_second_order_displacement(self) -> None:
+        truth = np.asarray(
+            (
+                0.5,
+                0.002,
+                -0.001,
+                -0.3,
+                0.001,
+                0.002,
+                8e-4,
+                -5e-4,
+                4e-4,
+                -4e-4,
+                6e-4,
+                -7e-4,
+            ),
+            dtype=np.float64,
+        )
+        reference, target = _quadratic_pair(256, 256, truth)
+        engine = ICGNWGPUFullPyramid(
+            pyramid_levels=3,
+            subset_size=32,
+            interpolation="cubic",
+            motion_model="quadratic",
+            iterations_per_level=(8, 12, 20),
+            tolerance_per_level=(1e-2, 5e-3, 2e-3),
+        )
+        try:
+            engine.set_reference(reference, zncc_min=0.7)
+            result = engine.register(target)
+            mask = result.accepted_mask
+            grid_y, grid_x = np.mgrid[: result.status.shape[0], : result.status.shape[1]]
+            local_x = (grid_x + 0.5) * 32 - 0.5 - 127.5
+            local_y = (grid_y + 0.5) * 32 - 0.5 - 127.5
+            expected = np.zeros_like(result.parameters, dtype=np.float64)
+            expected[..., 0] = (
+                truth[0]
+                + truth[1] * local_x
+                + truth[2] * local_y
+                + 0.5 * truth[6] * local_x**2
+                + truth[7] * local_x * local_y
+                + 0.5 * truth[8] * local_y**2
+            )
+            expected[..., 1] = truth[1] + truth[6] * local_x + truth[7] * local_y
+            expected[..., 2] = truth[2] + truth[7] * local_x + truth[8] * local_y
+            expected[..., 3] = (
+                truth[3]
+                + truth[4] * local_x
+                + truth[5] * local_y
+                + 0.5 * truth[9] * local_x**2
+                + truth[10] * local_x * local_y
+                + 0.5 * truth[11] * local_y**2
+            )
+            expected[..., 4] = truth[4] + truth[9] * local_x + truth[10] * local_y
+            expected[..., 5] = truth[5] + truth[10] * local_x + truth[11] * local_y
+            expected[..., 6:] = truth[6:]
+            error = result.parameters.astype(np.float64) - expected
+            displacement_rmse = np.sqrt(np.mean(np.sum(error[..., (0, 3)][mask] ** 2, axis=1)))
+            curvature_rmse = np.sqrt(np.mean(error[..., 6:][mask] ** 2))
+            self.assertGreater(result.accepted, 30)
+            self.assertLess(displacement_rmse, 0.02)
+            self.assertLess(curvature_rmse, 2e-4)
         finally:
             engine.close()
             engine.device.destroy()

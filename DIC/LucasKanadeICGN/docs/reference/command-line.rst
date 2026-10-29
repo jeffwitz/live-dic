@@ -45,11 +45,13 @@ Solver options
    Select historical Gaussian/B-spline reconstruction, direct bilinear
    interpolation, or direct Keys cubic convolution. Default: ``bspline``.
 
-``--motion-model {affine,translation}``
-   Select the default six-parameter affine model or the displacement-only
-   translation model with an analytic 2 by 2 Hessian inverse. Translation mode
-   keeps the six-component result layout and writes zero deformation terms.
-   The deprecated ``gpuio`` backend does not support it. Default: ``affine``.
+``--motion-model {affine,translation,quadratic}``
+   Select the default six-parameter affine model, the displacement-only
+   translation model with an analytic 2 by 2 Hessian inverse, or the
+   twelve-parameter second-order model. Quadratic mode adds the three
+   second-order Lagrange terms for each displacement component and is supported
+   by ``webgpu-wgsl``; the independent Three.js and deprecated GPU-IO browser
+   backends reject it. Default: ``affine``.
 
 ``--subset-size {8,16,32}``
    Select the square numerical subset width. The same value is used as the

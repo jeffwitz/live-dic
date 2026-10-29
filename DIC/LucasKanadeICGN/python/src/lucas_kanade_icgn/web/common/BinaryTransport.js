@@ -10,24 +10,27 @@ const endpoint = (operation, ticket = null) => {
 
 const packState = (result) => {
   const gridCount = result.grid[0] * result.grid[1];
-  const packed = new Float32Array(gridCount * 8);
+  const parameterCount = result.config.motionModel === 'quadratic' ? 12 : 6;
+  const stateStride = parameterCount === 12 ? 16 : 8;
+  const packed = new Float32Array(gridCount * stateStride);
   for (let index = 0; index < gridCount; ++index) {
-    const source = 6 * index;
-    const destination = 8 * index;
-    for (let component = 0; component < 6; ++component) {
+    const source = parameterCount * index;
+    const destination = stateStride * index;
+    for (let component = 0; component < parameterCount; ++component) {
       packed[destination + component] = result.parameters[source + component];
     }
-    packed[destination + 6] = result.status[index];
-    packed[destination + 7] = result.iterations[index];
+    packed[destination + parameterCount] = result.status[index];
+    packed[destination + parameterCount + 1] = result.iterations[index];
   }
-  return packed;
+  return { packed, stateStride };
 };
 
 const frameResult = (result, inputWallMs) => {
   const packingStarted = performance.now();
-  const packed = packState(result);
+  const { packed, stateStride } = packState(result);
   const packingWallMs = performance.now() - packingStarted;
   const { parameters, status, iterations, ...metadata } = result;
+  metadata.stateStride = stateStride;
   metadata.timing = {
     ...metadata.timing,
     binaryInputWallMs: inputWallMs,

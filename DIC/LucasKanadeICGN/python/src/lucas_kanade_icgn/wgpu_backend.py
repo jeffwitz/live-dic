@@ -23,7 +23,12 @@ import numpy.typing as npt
 
 from .engine import ICGNError, ImageInput, ReferenceInfo, RegistrationResult, _as_uint8_gray
 from .interpolation import INTERPOLATION_PIPELINE_CONSTANTS, normalize_interpolation
-from .motion import MOTION_MODEL_PIPELINE_CONSTANTS, normalize_motion_model
+from .motion import (
+    MOTION_MODEL_PIPELINE_CONSTANTS,
+    normalize_motion_model,
+    parameter_count,
+    state_float_count,
+)
 from .subset import DEFAULT_SUBSET_SIZE, normalize_subset_size
 
 FIR_RADIUS = 15
@@ -168,10 +173,15 @@ def _transfer_pyramid_seed(
     requested: npt.NDArray[np.bool_],
     subset_size: int = DEFAULT_SUBSET_SIZE,
 ) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.uint32]]:
-    """Interpolate coarse affine warps onto requested finer subset centres."""
+    """Interpolate coarse warps onto requested finer subset centres."""
 
     destination_width, destination_height = destination_grid
-    seeds = np.zeros((destination_height, destination_width, 8), dtype=np.float32)
+    motion_model = str(result.config.get("motionModel", "affine"))
+    component_count = parameter_count(motion_model)
+    seeds = np.zeros(
+        (destination_height, destination_width, state_float_count(motion_model)),
+        dtype=np.float32,
+    )
     active = requested.astype(np.uint32, copy=True)
     source_height, source_width = result.status.shape
     if source_available.shape != result.status.shape:
@@ -181,6 +191,7 @@ def _transfer_pyramid_seed(
     source_offset = (1.0 - source_scale) * 0.5
     destination_offset = (1.0 - destination_scale) * 0.5
     translation_scale = source_scale / destination_scale
+    curvature_scale = destination_scale / source_scale
     destinations = np.argwhere(requested)
     if destinations.size == 0:
         return seeds, active
@@ -203,9 +214,8 @@ def _transfer_pyramid_seed(
     lower_y = np.clip(np.floor(grid_y), 0, source_height - 2).astype(np.intp)
     fraction_x = np.clip(grid_x - lower_x, 0.0, 1.0)
     fraction_y = np.clip(grid_y - lower_y, 0.0, 1.0)
-    accumulated = np.zeros((destinations.shape[0], 6), dtype=np.float64)
+    accumulated = np.zeros((destinations.shape[0], component_count), dtype=np.float64)
     weight_sum = np.zeros(destinations.shape[0], dtype=np.float64)
-    linear_components = np.asarray((1, 2, 4, 5))
     for corner in range(4):
         source_x = lower_x + (corner & 1)
         source_y = lower_y + (corner >> 1)
@@ -216,22 +226,40 @@ def _transfer_pyramid_seed(
         parameters = result.parameters[source_y, source_x]
         delta_x = x - (center_offset + subset_size * source_x)
         delta_y = y - (center_offset + subset_size * source_y)
-        accumulated[:, 0] += (
-            weight
-            * (parameters[:, 0] + parameters[:, 1] * delta_x + parameters[:, 2] * delta_y)
-            * translation_scale
-        )
-        accumulated[:, 3] += (
-            weight
-            * (parameters[:, 3] + parameters[:, 4] * delta_x + parameters[:, 5] * delta_y)
-            * translation_scale
-        )
-        accumulated[:, linear_components] += weight[:, None] * parameters[:, linear_components]
+        translated = np.array(parameters, dtype=np.float64, copy=True)
+        if motion_model == "quadratic":
+            delta_x2 = delta_x * delta_x
+            delta_xy = delta_x * delta_y
+            delta_y2 = delta_y * delta_y
+            translated[:, 0] += (
+                parameters[:, 1] * delta_x
+                + parameters[:, 2] * delta_y
+                + 0.5 * parameters[:, 6] * delta_x2
+                + parameters[:, 7] * delta_xy
+                + 0.5 * parameters[:, 8] * delta_y2
+            )
+            translated[:, 3] += (
+                parameters[:, 4] * delta_x
+                + parameters[:, 5] * delta_y
+                + 0.5 * parameters[:, 9] * delta_x2
+                + parameters[:, 10] * delta_xy
+                + 0.5 * parameters[:, 11] * delta_y2
+            )
+            translated[:, 1] += parameters[:, 6] * delta_x + parameters[:, 7] * delta_y
+            translated[:, 2] += parameters[:, 7] * delta_x + parameters[:, 8] * delta_y
+            translated[:, 4] += parameters[:, 9] * delta_x + parameters[:, 10] * delta_y
+            translated[:, 5] += parameters[:, 10] * delta_x + parameters[:, 11] * delta_y
+            translated[:, 6:12] *= curvature_scale
+        else:
+            translated[:, 0] += parameters[:, 1] * delta_x + parameters[:, 2] * delta_y
+            translated[:, 3] += parameters[:, 4] * delta_x + parameters[:, 5] * delta_y
+        translated[:, (0, 3)] *= translation_scale
+        accumulated += weight[:, None] * translated
         weight_sum += weight
     valid_destinations = weight_sum > 0.0
     selected_y = destination_y[valid_destinations]
     selected_x = destination_x[valid_destinations]
-    seeds[selected_y, selected_x, :6] = (
+    seeds[selected_y, selected_x, :component_count] = (
         accumulated[valid_destinations] / weight_sum[valid_destinations, None]
     )
     return seeds, active
@@ -424,8 +452,11 @@ def _reference_arrays(
     reference[..., 2] = gradient_y
 
     grid_count = grid_width * grid_height
-    inverse = np.zeros((grid_count, 36), dtype=np.float32)
-    metadata = np.zeros((grid_count, 16), dtype=np.float32)
+    component_count = parameter_count(model)
+    inverse_stride = component_count * component_count
+    metadata_stride = 28 if model == "quadratic" else 16
+    inverse = np.zeros((grid_count, inverse_stride), dtype=np.float32)
+    metadata = np.zeros((grid_count, metadata_stride), dtype=np.float32)
     local_y, local_x = np.meshgrid(
         np.arange(subset_size, dtype=np.float64) - half_extent,
         np.arange(subset_size, dtype=np.float64) - half_extent,
@@ -469,17 +500,29 @@ def _reference_arrays(
             sum_j[:, 0] = gx_tiles.sum(axis=1)
             sum_j[:, 3] = gy_tiles.sum(axis=1)
         else:
-            jacobian = np.stack(
-                (
-                    gx_tiles,
-                    gx_tiles * local_x,
-                    gx_tiles * local_y,
-                    gy_tiles,
-                    gy_tiles * local_x,
-                    gy_tiles * local_y,
-                ),
-                axis=2,
-            )
+            jacobian_components = [
+                gx_tiles,
+                gx_tiles * local_x,
+                gx_tiles * local_y,
+                gy_tiles,
+                gy_tiles * local_x,
+                gy_tiles * local_y,
+            ]
+            if model == "quadratic":
+                half_x2 = 0.5 * local_x * local_x
+                xy = local_x * local_y
+                half_y2 = 0.5 * local_y * local_y
+                jacobian_components.extend(
+                    (
+                        gx_tiles * half_x2,
+                        gx_tiles * xy,
+                        gx_tiles * half_y2,
+                        gy_tiles * half_x2,
+                        gy_tiles * xy,
+                        gy_tiles * half_y2,
+                    )
+                )
+            jacobian = np.stack(jacobian_components, axis=2)
             hessian = np.einsum("npi,npj->nij", jacobian, jacobian, optimize=True)
             jt_reference = np.einsum("npi,np->ni", jacobian, f_tiles, optimize=True)
             sum_j = jacobian.sum(axis=1)
@@ -501,11 +544,17 @@ def _reference_arrays(
         # inverse blocks finite as well so conversion and GPU upload never
         # introduce infinities for flat or nearly singular references.
         row_inverse[~valid] = 0.0
-        inverse[row_offset : row_offset + grid_width] = row_inverse.reshape(grid_width, 36)
+        inverse[row_offset : row_offset + grid_width] = row_inverse.reshape(
+            grid_width, inverse_stride
+        )
         metadata[row_offset : row_offset + grid_width, 0] = np.sqrt(energy)
         metadata[row_offset : row_offset + grid_width, 1] = valid.astype(np.float32)
-        metadata[row_offset : row_offset + grid_width, 2:8] = jt_reference
-        metadata[row_offset : row_offset + grid_width, 8:14] = sum_j
+        metadata[row_offset : row_offset + grid_width, 2 : 2 + component_count] = jt_reference
+        sum_offset = 2 + component_count
+        metadata[
+            row_offset : row_offset + grid_width,
+            sum_offset : sum_offset + component_count,
+        ] = sum_j
 
     return (
         np.ascontiguousarray(reference.ravel()),
@@ -676,7 +725,10 @@ class ICGNWGPU:
             compute={
                 "module": shader,
                 "entry_point": "median_filter",
-                "constants": {"SUBSET_SIZE": self.subset_size},
+                "constants": {
+                    "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
+                    "SUBSET_SIZE": self.subset_size,
+                },
             },
         )
         self._seeded_bind_group_layout: Any = None
@@ -943,6 +995,7 @@ class ICGNWGPU:
         wgpu = self._wgpu
         pixel_count = self.width * self.height
         grid_count = self.grid_width * self.grid_height
+        state_stride = state_float_count(self.motion_model)
         source_texture = self.device.create_texture(
             size=(self.width, self.height, 1),
             usage=(
@@ -970,11 +1023,11 @@ class ICGNWGPU:
                 usage=wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_SRC,
             ),
             "state": self.device.create_buffer(
-                size=grid_count * 8 * 4,
+                size=grid_count * state_stride * 4,
                 usage=wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_DST,
             ),
             "filtered_state": self.device.create_buffer(
-                size=grid_count * 8 * 4,
+                size=grid_count * state_stride * 4,
                 usage=(
                     wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_SRC | wgpu.BufferUsage.COPY_DST
                 ),
@@ -1004,7 +1057,7 @@ class ICGNWGPU:
             layout=self._bind_group_layout, entries=resources
         )
         readback = self.device.create_buffer(
-            size=grid_count * 8 * 4,
+            size=grid_count * state_stride * 4,
             usage=wgpu.BufferUsage.COPY_DST | wgpu.BufferUsage.MAP_READ,
         )
         return _RegistrationSlot(
@@ -1029,8 +1082,9 @@ class ICGNWGPU:
         self._ensure_seeded_solver()
         wgpu = self._wgpu
         grid_count = self.grid_width * self.grid_height
+        state_stride = state_float_count(self.motion_model)
         slot.buffers["seed_state"] = self.device.create_buffer(
-            size=grid_count * 8 * 4,
+            size=grid_count * state_stride * 4,
             usage=wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_DST,
         )
         slot.buffers["active_mask"] = self.device.create_buffer(
@@ -1385,7 +1439,11 @@ class ICGNWGPU:
             level_requested = requested_by_level[level_index]
             if transferred_result is None:
                 seeds = np.zeros(
-                    (engine.grid_height, engine.grid_width, 8),
+                    (
+                        engine.grid_height,
+                        engine.grid_width,
+                        state_float_count(self.motion_model),
+                    ),
                     dtype=np.float32,
                 )
                 active = level_requested.astype(np.uint32)
@@ -1658,14 +1716,17 @@ class ICGNWGPU:
     ) -> RegistrationResult:
         # The NumPy views retain the copied readback memory as their base. No
         # additional full-field copy is made while building the public result.
+        motion_model = getattr(self, "motion_model", "affine")
+        component_count = parameter_count(motion_model)
+        state_stride = state_float_count(motion_model)
         packed = np.frombuffer(raw, dtype=np.float32).reshape(
             self.grid_height,
             self.grid_width,
-            8,
+            state_stride,
         )
-        parameters = packed[..., :6]
-        status = packed[..., 6]
-        iteration_field = packed[..., 7]
+        parameters = packed[..., :component_count]
+        status = packed[..., component_count]
+        iteration_field = packed[..., component_count + 1]
         accepted_mask = status > 0.5
         accepted = int(np.count_nonzero(accepted_mask))
         mean_translation = None

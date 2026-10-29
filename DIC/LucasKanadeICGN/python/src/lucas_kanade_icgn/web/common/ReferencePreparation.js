@@ -119,44 +119,45 @@ const cubicBSplinePrefilter = (source, width, height) => {
   return coefficients;
 };
 
-const invert6 = (matrix) => {
-  const augmented = new Float64Array(6 * 12);
-  for (let row = 0; row < 6; ++row) {
-    for (let column = 0; column < 6; ++column) {
-      augmented[row * 12 + column] = matrix[row * 6 + column];
-      augmented[row * 12 + 6 + column] = row === column ? 1 : 0;
+const invertSquare = (matrix, size) => {
+  const stride = 2 * size;
+  const augmented = new Float64Array(size * stride);
+  for (let row = 0; row < size; ++row) {
+    for (let column = 0; column < size; ++column) {
+      augmented[row * stride + column] = matrix[row * size + column];
+      augmented[row * stride + size + column] = row === column ? 1 : 0;
     }
   }
-  for (let column = 0; column < 6; ++column) {
+  for (let column = 0; column < size; ++column) {
     let pivotRow = column;
-    for (let row = column + 1; row < 6; ++row) {
-      if (Math.abs(augmented[row * 12 + column])
-          > Math.abs(augmented[pivotRow * 12 + column])) {
+    for (let row = column + 1; row < size; ++row) {
+      if (Math.abs(augmented[row * stride + column])
+          > Math.abs(augmented[pivotRow * stride + column])) {
         pivotRow = row;
       }
     }
-    if (Math.abs(augmented[pivotRow * 12 + column]) < 1e-14) return null;
+    if (Math.abs(augmented[pivotRow * stride + column]) < 1e-14) return null;
     if (pivotRow !== column) {
-      for (let entry = 0; entry < 12; ++entry) {
-        const saved = augmented[column * 12 + entry];
-        augmented[column * 12 + entry] = augmented[pivotRow * 12 + entry];
-        augmented[pivotRow * 12 + entry] = saved;
+      for (let entry = 0; entry < stride; ++entry) {
+        const saved = augmented[column * stride + entry];
+        augmented[column * stride + entry] = augmented[pivotRow * stride + entry];
+        augmented[pivotRow * stride + entry] = saved;
       }
     }
-    const pivot = augmented[column * 12 + column];
-    for (let entry = 0; entry < 12; ++entry) augmented[column * 12 + entry] /= pivot;
-    for (let row = 0; row < 6; ++row) {
+    const pivot = augmented[column * stride + column];
+    for (let entry = 0; entry < stride; ++entry) augmented[column * stride + entry] /= pivot;
+    for (let row = 0; row < size; ++row) {
       if (row === column) continue;
-      const factor = augmented[row * 12 + column];
-      for (let entry = 0; entry < 12; ++entry) {
-        augmented[row * 12 + entry] -= factor * augmented[column * 12 + entry];
+      const factor = augmented[row * stride + column];
+      for (let entry = 0; entry < stride; ++entry) {
+        augmented[row * stride + entry] -= factor * augmented[column * stride + entry];
       }
     }
   }
-  const inverse = new Float64Array(36);
-  for (let row = 0; row < 6; ++row) {
-    for (let column = 0; column < 6; ++column) {
-      inverse[row * 6 + column] = augmented[row * 12 + 6 + column];
+  const inverse = new Float64Array(size * size);
+  for (let row = 0; row < size; ++row) {
+    for (let column = 0; column < size; ++column) {
+      inverse[row * size + column] = augmented[row * stride + size + column];
     }
   }
   return inverse;
@@ -180,8 +181,8 @@ export const prepareReferenceGray = (
   if (!['bspline', 'linear', 'cubic'].includes(interpolation)) {
     throw new Error("interpolation must be 'bspline', 'linear', or 'cubic'");
   }
-  if (!['affine', 'translation'].includes(motionModel)) {
-    throw new Error("motionModel must be 'affine' or 'translation'");
+  if (!['affine', 'translation', 'quadratic'].includes(motionModel)) {
+    throw new Error("motionModel must be 'affine', 'translation', or 'quadratic'");
   }
   const intensity = interpolation === 'bspline'
     ? gaussianSigmaOne(gray, width, height)
@@ -190,8 +191,10 @@ export const prepareReferenceGray = (
     ? cubicBSplinePrefilter(intensity, width, height)
     : intensity;
   const reference = new Float32Array(pixelCount * 4);
-  const inverseHessian = new Float32Array(gridCount * 9 * 4);
-  const metadata = new Float32Array(gridCount * 4 * 4);
+  const componentCount = motionModel === 'quadratic' ? 12 : 6;
+  const metadataStride = motionModel === 'quadratic' ? 28 : 16;
+  const inverseHessian = new Float32Array(gridCount * componentCount * componentCount);
+  const metadata = new Float32Array(gridCount * metadataStride);
   const atMirror = (values, x, y) => values[mirror(y, height) * width + mirror(x, width)];
 
   for (let gridY = 0; gridY < gridHeight; ++gridY) {
@@ -205,9 +208,9 @@ export const prepareReferenceGray = (
       }
       mean /= subsetPixels;
 
-      const hessian = new Float64Array(36);
-      const jtReference = new Float64Array(6);
-      const sumJ = new Float64Array(6);
+      const hessian = new Float64Array(componentCount * componentCount);
+      const jtReference = new Float64Array(componentCount);
+      const sumJ = new Float64Array(componentCount);
       let referenceEnergy = 0;
       for (let yy = 0; yy < subsetSize; ++yy) {
         for (let xx = 0; xx < subsetSize; ++xx) {
@@ -249,11 +252,20 @@ export const prepareReferenceGray = (
             hessian[21] += gy * gy;
           } else {
             const jacobian = [gx, gx * localX, gx * localY, gy, gy * localX, gy * localY];
-            for (let row = 0; row < 6; ++row) {
+            if (motionModel === 'quadratic') {
+              const halfX2 = 0.5 * localX * localX;
+              const xy = localX * localY;
+              const halfY2 = 0.5 * localY * localY;
+              jacobian.push(
+                gx * halfX2, gx * xy, gx * halfY2,
+                gy * halfX2, gy * xy, gy * halfY2,
+              );
+            }
+            for (let row = 0; row < componentCount; ++row) {
               jtReference[row] += jacobian[row] * f;
               sumJ[row] += jacobian[row];
-              for (let column = 0; column < 6; ++column) {
-                hessian[6 * row + column] += jacobian[row] * jacobian[column];
+              for (let column = 0; column < componentCount; ++column) {
+                hessian[componentCount * row + column] += jacobian[row] * jacobian[column];
               }
             }
           }
@@ -275,15 +287,15 @@ export const prepareReferenceGray = (
           inverseHessian[inverseOffset + 21] = hessian[0] / determinant;
         }
       } else {
-        const inverse = invert6(hessian);
+        const inverse = invertSquare(hessian, componentCount);
         valid = Boolean(inverse) && referenceEnergy > 1e-12;
-        if (inverse) inverseHessian.set(inverse, subsetIndex * 36);
+        if (inverse) inverseHessian.set(inverse, subsetIndex * componentCount * componentCount);
       }
-      const metaOffset = subsetIndex * 16;
+      const metaOffset = subsetIndex * metadataStride;
       metadata[metaOffset] = Math.sqrt(referenceEnergy);
       metadata[metaOffset + 1] = valid ? 1 : 0;
       metadata.set(jtReference, metaOffset + 2);
-      metadata.set(sumJ, metaOffset + 8);
+      metadata.set(sumJ, metaOffset + 2 + componentCount);
     }
   }
   return { reference, inverseHessian, metadata };

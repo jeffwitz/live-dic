@@ -53,8 +53,8 @@ Python-supervised real-time DIC toward 4K60
    :doc:`how-to/migrate-from-gpuio`.
 
 This documentation describes a Python-supervised workflow for GPU-accelerated digital
-image correlation (DIC). The current implementation performs affine or
-translation-only inverse-compositional Gauss-Newton registration on grayscale frames through
+image correlation (DIC). The current implementation performs translation,
+affine, or quadratic inverse-compositional Gauss-Newton registration on grayscale frames through
 Three.js/TSL with WebGPU and WebGL2 backends, raw browser WebGPU with shared
 WGSL kernels, and native wgpu-py backends. The deprecated GPU-IO/WebGL2 path is
 retained as a historical comparison. Three.js is the default browser backend.
@@ -93,7 +93,7 @@ Choose the section that matches your task:
   and reduction strategies;
 * :doc:`explanation/interpolation` for the selectable B-spline, bilinear, and
   Keys-cubic target reconstruction paths;
-* :doc:`explanation/motion-models` for affine and translation-only solving;
+* :doc:`explanation/motion-models` for translation, affine, and quadratic solving;
 * :doc:`explanation/subset-size` for the 8, 16, and 32 pixel subset geometry;
 * :doc:`explanation/shared-kernel` for the common WGSL source and its exact
   host/buffer contract;
@@ -106,7 +106,8 @@ Current scope
 -------------
 
 The implementation provides a resolution-dependent grid of configurable 8 x 8,
-16 x 16, or 32 x 32 subsets, either six affine parameters or two translation parameters per subset,
+16 x 16, or 32 x 32 subsets, with translation, six-parameter affine, or
+twelve-parameter quadratic motion,
 selectable B-spline, bilinear, or
 Keys-cubic target interpolation, ZNCC validation, and median outlier
 replacement. The test dataset is offline;

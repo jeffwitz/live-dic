@@ -11,11 +11,13 @@ selected interpolation are rejected. With the default ``S=16``, a 512 x 512
 frame produces a 32 x 32 grid and a 3840 x 2160 frame produces a 240 x 135
 grid. See :doc:`../explanation/subset-size`.
 
-Affine parameters
+Motion parameters
 -----------------
 
-``RegistrationResult.parameters`` has shape ``(grid_height, grid_width, 6)``.
-The final axis is:
+``RegistrationResult.parameters`` has shape
+``(grid_height, grid_width, parameter_count)``. Translation and affine
+engines return six components; quadratic engines return twelve. The first six
+components always have the following order:
 
 .. list-table:: Affine parameter order
    :header-rows: 1
@@ -47,6 +49,38 @@ layout is unchanged. Indices 1, 2, 4, and 5 are exact zeros by construction;
 only ``tx`` and ``ty`` are estimated. This preserves consumers that read
 ``displacement`` or export the full parameter array, but the zero gradients
 must not be interpreted as measured zero strain.
+
+``motion_model="quadratic"`` appends:
+
+.. list-table:: Quadratic parameter extension
+   :header-rows: 1
+
+   * - Index
+     - Name
+     - Meaning at the subset centre
+   * - 6
+     - ``d2u_dx2``
+     - second x derivative of horizontal displacement
+   * - 7
+     - ``d2u_dxdy``
+     - mixed derivative of horizontal displacement
+   * - 8
+     - ``d2u_dy2``
+     - second y derivative of horizontal displacement
+   * - 9
+     - ``d2v_dx2``
+     - second x derivative of vertical displacement
+   * - 10
+     - ``d2v_dxdy``
+     - mixed derivative of vertical displacement
+   * - 11
+     - ``d2v_dy2``
+     - second y derivative of vertical displacement
+
+The quadratic basis uses ``x^2/2``, ``xy``, and ``y^2/2``, so the
+stored pure quadratic coefficients are second derivatives rather than doubled
+polynomial coefficients. ``result.parameter_order`` gives the exact names for
+the active result.
 
 ``RegistrationResult.displacement`` selects indices 0 and 3 and has shape
 ``(grid_height, grid_width, 2)``.
@@ -102,7 +136,8 @@ A normal Three.js ``register`` call reports these timing keys:
    * - ``binaryInputWallMs``
      - browser-side materialization of the binary target body
    * - ``binaryPackingWallMs``
-     - browser-side packing of the returned eight-float subset states
+     - browser-side packing of the returned subset states (eight floats for
+       translation/affine, sixteen for quadratic)
    * - ``inputPreparationWallMs``
      - Python validation and contiguous grayscale conversion before publication
    * - ``encodingWallMs``

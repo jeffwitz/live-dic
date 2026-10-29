@@ -24,7 +24,16 @@ struct UintBuffer {
 struct WarpUpdate {
     translation: vec2<f32>,
     linear: vec4<f32>,
+    curvature: array<f32, 6>,
+    valid: bool,
 }
+
+struct AffineWarpUpdate {
+    translation: vec2<f32>,
+    linear: vec4<f32>,
+}
+
+alias Matrix6 = array<array<f32, 6>, 6>;
 
 @group(0) @binding(0) var source_image: texture_2d<f32>;
 @group(0) @binding(1) var<uniform> config: Config;
@@ -52,7 +61,8 @@ const PREFILTER_TILE_PIXELS: u32 = 448u;
 // 1: direct bilinear interpolation
 // 2: direct Keys cubic convolution (a = -0.5)
 override INTERPOLATION_MODE: u32 = 0u;
-// 0: six-parameter affine warp, 1: translation-only warp.
+// 0: six-parameter affine warp, 1: translation-only warp,
+// 2: twelve-parameter quadratic warp.
 override MOTION_MODEL: u32 = 0u;
 // Square subset width. Repository hosts expose the validated 8, 16, and 32
 // specializations while preserving 16 as the default pipeline constant.
@@ -64,8 +74,10 @@ override PREFILTER_CLAMP_HALO: u32 = 1u;
 var<workgroup> partial_a: array<vec4<f32>, 16>;
 var<workgroup> partial_b: array<vec4<f32>, 16>;
 var<workgroup> partial_c: array<vec4<f32>, 16>;
+var<workgroup> quadratic_base_totals: array<vec4<f32>, 3>;
 var<workgroup> shared_translation: vec2<f32>;
 var<workgroup> shared_linear: vec4<f32>;
+var<workgroup> shared_curvature: array<f32, 6>;
 var<workgroup> shared_status: vec2<f32>;
 var<workgroup> prefilter_tile: array<f32, 496>;
 
@@ -158,11 +170,17 @@ fn prefilter_y(
 }
 
 fn metadata_value(subset_index: u32, component: u32) -> f32 {
-    return metadata.values[subset_index * 4u + component / 4u][component % 4u];
+    let stride = select(4u, 7u, MOTION_MODEL == 2u);
+    return metadata.values[subset_index * stride + component / 4u][component % 4u];
 }
 
 fn hessian_value(subset_index: u32, component: u32) -> f32 {
-    return inverse_hessian.values[subset_index * 9u + component / 4u][component % 4u];
+    let stride = select(9u, 36u, MOTION_MODEL == 2u);
+    return inverse_hessian.values[subset_index * stride + component / 4u][component % 4u];
+}
+
+fn state_vec4_stride() -> u32 {
+    return select(2u, 4u, MOTION_MODEL == 2u);
 }
 
 fn cubic_weights(t: f32) -> array<f32, 4> {
@@ -256,7 +274,7 @@ fn sample_target(position: vec2<f32>) -> f32 {
     return sample_cubic(position);
 }
 
-fn solve_increment(
+fn solve_standard_increment(
     subset_index: u32,
     reduced_j: array<f32, 6>,
     current_mean: f32,
@@ -279,37 +297,185 @@ fn solve_increment(
         return translation_delta;
     }
     var residual: array<f32, 6>;
-    for (var component = 0u; component < 6u; component = component + 1u) {
+    for (var component = 0u; component < 6u; component += 1u) {
         residual[component] = metadata_value(subset_index, 2u + component)
             - ratio * (reduced_j[component]
             - current_mean * metadata_value(subset_index, 8u + component));
     }
     var delta: array<f32, 6>;
-    for (var row = 0u; row < 6u; row = row + 1u) {
+    for (var row = 0u; row < 6u; row += 1u) {
         var value = 0.0;
-        for (var column = 0u; column < 6u; column = column + 1u) {
-            value = value + hessian_value(subset_index, 6u * row + column) * residual[column];
+        for (var column = 0u; column < 6u; column += 1u) {
+            value += hessian_value(subset_index, 6u * row + column) * residual[column];
         }
         delta[row] = -value;
     }
     return delta;
 }
 
-fn increment_determinant(delta: array<f32, 6>) -> f32 {
+fn solve_quadratic_increment(
+    subset_index: u32,
+    reduced_j: array<f32, 12>,
+    current_mean: f32,
+    ratio: f32,
+) -> array<f32, 12> {
+    var delta: array<f32, 12>;
+    var residual: array<f32, 12>;
+    for (var component = 0u; component < 12u; component += 1u) {
+        residual[component] = metadata_value(subset_index, 2u + component)
+            - ratio * (reduced_j[component]
+            - current_mean * metadata_value(subset_index, 14u + component));
+    }
+    for (var row = 0u; row < 12u; row += 1u) {
+        var value = 0.0;
+        for (var column = 0u; column < 12u; column += 1u) {
+            value += hessian_value(
+                subset_index,
+                12u * row + column,
+            ) * residual[column];
+        }
+        delta[row] = -value;
+    }
+    return delta;
+}
+
+fn standard_increment_determinant(delta: array<f32, 6>) -> f32 {
     if MOTION_MODEL == 1u {
         return 1.0;
     }
     return (1.0 + delta[1]) * (1.0 + delta[5]) - delta[2] * delta[4];
 }
 
-fn compose_inverse_update(
+fn quadratic_warp_matrix(parameters: array<f32, 12>) -> Matrix6 {
+    let u = parameters[0];
+    let ux = parameters[1];
+    let uy = parameters[2];
+    let v = parameters[3];
+    let vx = parameters[4];
+    let vy = parameters[5];
+    let uxx = parameters[6];
+    let uxy = parameters[7];
+    let uyy = parameters[8];
+    let vxx = parameters[9];
+    let vxy = parameters[10];
+    let vyy = parameters[11];
+    var warp: Matrix6;
+    warp[0] = array<f32, 6>(
+        1.0 + 2.0 * ux + ux * ux + u * uxx,
+        2.0 * u * uxy + 2.0 * (1.0 + ux) * uy,
+        uy * uy + u * uyy,
+        2.0 * u * (1.0 + ux),
+        2.0 * u * uy,
+        u * u,
+    );
+    warp[1] = array<f32, 6>(
+        0.5 * (v * uxx + 2.0 * (1.0 + ux) * vx + u * vxx),
+        1.0 + uy * vx + ux * vy + v * uxy + u * vxy + vy + ux,
+        0.5 * (v * uyy + 2.0 * uy * (1.0 + vy) + u * vyy),
+        v + v * ux + u * vx,
+        u + v * uy + u * vy,
+        u * v,
+    );
+    warp[2] = array<f32, 6>(
+        vx * vx + v * vxx,
+        2.0 * v * vxy + 2.0 * vx * (1.0 + vy),
+        1.0 + 2.0 * vy + vy * vy + v * vyy,
+        2.0 * v * vx,
+        2.0 * v * (1.0 + vy),
+        v * v,
+    );
+    warp[3] = array<f32, 6>(0.5 * uxx, uxy, 0.5 * uyy, 1.0 + ux, uy, u);
+    warp[4] = array<f32, 6>(0.5 * vxx, vxy, 0.5 * vyy, vx, 1.0 + vy, v);
+    warp[5] = array<f32, 6>(0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
+    return warp;
+}
+
+fn compose_quadratic_inverse(
+    translation: vec2<f32>,
+    linear: vec4<f32>,
+    curvature: array<f32, 6>,
+    delta: array<f32, 12>,
+) -> WarpUpdate {
+    let increment = quadratic_warp_matrix(delta);
+    var augmented: array<array<f32, 12>, 6>;
+    for (var row = 0u; row < 6u; row += 1u) {
+        for (var column = 0u; column < 6u; column += 1u) {
+            augmented[row][column] = increment[row][column];
+            augmented[row][6u + column] = select(0.0, 1.0, row == column);
+        }
+    }
+    for (var column = 0u; column < 6u; column += 1u) {
+        var pivot_row = column;
+        var pivot_size = abs(augmented[column][column]);
+        for (var candidate = column + 1u; candidate < 6u; candidate += 1u) {
+            let candidate_size = abs(augmented[candidate][column]);
+            if candidate_size > pivot_size {
+                pivot_row = candidate;
+                pivot_size = candidate_size;
+            }
+        }
+        if pivot_size < 1e-8 {
+            return WarpUpdate(translation, linear, curvature, false);
+        }
+        if pivot_row != column {
+            let saved = augmented[column];
+            augmented[column] = augmented[pivot_row];
+            augmented[pivot_row] = saved;
+        }
+        let pivot = augmented[column][column];
+        for (var entry = 0u; entry < 12u; entry += 1u) {
+            augmented[column][entry] /= pivot;
+        }
+        for (var row = 0u; row < 6u; row += 1u) {
+            if row != column {
+                let factor = augmented[row][column];
+                for (var entry = 0u; entry < 12u; entry += 1u) {
+                    augmented[row][entry] -= factor * augmented[column][entry];
+                }
+            }
+        }
+    }
+    let current_u = array<f32, 6>(
+        0.5 * curvature[0], curvature[1], 0.5 * curvature[2],
+        1.0 + linear.x, linear.y, translation.x,
+    );
+    let current_v = array<f32, 6>(
+        0.5 * curvature[3], curvature[4], 0.5 * curvature[5],
+        linear.z, 1.0 + linear.w, translation.y,
+    );
+    var updated_u: array<f32, 6>;
+    var updated_v: array<f32, 6>;
+    for (var column = 0u; column < 6u; column += 1u) {
+        updated_u[column] = 0.0;
+        updated_v[column] = 0.0;
+        for (var entry = 0u; entry < 6u; entry += 1u) {
+            updated_u[column] += current_u[entry] * augmented[entry][6u + column];
+            updated_v[column] += current_v[entry] * augmented[entry][6u + column];
+        }
+    }
+    var updated_curvature: array<f32, 6>;
+    updated_curvature[0] = 2.0 * updated_u[0];
+    updated_curvature[1] = updated_u[1];
+    updated_curvature[2] = 2.0 * updated_u[2];
+    updated_curvature[3] = 2.0 * updated_v[0];
+    updated_curvature[4] = updated_v[1];
+    updated_curvature[5] = 2.0 * updated_v[2];
+    return WarpUpdate(
+        vec2<f32>(updated_u[5], updated_v[5]),
+        vec4<f32>(updated_u[3] - 1.0, updated_u[4], updated_v[3], updated_v[4] - 1.0),
+        updated_curvature,
+        true,
+    );
+}
+
+fn compose_standard_inverse_update(
     translation: vec2<f32>,
     linear: vec4<f32>,
     delta: array<f32, 6>,
     determinant: f32,
-) -> WarpUpdate {
+) -> AffineWarpUpdate {
     if MOTION_MODEL == 1u {
-        return WarpUpdate(
+        return AffineWarpUpdate(
             translation - vec2<f32>(delta[0], delta[3]),
             vec4<f32>(0.0),
         );
@@ -332,24 +498,43 @@ fn compose_inverse_update(
     let updated12 = warp11 * inverse12 + warp12 * inverse22;
     let updated21 = warp21 * inverse11 + warp22 * inverse21;
     let updated22 = warp21 * inverse12 + warp22 * inverse22;
-    return WarpUpdate(
+    return AffineWarpUpdate(
         updated_translation,
         vec4<f32>(updated11 - 1.0, updated12, updated21, updated22 - 1.0),
     );
 }
 
-fn corner_change(delta: array<f32, 6>) -> f32 {
+fn standard_corner_change(delta: array<f32, 6>) -> f32 {
     if MOTION_MODEL == 1u {
         return length(vec2<f32>(delta[0], delta[3]));
     }
     var maximum = 0.0;
-    for (var corner = 0; corner < 4; corner = corner + 1) {
+    for (var corner = 0; corner < 4; corner += 1) {
         let half_extent = subset_half_extent();
         let x = select(-half_extent, half_extent, corner == 1 || corner == 3);
         let y = select(-half_extent, half_extent, corner >= 2);
         let change = length(vec2<f32>(
             delta[0] + delta[1] * x + delta[2] * y,
             delta[3] + delta[4] * x + delta[5] * y,
+        ));
+        maximum = max(maximum, change);
+    }
+    return maximum;
+}
+
+fn quadratic_change(delta: array<f32, 12>) -> f32 {
+    var maximum = 0.0;
+    for (var point = 0; point < 9; point += 1) {
+        let half_extent = subset_half_extent();
+        let x = f32(point % 3 - 1) * half_extent;
+        let y = f32(point / 3 - 1) * half_extent;
+        let change = length(vec2<f32>(
+            delta[0] + delta[1] * x + delta[2] * y
+                + 0.5 * delta[6] * x * x + delta[7] * x * y
+                + 0.5 * delta[8] * y * y,
+            delta[3] + delta[4] * x + delta[5] * y
+                + 0.5 * delta[9] * x * x + delta[10] * x * y
+                + 0.5 * delta[11] * y * y,
         ));
         maximum = max(maximum, change);
     }
@@ -368,12 +553,18 @@ fn solve_subset(
     lane: u32,
     initial_translation: vec2<f32>,
     initial_linear: vec4<f32>,
+    initial_curvature: array<f32, 6>,
     enabled: bool,
     preserve_disabled: bool,
 ) {
     if lane == 0u {
         shared_translation = initial_translation;
         shared_linear = select(initial_linear, vec4<f32>(0.0), MOTION_MODEL == 1u);
+        if MOTION_MODEL == 2u {
+            for (var component = 0u; component < 6u; component += 1u) {
+                shared_curvature[component] = initial_curvature[component];
+            }
+        }
         let valid = enabled && metadata_value(subset_index, 1u) >= 0.5;
         shared_status = vec2<f32>(select(-1.0, 0.0, valid), 0.0);
     }
@@ -395,14 +586,30 @@ fn solve_subset(
                     && maximum.x <= f32(config.width) - 3.0
                     && maximum.y <= f32(config.height) - 3.0;
             } else {
-                for (var corner = 0; corner < 4; corner = corner + 1) {
-                    let local_x = select(-half_extent, half_extent, corner == 1 || corner == 3);
-                    let local_y = select(-half_extent, half_extent, corner >= 2);
+                let sample_count = select(4, 9, MOTION_MODEL == 2u);
+                for (var point = 0; point < sample_count; point += 1) {
+                    var local_x = select(-half_extent, half_extent, point == 1 || point == 3);
+                    var local_y = select(-half_extent, half_extent, point >= 2);
+                    if MOTION_MODEL == 2u {
+                        local_x = f32(point % 3 - 1) * half_extent;
+                        local_y = f32(point / 3 - 1) * half_extent;
+                    }
                     let local = vec2<f32>(local_x, local_y);
-                    let position = center - vec2<f32>(0.5) + local + shared_translation + vec2<f32>(
+                    var displacement = shared_translation + vec2<f32>(
                         shared_linear.x * local_x + shared_linear.y * local_y,
                         shared_linear.z * local_x + shared_linear.w * local_y,
                     );
+                    if MOTION_MODEL == 2u {
+                        displacement += vec2<f32>(
+                            0.5 * shared_curvature[0] * local_x * local_x
+                                + shared_curvature[1] * local_x * local_y
+                                + 0.5 * shared_curvature[2] * local_y * local_y,
+                            0.5 * shared_curvature[3] * local_x * local_x
+                                + shared_curvature[4] * local_x * local_y
+                                + 0.5 * shared_curvature[5] * local_y * local_y,
+                        );
+                    }
+                    let position = center - vec2<f32>(0.5) + local + displacement;
                     inside = inside && position.x >= 2.0 && position.y >= 2.0
                         && position.x <= f32(config.width) - 3.0
                         && position.y <= f32(config.height) - 3.0;
@@ -421,7 +628,16 @@ fn solve_subset(
         var sum_current = 0.0;
         var sum_current2 = 0.0;
         var sum_reference_current = 0.0;
-        var sum_j_current = array<f32, 6>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        var sum_j_current: array<f32, 6>;
+        for (var component = 0u; component < 6u; component += 1u) {
+            sum_j_current[component] = 0.0;
+        }
+        var sum_j_quadratic: array<f32, 6>;
+        if MOTION_MODEL == 2u {
+            for (var component = 0u; component < 6u; component += 1u) {
+                sum_j_quadratic[component] = 0.0;
+            }
+        }
         // Sixteen lanes cover every square size. For 16x16 this is the same
         // per-lane column traversal as the original specialized kernel.
         let subset_pixels = SUBSET_SIZE * SUBSET_SIZE;
@@ -431,11 +647,21 @@ fn solve_subset(
             let local_x = f32(column) - half_extent;
             let local_y = f32(row) - half_extent;
             var displacement = shared_translation;
-            if MOTION_MODEL == 0u {
+            if MOTION_MODEL != 1u {
                 displacement = displacement + vec2<f32>(
                     shared_linear.x * local_x + shared_linear.y * local_y,
                     shared_linear.z * local_x + shared_linear.w * local_y,
                 );
+                if MOTION_MODEL == 2u {
+                    displacement += vec2<f32>(
+                        0.5 * shared_curvature[0] * local_x * local_x
+                            + shared_curvature[1] * local_x * local_y
+                            + 0.5 * shared_curvature[2] * local_y * local_y,
+                        0.5 * shared_curvature[3] * local_x * local_x
+                            + shared_curvature[4] * local_x * local_y
+                            + 0.5 * shared_curvature[5] * local_y * local_y,
+                    );
+                }
             }
             let current = sample_target(
                 center - vec2<f32>(0.5) + vec2<f32>(local_x, local_y) + displacement
@@ -453,11 +679,22 @@ fn solve_subset(
             sum_reference_current = sum_reference_current + f * current;
             sum_j_current[0] = sum_j_current[0] + gxg;
             sum_j_current[3] = sum_j_current[3] + gyg;
-            if MOTION_MODEL == 0u {
+            if MOTION_MODEL != 1u {
                 sum_j_current[1] = sum_j_current[1] + gxg * local_x;
                 sum_j_current[2] = sum_j_current[2] + gxg * local_y;
                 sum_j_current[4] = sum_j_current[4] + gyg * local_x;
                 sum_j_current[5] = sum_j_current[5] + gyg * local_y;
+                if MOTION_MODEL == 2u {
+                    let half_x2 = 0.5 * local_x * local_x;
+                    let xy = local_x * local_y;
+                    let half_y2 = 0.5 * local_y * local_y;
+                    sum_j_quadratic[0] += gxg * half_x2;
+                    sum_j_quadratic[1] += gxg * xy;
+                    sum_j_quadratic[2] += gxg * half_y2;
+                    sum_j_quadratic[3] += gyg * half_x2;
+                    sum_j_quadratic[4] += gyg * xy;
+                    sum_j_quadratic[5] += gyg * half_y2;
+                }
             }
         }
 
@@ -480,33 +717,111 @@ fn solve_subset(
             stride = stride / 2u;
         }
 
-        if lane == 0u {
+        if MOTION_MODEL == 2u {
+            if lane == 0u {
+                quadratic_base_totals[0] = partial_a[0];
+                quadratic_base_totals[1] = partial_b[0];
+                quadratic_base_totals[2] = partial_c[0];
+            }
+            workgroupBarrier();
+            partial_a[lane] = vec4<f32>(
+                sum_j_quadratic[0],
+                sum_j_quadratic[1],
+                sum_j_quadratic[2],
+                sum_j_quadratic[3],
+            );
+            partial_b[lane] = vec4<f32>(
+                sum_j_quadratic[4], sum_j_quadratic[5], 0.0, 0.0,
+            );
+            workgroupBarrier();
+            var quadratic_stride = 8u;
+            loop {
+                if lane < quadratic_stride {
+                    partial_a[lane] += partial_a[lane + quadratic_stride];
+                    partial_b[lane] += partial_b[lane + quadratic_stride];
+                }
+                workgroupBarrier();
+                if quadratic_stride == 1u {
+                    break;
+                }
+                quadratic_stride /= 2u;
+            }
+            if lane == 0u {
+                let totals_a = quadratic_base_totals[0];
+                let totals_b = quadratic_base_totals[1];
+                let totals_c = quadratic_base_totals[2];
+                let totals_q0 = partial_a[0];
+                let totals_q1 = partial_b[0];
+                let current_mean = totals_a.x / subset_pixel_count();
+                let current_norm = sqrt(max(0.0, totals_a.y - totals_a.x * current_mean));
+                let reference_norm = metadata_value(subset_index, 0u);
+                shared_status.y = f32(iteration + 1u);
+                if current_norm < 1e-9 || reference_norm < 1e-9 {
+                    shared_status.x = -2.0;
+                } else {
+                    let ratio = reference_norm / current_norm;
+                    let reduced_j = array<f32, 12>(
+                        totals_a.w,
+                        totals_b.x,
+                        totals_b.y,
+                        totals_b.z,
+                        totals_b.w,
+                        totals_c.x,
+                        totals_q0.x,
+                        totals_q0.y,
+                        totals_q0.z,
+                        totals_q0.w,
+                        totals_q1.x,
+                        totals_q1.y,
+                    );
+                    let delta = solve_quadratic_increment(
+                        subset_index, reduced_j, current_mean, ratio,
+                    );
+                    let update = compose_quadratic_inverse(
+                        shared_translation,
+                        shared_linear,
+                        shared_curvature,
+                        delta,
+                    );
+                    if !update.valid {
+                        shared_status.x = -1.0;
+                    } else {
+                        shared_translation = update.translation;
+                        shared_linear = update.linear;
+                        shared_curvature = update.curvature;
+                        let zncc = totals_a.z / (reference_norm * current_norm);
+                        shared_status.x = convergence_status(quadratic_change(delta), zncc);
+                    }
+                }
+            }
+        } else if lane == 0u {
             let totals_a = partial_a[0];
             let totals_b = partial_b[0];
             let totals_c = partial_c[0];
-            var reduced_j: array<f32, 6>;
-            reduced_j[0] = totals_a.w;
-            reduced_j[1] = totals_b.x;
-            reduced_j[2] = totals_b.y;
-            reduced_j[3] = totals_b.z;
-            reduced_j[4] = totals_b.w;
-            reduced_j[5] = totals_c.x;
-
             let current_mean = totals_a.x / subset_pixel_count();
             let current_norm = sqrt(max(0.0, totals_a.y - totals_a.x * current_mean));
             let reference_norm = metadata_value(subset_index, 0u);
             shared_status.y = f32(iteration + 1u);
-
             if current_norm < 1e-9 || reference_norm < 1e-9 {
                 shared_status.x = -2.0;
             } else {
                 let ratio = reference_norm / current_norm;
-                let delta = solve_increment(subset_index, reduced_j, current_mean, ratio);
-                let determinant = increment_determinant(delta);
+                let reduced_j = array<f32, 6>(
+                    totals_a.w,
+                    totals_b.x,
+                    totals_b.y,
+                    totals_b.z,
+                    totals_b.w,
+                    totals_c.x,
+                );
+                let delta = solve_standard_increment(
+                    subset_index, reduced_j, current_mean, ratio,
+                );
+                let determinant = standard_increment_determinant(delta);
                 if abs(determinant) < 1e-8 {
                     shared_status.x = -1.0;
                 } else {
-                    let update = compose_inverse_update(
+                    let update = compose_standard_inverse_update(
                         shared_translation,
                         shared_linear,
                         delta,
@@ -515,7 +830,9 @@ fn solve_subset(
                     shared_translation = update.translation;
                     shared_linear = update.linear;
                     let zncc = totals_a.z / (reference_norm * current_norm);
-                    shared_status.x = convergence_status(corner_change(delta), zncc);
+                    shared_status.x = convergence_status(
+                        standard_corner_change(delta), zncc,
+                    );
                 }
             }
         }
@@ -526,18 +843,32 @@ fn solve_subset(
     // A selective retry instead retains their existing results so the median
     // pass can still use neighbours that already converged.
     if lane == 0u && (enabled || !preserve_disabled) {
-        state.values[subset_index * 2u] = vec4<f32>(
+        let state_index = subset_index * state_vec4_stride();
+        state.values[state_index] = vec4<f32>(
             shared_translation.x,
             shared_linear.x,
             shared_linear.y,
             shared_translation.y,
         );
-        state.values[subset_index * 2u + 1u] = vec4<f32>(
-            shared_linear.z,
-            shared_linear.w,
-            shared_status.x,
-            shared_status.y,
-        );
+        if MOTION_MODEL == 2u {
+            state.values[state_index + 1u] = vec4<f32>(
+                shared_linear.z, shared_linear.w, shared_curvature[0], shared_curvature[1],
+            );
+            state.values[state_index + 2u] = vec4<f32>(
+                shared_curvature[2], shared_curvature[3],
+                shared_curvature[4], shared_curvature[5],
+            );
+            state.values[state_index + 3u] = vec4<f32>(
+                shared_status.x, shared_status.y, 0.0, 0.0,
+            );
+        } else {
+            state.values[state_index + 1u] = vec4<f32>(
+                shared_linear.z,
+                shared_linear.w,
+                shared_status.x,
+                shared_status.y,
+            );
+        }
     }
 }
 
@@ -552,6 +883,7 @@ fn solve(
         local_id.x,
         vec2<f32>(0.0),
         vec4<f32>(0.0),
+        array<f32, 6>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
         true,
         false,
     );
@@ -562,13 +894,20 @@ fn solve_from_seed(
     lane: u32,
     preserve_disabled: bool,
 ) {
-    let seed_a = seed_state.values[subset_index * 2u];
-    let seed_b = seed_state.values[subset_index * 2u + 1u];
+    let state_index = subset_index * state_vec4_stride();
+    let seed_a = seed_state.values[state_index];
+    let seed_b = seed_state.values[state_index + 1u];
+    var curvature = array<f32, 6>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+    if MOTION_MODEL == 2u {
+        let seed_c = seed_state.values[state_index + 2u];
+        curvature = array<f32, 6>(seed_b.z, seed_b.w, seed_c.x, seed_c.y, seed_c.z, seed_c.w);
+    }
     solve_subset(
         subset_index,
         lane,
         vec2<f32>(seed_a.x, seed_a.w),
         vec4<f32>(seed_a.y, seed_a.z, seed_b.x, seed_b.y),
+        curvature,
         active_mask.values[subset_index] != 0u,
         preserve_disabled,
     );
@@ -614,18 +953,106 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
     if subset_index >= config.grid_count {
         return;
     }
-    let state_index = subset_index * 2u;
+    let stride = state_vec4_stride();
+    let state_index = subset_index * stride;
     let own_a = state.values[state_index];
     let own_b = state.values[state_index + 1u];
-    filtered_state.values[state_index] = own_a;
-    filtered_state.values[state_index + 1u] = own_b;
-    if own_b.z < 0.5 {
+    for (var item = 0u; item < stride; item += 1u) {
+        filtered_state.values[state_index + item] = state.values[state_index + item];
+    }
+    var own_status = own_b.z;
+    if MOTION_MODEL == 2u {
+        own_status = state.values[state_index + 3u].x;
+    }
+    if own_status < 0.5 {
         return;
     }
 
     let point_x = i32(subset_index % config.grid_width);
     let point_y = i32(subset_index / config.grid_width);
     let grid_height = i32(config.grid_count / config.grid_width);
+    if MOTION_MODEL == 2u {
+        var neighbours: array<array<f32, 12>, 8>;
+        var count = 0u;
+        for (var dy = -1; dy <= 1; dy += 1) {
+            for (var dx = -1; dx <= 1; dx += 1) {
+                if dx == 0 && dy == 0 {
+                    continue;
+                }
+                let neighbour_x = point_x + dx;
+                let neighbour_y = point_y + dy;
+                if neighbour_x < 0 || neighbour_y < 0
+                    || neighbour_x >= i32(config.grid_width) || neighbour_y >= grid_height {
+                    continue;
+                }
+                let neighbour_index = u32(neighbour_y) * config.grid_width + u32(neighbour_x);
+                let neighbour_state = neighbour_index * stride;
+                let a = state.values[neighbour_state];
+                let b = state.values[neighbour_state + 1u];
+                let c = state.values[neighbour_state + 2u];
+                let d = state.values[neighbour_state + 3u];
+                if d.x < 0.5 {
+                    continue;
+                }
+                let offset_x = -f32(SUBSET_SIZE) * f32(dx);
+                let offset_y = -f32(SUBSET_SIZE) * f32(dy);
+                neighbours[count][0] = a.x + a.y * offset_x + a.z * offset_y
+                    + 0.5 * b.z * offset_x * offset_x + b.w * offset_x * offset_y
+                    + 0.5 * c.x * offset_y * offset_y;
+                neighbours[count][1] = a.y + b.z * offset_x + b.w * offset_y;
+                neighbours[count][2] = a.z + b.w * offset_x + c.x * offset_y;
+                neighbours[count][3] = a.w + b.x * offset_x + b.y * offset_y
+                    + 0.5 * c.y * offset_x * offset_x + c.z * offset_x * offset_y
+                    + 0.5 * c.w * offset_y * offset_y;
+                neighbours[count][4] = b.x + c.y * offset_x + c.z * offset_y;
+                neighbours[count][5] = b.y + c.z * offset_x + c.w * offset_y;
+                neighbours[count][6] = b.z;
+                neighbours[count][7] = b.w;
+                neighbours[count][8] = c.x;
+                neighbours[count][9] = c.y;
+                neighbours[count][10] = c.z;
+                neighbours[count][11] = c.w;
+                count += 1u;
+            }
+        }
+        if count < 4u {
+            return;
+        }
+        var medians: array<f32, 12>;
+        var values: array<f32, 8>;
+        for (var component = 0u; component < 12u; component += 1u) {
+            for (var index = 0u; index < count; index += 1u) {
+                values[index] = neighbours[index][component];
+            }
+            medians[component] = median_eight(&values, count);
+        }
+        for (var index = 0u; index < count; index += 1u) {
+            values[index] = abs(neighbours[index][0] - medians[0]);
+        }
+        let spread_x = median_eight(&values, count);
+        for (var index = 0u; index < count; index += 1u) {
+            values[index] = abs(neighbours[index][3] - medians[3]);
+        }
+        let spread_y = median_eight(&values, count);
+        let flagged = abs(own_a.x - medians[0]) / (spread_x + 0.1) > 2.0
+            || abs(own_a.w - medians[3]) / (spread_y + 0.1) > 2.0;
+        if flagged {
+            filtered_state.values[state_index] = vec4<f32>(
+                medians[0], medians[1], medians[2], medians[3],
+            );
+            filtered_state.values[state_index + 1u] = vec4<f32>(
+                medians[4], medians[5], medians[6], medians[7],
+            );
+            filtered_state.values[state_index + 2u] = vec4<f32>(
+                medians[8], medians[9], medians[10], medians[11],
+            );
+            filtered_state.values[state_index + 3u] = vec4<f32>(
+                2.0, state.values[state_index + 3u].y, 0.0, 0.0,
+            );
+        }
+        return;
+    }
+
     var predicted_x = array<f32, 8>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
     var predicted_y = array<f32, 8>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
     var parameter_1 = array<f32, 8>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
@@ -645,7 +1072,7 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
                 continue;
             }
             let neighbor_index = u32(neighbor_y) * config.grid_width + u32(neighbor_x);
-            let neighbor_state_index = neighbor_index * 2u;
+            let neighbor_state_index = neighbor_index * stride;
             let neighbor_a = state.values[neighbor_state_index];
             let neighbor_b = state.values[neighbor_state_index + 1u];
             if neighbor_b.z < 0.5 {

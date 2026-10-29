@@ -64,7 +64,7 @@ additional browsers and GPU vendors. It receives no new algorithmic features
 and should not be selected by new code. See the
 [GPU-IO migration guide](./docs/how-to/migrate-from-gpuio.rst).
 
-This implementation ports the affine inverse-compositional Gauss-Newton
+This implementation ports and extends the inverse-compositional Gauss-Newton
 (IC-GN) registration core from the SYCL prototype in
 `DIC_CODEC/DIC_FROM_H264` to the original WebGL2/GPU-IO path, an independent
 Three.js/TSL WebGPU path, a raw browser WebGPU adapter, and an experimental
@@ -73,8 +73,8 @@ camera or an H.264 pipeline.
 
 The implementation retains the main algorithmic choices of the SYCL version:
 
-- one six-parameter affine transformation per subset by default, or an
-  explicitly selected two-parameter translation;
+- a two-parameter translation, the default six-parameter affine
+  transformation, or a twelve-parameter quadratic transformation per subset;
 - reference-image gradients and a reference-dependent Hessian;
 - inverse-compositional warp updates;
 - convergence based on the maximum update at the four subset corners;
@@ -110,9 +110,9 @@ Strobox. Three.js r186 and its licence are vendored locally under
 The raw browser adapter and wgpu-py load the same canonical
 [`icgn.wgsl`](./python/src/lucas_kanade_icgn/shaders/icgn.wgsl) and
 [`full_pyramid.wgsl`](./python/src/lucas_kanade_icgn/shaders/full_pyramid.wgsl)
-sources. They own the FIR prefilter, increment solve, inverse affine
-composition, convergence, spatial median rules, image reduction, and affine
-seed transfer. Their host adapters only allocate resources, transfer frames,
+sources. They own the FIR prefilter, increment solve, inverse warp
+composition, convergence, spatial median rules, image reduction, and
+polynomial seed transfer. Their host adapters only allocate resources, transfer frames,
 dispatch kernels, and convert the common packed result. The
 optimized Three.js path keeps its TSL implementation because subgroup
 collectives are faster on the validation GPU, but it now shares named
@@ -140,12 +140,20 @@ The motion model is also fixed at engine creation. ``motion_model="affine"``
 is the six-parameter default. ``motion_model="translation"`` estimates only
 ``tx`` and ``ty`` using an analytic 2 by 2 inverse and specialized GPU kernels;
 the existing six-component result layout is preserved with exact zeros for the
-four deformation terms. Translation mode is available in native wgpu, raw
-browser WGSL, Three.js WebGPU, and its WebGL2 fallback. GPU-IO remains
-affine-only. Use translation for rigid displacement-only work, not strain
-measurement. See
+four deformation terms. ``motion_model="quadratic"`` uses twelve parameters
+and adds ``x^2/2``, ``xy``, and ``y^2/2`` terms for both displacement
+components. It is implemented by the shared WGSL native and raw-browser paths;
+Three.js and GPU-IO do not yet support it. Use translation for rigid
+displacement-only work, affine for ordinary strain measurement, and quadratic
+when within-subset displacement curvature is required. See
 [`Motion models`](./docs/explanation/motion-models.rst) for the equations,
 backend coverage, and current A/B results.
+
+Quadratic mode is currently a correctness-first path, not the 4K60 default.
+On this machine, a dedicated two-level UHD run with 32 x 32 subsets and direct
+cubic interpolation measured 56.8--70.0 ms campaign medians and 14.5--16.7
+FPS from a resident NumPy image to the materialized 12-component NumPy field.
+The affine and translation figures above must not be used for quadratic mode.
 
 ## Backend and pyramid policy
 
@@ -206,7 +214,7 @@ result bit for bit. This is not the recommended normal pyramid.
 
 For workloads that need a pyramid on every frame, the separate
 ``ICGNWGPUFullPyramid`` backend keeps reduction, per-level target coefficients,
-coarse-to-fine affine seeds, and solver states on one GPU. It encodes all
+coarse-to-fine polynomial seeds, and solver states on one GPU. It encodes all
 levels in one command buffer and performs one final readback. Iterations and
 tolerances are configurable per scale from coarse to fine. Two levels are the
 recommended native default. Three levels remain available explicitly for

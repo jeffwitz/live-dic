@@ -28,7 +28,9 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--iterations-per-level", type=int, nargs="+")
     parser.add_argument("--tolerance-per-level", type=float, nargs="+")
     parser.add_argument(
-        "--motion-model", choices=("affine", "translation"), default="affine"
+        "--motion-model",
+        choices=("affine", "translation", "quadratic"),
+        default="affine",
     )
     parser.add_argument(
         "--interpolation",

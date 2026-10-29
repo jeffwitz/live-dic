@@ -23,6 +23,8 @@ struct SeedConfig {
 }
 
 override SUBSET_SIZE: f32 = 16.0;
+// Matches icgn.wgsl: 0 affine, 1 translation, 2 quadratic.
+override MOTION_MODEL: u32 = 0u;
 
 @group(0) @binding(0) var reduce_x_source: texture_2d<f32>;
 @group(0) @binding(1) var reduce_x_destination: texture_storage_2d<r32float, write>;
@@ -107,26 +109,55 @@ fn accumulate_seed(
     destination_position: vec2<f32>,
     translation_scale: f32,
     accumulated_a: ptr<function, vec4<f32>>,
-    accumulated_b: ptr<function, vec2<f32>>,
+    accumulated_b: ptr<function, vec4<f32>>,
+    accumulated_c: ptr<function, vec4<f32>>,
     weight_sum: ptr<function, f32>,
 ) {
-    let source_a = source_state.values[source_index * 2u];
-    let source_b = source_state.values[source_index * 2u + 1u];
-    if source_b.z < -0.5 {
+    let stride = select(2u, 4u, MOTION_MODEL == 2u);
+    let state_index = source_index * stride;
+    let source_a = source_state.values[state_index];
+    let source_b = source_state.values[state_index + 1u];
+    var source_c = vec4<f32>(0.0);
+    var status = source_b.z;
+    if MOTION_MODEL == 2u {
+        source_c = source_state.values[state_index + 2u];
+        status = source_state.values[state_index + 3u].x;
+    }
+    if status < -0.5 {
         return;
     }
     let delta = destination_position - source_position;
     let weighted = weight;
-    (*accumulated_a).x += weighted
-        * (source_a.x + source_a.y * delta.x + source_a.z * delta.y)
-        * translation_scale;
-    (*accumulated_a).y += weighted * source_a.y;
-    (*accumulated_a).z += weighted * source_a.z;
-    (*accumulated_a).w += weighted
-        * (source_a.w + source_b.x * delta.x + source_b.y * delta.y)
-        * translation_scale;
-    (*accumulated_b).x += weighted * source_b.x;
-    (*accumulated_b).y += weighted * source_b.y;
+    var translated_u = source_a.x + source_a.y * delta.x + source_a.z * delta.y;
+    var translated_v = source_a.w + source_b.x * delta.x + source_b.y * delta.y;
+    var ux = source_a.y;
+    var uy = source_a.z;
+    var vx = source_b.x;
+    var vy = source_b.y;
+    if MOTION_MODEL == 2u {
+        translated_u += 0.5 * source_b.z * delta.x * delta.x
+            + source_b.w * delta.x * delta.y
+            + 0.5 * source_c.x * delta.y * delta.y;
+        translated_v += 0.5 * source_c.y * delta.x * delta.x
+            + source_c.z * delta.x * delta.y
+            + 0.5 * source_c.w * delta.y * delta.y;
+        ux += source_b.z * delta.x + source_b.w * delta.y;
+        uy += source_b.w * delta.x + source_c.x * delta.y;
+        vx += source_c.y * delta.x + source_c.z * delta.y;
+        vy += source_c.z * delta.x + source_c.w * delta.y;
+    }
+    (*accumulated_a).x += weighted * translated_u * translation_scale;
+    (*accumulated_a).y += weighted * ux;
+    (*accumulated_a).z += weighted * uy;
+    (*accumulated_a).w += weighted * translated_v * translation_scale;
+    (*accumulated_b).x += weighted * vx;
+    (*accumulated_b).y += weighted * vy;
+    if MOTION_MODEL == 2u {
+        let curvature_scale = 1.0 / translation_scale;
+        (*accumulated_b).z += weighted * source_b.z * curvature_scale;
+        (*accumulated_b).w += weighted * source_b.w * curvature_scale;
+        *accumulated_c += weighted * source_c * curvature_scale;
+    }
     *weight_sum += weighted;
 }
 
@@ -159,7 +190,8 @@ fn transfer_seed(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let fraction = clamp(source_grid_coordinate - vec2<f32>(lower), vec2<f32>(0.0), vec2<f32>(1.0));
     let translation_scale = seed_config.source_scale / seed_config.destination_scale;
     var accumulated_a = vec4<f32>(0.0);
-    var accumulated_b = vec2<f32>(0.0);
+    var accumulated_b = vec4<f32>(0.0);
+    var accumulated_c = vec4<f32>(0.0);
     var weight_sum = 0.0;
     for (var corner = 0; corner < 4; corner = corner + 1) {
         let offset = vec2<i32>(corner & 1, corner >> 1);
@@ -180,6 +212,7 @@ fn transfer_seed(@builtin(global_invocation_id) global_id: vec3<u32>) {
             translation_scale,
             &accumulated_a,
             &accumulated_b,
+            &accumulated_c,
             &weight_sum,
         );
     }
@@ -187,13 +220,16 @@ fn transfer_seed(@builtin(global_invocation_id) global_id: vec3<u32>) {
     if has_seed {
         accumulated_a /= weight_sum;
         accumulated_b /= weight_sum;
+        accumulated_c /= weight_sum;
     }
-    destination_seed.values[destination_index * 2u] = accumulated_a;
-    destination_seed.values[destination_index * 2u + 1u] = vec4<f32>(
-        accumulated_b,
-        0.0,
-        0.0,
-    );
+    let stride = select(2u, 4u, MOTION_MODEL == 2u);
+    let destination_state_index = destination_index * stride;
+    destination_seed.values[destination_state_index] = accumulated_a;
+    destination_seed.values[destination_state_index + 1u] = accumulated_b;
+    if MOTION_MODEL == 2u {
+        destination_seed.values[destination_state_index + 2u] = accumulated_c;
+        destination_seed.values[destination_state_index + 3u] = vec4<f32>(0.0);
+    }
     // A missing coarse estimate is not a reason to suppress a potentially
     // valid finer subset. Run it from the zero seed instead.
     destination_active.values[destination_index] = 1u;

@@ -56,7 +56,7 @@ Data flow
                    B-spline: FIR X + FIR Y; direct: none
                                       |
                                       v
-                              affine IC-GN iterations
+                              selected IC-GN iterations
                                       |
                                       v
                               median consistency pass
@@ -97,7 +97,7 @@ Target stage
 Every target is converted to grayscale and uploaded. The default ``bspline``
 mode filters it into cubic B-spline coefficients; ``linear`` and ``cubic``
 sample the uploaded target directly and skip both FIR passes. Three.js runs up
-to 30 affine IC-GN iterations inside
+to 30 IC-GN iterations inside
 one compute dispatch and fills the measured subgroup when available (32 lanes
 on the validation GPU); its portable fallback uses 16 lanes. GPU-IO fuses the
 same iteration loop into one fragment per subset and scans the selected square
@@ -130,7 +130,8 @@ page and to prepare the reference. Per-frame targets do not cross DevTools.
 The page instead maintains a same-origin binary long poll against the private
 loopback asset server. Python exposes the contiguous ``uint8`` storage without
 PNG encoding; Chromium receives an ``Uint8Array`` and posts one interleaved
-eight-float state field after registration. Options and small timing metadata
+packed state field after registration (eight floats per subset for translation
+and affine, sixteen for quadratic). Options and small timing metadata
 travel in HTTP headers or a short JSON prefix, never as image or field JSON.
 
 Raw WebGPU writes the received bytes directly to its ``r8unorm`` texture.

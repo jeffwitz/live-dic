@@ -20,7 +20,7 @@ from typing import Any
 
 from .engine import ICGNError, ImageInput, ReferenceInfo, RegistrationResult, _as_uint8_gray
 from .interpolation import normalize_interpolation
-from .motion import normalize_motion_model
+from .motion import MOTION_MODEL_PIPELINE_CONSTANTS, normalize_motion_model
 from .subset import DEFAULT_SUBSET_SIZE, normalize_subset_size
 from .wgpu_backend import (
     DEFAULT_IN_FLIGHT_FRAMES,
@@ -279,7 +279,10 @@ class ICGNWGPUFullPyramid:
             compute={
                 "module": shader,
                 "entry_point": "transfer_seed",
-                "constants": {"SUBSET_SIZE": self.subset_size},
+                "constants": {
+                    "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
+                    "SUBSET_SIZE": self.subset_size,
+                },
             },
         )
 

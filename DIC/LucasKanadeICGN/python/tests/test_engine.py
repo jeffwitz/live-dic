@@ -167,6 +167,29 @@ class RegistrationResultTests(unittest.TestCase):
         self.assertEqual(result.replaced, 1)
         self.assertEqual(result.timing, {"gpuMs": 1.25})
 
+    def test_packed_quadratic_browser_result_exposes_twelve_parameters(self) -> None:
+        packed = np.zeros((1, 2, 16), dtype="<f4")
+        packed[0, :, 0] = [2.0, 4.0]
+        packed[0, :, 3] = [-1.0, -3.0]
+        packed[0, :, 6:12] = np.arange(12, dtype=np.float32).reshape(2, 6)
+        packed[0, :, 12] = 1.0
+        packed[0, :, 13] = 3.0
+        payload = {
+            "grid": [2, 1],
+            "width": 32,
+            "height": 16,
+            "subsetSize": 16,
+            "stateStride": 16,
+            "config": {"motionModel": "quadratic"},
+        }
+
+        result = RegistrationResult.from_packed_browser_result(packed.tobytes(), payload)
+
+        self.assertEqual(result.parameters.shape, (1, 2, 12))
+        self.assertEqual(result.parameter_order[-1], "d2v_dy2")
+        np.testing.assert_array_equal(result.displacement[0], [[2.0, -1.0], [4.0, -3.0]])
+        self.assertTrue(np.shares_memory(result.displacement, result.parameters))
+
 
 class BinaryTransportServerTests(unittest.TestCase):
     def test_raw_input_is_one_shot_and_result_is_returned(self) -> None:
@@ -378,6 +401,14 @@ class RuntimeAssetTests(unittest.TestCase):
         engine = ICGNWebGL(backend="three-tsl", motion_model="translation")
         options = engine._options(iterations=30, tolerance=1e-3, zncc_min=0.8)
         self.assertEqual(options["motionModel"], "translation")
+
+        quadratic = ICGNWebGL(backend="webgpu-wgsl", motion_model="quadratic")
+        self.assertEqual(
+            quadratic._options(iterations=None, tolerance=None, zncc_min=None)["motionModel"],
+            "quadratic",
+        )
+        with self.assertRaisesRegex(ValueError, "requires backend='webgpu-wgsl'"):
+            ICGNWebGL(backend="three-tsl", motion_model="quadratic")
 
     def test_three_webgl_fallback_is_explicitly_testable(self) -> None:
         engine = ICGNWebGL(backend="three-tsl", force_three_webgl=True)

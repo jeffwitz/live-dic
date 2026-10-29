@@ -67,7 +67,9 @@ def _arguments() -> argparse.Namespace:
         help="force Three.js to use its WebGL2 compatibility backend",
     )
     parser.add_argument(
-        "--motion-model", choices=("affine", "translation"), default="affine"
+        "--motion-model",
+        choices=("affine", "translation", "quadratic"),
+        default="affine",
     )
     args = parser.parse_args()
     if args.pyramid_levels is not None and args.backend != "webgpu-wgsl":

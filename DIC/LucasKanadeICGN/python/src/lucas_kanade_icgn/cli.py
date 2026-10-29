@@ -1,4 +1,4 @@
-"""Command-line interface for headless affine IC-GN registration."""
+"""Command-line interface for headless IC-GN registration."""
 
 from __future__ import annotations
 
@@ -13,7 +13,6 @@ from typing import Any
 import numpy as np
 
 from .engine import (
-    PARAMETER_ORDER,
     BenchmarkResult,
     EngineInfo,
     ICGNError,
@@ -74,9 +73,9 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--motion-model",
-        choices=("affine", "translation"),
+        choices=("affine", "translation", "quadratic"),
         default="affine",
-        help="estimated warp model (translation uses an analytic 2x2 inverse Hessian)",
+        help="estimated warp model (quadratic adds six second-derivative terms)",
     )
     parser.add_argument(
         "--subset-size",
@@ -160,7 +159,7 @@ def _registration_summary(
     summary: dict[str, Any] = {
         "target": str(target),
         "grid": list(result.status.shape[::-1]),
-        "parameter_order": list(PARAMETER_ORDER),
+        "parameter_order": list(result.parameter_order),
         "accepted": result.accepted,
         "replaced": result.replaced,
         "status_counts": {
@@ -205,7 +204,7 @@ def _save_registrations(
     np.savez_compressed(
         path,
         targets=np.asarray([str(target) for target in targets]),
-        parameter_order=np.asarray(PARAMETER_ORDER),
+        parameter_order=np.asarray(results[0].parameter_order),
         parameters=np.stack([result.parameters for result in results]),
         displacement=np.stack([result.displacement for result in results]),
         status=np.stack([result.status for result in results]),
@@ -227,7 +226,7 @@ def _save_benchmark(path: Path, target: Path, result: BenchmarkResult) -> None:
     np.savez_compressed(
         path,
         target=np.asarray(str(target)),
-        parameter_order=np.asarray(PARAMETER_ORDER),
+        parameter_order=np.asarray(registration.parameter_order),
         parameters=registration.parameters,
         displacement=registration.displacement,
         status=registration.status,

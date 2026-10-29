@@ -1,4 +1,4 @@
-"""Headless Python interface for GPU-accelerated affine IC-GN solvers."""
+"""Headless Python interface for GPU-accelerated IC-GN solvers."""
 
 from .engine import (
     PARAMETER_ORDER,
@@ -12,11 +12,12 @@ from .engine import (
     register_pair,
 )
 from .full_pyramid_backend import DEFAULT_FULL_PYRAMID_LEVELS, ICGNWGPUFullPyramid
-from .motion import MOTION_MODELS
+from .motion import AFFINE_PARAMETER_ORDER, MOTION_MODELS, QUADRATIC_PARAMETER_ORDER
 from .wgpu_backend import DEFAULT_IN_FLIGHT_FRAMES, DEFAULT_PYRAMID_LEVELS, ICGNWGPU
 
 __all__ = [
     "BenchmarkResult",
+    "AFFINE_PARAMETER_ORDER",
     "DEFAULT_IN_FLIGHT_FRAMES",
     "DEFAULT_FULL_PYRAMID_LEVELS",
     "DEFAULT_PYRAMID_LEVELS",
@@ -28,6 +29,7 @@ __all__ = [
     "ICGNWGPUFullPyramid",
     "MOTION_MODELS",
     "PARAMETER_ORDER",
+    "QUADRATIC_PARAMETER_ORDER",
     "ReferenceInfo",
     "RegistrationResult",
     "register_pair",

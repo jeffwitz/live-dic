@@ -1,11 +1,11 @@
-# Headless Python interface for affine IC-GN
+# Headless Python interface for GPU IC-GN
 
 > **Built on Pierre Margerit's foundational work.** This Python interface is an
 > extension of [Pierre Margerit's original `tests_gpuio`
 > project](https://github.com/MargeritPierre/tests_gpuio). His GPU-IO
 > experiments and WebGL foundation made this real-time DIC path possible.
 
-This package exposes the affine IC-GN solver in the parent directory to Python
+This package exposes the IC-GN solvers in the parent directory to Python
 without opening a visible browser window or loading graphical controls.
 Chromium is used as an invisible runtime for Three.js/TSL on WebGPU or WebGL2,
 the raw WebGPU shared-WGSL backend, and the deprecated GPU-IO compatibility
@@ -125,8 +125,8 @@ and accepts only `"bspline"`.
 
 ## Motion model
 
-Every active engine also accepts `motion_model="affine"` (the default) or
-`motion_model="translation"`:
+The shared-WGSL engines also accept `motion_model="quadratic"` in addition to
+`"affine"` (the default) and `"translation"`:
 
 ```python
 with ICGNWGPUFullPyramid(motion_model="translation") as engine:
@@ -137,7 +137,10 @@ with ICGNWGPUFullPyramid(motion_model="translation") as engine:
 Translation mode estimates only `tx` and `ty` with an analytic 2 × 2 Hessian
 inverse. It keeps the public six-parameter result layout and writes exact zeros
 to `du/dx`, `du/dy`, `dv/dx`, and `dv/dy`. Use it for rigid displacement-only
-work, not for strain measurement. The deprecated GPU-IO backend is affine-only.
+work, not for strain measurement. Quadratic mode returns twelve components: the
+six affine terms followed by the six second displacement derivatives. It is
+available in native wgpu and `backend="webgpu-wgsl"`; Three.js and deprecated
+GPU-IO reject it.
 Changing the model requires a new engine and new reference preparation.
 
 ## Persistent Python supervisor
@@ -178,6 +181,14 @@ The affine parameter order is:
 ```text
 [tx, du/dx, du/dy, ty, dv/dx, dv/dy]
 ```
+
+Quadratic results append:
+
+```text
+[d2u/dx2, d2u/dxdy, d2u/dy2, d2v/dx2, d2v/dxdy, d2v/dy2]
+```
+
+Use `result.parameter_order` instead of assuming a fixed last-axis size.
 
 `status` and `iterations` both have shape `(32, 32)`. Status values are:
 
@@ -268,7 +279,7 @@ print(result.displacement)
 
 The engine uploads contiguous grayscale bytes directly to an `r8unorm`
 texture and returns NumPy views backed by one packed result readback. The FIR,
-affine IC-GN solver, and median replacement all run on the native GPU. The
+selected IC-GN solver and median replacement all run on the native GPU. The
 result schema and parameter order are identical to `ICGNWebGL`. This backend
 is experimental and must be selected explicitly. At reference preparation,
 the default `prefer_subgroups=None` policy times both available native solvers
@@ -328,7 +339,7 @@ with ICGNWGPUFullPyramid(
 ```
 
 The schedules are ordered from coarse to fine. The finest target is uploaded
-once; reductions, prefilters, affine seed transfers, and all solves stay on one
+once; reductions, prefilters, polynomial seed transfers, and all solves stay on one
 WebGPU device in one command submission. Only the finest packed field is read
 back. The selective `ICGNWGPU` recovery path remains available when large
 motion is exceptional, while `ICGNWGPUFullPyramid` is the recommended native

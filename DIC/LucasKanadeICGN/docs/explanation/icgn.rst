@@ -1,10 +1,10 @@
-Affine inverse-compositional registration
-=========================================
+Inverse-compositional registration
+==================================
 
 Subset warp
 -----------
 
-Each subset uses six parameters:
+The default affine model uses six parameters:
 
 .. math::
 
@@ -22,6 +22,9 @@ is
    \end{bmatrix}.
 
 The target is sampled at the warped position with cubic B-spline interpolation.
+Direct bilinear and Keys-cubic interpolation are also selectable. Translation
+and quadratic warp bases are defined in :doc:`motion-models`; quadratic mode
+adds six second derivatives to this affine prefix.
 
 Reference preparation
 ---------------------
@@ -42,7 +45,9 @@ The implementation prepares
    \left(\sum_{x,y}\mathbf{J}\mathbf{J}^T\right)^{-1}
 
 once per subset and stores it in a GPU atlas. ``J^T F`` and ``sum(J)`` are also
-precomputed so the target pass needs one cubic sample per pixel.
+precomputed so the target pass needs one reconstructed sample per pixel.
+Quadratic mode extends the steepest-descent vector to twelve components and
+stores a 12 by 12 inverse Hessian.
 
 Normalized residual
 -------------------
@@ -64,16 +69,18 @@ the inverse increment:
    W(\mathbf{p}) \circ W(\Delta\mathbf{p})^{-1}.
 
 Convergence is reached when the maximum displacement induced by
-:math:`\Delta\mathbf{p}` at the four subset corners falls below the tolerance.
-This criterion accounts for both translation and affine gradients.
+:math:`\Delta\mathbf{p}` over the model's control points falls below the
+tolerance. Affine mode uses the four corners; quadratic mode uses a 3 by 3 set
+so interior curvature contributes.
 
 Spatial consistency
 -------------------
 
 After IC-GN, the median pass compares each accepted subset with predictions from
 its accepted 3 x 3 neighbors. A normalized deviation above the configured rule
-replaces translation and affine gradients with neighbor medians and assigns
-status 2.
+replaces the active model coefficients with neighbor medians and assigns
+status 2. Quadratic neighbor polynomials are first recentered at the current
+subset centre before their coefficients are compared.
 
 Numerical equivalence
 ---------------------

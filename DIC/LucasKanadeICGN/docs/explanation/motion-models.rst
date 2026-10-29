@@ -1,102 +1,151 @@
 Motion models
 =============
 
-The solver supports two motion models selected when an engine is created:
-
-.. code-block:: python
+The motion model describes the displacement inside each subset. It is fixed
+when an engine is created because it changes the reference Jacobian, Hessian,
+GPU state layout, and compute pipelines::
 
    from lucas_kanade_icgn import ICGNWGPUFullPyramid
 
-   engine = ICGNWGPUFullPyramid(motion_model="translation")
+   engine = ICGNWGPUFullPyramid(motion_model="quadratic")
 
-``affine`` remains the default. It estimates six parameters per subset in the
-public order ``[tx, du/dx, du/dy, ty, dv/dx, dv/dy]``. Use it when local
-rotation, strain, shear, or magnification is part of the quantity to measure.
+Three models are available:
 
-``translation`` estimates only ``tx`` and ``ty``. It is appropriate when the
-subset content can be treated as rigid and the desired result is displacement
-only. The public result layout does not change: components 1, 2, 4, and 5 are
-written as exact zeros. Existing displacement, status, export, pyramid, and
-median-filter APIs therefore continue to work.
+``translation``
+   Estimates only horizontal and vertical translation. Use it when a subset
+   can be treated as locally rigid and strain is not required.
+
+``affine``
+   The default six-parameter model. It estimates translation and the first
+   spatial derivatives of displacement.
+
+``quadratic``
+   A twelve-parameter second-order model. It adds the three quadratic Lagrange
+   terms of each displacement component and can represent displacement
+   curvature inside a subset.
+
+Parameter bases
+---------------
+
+Let ``x`` and ``y`` be coordinates relative to the subset centre. The affine
+model is
+
+.. math::
+
+   u(x,y) &= t_x + u_x x + u_y y,\\
+   v(x,y) &= t_y + v_x x + v_y y.
+
+Its public order is
+``[tx, du_dx, du_dy, ty, dv_dx, dv_dy]``.
+
+The quadratic model uses the second-order basis
+``[1, x, y, x^2/2, xy, y^2/2]``:
+
+.. math::
+
+   u(x,y) &= t_x + u_x x + u_y y
+             + \tfrac12 u_{xx}x^2 + u_{xy}xy + \tfrac12 u_{yy}y^2,\\
+   v(x,y) &= t_y + v_x x + v_y y
+             + \tfrac12 v_{xx}x^2 + v_{xy}xy + \tfrac12 v_{yy}y^2.
+
+The twelve returned components are::
+
+   [tx, du_dx, du_dy, ty, dv_dx, dv_dy,
+    d2u_dx2, d2u_dxdy, d2u_dy2,
+    d2v_dx2, d2v_dxdy, d2v_dy2]
+
+The one-half factors make the stored pure quadratic coefficients equal to the
+second derivatives at the subset centre. ``RegistrationResult.displacement``
+continues to select ``tx`` and ``ty`` without copying data for all models.
+
+Inverse-compositional quadratic update
+--------------------------------------
+
+Quadratic mode is not implemented as an additive correction. The two
+second-order coordinate maps are lifted to a 6 by 6 operator acting on
+``[x^2, xy, y^2, x, y, 1]``. At each iteration the incremental operator is
+inverted with pivoted Gauss-Jordan elimination and composed with the current
+warp. The updated twelve coefficients are then extracted from the composed
+operator. This preserves the inverse-compositional update for the complete
+second-order warp.
+
+Reference preparation builds a 12-component steepest-descent image and a
+12 by 12 inverse Hessian for each subset. The run-time solver accumulates and
+reduces twelve residual products. Quadratic mode therefore consumes more
+reference memory and arithmetic than affine mode; it is intended for cases
+where within-subset curvature is physically useful, not as a faster affine
+approximation.
 
 Analytic translation solve
 --------------------------
 
-For a translation, the steepest-descent image contains only the two reference
-gradients. The constant Hessian is
+For translation, the steepest-descent image contains only the two reference
+gradients. Its 2 by 2 Hessian is inverted analytically. The GPU specialization
+omits the affine and quadratic products, general matrix-vector products, warp
+composition, and extended convergence tests. The six-component public layout
+is retained, with deformation components set to exact zeros.
 
-.. math::
+Pyramid transfer
+----------------
 
-   H = \begin{bmatrix}
-       \sum F_x^2 & \sum F_x F_y \\
-       \sum F_x F_y & \sum F_y^2
-   \end{bmatrix}.
-
-Reference preparation evaluates its inverse directly:
-
-.. math::
-
-   H^{-1} = \frac{1}{H_{xx}H_{yy}-H_{xy}^2}
-   \begin{bmatrix}H_{yy} & -H_{xy} \\ -H_{xy} & H_{xx}\end{bmatrix}.
-
-No general matrix inversion is used in this mode. At run time the kernels also
-omit the four affine Jacobian products, the 6 by 6 matrix-vector product, affine
-warp composition, and four-corner convergence calculation. The WGSL pipeline
-constant and the Three.js graph specialization remove those branches when the
-pipeline is built; this is not a per-pixel run-time switch.
+Coarse-to-fine transfer recentres every polynomial at the destination subset
+centre. Translation scales with the image scale, first derivatives are
+dimensionless, and second derivatives scale inversely with image scale. Both
+the native and raw-browser full pyramids perform this conversion on the GPU.
 
 Backend coverage
 ----------------
 
-.. list-table:: Translation model support
+.. list-table:: Motion-model support
    :header-rows: 1
 
    * - Backend
-     - Support
-     - Implementation
-   * - Native ``ICGNWGPU``
+     - Translation
+     - Affine
+     - Quadratic
+   * - Native ``ICGNWGPU`` shared WGSL
      - yes
-     - shared WGSL portable workgroup solver
+     - yes
+     - yes
    * - Native ``ICGNWGPUFullPyramid``
      - yes
-     - shared WGSL at every pyramid level
+     - yes
+     - yes
    * - Browser ``webgpu-wgsl``
      - yes
-     - the same shared WGSL source
-   * - Three.js WebGPU
      - yes
-     - TSL subgroup or portable solver specialized at graph construction
-   * - Three.js WebGL2 fallback
      - yes
-     - the same TSL mathematical helpers in its serial solver
+   * - Three.js WebGPU and WebGL2 fallback
+     - yes
+     - yes
+     - no
    * - Deprecated GPU-IO
      - no
-     - affine-only historical implementation
+     - yes
+     - no
 
-The native specialized SPIR-V subgroup kernel is affine-only. Requesting
-``motion_model="translation"`` therefore selects the portable shared-WGSL
-kernel. Explicitly combining translation with ``prefer_subgroups=True`` is
-rejected instead of silently running a different model.
+The native specialized SPIR-V subgroup solver is affine-only. Translation and
+quadratic requests use the portable shared-WGSL solver. In Python-supervised
+browser operation, request quadratic mode with ``backend="webgpu-wgsl"``;
+constructing the independent Three.js backend with this model is rejected.
 
-Choosing the model
-------------------
+Choosing a model
+----------------
 
-Translation is a modelling constraint, not merely a faster approximation to
-affine DIC. It can improve displacement robustness when a subset really moves
-rigidly because four unnecessary degrees of freedom cannot absorb noise. It
-cannot return strain: all displacement gradients are zero by construction.
+Use translation for rigid image motion and displacement-only work. Use affine
+for the usual DIC displacement-and-strain field. Use quadratic when the subset
+is large enough and the expected displacement has meaningful curvature within
+one subset. A 32 by 32 subset is a safer starting point than 8 by 8 for twelve
+unknowns, but conditioning remains image dependent.
 
-Use ``translation`` for rigid-image motion, motion compensation, or a fast
-displacement-only pass. Keep ``affine`` for DIC strain measurement and whenever
-rotation, shear, extension, or spatially varying displacement within one
-16 by 16 subset is significant.
+Quadratic mode has passed synthetic GPU regression tests that contain known
+non-zero first and second displacement derivatives. Those tests qualify the
+implementation, not its UHD throughput. Current published 4K performance
+tables cover affine and translation only; quadratic measurements must be
+reported separately because its 12 by 12 Hessian and exact composition have a
+different cost.
 
-The measured speed-up depends on the execution graph. It is largest when the
-iterative solve dominates. In a two-level full pyramid that converges in about
-one iteration per level, image reduction, B-spline prefiltering, upload,
-readback, and result construction dominate, so the gain is necessarily
-smaller. See :doc:`../reference/performance` for current A/B measurements.
-
-The motion model is fixed at engine construction because reference Hessians,
-metadata, and GPU pipelines depend on it. Construct a new engine and call
-``set_reference()`` again to change models.
+The second-order formulation follows the family described by Bai et al.,
+"A novel 2nd-order shape function based digital image correlation method for
+large deformation measurements", *Optics and Lasers in Engineering*, 90
+(2017), DOI: ``10.1016/j.optlaseng.2016.09.010``.

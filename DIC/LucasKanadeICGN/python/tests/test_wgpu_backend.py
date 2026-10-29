@@ -279,6 +279,36 @@ class NativeReferenceTests(unittest.TestCase):
         self.assertEqual(int(active[1, 1]), 1)
         np.testing.assert_array_equal(seeds[1, 1], 0.0)
 
+    def test_quadratic_pyramid_transfer_recenters_and_rescales_curvature(self) -> None:
+        parameters = np.zeros((2, 2, 12), dtype=np.float32)
+        parameters[..., 6] = 0.02
+        result = RegistrationResult(
+            parameters=parameters,
+            status=np.ones((2, 2), dtype=np.float32),
+            iterations=np.ones((2, 2), dtype=np.float32),
+            accepted=4,
+            replaced=0,
+            mean_translation=(0.0, 0.0),
+            mean_iterations=1.0,
+            timing={},
+            config={"motionModel": "quadratic"},
+        )
+
+        seeds, active = _transfer_pyramid_seed(
+            result,
+            source_available=np.ones((2, 2), dtype=np.bool_),
+            source_scale=2,
+            destination_scale=1,
+            destination_grid=(1, 1),
+            requested=np.ones((1, 1), dtype=np.bool_),
+        )
+
+        self.assertEqual(seeds.shape, (1, 1, 16))
+        self.assertEqual(active[0, 0], 1)
+        self.assertAlmostEqual(float(seeds[0, 0, 0]), 0.28125, places=6)
+        self.assertAlmostEqual(float(seeds[0, 0, 1]), -0.075, places=6)
+        self.assertAlmostEqual(float(seeds[0, 0, 6]), 0.01, places=6)
+
     def test_pyramid_dependency_mask_keeps_four_interpolation_sources(self) -> None:
         requested = np.zeros((4, 4), dtype=np.bool_)
         requested[2, 2] = True
@@ -356,9 +386,12 @@ class NativeReferenceTests(unittest.TestCase):
         self.assertIn("return clamp(reflected, 0, size - 1)", shader_text)
         self.assertIn("array<vec4<f32>>", shader_text)
         for helper in (
-            "solve_increment",
-            "compose_inverse_update",
-            "corner_change",
+            "solve_standard_increment",
+            "solve_quadratic_increment",
+            "compose_standard_inverse_update",
+            "compose_quadratic_inverse",
+            "standard_corner_change",
+            "quadratic_change",
             "convergence_status",
             "solve_seeded",
         ):
@@ -432,6 +465,21 @@ class NativeReferenceTests(unittest.TestCase):
                     rtol=2e-5,
                     atol=2e-5,
                 )
+
+    def test_quadratic_reference_uses_twelve_parameter_layout(self) -> None:
+        image = np.random.default_rng(91).integers(0, 256, size=(32, 32), dtype=np.uint8)
+
+        reference, inverse, metadata = _reference_arrays(
+            image,
+            interpolation="linear",
+            motion_model="quadratic",
+        )
+
+        self.assertEqual(reference.size, 32 * 32 * 4)
+        self.assertEqual(inverse.size, 4 * 12 * 12)
+        self.assertEqual(metadata.size, 4 * 28)
+        self.assertTrue(np.all(np.isfinite(inverse)))
+        self.assertTrue(np.all(np.isfinite(metadata)))
 
     def test_reference_interpolation_modes_are_finite_and_distinct(self) -> None:
         random = np.random.default_rng(20261029)

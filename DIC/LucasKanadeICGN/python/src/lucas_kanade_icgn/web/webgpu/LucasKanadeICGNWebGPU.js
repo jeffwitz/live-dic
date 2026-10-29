@@ -40,6 +40,7 @@ const INTERPOLATION_CONSTANTS = {
   linear: 1,
   cubic: 2,
 };
+const MOTION_MODEL_CONSTANTS = { affine: 0, translation: 1, quadratic: 2 };
 
 const configuration = {
   iterations: DEFAULT_MAX_ITERATIONS,
@@ -73,6 +74,7 @@ let levels = [];
 let reductionEdges = [];
 let seedEdges = new Map();
 let runtimePyramidLevels = 0;
+let runtimeMotionModel = null;
 let FRAME_WIDTH = 0;
 let FRAME_HEIGHT = 0;
 let PIXEL_COUNT = 0;
@@ -113,6 +115,7 @@ const destroyRuntimeResources = () => {
   reductionEdges = [];
   seedEdges = new Map();
   runtimePyramidLevels = 0;
+  runtimeMotionModel = null;
   sourceTexture = null;
   buffers = null;
   querySet = null;
@@ -185,7 +188,8 @@ const createRuntime = async (width, height) => {
     throw new Error(`The coarsest pyramid level must be at least ${SUBSET_SIZE} pixels`);
   }
   if (buffers && width === FRAME_WIDTH && height === FRAME_HEIGHT
-      && runtimePyramidLevels === levelCount) return false;
+      && runtimePyramidLevels === levelCount
+      && runtimeMotionModel === configuration.motionModel) return false;
   await ensureDevice();
   if (levelCount > 1 && device.limits.maxStorageBuffersPerShaderStage < 10) {
     throw new Error(
@@ -308,7 +312,7 @@ const createRuntime = async (width, height) => {
   for (const [mode, constant] of Object.entries(INTERPOLATION_CONSTANTS)) {
     const constants = {
       INTERPOLATION_MODE: constant,
-      MOTION_MODEL: configuration.motionModel === 'translation' ? 1 : 0,
+      MOTION_MODEL: MOTION_MODEL_CONSTANTS[configuration.motionModel],
       SUBSET_SIZE,
     };
     solvers[mode] = await pipeline(
@@ -350,7 +354,7 @@ const createRuntime = async (width, height) => {
     seededSolvers,
     median: await pipeline(
       'DIC-RT shared median filter', 'median_filter', shaderModule, layout,
-      { SUBSET_SIZE },
+      { MOTION_MODEL: MOTION_MODEL_CONSTANTS[configuration.motionModel], SUBSET_SIZE },
     ),
     reduceX: await pipeline(
       'DIC-RT pyramid reduce X', 'reduce_x', pyramidShaderModule, reduceXLayout,
@@ -360,11 +364,14 @@ const createRuntime = async (width, height) => {
     ),
     transferSeed: await pipeline(
       'DIC-RT pyramid seed transfer', 'transfer_seed', pyramidShaderModule, seedLayout,
-      { SUBSET_SIZE },
+      { MOTION_MODEL: MOTION_MODEL_CONSTANTS[configuration.motionModel], SUBSET_SIZE },
     ),
   };
 
   const storage = GPUBufferUsage.STORAGE;
+  const parameterCount = configuration.motionModel === 'quadratic' ? 12 : 6;
+  const stateStride = configuration.motionModel === 'quadratic' ? 16 : 8;
+  const metadataStride = configuration.motionModel === 'quadratic' ? 28 : 16;
   for (let levelIndex = 0; levelIndex < levelCount; ++levelIndex) {
     const scale = 2 ** levelIndex;
     const levelWidth = Math.floor(width / scale);
@@ -404,17 +411,17 @@ const createRuntime = async (width, height) => {
       }),
       inverse: device.createBuffer({
         label: `DIC-RT inverse Hessians level ${levelIndex}`,
-        size: gridCount * 36 * 4,
+        size: gridCount * parameterCount * parameterCount * 4,
         usage: storage | GPUBufferUsage.COPY_DST,
       }),
       metadata: device.createBuffer({
         label: `DIC-RT metadata level ${levelIndex}`,
-        size: gridCount * 16 * 4,
+        size: gridCount * metadataStride * 4,
         usage: storage | GPUBufferUsage.COPY_DST,
       }),
       state: device.createBuffer({
         label: `DIC-RT state level ${levelIndex}`,
-        size: gridCount * 8 * 4,
+        size: gridCount * stateStride * 4,
         usage: storage | GPUBufferUsage.COPY_DST,
       }),
       fir: createBufferWithData(
@@ -424,14 +431,14 @@ const createRuntime = async (width, height) => {
       ),
       filteredState: device.createBuffer({
         label: `DIC-RT filtered state level ${levelIndex}`,
-        size: gridCount * 8 * 4,
+        size: gridCount * stateStride * 4,
         usage: storage | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
       }),
     };
     if (levelIndex < levelCount - 1) {
       levelBuffers.seedState = device.createBuffer({
         label: `DIC-RT seed state level ${levelIndex}`,
-        size: gridCount * 8 * 4,
+        size: gridCount * stateStride * 4,
         usage: storage,
       });
       levelBuffers.activeMask = device.createBuffer({
@@ -537,6 +544,7 @@ const createRuntime = async (width, height) => {
   buffers = levels[0].buffers;
   bindGroup = levels[0].bindGroup;
   runtimePyramidLevels = levelCount;
+  runtimeMotionModel = configuration.motionModel;
   if (timestampQueries) {
     const passCount = 7 * levelCount - 3;
     querySet = device.createQuerySet({ type: 'timestamp', count: 2 * passCount });
@@ -591,8 +599,8 @@ const configure = (options = {}, allowPyramidRebuild = false) => {
   }
   const motionModel = options.motionModel === undefined
     ? configuration.motionModel : String(options.motionModel).toLowerCase();
-  if (!['affine', 'translation'].includes(motionModel)) {
-    throw new Error("motionModel must be 'affine' or 'translation'");
+  if (!(motionModel in MOTION_MODEL_CONSTANTS)) {
+    throw new Error("motionModel must be 'affine', 'translation', or 'quadratic'");
   }
   if (!allowPyramidRebuild && referenceReady && motionModel !== configuration.motionModel) {
     throw new Error('Changing motionModel requires setReference()');
@@ -795,7 +803,9 @@ const executePipeline = async ({ measureGpu = false } = {}) => {
 };
 
 const readResult = async (timing) => {
-  const size = GRID_COUNT * 8 * 4;
+  const parameterCount = configuration.motionModel === 'quadratic' ? 12 : 6;
+  const stateStride = configuration.motionModel === 'quadratic' ? 16 : 8;
+  const size = GRID_COUNT * stateStride * 4;
   const readback = device.createBuffer({
     size,
     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
@@ -805,7 +815,7 @@ const readResult = async (timing) => {
   device.queue.submit([encoder.finish()]);
   await readback.mapAsync(GPUMapMode.READ);
   const packed = new Float32Array(readback.getMappedRange());
-  const parameters = new Float32Array(GRID_COUNT * 6);
+  const parameters = new Float32Array(GRID_COUNT * parameterCount);
   const status = new Float32Array(GRID_COUNT);
   const iterations = new Float32Array(GRID_COUNT);
   let accepted = 0;
@@ -814,13 +824,13 @@ const readResult = async (timing) => {
   let meanY = 0;
   let iterationTotal = 0;
   for (let index = 0; index < GRID_COUNT; ++index) {
-    const source = 8 * index;
-    const target = 6 * index;
-    for (let component = 0; component < 6; ++component) {
+    const source = stateStride * index;
+    const target = parameterCount * index;
+    for (let component = 0; component < parameterCount; ++component) {
       parameters[target + component] = packed[source + component];
     }
-    status[index] = packed[source + 6];
-    iterations[index] = packed[source + 7];
+    status[index] = packed[source + parameterCount];
+    iterations[index] = packed[source + parameterCount + 1];
     if (status[index] > 1.5) replaced += 1;
     if (status[index] >= 0.5) {
       accepted += 1;
@@ -834,6 +844,7 @@ const readResult = async (timing) => {
     height: FRAME_HEIGHT,
     subsetSize: SUBSET_SIZE,
     grid: [GRID_WIDTH, GRID_HEIGHT],
+    stateStride,
     parameters: Array.from(parameters),
     status: Array.from(status),
     iterations: Array.from(iterations),

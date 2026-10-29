@@ -59,10 +59,16 @@ Current workload and protocol
 -----------------------------
 
 The offline validation images are tiled to 3840 x 2160. The resulting grid is
-240 x 135, or 32,400 subsets of 16 x 16 pixels. Both motion models use
+240 x 135, or 32,400 subsets of 16 x 16 pixels. Both motion models measured in
+the published UHD campaign use
 Gaussian/inverse-spline target filtering, 4 x 4 cubic B-spline interpolation,
 a ``5e-3`` fine-scale tolerance, minimum ZNCC ``0.8``, and spatial median
 consistency. No camera or H.264 stage is included.
+
+The quadratic model was added after this campaign. Its synthetic numerical
+regression is part of the GPU test suite, but it is deliberately absent from
+the table below until a dedicated UHD image-to-field campaign is recorded.
+Affine or translation timings must not be presented as quadratic performance.
 
 Primary image-to-field stream measurements
 ------------------------------------------
@@ -112,6 +118,35 @@ poll and returns one packed binary state field. It no longer performs
 per-frame PNG encoding, data-URL transport, image decoding, or JSON field
 serialization. Three.js also keeps the upload packed at four 8-bit pixels per
 word and expands it on the GPU.
+
+Quadratic-model qualification measurement
+-----------------------------------------
+
+The quadratic model has a distinct cost and is not included in the affine and
+translation table above. On the same validation machine, a dedicated
+three-campaign run used a two-level native full pyramid, 32 x 32 subsets,
+direct Keys-cubic interpolation, one target in flight, three warm-ups, and 12
+changing UHD frames per campaign. The resident NumPy image to materialized
+12-component NumPy field boundary measured:
+
+* campaign median latencies of 65.465, 69.988, and 56.844 ms;
+* campaign p95 latencies of 107.406, 87.772, and 91.490 ms;
+* sustained throughput of 14.50, 15.40, and 16.72 FPS;
+* 7,524 to 7,788 accepted subsets on the 120 x 67 grid;
+* approximately 1.16 s of excluded one-time reference preparation.
+
+This is a correctness-oriented first implementation, not a 4K60 quadratic
+result. Its exact second-order composition currently inverts a lifted 6 by 6
+increment operator for every active subset and iteration. The measurement
+therefore establishes the current engineering baseline and keeps it separate
+from the much faster affine and translation models.
+
+Reproduce it from the repository root with::
+
+   python3 DIC/LucasKanadeICGN/benchmarks/benchmark_image_to_field.py \
+     --backend native-pyramid --motion-model quadratic \
+     --subset-size 32 --interpolation cubic --pyramid-levels 2 \
+     --pipeline-depth 1 --warmups 3 --frames 12 --campaigns 3
 
 Across the four changing fixtures, affine native and raw WGSL accepted 31,252
 to 31,654 subsets with 0.06275 px maximum truth RMSE. Translation native

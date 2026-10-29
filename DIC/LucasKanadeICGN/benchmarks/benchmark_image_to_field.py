@@ -67,7 +67,7 @@ def _arguments() -> argparse.Namespace:
     )
     parser.add_argument(
         "--motion-model",
-        choices=("affine", "translation"),
+        choices=("affine", "translation", "quadratic"),
         default="affine",
     )
     args = parser.parse_args()
