@@ -94,31 +94,27 @@ published 30-run campaign snapshots report:
      - 2.696e-5 pixel
 
 The 512 x 512 GPU work is below a 16.7 ms budget for all browser backends. The
-Three.js/TSL boundary is substantially lower on this machine. The Three.js
-runtime measured a 32-lane subgroup and
-selected its fused 16-lane solver for these campaigns. The browser GPU and
-browser-wall benchmarks exclude Python frame encoding, DevTools transport,
-decoding, and result transfer. They therefore do not prove a sustained 60 Hz
-Python application.
+Three.js/TSL boundary is substantially lower on this machine. That historical
+campaign used 16 active Three.js lanes inside a measured 32-lane subgroup; the
+current optimized solver fills all 32 lanes. Browser GPU and browser-wall
+benchmarks exclude Python frame encoding, DevTools transport, decoding, and
+result transfer. They therefore do not prove a sustained 60 Hz Python
+application.
 
-The native complete-call values include direct input upload and packed result
-readback but exclude acquisition. At UHD, three 30-run campaigns measured a
-median campaign of 14.621 ms median and 15.748 ms p95. Both are inside a 60 Hz
-period, but acquisition and downstream consumers are still excluded; this is
-a promising integration result, not a sustained system claim.
+The current recommended native result is the two-level full pyramid on the
+difficult ``(4, -2)`` UHD pair: 10.194 ms median and 11.073 ms p95 for the
+complete Python call. Three levels measured 10.280 / 11.151 ms. Both retained
+a p95 margin below 16.667 ms after FIR tiling; two levels remain the smaller
+default graph. Direct upload, GPU computation, packed readback, and result
+construction are included, but acquisition and downstream consumers are not.
 
-A later audit measured 14.605 ms median and 15.018 ms p95 for the same native
-one-scale boundary. For the full-pyramid path, only the recommended two-level
-configuration retained a repeated p95 margin below 16.667 ms; three levels
-remained above 60 FPS by median but not by p95. See
-:doc:`../reference/performance` for the audit table.
-
-For a saturated sequence, the bounded two-slot native path measured a 13.380
-ms median campaign period, equivalent to 74.7 FPS, with 26.617 ms median result
-latency. This distinction is important: pipelining increases throughput by
-keeping the GPU queue occupied, but it deliberately allows one additional
-frame to remain in flight. It does not make an individual result arrive in
-13.380 ms.
+For a saturated nominal-motion sequence, the bounded two-slot single-scale
+path measured an 11.026 ms median campaign period, equivalent to 90.7 FPS,
+with 21.963 ms median result latency. This distinction is important: pipelining
+increases throughput by keeping the GPU queue occupied, but deliberately
+allows one additional frame to remain in flight. It does not make an
+individual result arrive in 11.026 ms. See
+:doc:`../reference/performance` for the current audit and historical tables.
 
 Frame-rate budgets
 ------------------

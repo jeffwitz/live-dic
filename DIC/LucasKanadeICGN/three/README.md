@@ -16,8 +16,9 @@ The numerical pipeline is:
    `sum(J)` once on the CPU;
 2. apply the radius-15 separable Gaussian/B-spline FIR to each target on the
    GPU;
-3. run the affine IC-GN iterations in one fused compute dispatch, with 16
-   cooperating lanes per subset, convergence, and ZNCC rejection;
+3. run the affine IC-GN iterations in one fused compute dispatch, filling the
+   measured hardware subgroup when available (32 lanes on the validation GPU)
+   or using the portable 16-lane workgroup fallback;
 4. apply the eight-neighbour median consistency pass on the GPU;
 5. read the six affine parameters, status, and iteration count.
 
@@ -36,6 +37,10 @@ Three.js r186 is vendored under `vendor/` so the backend runs offline. The
 corresponding MIT licence is `vendor/THREE-LICENSE.txt`. Accuracy and timing
 results are recorded in [`../BENCHMARK.md`](../BENCHMARK.md).
 
-At startup, the runtime measures the subgroup width selected for a 16-thread
-workgroup. It uses hardware subgroup reductions when all 16 active lanes fit in
-one subgroup and otherwise selects the portable workgroup-memory solver.
+At startup, the runtime measures the hardware subgroup width. The specialized
+solver sizes its workgroup to that width, up to 256 lanes, and divides the 256
+subset pixels across all active lanes. On the validation GPU, 32 lanes process
+eight pixels each. If that path is unavailable, a portable 16-lane
+workgroup-memory solver processes one 16-pixel subset column per lane. The FIR
+prefilter is a separate 16 x 16 cooperative tile and must not be confused with
+either solver mapping.

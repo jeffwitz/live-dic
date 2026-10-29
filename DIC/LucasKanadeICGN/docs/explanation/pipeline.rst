@@ -74,7 +74,8 @@ Target stage
 
 Every target is converted to grayscale, uploaded, and filtered into cubic
 B-spline coefficients. Three.js runs up to 30 affine IC-GN iterations inside
-one compute dispatch and groups 16 active lanes per subset. GPU-IO fuses the
+one compute dispatch and fills the measured subgroup when available (32 lanes
+on the validation GPU); its portable fallback uses 16 lanes. GPU-IO fuses the
 same iteration loop into one fragment per subset and scans the 16 x 16 tile
 serially. Raw browser WebGPU and native wgpu-py load the same WGSL solver, with
 one 16-lane workgroup per subset and the same fused iteration structure. In
@@ -83,6 +84,14 @@ final GPU pass detects spatial outliers and can replace them with neighbor
 medians. :doc:`gpu-optimization` describes the GPU mappings,
 :doc:`shared-kernel` defines the common numerical contract, and
 :doc:`native-backend` describes the native path.
+
+For normal native coarse-to-fine processing, ``ICGNWGPUFullPyramid`` uploads
+the finest target once and records reductions, per-level FIR passes, seeded
+solves, affine transfers, the final median pass, and one readback into one
+ordered command graph. The older selective ``ICGNWGPU`` option instead runs a
+fine solve first and performs CPU-orchestrated recovery only after failures;
+it is an optional compatibility path. See :doc:`backend-selection` for the
+public-engine policy.
 
 Control path
 ------------

@@ -12,13 +12,12 @@
 ## 4K60 engineering objective
 
 The long-term objective is sustained 3840 x 2160 DIC at 60 FPS over the full
-acquisition-to-result path. The published native wgpu-py campaign measured
-14.621 ms median and 15.748 ms p95 for the complete Python registration call
-on the validation machine; the documentation audit reproduced that boundary
-at 14.605 ms median and 15.018 ms p95. Direct upload, computation, packed
-readback, and NumPy result construction are included. Acquisition and
-downstream work are excluded, so this repository does not yet claim a
-qualified 4K60 application.
+acquisition-to-result path. The latest recommended two-level native
+full-pyramid campaign measured 10.194 ms median and 11.073 ms p95 for the
+complete Python registration call on the validation machine. Direct upload,
+GPU pyramid construction and solving, packed readback, and NumPy result
+construction are included. Acquisition and downstream work are excluded, so
+this repository does not yet claim a qualified 4K60 application.
 
 ## Browser backend policy
 
@@ -90,6 +89,24 @@ central 25 taps; the omitted tails total less than ``7e-8`` in absolute weight.
 Three.js retains all 31 taps and fills the measured subgroup width when its
 specialized WebGPU path is available.
 
+## Backend and pyramid policy
+
+The word *default* is scoped to an engine class:
+
+| Use case | Construction | Default graph |
+|---|---|---|
+| Browser API | `ICGNWebGL()` | Three.js/TSL, one scale, automatic WebGL2 fallback |
+| Shared WGSL in Chromium | `ICGNWebGL(backend="webgpu-wgsl")` | two-level GPU-resident full pyramid |
+| Recommended native coarse-to-fine path | `ICGNWGPUFullPyramid()` | two-level GPU-resident full pyramid |
+| Native single-frame/streaming path | `ICGNWGPU()` | one scale |
+| Historical comparison | `ICGNWebGL(backend="gpuio")` | deprecated one-scale GPU-IO |
+
+The `pyramid_levels` option on `ICGNWGPU` controls an older selective recovery
+path. It is disabled by that class's one-scale default and is not the native
+recommendation for normal coarse-to-fine processing. See
+[`Backend selection and defaults`](./docs/explanation/backend-selection.rst)
+for the distinction and complete execution graphs.
+
 All runtimes derive their buffers or textures and subset grid from the
 reference dimensions. They have been validated at both 512 × 512 and UHD 3840
 × 2160; GPU-IO dimensions must be multiples of 16. The one-time reference
@@ -122,10 +139,11 @@ The remaining differences are platform constraints: the browser backends use
 single precision and do not expose the same register controls or queue model as
 SYCL/Level Zero. This version does not implement Aitken acceleration,
 predictive tolerance, temporal/extrapolated initialization, or the H.264
-pipeline. The native wgpu-py engine provides an optional selective image
-pyramid: ``pyramid_levels=1`` is the unchanged default fast path, while
-``pyramid_levels=2`` retries only failed fine subsets from half-resolution
-seeds and preserves every previously accepted result bit for bit.
+pipeline. The low-latency ``ICGNWGPU`` engine retains optional selective image
+recovery for compatibility: ``pyramid_levels=1`` is that class's unchanged
+single-scale default, while ``pyramid_levels=2`` retries only failed fine
+subsets from half-resolution seeds and preserves every previously accepted
+result bit for bit. This is not the recommended normal pyramid.
 
 For workloads that need a pyramid on every frame, the separate
 ``ICGNWGPUFullPyramid`` backend keeps reduction, per-level target coefficients,
@@ -220,7 +238,8 @@ GPU-IO, and the external
 on the validation machine.
 
 [`GPU tiling and grouping`](./docs/explanation/gpu-optimization.rst) explains
-the 16-lane WebGPU subgroup/workgroup reductions and the fused one-fragment-per-
+the axis-oriented FIR tiles, the 16-lane portable WGSL reduction, the
+hardware-width Three.js subgroup reduction, and the fused one-fragment-per-
 subset WebGL2 strategy with execution diagrams.
 
 [`Native WebGPU and PyO3`](./docs/explanation/native-backend.rst) explains the

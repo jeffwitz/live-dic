@@ -27,8 +27,8 @@ reproducibility and cross-backend regression tests, but new applications
 should use ``three-tsl``. The Three.js fallback provides WebGL2 compatibility
 without changing the public result schema.
 
-Native engine
--------------
+Native single-scale and streaming engine
+----------------------------------------
 
 .. autoclass:: lucas_kanade_icgn.ICGNWGPU
    :members: set_reference, register, register_stream, register_many, close
@@ -49,9 +49,11 @@ range before calling the API.
 default. The public ``DEFAULT_IN_FLIGHT_FRAMES`` constant records this policy
 in one place. ``pipeline_depth`` refers only to concurrent sequence execution
 and does not denote an image-pyramid depth. Native pyramid recovery is a
-separate opt-in constructor setting: ``pyramid_levels=1`` is the default
-single-scale path, and values ``2`` or ``3`` enable selective coarse-to-fine
-recovery for failed subsets.
+separate opt-in constructor setting: ``pyramid_levels=1`` is the default for
+this class, and values ``2`` or ``3`` enable the older selective
+coarse-to-fine recovery for failed subsets. This mode is retained for
+compatibility and exceptional-motion experiments; it is not the recommended
+normal pyramid.
 
 Full-pyramid native engine
 --------------------------
@@ -59,11 +61,15 @@ Full-pyramid native engine
 .. autoclass:: lucas_kanade_icgn.ICGNWGPUFullPyramid
    :members: set_reference, register, close
 
-This separate backend runs every configured scale for every target. Pyramid
+This is the recommended native coarse-to-fine backend. It runs every configured
+scale for every target. Pyramid
 reduction, affine seed transfer, and all IC-GN solves remain GPU-resident in one
 command submission. Per-level iteration and tolerance tuples are ordered from
 coarse to fine. Two levels are the default and recommended native configuration;
 three levels are opt-in for a larger expected displacement range.
+
+See :doc:`../explanation/backend-selection` for a single table distinguishing
+the defaults of all public engines.
 
 One-shot registration
 ---------------------

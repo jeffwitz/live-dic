@@ -9,8 +9,9 @@ the result on otherwise identical hardware.
 .. note::
 
    The current pyramid campaign was run after the opt-in hardware regressions
-   passed on the validation GPU. It therefore includes the corrected reduction
-   arithmetic and selective-retry state-preservation shaders.
+   passed on the validation GPU. It includes axis-oriented FIR tiling, the
+   corrected reduction arithmetic, seeded-solve state handling, and the final
+   packed readback.
 
 ``gpuio`` results are retained as historical baselines. GPU-IO is deprecated
 for application use; current WebGL2 compatibility measurements should use
@@ -118,6 +119,22 @@ FPS) with 21.963 ms median result latency; three slots reached 10.780 ms (92.8
 FPS) with 32.093 ms latency. All configurations accepted 31,654 subsets and
 reported ``3.066e-5`` px RMSE.
 
+The current policy derived from this audit is:
+
+* ``ICGNWGPUFullPyramid()`` with two levels is the recommended native
+  coarse-to-fine configuration;
+* ``ICGNWebGL(backend="webgpu-wgsl")`` also defaults to the two-level shared
+  full-pyramid graph in Chromium;
+* ``ICGNWGPU()`` remains the single-scale/streaming engine; its optional
+  selective recovery is historical compatibility, not the normal pyramid;
+* Three.js/TSL remains the browser entry-point default and uses the
+  hardware-width subgroup path when available.
+
+See :doc:`../explanation/backend-selection` for the complete decision table.
+
+Historical campaign revalidation (October 28)
+---------------------------------------------
+
 The published tables below are campaign snapshots, not constants of the
 hardware. On 2026-10-28, after the Three.js/WebGL2 fallback and browser pyramid
 changes, the documented commands were rerun on the same machine. All accepted
@@ -167,7 +184,7 @@ the displayed precision. The main timing checks were:
    * - UHD native full pyramid, three levels
      - 15.458 / 16.210 ms median / p95
      - 16.012 / 16.813 ms
-     - Current ``r32float`` campaign; p95 above 60 Hz
+     - October 28 ``r32float`` campaign; superseded above
    * - UHD raw browser pyramid, two levels, ``(4, -2)``
      - 15.931 / 16.622 ms GPU median / p95
      - 14.961 / 15.587 ms
@@ -185,11 +202,12 @@ The reproduced GPU medians support the relative conclusions below. Complete
 browser-call timings vary more because they include PNG encoding, DevTools
 transport, decoding, and result conversion. Short-campaign p95 values also
 vary more than medians and are not hard real-time guarantees. In particular,
-the revalidation no longer supports a p95 4K60 claim for the three-level
-native pyramid. The two-level native pyramid remains the recommended
-configuration. All percentages, FPS conversions, timing margins, and
-throughput ratios on this page were recomputed from their displayed table
-values.
+this October 28 snapshot did not support a p95 4K60 claim for the three-level
+native pyramid. The newer October 29 optimization audit above supersedes that
+conclusion for the current kernels. The two-level native pyramid remains the
+recommendation because it is the smaller sufficient graph. All percentages,
+FPS conversions, timing margins, and throughput ratios are scoped to the
+table from which they are computed.
 
 Backend comparison
 ------------------
@@ -243,10 +261,11 @@ The Three.js/TSL median GPU time is 79.6% lower than GPU-IO for this case, or
 IC-GN iteration into one fragment draw, keeps the affine warp and reference
 atlases in registers, and writes the subset state only once. Relative to the
 previous 3.768 ms measurement, that reduced its median GPU time by 12.4%. The
-runtime measured a 32-lane hardware subgroup and selected the fused 16-lane
-Three.js solver; a portable workgroup-memory solver is selected automatically
-when that condition is not met. See :doc:`../explanation/gpu-optimization` for
-the two tiling strategies.
+runtime measured a 32-lane hardware subgroup but this historical campaign used
+the older fused 16-active-lane Three.js solver. The current implementation
+fills the measured subgroup, while a portable 16-lane workgroup-memory solver
+remains the fallback. See :doc:`../explanation/gpu-optimization` for the
+current mappings.
 
 The raw WebGPU adapter executes exactly the portable WGSL file used by
 wgpu-py. This historical one-scale 512 x 512 GPU median is 21.0% above the specialized Three.js
@@ -538,8 +557,14 @@ Reproduce the comparison with:
        python3 DIC/LucasKanadeICGN/benchmarks/benchmark_wgpu_pipeline.py \
        --repeats 30 --warmups 5 --campaigns 4 --depths 1 2 3
 
-Selective native pyramid recovery
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Historical optional selective native recovery
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. warning::
+
+   This section documents the older ``ICGNWGPU(pyramid_levels=2 or 3)``
+   exception path. It is not the recommended native pyramid. Use
+   ``ICGNWGPUFullPyramid`` for normal coarse-to-fine processing.
 
 The optional native pyramid was measured with an exact ``(4, -2)`` pixel
 translation, which deliberately exceeds the robust basin of many fine subsets.
@@ -609,8 +634,8 @@ five-tap reduction makes active 4K recovery an exception path rather than a
 4K60 mode. When no recovery is configured, none of these resources or
 dispatches exists.
 
-GPU-resident full pyramid
-~~~~~~~~~~~~~~~~~~~~~~~~~
+Pre-tiling GPU-resident full-pyramid campaign
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The separate ``ICGNWGPUFullPyramid`` backend was measured on the same Intel
 GPU with the same exact ``(4, -2)`` translation. It uploads only the finest
@@ -694,8 +719,8 @@ Reproduce the campaign with:
        python3 DIC/LucasKanadeICGN/benchmarks/benchmark_wgpu_full_pyramid.py \
        --width 3840 --height 2160 --levels 2 3 --warmups 5 --repeats 30
 
-Raw browser full pyramid
-~~~~~~~~~~~~~~~~~~~~~~~~
+Pre-tiling raw-browser full-pyramid campaign
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The same ``icgn.wgsl`` and ``full_pyramid.wgsl`` graph now runs through raw
 WebGPU in Chromium. The browser uploads only the finest target, retains every
@@ -758,9 +783,10 @@ The difficult pair is the deciding result: two levels recover 9,319 additional
 subsets while reducing the median by 75% because the single-scale failures run
 to their 30-iteration ceiling. Two levels are therefore the robust browser
 default. Three remain useful for a larger expected capture range. The nominal
-two-level p95 is slightly above 16.667 ms in this campaign, as is the
-three-level p95. These measurements qualify controlled compute throughput
-rather than a hard end-to-end real-time deadline.
+two-level p95 is slightly above 16.667 ms in this pre-tiling campaign, as is the
+three-level p95. The October 29 audit at the top of this page supersedes these
+timings for the current kernels. Neither campaign is a hard end-to-end
+real-time qualification.
 
 Reproduce either pair offline with:
 

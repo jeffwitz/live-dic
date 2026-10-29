@@ -32,14 +32,15 @@ Registration range
 ------------------
 
 IC-GN is a local optimizer. The direct ``t=0 -> 20`` analytical displacement of
-``(4, -2)`` pixels lies outside the robust local basin for many subsets in the
-default single-scale path. The incremental ``t=10 -> 20`` step of ``(2, -1)``
-pixels returns 900 accepted subsets. Native wgpu-py users can explicitly select
-``pyramid_levels=2`` or ``3`` to retry only failed subsets from coarse seeds,
-or select ``ICGNWGPUFullPyramid`` when every frame should follow a fully
-GPU-resident coarse-to-fine path. The raw ``webgpu-wgsl`` browser backend runs
-the same full-pyramid WGSL graph and defaults to two levels. Three.js/TSL and
-GPU-IO remain single-scale.
+``(4, -2)`` pixels lies outside the robust local basin for many subsets in a
+single-scale solve. The incremental ``t=10 -> 20`` step of ``(2, -1)`` pixels
+returns 900 accepted subsets at 512 x 512. Native users should select
+``ICGNWGPUFullPyramid`` for the normal GPU-resident coarse-to-fine path; it
+defaults to two levels. ``ICGNWGPU(pyramid_levels=2 or 3)`` remains an older
+optional selective-retry mode for exceptional failures, not the recommended
+native pyramid. The raw ``webgpu-wgsl`` browser backend runs the same
+full-pyramid WGSL graph and defaults to two levels. Three.js/TSL and GPU-IO
+remain single-scale.
 
 No backend currently provides
 temporal initialization, extrapolated initial guesses, Aitken acceleration,
@@ -58,10 +59,10 @@ Runtime
 * Native sequence pipelining improves throughput by keeping bounded work in
   flight; the default of two adds approximately one processed frame of result
   latency. This setting is unrelated to an image pyramid.
-* Native pyramid recovery is deliberately off by default. It improves capture
-  range, not the worst-case 4K60 deadline, and currently performs reduced-image
-  construction on the CPU.
-* The separate full-pyramid native backend removes those per-frame CPU
+* Selective recovery on ``ICGNWGPU`` is deliberately off by default and is not
+  the recommended native pyramid. It currently performs reduced-image
+  construction and recovery orchestration on the CPU.
+* The recommended ``ICGNWGPUFullPyramid`` backend removes those per-frame CPU
   reductions and intermediate readbacks, but does not yet expose sequence
   pipelining or the subgroup solver.
 * Browser GPU shader arithmetic is single precision.

@@ -23,6 +23,14 @@ The native two-level result corresponds to 98.1 calls/s from the median and
 frames/s from the median. These are repeated-target measurements, not hard
 real-time guarantees.
 
+Reproduce the current native full-pyramid campaign with:
+
+```console
+PYTHONPATH=DIC/LucasKanadeICGN/python/src \
+  python3 DIC/LucasKanadeICGN/benchmarks/benchmark_wgpu_full_pyramid.py \
+  --width 3840 --height 2160 --levels 2 3 --warmups 8 --repeats 50
+```
+
 The single-scale sequence benchmark used four campaigns of 30 UHD frames. Its
 median period was 11.539 ms synchronously (86.7 FPS), 11.026 ms with the
 default two in-flight slots (90.7 FPS), and 10.780 ms with three slots (92.8
@@ -38,10 +46,16 @@ leaving half of the subgroup idle. The opt-in GPU suite validates the FIR
 coefficients on partial workgroups; all 67 tests pass with GPU execution
 enabled.
 
-The current campaign was recorded from the consolidation branch after all
-four opt-in GPU regression tests passed on the validation GPU. It therefore
-qualifies the corrected reduction arithmetic and selective-retry state
-preservation at the timing boundaries stated below.
+The current campaign was recorded after all four opt-in GPU regression tests
+passed on the validation GPU. It qualifies the tiled FIR, corrected reduction
+arithmetic, seeded-solve state handling, and packed readback at the timing
+boundaries stated below.
+
+Current policy: `ICGNWGPUFullPyramid()` with two levels is the recommended
+native coarse-to-fine path, and raw browser `webgpu-wgsl` also defaults to two
+full-pyramid levels. `ICGNWGPU()` remains the single-scale/streaming engine.
+Its optional selective recovery is retained for compatibility and exceptional
+failures, not as the normal pyramid.
 
 ## Common configuration
 
@@ -58,6 +72,11 @@ preservation at the timing boundaries stated below.
 - `1e-3` tolerance, minimum ZNCC `0.8`, at most 30 iterations;
 - median consistency test and replacement enabled;
 - no H.264 decoding or processing.
+
+The sections below preserve the chronological benchmark record. Unless a
+section explicitly refers to the October 29 optimization audit above, its
+numbers are historical snapshots and must not replace the current headline
+measurements.
 
 ## Native wgpu-py and PyO3 milestone
 
@@ -158,7 +177,11 @@ qualification. The two-slot median period leaves 3.287 ms inside a 16.667 ms
 frame interval for acquisition handoff and downstream work, but its result is
 available roughly one processed frame later.
 
-## Selective native pyramid recovery
+## Historical optional selective native recovery
+
+This section records the older `ICGNWGPU(pyramid_levels=2 or 3)` exception
+path. It is not the recommended native pyramid; use
+`ICGNWGPUFullPyramid` for normal coarse-to-fine processing.
 
 The wgpu-py engine now accepts `pyramid_levels=1`, `2`, or `3`. One scale is
 the default and retains the original command graph. Additional scales are
@@ -185,7 +208,7 @@ already accepted fine results.
 Fixed border subsets with no valid interpolation support are excluded from the
 recovery trigger.
 
-## GPU-resident full pyramid
+## Pre-tiling GPU-resident full-pyramid campaign
 
 `ICGNWGPUFullPyramid` is the recommended native backend when coarse-to-fine
 registration is part of every frame. It uploads only the finest target, builds
@@ -207,11 +230,13 @@ fine. Three levels are opt-in and use `(6, 8, 20)` by default. The same exact
 | 3840 x 2160 / full pyramid 2 | **14.580 ms** | **15.478 ms** | 31,724 | 0.00182 px |
 | 3840 x 2160 / full pyramid 3 | **16.012 ms** | 16.813 ms | 31,734 | 0.00194 px |
 
-The current campaign used five warm-ups and 30 measured runs after changing the
+This historical campaign used five warm-ups and 30 measured runs after changing the
 horizontal reduction intermediate from `rgba16float` to `r32float`. Two levels
 retain a p95 4K60 compute margin. Three levels remain above 60 FPS by median and
 useful for a larger expected capture range, but are not documented as a p95
-60 Hz path. A one-level full-pyramid run matched the portable `ICGNWGPU` packed
+60 Hz path in that campaign. The October 29 table at the top supersedes those
+timings for the current kernels and places both two- and three-level p95 below
+16.667 ms. A one-level full-pyramid run matched the portable `ICGNWGPU` packed
 output bit for bit.
 
 Reducing the three-level ceilings from `(8, 12, 30)` to `(6, 8, 20)` previously
@@ -294,10 +319,11 @@ unchanged within single-precision rounding: 900 accepted subsets and a
 
 The independent Three.js r186 backend implements the same radius-15 target
 prefilter, affine IC-GN iterations, and eight-neighbour median-replacement pass
-with TSL storage-buffer compute kernels. On this adapter, all iterations are
-fused into one dispatch and 16 active lanes cooperate through WebGPU subgroup
-reductions. A startup probe selects this path only when one subgroup contains
-all 16 lanes; otherwise a workgroup-memory implementation is used. The
+with TSL storage-buffer compute kernels. In the historical campaign below, all
+iterations were fused into one dispatch and 16 active lanes occupied part of a
+32-lane WebGPU subgroup. The current optimized path fills the measured subgroup
+(32 lanes and eight subset pixels per lane on this adapter); otherwise a
+portable 16-lane workgroup-memory implementation is used. The
 reference-dependent quantities are prepared with the same double-precision
 JavaScript equations as the GPU-IO implementation. No code from Strobox is
 used.

@@ -2,9 +2,47 @@ GPU tiling and grouping strategies
 ==================================
 
 All backends evaluate the same affine IC-GN equations, but WebGPU and WebGL2
-offer different synchronization models. This page explains how the 16 x 16
-image subsets are tiled, how work is grouped, and why the two implementations
-have different scaling at UHD resolution.
+offer different synchronization models. This page distinguishes three notions
+that older descriptions sometimes conflated: the 16 x 16 *numerical subset*,
+the rectangular *FIR output tile*, and the one-dimensional *solver workgroup*.
+They are independent scheduling choices.
+
+.. list-table:: Current kernel mapping
+   :header-rows: 1
+   :widths: 27 22 20 31
+
+   * - Kernel/path
+     - Logical output
+     - Threads
+     - Memory/reduction strategy
+   * - Shared WGSL FIR, horizontal
+     - 32 x 8 pixels
+     - 32 x 8
+     - 56 x 8 shared source tile, 25 taps
+   * - Shared WGSL FIR, vertical
+     - 8 x 32 pixels
+     - 8 x 32
+     - 8 x 56 shared source tile, 25 taps
+   * - Three.js WebGPU FIR
+     - 16 x 16 pixels
+     - 256 (one-dimensional)
+     - 46 x 16 or 16 x 46 shared source tile, 31 taps
+   * - Portable shared-WGSL IC-GN
+     - one 16 x 16 subset
+     - 16
+     - workgroup-memory reduction
+   * - Three.js specialized IC-GN on the validation GPU
+     - one 16 x 16 subset
+     - 32
+     - one hardware subgroup, eight pixels per lane
+   * - Pyramid reduction, each separable pass
+     - 16 x 16 destination pixels
+     - 16 x 16
+     - five direct texture reads per output
+   * - Seed transfer and median consistency
+     - one subset per invocation
+     - groups of 256
+     - independent one-dimensional records
 
 Common numerical tile
 ---------------------
@@ -66,14 +104,15 @@ reads instead of 6,400 uncached reads for a 25-tap pass.
                                            |  halo  |
                                            +--------+
 
-The TSL path uses a conservative 16 x 16 output tile and a 16 x 46 halo in
-each orientation. WebGL2 keeps its serial prefilter because workgroup memory
-and barriers are not available through that fallback.
+The TSL path uses a conservative 16 x 16 output tile: 46 x 16 source values
+for the horizontal pass and 16 x 46 for the vertical pass. WebGL2 keeps its
+serial prefilter because workgroup memory and barriers are not available
+through that fallback.
 
-WebGPU: one cooperative group per subset
-----------------------------------------
+WebGPU solver mappings
+----------------------
 
-The WebGPU solver assigns one workgroup of 16 active invocations to one subset.
+The portable shared-WGSL solver assigns one workgroup of 16 active invocations to one subset.
 Lane ``x`` owns column ``x`` and loops over the 16 rows. The 256 pixels are
 therefore split evenly: every lane evaluates 16 warped pixels per iteration.
 Different subsets are independent and are scheduled as separate workgroups.
@@ -102,8 +141,8 @@ and the six components of ``J^T g``. They are packed into three four-component
 vectors so the reduction performs three vector operations rather than nine
 independent scalar operations.
 
-Fast subgroup reduction
-~~~~~~~~~~~~~~~~~~~~~~~
+Three.js specialized subgroup reduction
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 At startup the runtime probes the hardware subgroup width. When a subgroup can
 contain the subset, the TSL kernel fills the measured subgroup rather than
@@ -127,11 +166,11 @@ and corner test use the reduced values. Lane 0 writes the final state. All
 IC-GN iterations remain inside one compute dispatch, so converged subsets stop
 expensive image sampling without a new Python, JavaScript, or GPU submission.
 
-Portable workgroup reduction
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Portable shared-WGSL workgroup reduction
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If the subgroup probe fails, the same 16-lane tiling is retained but three
-shared ``vec4`` arrays hold the partial sums. A fixed reduction tree uses
+The canonical portable solver always uses the 16-lane mapping. Three shared
+``vec4`` arrays hold the partial sums and a fixed reduction tree uses
 workgroup barriers between its four stages:
 
 .. code-block:: text
@@ -150,8 +189,9 @@ iteration loop early while every barrier that is reached remains in uniform
 control flow. This path does not depend on a particular subgroup width and is
 executed unchanged by raw browser WebGPU and wgpu-py.
 
-Three.js selects the subgroup path when the width probe permits it. The raw
-browser adapter deliberately selects the portable shared WGSL. Native
+Three.js selects the subgroup path when the width probe permits it and falls
+back to its TSL workgroup-memory variant otherwise. The raw browser adapter
+deliberately selects the portable shared WGSL. Native
 ``ICGNWGPU`` goes one step further: during reference preparation it measures
 the complete portable shared-WGSL and subgroup SPIR-V pipelines on a
 representative shifted frame, then retains the faster one. This matters

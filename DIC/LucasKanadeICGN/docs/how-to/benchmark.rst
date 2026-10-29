@@ -131,8 +131,9 @@ The reported period is total sequence wall time divided by the number of
 frames. It must not be presented as result latency when more than one slot is
 in flight.
 
-Measure optional selective pyramid recovery separately from the nominal
-small-motion throughput campaign:
+Measure the older optional selective-recovery path only when maintaining or
+qualifying that compatibility mode. It is not the recommended pyramid
+benchmark:
 
 .. code-block:: console
 
@@ -141,17 +142,17 @@ small-motion throughput campaign:
        --warmups 3 --repeats 10 --levels 1 2
 
 This benchmark applies an exact ``(4, -2)`` pixel translation. Add
-``--width 3840 --height 2160`` for UHD. Keep ``--levels 1`` in every nominal
-performance campaign: it proves that no pyramid resource or retry path is
-active.
+``--width 3840 --height 2160`` for UHD. ``--levels 1`` isolates the
+single-scale/streaming engine and proves that no selective retry path is
+active; it is not the normal coarse-to-fine recommendation.
 
-Measure the separate GPU-resident full-pyramid path with:
+Measure the recommended GPU-resident native full-pyramid path with:
 
 .. code-block:: console
 
    $ PYTHONPATH=DIC/LucasKanadeICGN/python/src \
        python3 DIC/LucasKanadeICGN/benchmarks/benchmark_wgpu_full_pyramid.py \
-       --width 3840 --height 2160 --levels 2 3 --warmups 2 --repeats 7
+       --width 3840 --height 2160 --levels 2 3 --warmups 8 --repeats 50
 
 This command reports the one-scale baseline and each requested full-pyramid
 depth on the same exact ``(4, -2)`` target. It also records the coarse-to-fine
