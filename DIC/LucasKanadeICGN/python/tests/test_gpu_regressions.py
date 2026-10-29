@@ -15,7 +15,7 @@ from typing import Any
 
 import numpy as np
 
-from lucas_kanade_icgn import ICGNWGPUFullPyramid
+from lucas_kanade_icgn import ICGNWGPU, ICGNWGPUFullPyramid
 from lucas_kanade_icgn.wgpu_backend import (
     FIR_RADIUS,
     FIR_RUNTIME_RADIUS,
@@ -60,6 +60,29 @@ def _cpu_prefilter(image: np.ndarray) -> np.ndarray:
     for tap, weight in enumerate(weights):
         result += weight * padded_y[tap : tap + image.shape[0], :]
     return result
+
+
+def _fractional_pair(
+    width: int,
+    height: int,
+    translation: tuple[float, float],
+) -> tuple[np.ndarray, np.ndarray]:
+    """Sample a continuous texture before and after a known translation."""
+
+    y, x = np.mgrid[:height, :width].astype(np.float64)
+
+    def texture(sample_x: np.ndarray, sample_y: np.ndarray) -> np.ndarray:
+        values = (
+            127.0
+            + 34.0 * np.sin(0.173 * sample_x + 0.071 * sample_y)
+            + 29.0 * np.cos(0.043 * sample_x - 0.191 * sample_y)
+            + 23.0 * np.sin(0.311 * sample_x - 0.137 * sample_y + 0.4)
+            + 17.0 * np.cos(0.229 * sample_x + 0.257 * sample_y - 0.8)
+        )
+        return np.clip(np.rint(values), 0, 255).astype(np.uint8)
+
+    dx, dy = translation
+    return texture(x, y), texture(x - dx, y - dy)
 
 
 @unittest.skipUnless(
@@ -153,6 +176,22 @@ class GPURegressionTests(unittest.TestCase):
         finally:
             for texture in textures:
                 texture.destroy()
+
+    def test_interpolation_modes_recover_fractional_translation(self) -> None:
+        truth = (0.5, -0.375)
+        reference, target = _fractional_pair(128, 128, truth)
+        thresholds = {"bspline": 0.03, "linear": 0.05, "cubic": 0.03}
+        for mode, threshold in thresholds.items():
+            with self.subTest(mode=mode):
+                engine = ICGNWGPU(interpolation=mode, prefer_subgroups=False)
+                try:
+                    engine.set_reference(reference)
+                    result = engine.register(target)
+                    self.assertGreater(result.accepted, 0)
+                    self.assertLess(result.rmse(truth), threshold)
+                finally:
+                    engine.close()
+                    engine.device.destroy()
 
     def test_reduction_matches_cpu_and_integer_oracle(self) -> None:
         # Every uint8 value appears in a flat band wide enough to contain

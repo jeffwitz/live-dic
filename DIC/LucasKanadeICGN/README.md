@@ -46,7 +46,8 @@ The implementation retains the main algorithmic choices of the SYCL version:
 - inverse-compositional warp updates;
 - convergence based on the maximum update at the four subset corners;
 - normalized correlation to reduce sensitivity to affine brightness changes;
-- Gaussian filtering and cubic B-spline coefficients;
+- selectable historical B-spline, direct bilinear, and direct Keys-cubic
+  target reconstruction;
 - one constant inverse Hessian prepared with the reference image;
 - ZNCC rejection and median replacement of spatial outliers.
 
@@ -88,6 +89,14 @@ keeps the 31-value radius-15 weight buffer for compatibility and evaluates the
 central 25 taps; the omitted tails total less than ``7e-8`` in absolute weight.
 Three.js retains all 31 taps and fills the measured subgroup width when its
 specialized WebGPU path is available.
+
+The interpolation mode is fixed when an engine is created. ``bspline`` keeps
+the historical Gaussian/FIR coefficient path. ``linear`` and ``cubic`` use
+the target texture or source buffer directly, so their per-frame graphs omit
+both prefilter dispatches. Direct modes also prepare the reference from raw
+samples with centered gradients. See
+[`Interpolation modes`](./docs/explanation/interpolation.rst) for equations,
+backend coverage, fractional-displacement checks, and current measurements.
 
 ## Backend and pyramid policy
 

@@ -51,6 +51,11 @@ const PREFILTER_Y_WIDTH: i32 = 8;
 const PREFILTER_Y_HEIGHT: i32 = 32;
 const PREFILTER_TILE_PIXELS: u32 = 448u;
 
+// 0: historical Gaussian + cubic B-spline coefficients
+// 1: direct bilinear interpolation
+// 2: direct Keys cubic convolution (a = -0.5)
+override INTERPOLATION_MODE: u32 = 0u;
+
 var<workgroup> partial_a: array<vec4<f32>, 16>;
 var<workgroup> partial_b: array<vec4<f32>, 16>;
 var<workgroup> partial_c: array<vec4<f32>, 16>;
@@ -178,6 +183,65 @@ fn sample_cubic(position: vec2<f32>) -> f32 {
         value = value + weight_y[yy] * row;
     }
     return value;
+}
+
+fn source_value(x: i32, y: i32) -> f32 {
+    return textureLoad(source_image, vec2<i32>(x, y), 0).x * 255.0;
+}
+
+fn sample_linear(position: vec2<f32>) -> f32 {
+    let floored = floor(position);
+    let base = vec2<i32>(floored);
+    let fraction = position - floored;
+    let top = mix(
+        source_value(base.x, base.y),
+        source_value(base.x + 1, base.y),
+        fraction.x,
+    );
+    let bottom = mix(
+        source_value(base.x, base.y + 1),
+        source_value(base.x + 1, base.y + 1),
+        fraction.x,
+    );
+    return mix(top, bottom, fraction.y);
+}
+
+fn keys_cubic_weights(t: f32) -> array<f32, 4> {
+    let t2 = t * t;
+    let t3 = t2 * t;
+    var weights: array<f32, 4>;
+    weights[0] = -0.5 * t + t2 - 0.5 * t3;
+    weights[1] = 1.0 - 2.5 * t2 + 1.5 * t3;
+    weights[2] = 0.5 * t + 2.0 * t2 - 1.5 * t3;
+    weights[3] = -0.5 * t2 + 0.5 * t3;
+    return weights;
+}
+
+fn sample_keys_cubic(position: vec2<f32>) -> f32 {
+    let floored = floor(position);
+    let base = vec2<i32>(floored);
+    let fraction = position - floored;
+    let weight_x = keys_cubic_weights(fraction.x);
+    let weight_y = keys_cubic_weights(fraction.y);
+    var value = 0.0;
+    for (var yy = 0; yy < 4; yy = yy + 1) {
+        var row = 0.0;
+        for (var xx = 0; xx < 4; xx = xx + 1) {
+            row += weight_x[xx] * source_value(base.x + xx - 1, base.y + yy - 1);
+        }
+        value += weight_y[yy] * row;
+    }
+    return value;
+}
+
+fn sample_target(position: vec2<f32>) -> f32 {
+    if INTERPOLATION_MODE == 1u {
+        return sample_linear(position);
+    }
+    if INTERPOLATION_MODE == 2u {
+        return sample_keys_cubic(position);
+    }
+    return sample_cubic(position);
 }
 
 fn solve_increment(
@@ -314,7 +378,7 @@ fn solve_subset(
                 shared_linear.x * local_x + shared_linear.y * local_y,
                 shared_linear.z * local_x + shared_linear.w * local_y,
             );
-            let current = sample_cubic(
+            let current = sample_target(
                 center - vec2<f32>(0.5) + vec2<f32>(local_x, local_y) + displacement
             );
             let pixel_x = grid_x * SUBSET_SIZE + i32(lane);

@@ -31,6 +31,11 @@ const TOLERANCE_SCHEDULES = {
   2: [5e-3, 1e-3],
   3: [1e-2, 5e-3, 1e-3],
 };
+const INTERPOLATION_CONSTANTS = {
+  bspline: 0,
+  linear: 1,
+  cubic: 2,
+};
 
 const configuration = {
   iterations: DEFAULT_MAX_ITERATIONS,
@@ -39,6 +44,7 @@ const configuration = {
   pyramidLevels: DEFAULT_PYRAMID_LEVELS,
   iterationsPerLevel: [...ITERATION_SCHEDULES[DEFAULT_PYRAMID_LEVELS]],
   tolerancePerLevel: [...TOLERANCE_SCHEDULES[DEFAULT_PYRAMID_LEVELS]],
+  interpolation: 'bspline',
 };
 
 let adapter = null;
@@ -266,12 +272,18 @@ const createRuntime = async (width, height) => {
   const seedLayout = device.createPipelineLayout({
     bindGroupLayouts: [emptyLayout, emptyLayout, seedTransferBindGroupLayout],
   });
-  const pipeline = async (label, entryPoint, module = shaderModule, pipelineLayout = layout) => {
+  const pipeline = async (
+    label,
+    entryPoint,
+    module = shaderModule,
+    pipelineLayout = layout,
+    constants = undefined,
+  ) => {
     try {
       return await device.createComputePipelineAsync({
         label,
         layout: pipelineLayout,
-        compute: { module, entryPoint },
+        compute: { module, entryPoint, constants },
       });
     } catch (error) {
       const compilation = await module.getCompilationInfo();
@@ -286,16 +298,26 @@ const createRuntime = async (width, height) => {
       throw new Error(`${message}${details}`);
     }
   };
-  pipelines = {
-    prefilterX: await pipeline('DIC-RT shared prefilter X', 'prefilter_x'),
-    prefilterY: await pipeline('DIC-RT shared prefilter Y', 'prefilter_y'),
-    solver: await pipeline('DIC-RT shared affine solver', 'solve'),
-    seededSolver: seededLayout ? await pipeline(
-      'DIC-RT shared seeded affine solver',
+  const solvers = {};
+  const seededSolvers = {};
+  for (const [mode, constant] of Object.entries(INTERPOLATION_CONSTANTS)) {
+    const constants = { INTERPOLATION_MODE: constant };
+    solvers[mode] = await pipeline(
+      `DIC-RT shared ${mode} affine solver`, 'solve', shaderModule, layout, constants,
+    );
+    seededSolvers[mode] = seededLayout ? await pipeline(
+      `DIC-RT shared seeded ${mode} affine solver`,
       'solve_seeded',
       shaderModule,
       seededLayout,
-    ) : null,
+      constants,
+    ) : null;
+  }
+  pipelines = {
+    prefilterX: await pipeline('DIC-RT shared prefilter X', 'prefilter_x'),
+    prefilterY: await pipeline('DIC-RT shared prefilter Y', 'prefilter_y'),
+    solvers,
+    seededSolvers,
     median: await pipeline('DIC-RT shared median filter', 'median_filter'),
     reduceX: await pipeline(
       'DIC-RT pyramid reduce X', 'reduce_x', pyramidShaderModule, reduceXLayout,
@@ -524,6 +546,15 @@ const configure = (options = {}, allowPyramidRebuild = false) => {
   if (!allowPyramidRebuild && levels.length && pyramidLevels !== runtimePyramidLevels) {
     throw new Error('Changing pyramidLevels requires setReference() to rebuild the runtime');
   }
+  const interpolation = options.interpolation === undefined
+    ? configuration.interpolation : String(options.interpolation).toLowerCase();
+  if (!(interpolation in INTERPOLATION_CONSTANTS)) {
+    throw new Error("interpolation must be 'bspline', 'linear', or 'cubic'");
+  }
+  if (!allowPyramidRebuild && referenceReady
+      && interpolation !== configuration.interpolation) {
+    throw new Error('Changing interpolation requires setReference()');
+  }
   const changedLevels = pyramidLevels !== configuration.pyramidLevels;
   const iterationsPerLevel = options.iterationsPerLevel === undefined
     ? (changedLevels
@@ -549,6 +580,7 @@ const configure = (options = {}, allowPyramidRebuild = false) => {
     pyramidLevels,
     iterationsPerLevel,
     tolerancePerLevel,
+    interpolation,
   };
   next.iterationsPerLevel[pyramidLevels - 1] = next.iterations;
   next.tolerancePerLevel[pyramidLevels - 1] = next.tolerance;
@@ -613,21 +645,24 @@ const executePipeline = async ({ measureGpu = false } = {}) => {
     });
   });
   const appendLevel = (level, seeded) => {
-    jobs.push(
-      {
+    if (configuration.interpolation === 'bspline') {
+      jobs.push({
         pipeline: pipelines.prefilterX,
         bindGroup: level.bindGroup,
         group: 0,
         workgroups: [Math.ceil(level.width / 32), Math.ceil(level.height / 8), 1],
-      },
-      {
+      }, {
         pipeline: pipelines.prefilterY,
         bindGroup: level.bindGroup,
         group: 0,
         workgroups: [Math.ceil(level.width / 8), Math.ceil(level.height / 32), 1],
-      },
+      });
+    }
+    jobs.push(
       {
-        pipeline: seeded ? pipelines.seededSolver : pipelines.solver,
+        pipeline: seeded
+          ? pipelines.seededSolvers[configuration.interpolation]
+          : pipelines.solvers[configuration.interpolation],
         bindGroup: seeded ? level.seededBindGroup : level.bindGroup,
         group: 0,
         workgroups: [level.gridCount, 1, 1],
@@ -778,6 +813,7 @@ const setReference = async (dataUrl, options = {}) => {
         width: source.width,
         height: source.height,
         subsetSize: SUBSET_SIZE,
+        interpolation: configuration.interpolation,
       });
       device.queue.writeBuffer(level.buffers.reference, 0, prepared.reference);
       device.queue.writeBuffer(level.buffers.inverse, 0, prepared.inverseHessian);
@@ -882,6 +918,7 @@ const info = async () => {
     subgroups: false,
     subgroupWidth: 0,
     pyramidLevels: configuration.pyramidLevels,
+    interpolation: configuration.interpolation,
     iterationsPerLevel: [...configuration.iterationsPerLevel],
     tolerancePerLevel: [...configuration.tolerancePerLevel],
     solver: configuration.pyramidLevels > 1

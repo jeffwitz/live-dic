@@ -67,6 +67,12 @@ def _parser() -> argparse.ArgumentParser:
         help="browser compute backend",
     )
     parser.add_argument(
+        "--interpolation",
+        choices=("bspline", "linear", "cubic"),
+        default="bspline",
+        help="target-image interpolation (bspline is the historical default)",
+    )
+    parser.add_argument(
         "--force-three-webgl",
         action="store_true",
         help="force the Three.js backend to use its WebGL2 compatibility path",
@@ -309,6 +315,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             pyramid_levels=args.pyramid_levels,
             iterations_per_level=args.iterations_per_level,
             tolerance_per_level=args.tolerance_per_level,
+            interpolation=args.interpolation,
         ) as engine:
             info = engine.info()
             payload = (

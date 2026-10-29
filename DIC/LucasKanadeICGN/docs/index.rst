@@ -68,6 +68,8 @@ Choose the section that matches your task:
   execution path for each public engine;
 * :doc:`explanation/gpu-optimization` for the backend tiling, lane grouping,
   and reduction strategies;
+* :doc:`explanation/interpolation` for the selectable B-spline, bilinear, and
+  Keys-cubic target reconstruction paths;
 * :doc:`explanation/shared-kernel` for the common WGSL source and its exact
   host/buffer contract;
 * :doc:`explanation/native-backend` for the direct NumPy-to-WebGPU path and
@@ -79,8 +81,9 @@ Current scope
 -------------
 
 The implementation currently provides a resolution-dependent grid of 16 x 16
-subsets, six affine parameters per subset, cubic B-spline target interpolation,
-ZNCC validation, and median outlier replacement. The test dataset is offline;
+subsets, six affine parameters per subset, selectable B-spline, bilinear, or
+Keys-cubic target interpolation, ZNCC validation, and median outlier
+replacement. The test dataset is offline;
 camera acquisition and codec integration are deliberately outside the current
 path.
 
@@ -124,6 +127,7 @@ path.
    explanation/pipeline
    explanation/backend-selection
    explanation/icgn
+   explanation/interpolation
    explanation/gpu-optimization
    explanation/shared-kernel
    explanation/native-backend

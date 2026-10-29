@@ -59,6 +59,7 @@ const configuration = {
   iterations: DEFAULT_MAX_ITERATIONS,
   tolerance: DEFAULT_TOLERANCE,
   znccMin: DEFAULT_ZNCC_MIN,
+  interpolation: 'bspline',
 };
 const toleranceNode = uniform(DEFAULT_TOLERANCE);
 const znccMinNode = uniform(DEFAULT_ZNCC_MIN);
@@ -89,6 +90,7 @@ let filteredLinearNode = null;
 let filteredStatusNode = null;
 let subgroupWidth = 0;
 let solverKind = 'uninitialized';
+let runtimeInterpolation = null;
 
 /** Allocate all resolution-dependent storage and rebuild the TSL compute graph. */
 const initializeRuntime = (width, height) => {
@@ -96,7 +98,8 @@ const initializeRuntime = (width, height) => {
       || width < SUBSET_SIZE || height < SUBSET_SIZE) {
     throw new Error(`Image dimensions must be integers of at least ${SUBSET_SIZE} pixels`);
   }
-  if (attributes && width === FRAME_WIDTH && height === FRAME_HEIGHT) return false;
+  if (attributes && width === FRAME_WIDTH && height === FRAME_HEIGHT
+      && runtimeInterpolation === configuration.interpolation) return false;
 
   FRAME_WIDTH = width;
   FRAME_HEIGHT = height;
@@ -169,6 +172,7 @@ const initializeRuntime = (width, height) => {
     ].forEach((node) => node.setPBO(true));
   }
   kernels = buildKernels();
+  runtimeInterpolation = configuration.interpolation;
   referenceReady = false;
   return true;
 };
@@ -179,6 +183,7 @@ const prepareReference = (image) => {
     width: FRAME_WIDTH,
     height: FRAME_HEIGHT,
     subsetSize: SUBSET_SIZE,
+    interpolation: configuration.interpolation,
   });
   attributes.reference.array.set(prepared.reference);
   attributes.hessianInverse.array.set(prepared.inverseHessian);
@@ -312,6 +317,53 @@ const sampleCubic = (position) => {
     value.addAssign(rowValue.mul(wy[yy]));
   }
   return value;
+};
+
+const sampleLinear = (position) => {
+  const base = ivec2(position.floor());
+  const fraction = position.sub(vec2(base));
+  const topLeft = sourceNode.element(uint(base.y.mul(FRAME_WIDTH).add(base.x)));
+  const topRight = sourceNode.element(uint(base.y.mul(FRAME_WIDTH).add(base.x.add(1))));
+  const bottomLeft = sourceNode.element(uint(base.y.add(1).mul(FRAME_WIDTH).add(base.x)));
+  const bottomRight = sourceNode.element(uint(base.y.add(1).mul(FRAME_WIDTH).add(base.x.add(1))));
+  const top = topLeft.mul(float(1).sub(fraction.x)).add(topRight.mul(fraction.x));
+  const bottom = bottomLeft.mul(float(1).sub(fraction.x)).add(bottomRight.mul(fraction.x));
+  return top.mul(float(1).sub(fraction.y)).add(bottom.mul(fraction.y));
+};
+
+const keysCubicWeights = (fraction) => {
+  const squared = fraction.mul(fraction);
+  const cubed = squared.mul(fraction);
+  return [
+    fraction.mul(-0.5).add(squared).sub(cubed.mul(0.5)),
+    float(1).sub(squared.mul(2.5)).add(cubed.mul(1.5)),
+    fraction.mul(0.5).add(squared.mul(2)).sub(cubed.mul(1.5)),
+    squared.mul(-0.5).add(cubed.mul(0.5)),
+  ];
+};
+
+const sampleKeysCubic = (position) => {
+  const base = ivec2(position.floor());
+  const fraction = position.sub(vec2(base));
+  const wx = keysCubicWeights(fraction.x);
+  const wy = keysCubicWeights(fraction.y);
+  const value = float(0).toVar();
+  for (let yy = 0; yy < 4; ++yy) {
+    const rowValue = float(0).toVar();
+    for (let xx = 0; xx < 4; ++xx) {
+      const sx = base.x.add(xx - 1);
+      const sy = base.y.add(yy - 1);
+      rowValue.addAssign(sourceNode.element(uint(sy.mul(FRAME_WIDTH).add(sx))).mul(wx[xx]));
+    }
+    value.addAssign(rowValue.mul(wy[yy]));
+  }
+  return value;
+};
+
+const sampleTarget = (position) => {
+  if (configuration.interpolation === 'linear') return sampleLinear(position);
+  if (configuration.interpolation === 'cubic') return sampleKeysCubic(position);
+  return sampleCubic(position);
 };
 
 const solveIncrement = (subsetIndex, reducedJ, currentMean, ratio) => {
@@ -455,7 +507,7 @@ const makeSerialSolverKernel = () => Fn(() => {
           currentLinear.x.mul(localX).add(currentLinear.y.mul(localY)),
           currentLinear.z.mul(localX).add(currentLinear.w.mul(localY)),
         ));
-        const current = sampleCubic(
+        const current = sampleTarget(
           center.sub(0.5).add(vec2(localX, localY)).add(displacement),
         );
         const templateIndex = uint(gridY.mul(SUBSET_SIZE).add(row).mul(FRAME_WIDTH)
@@ -592,7 +644,7 @@ const makeFusedCooperativeSolverKernel = () => Fn(() => {
           oldLinear.x.mul(localX).add(oldLinear.y.mul(localY)),
           oldLinear.z.mul(localX).add(oldLinear.w.mul(localY)),
         ));
-        const current = sampleCubic(center.sub(0.5).add(vec2(localX, localY)).add(displacement));
+        const current = sampleTarget(center.sub(0.5).add(vec2(localX, localY)).add(displacement));
         const templateIndex = uint(gridY.mul(SUBSET_SIZE).add(row).mul(FRAME_WIDTH)
           .add(gridX.mul(SUBSET_SIZE)).add(lane));
         const reference = referenceNode.element(templateIndex);
@@ -741,7 +793,7 @@ const makeSubgroupSolverKernel = () => {
             currentLinear.x.mul(localX).add(currentLinear.y.mul(localY)),
             currentLinear.z.mul(localX).add(currentLinear.w.mul(localY)),
           ));
-          const current = sampleCubic(center.sub(0.5).add(vec2(localX, localY)).add(displacement));
+          const current = sampleTarget(center.sub(0.5).add(vec2(localX, localY)).add(displacement));
           const templateIndex = uint(gridY.mul(SUBSET_SIZE).add(pixelY).mul(FRAME_WIDTH)
             .add(gridX.mul(SUBSET_SIZE)).add(pixelX));
           const reference = referenceNode.element(templateIndex);
@@ -994,21 +1046,16 @@ const resolveGpuTimestamp = async () => {
 
 const executePipeline = async ({ measureGpu = false } = {}) => {
   resetSolver();
+  const computeKernels = configuration.interpolation === 'bspline'
+    ? [kernels.prefilterX, kernels.prefilterY, kernels.solver, kernels.median]
+    : [kernels.solver, kernels.median];
   if (renderer.backend.isWebGPUBackend !== true) {
-    await renderer.computeAsync([
-      kernels.prefilterX,
-      kernels.prefilterY,
-      kernels.solver,
-      kernels.median,
-    ]);
+    await renderer.computeAsync(computeKernels);
     if (measureGpu) return resolveGpuTimestamp();
     await synchronize();
     return null;
   }
-  renderer.compute(kernels.prefilterX);
-  renderer.compute(kernels.prefilterY);
-  renderer.compute(kernels.solver);
-  renderer.compute(kernels.median);
+  computeKernels.forEach((kernel) => renderer.compute(kernel));
   if (measureGpu) {
     const gpuMs = await resolveGpuTimestamp();
     if (gpuMs !== null) return gpuMs;
@@ -1129,13 +1176,23 @@ const benchmark = async (dataUrl, repeats = 20, warmups = 3, options = {}) => {
   };
 };
 
-function configure(options = {}) {
+function configure(options = {}, allowInterpolationRebuild = false) {
+  const interpolation = options.interpolation === undefined
+    ? configuration.interpolation : String(options.interpolation).toLowerCase();
+  if (!['bspline', 'linear', 'cubic'].includes(interpolation)) {
+    throw new Error("interpolation must be 'bspline', 'linear', or 'cubic'");
+  }
+  if (!allowInterpolationRebuild && referenceReady
+      && interpolation !== configuration.interpolation) {
+    throw new Error('Changing interpolation requires setReference()');
+  }
   const next = {
     iterations: options.iterations === undefined
       ? configuration.iterations : Number(options.iterations),
     tolerance: options.tolerance === undefined
       ? configuration.tolerance : Number(options.tolerance),
     znccMin: options.znccMin === undefined ? configuration.znccMin : Number(options.znccMin),
+    interpolation,
   };
   if (!Number.isInteger(next.iterations) || next.iterations < 1 || next.iterations > 30) {
     throw new Error('iterations must be an integer between 1 and 30');
@@ -1155,7 +1212,7 @@ function configure(options = {}) {
 
 const setReference = async (dataUrl, options = {}) => {
   await ensureRenderer();
-  configure(options);
+  configure(options, true);
   const image = await loadImage(dataUrl);
   const start = performance.now();
   const runtimeStart = performance.now();

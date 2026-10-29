@@ -47,7 +47,8 @@ The implementation in [`DIC/LucasKanadeICGN/`](./DIC/LucasKanadeICGN/) adds:
 
 - a six-parameter affine warp for every DIC subset;
 - inverse-compositional Gauss-Newton updates;
-- Gaussian filtering and cubic B-spline interpolation;
+- selectable target interpolation: historical Gaussian/cubic B-spline,
+  direct bilinear, or direct Keys cubic convolution;
 - reference gradients and a constant inverse Hessian prepared once;
 - ZNCC validation and spatial median replacement;
 - a dynamic 16-pixel grid of 16 x 16 subsets, including 32 x 32 at 512 pixels
@@ -91,6 +92,13 @@ It first executes the fine solve and invokes CPU-orchestrated coarse recovery
 only for failures. It remains available as an optional exception mode, but it
 is not the recommended normal pyramid. The full decision table and execution
 graphs are in the [backend-selection explanation](./DIC/LucasKanadeICGN/docs/explanation/backend-selection.rst).
+
+All active backends accept `interpolation="bspline"`, `"linear"`, or
+`"cubic"` at engine construction. `bspline` remains the compatibility default.
+The direct modes skip both per-frame FIR passes; `linear` prioritizes speed,
+while `cubic` retains substantially more subpixel accuracy. The deprecated
+GPU-IO backend supports only `bspline`. See the
+[interpolation explanation](./DIC/LucasKanadeICGN/docs/explanation/interpolation.rst).
 
 ## Architecture
 
@@ -259,7 +267,7 @@ Select the experimental browser-free path explicitly:
 ```python
 from lucas_kanade_icgn import ICGNWGPU
 
-with ICGNWGPU() as engine:
+with ICGNWGPU(interpolation="linear") as engine:
     engine.set_reference(reference)
     result = engine.register(target)
 ```
@@ -282,7 +290,8 @@ Run a 30-sample GPU benchmark:
 .venv-icgn/bin/icgn-webgl \
   DIC/LucasKanadeICGN/assets/frame_000.png \
   DIC/LucasKanadeICGN/assets/frame_010.png \
-  --benchmark --repeats 30 --warmups 3 --truth 2 -1
+  --benchmark --repeats 30 --warmups 3 --truth 2 -1 \
+  --interpolation linear
 ```
 
 Standard output is JSON. Complete arrays and benchmark samples are written to

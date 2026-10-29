@@ -8,6 +8,11 @@ dispatch, and result conversion. The canonical sources are
 browser WebGPU adapter and wgpu-py load those files without generating or
 translating shader code.
 
+``icgn.wgsl`` also defines the ``INTERPOLATION_MODE`` pipeline override. Both
+hosts compile the same solver body into B-spline, bilinear, and Keys-cubic
+pipelines. Only the sampling function is specialized; increment solving,
+inverse composition, convergence, status, and median rules remain single-source.
+
 Three.js remains the default *browser entry point* because its
 subgroup-specialized TSL solver is faster on the validation GPU and it supplies
 the automatic WebGL2 fallback. The recommended native coarse-to-fine entry
@@ -42,7 +47,7 @@ Architecture
                        |                 v
                        |       +--------------------+
                        |       | canonical WGSL     |
-                       |       | reduce, FIR, LK,   |
+                       |       | reduce, sample, LK,|
                        |       | seed, median       |
                        |       +--------------------+
                        |                 ^

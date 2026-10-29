@@ -164,7 +164,9 @@ const invert6 = (matrix) => {
 
 export const prepareReferenceGray = (
   gray,
-  { width, height, subsetSize = 16 },
+  {
+    width, height, subsetSize = 16, interpolation = 'bspline',
+  },
 ) => {
   const pixelCount = width * height;
   const gridWidth = Math.floor(width / subsetSize);
@@ -175,8 +177,15 @@ export const prepareReferenceGray = (
   if (gray.length !== pixelCount) {
     throw new Error(`Expected ${pixelCount} grayscale values, got ${gray.length}`);
   }
-  const filtered = gaussianSigmaOne(gray, width, height);
-  const coefficients = cubicBSplinePrefilter(filtered, width, height);
+  if (!['bspline', 'linear', 'cubic'].includes(interpolation)) {
+    throw new Error("interpolation must be 'bspline', 'linear', or 'cubic'");
+  }
+  const intensity = interpolation === 'bspline'
+    ? gaussianSigmaOne(gray, width, height)
+    : Float64Array.from(gray);
+  const gradientSource = interpolation === 'bspline'
+    ? cubicBSplinePrefilter(intensity, width, height)
+    : intensity;
   const reference = new Float32Array(pixelCount * 4);
   const inverseHessian = new Float32Array(gridCount * 9 * 4);
   const metadata = new Float32Array(gridCount * 4 * 4);
@@ -189,7 +198,7 @@ export const prepareReferenceGray = (
       const y0 = gridY * subsetSize;
       let mean = 0;
       for (let yy = 0; yy < subsetSize; ++yy) {
-        for (let xx = 0; xx < subsetSize; ++xx) mean += filtered[(y0 + yy) * width + x0 + xx];
+        for (let xx = 0; xx < subsetSize; ++xx) mean += intensity[(y0 + yy) * width + x0 + xx];
       }
       mean /= subsetPixels;
 
@@ -203,19 +212,23 @@ export const prepareReferenceGray = (
           const y = y0 + yy;
           const localX = xx - halfExtent;
           const localY = yy - halfExtent;
-          const f = filtered[y * width + x] - mean;
-          let gx = 0.5 * (atMirror(coefficients, x + 1, y) - atMirror(coefficients, x - 1, y));
-          let gy = 0.5 * (atMirror(coefficients, x, y + 1) - atMirror(coefficients, x, y - 1));
-          const gxSouth = 0.5
-            * (atMirror(coefficients, x + 1, y - 1) - atMirror(coefficients, x - 1, y - 1));
-          const gxNorth = 0.5
-            * (atMirror(coefficients, x + 1, y + 1) - atMirror(coefficients, x - 1, y + 1));
-          const gyWest = 0.5
-            * (atMirror(coefficients, x - 1, y + 1) - atMirror(coefficients, x - 1, y - 1));
-          const gyEast = 0.5
-            * (atMirror(coefficients, x + 1, y + 1) - atMirror(coefficients, x + 1, y - 1));
-          gx = (gxSouth + 4 * gx + gxNorth) / 6;
-          gy = (gyWest + 4 * gy + gyEast) / 6;
+          const f = intensity[y * width + x] - mean;
+          let gx = 0.5
+            * (atMirror(gradientSource, x + 1, y) - atMirror(gradientSource, x - 1, y));
+          let gy = 0.5
+            * (atMirror(gradientSource, x, y + 1) - atMirror(gradientSource, x, y - 1));
+          if (interpolation === 'bspline') {
+            const gxSouth = 0.5 * (atMirror(gradientSource, x + 1, y - 1)
+              - atMirror(gradientSource, x - 1, y - 1));
+            const gxNorth = 0.5 * (atMirror(gradientSource, x + 1, y + 1)
+              - atMirror(gradientSource, x - 1, y + 1));
+            const gyWest = 0.5 * (atMirror(gradientSource, x - 1, y + 1)
+              - atMirror(gradientSource, x - 1, y - 1));
+            const gyEast = 0.5 * (atMirror(gradientSource, x + 1, y + 1)
+              - atMirror(gradientSource, x + 1, y - 1));
+            gx = (gxSouth + 4 * gx + gxNorth) / 6;
+            gy = (gyWest + 4 * gy + gyEast) / 6;
+          }
 
           const pixel = 4 * (y * width + x);
           reference[pixel] = f;
@@ -247,10 +260,18 @@ export const prepareReferenceGray = (
 
 export const prepareReferenceData = (
   image,
-  { width, height, subsetSize = 16, intensityScale = 1 / 255 },
+  {
+    width,
+    height,
+    subsetSize = 16,
+    intensityScale = 1 / 255,
+    interpolation = 'bspline',
+  },
 ) => prepareReferenceGray(
   imageToGray(image, width, height, intensityScale),
-  { width, height, subsetSize },
+  {
+    width, height, subsetSize, interpolation,
+  },
 );
 
 export const makeFIRWeights = (radius = 15) => {

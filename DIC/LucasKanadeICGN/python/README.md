@@ -69,6 +69,21 @@ Defaults are scoped to the selected engine, not to the whole package:
 It is retained for exceptional failures and compatibility, but it is not the
 recommended normal pyramid.
 
+## Interpolation choice
+
+Every active engine accepts an interpolation mode at construction:
+
+```python
+with ICGNWGPUFullPyramid(interpolation="linear") as engine:
+    engine.set_reference(reference)
+    result = engine.register(target)
+```
+
+The choices are `"bspline"` (historical default), `"linear"`, and `"cubic"`
+(Keys cubic convolution). The two direct modes skip target FIR prefiltering.
+Changing the mode requires preparing the reference again. GPU-IO is deprecated
+and accepts only `"bspline"`.
+
 ## Persistent engine
 
 Reuse one engine for an image sequence. This keeps Chromium alive and prepares

@@ -27,6 +27,12 @@ reproducibility and cross-backend regression tests, but new applications
 should use ``three-tsl``. The Three.js fallback provides WebGL2 compatibility
 without changing the public result schema.
 
+All active engines accept ``interpolation="bspline"``, ``"linear"``, or
+``"cubic"`` at construction. ``bspline`` is the historical default. The two
+direct modes skip per-target FIR coefficient construction and require matching
+raw-sample reference preparation. The deprecated GPU-IO backend accepts only
+``bspline``. See :doc:`../explanation/interpolation`.
+
 Native single-scale and streaming engine
 ----------------------------------------
 
@@ -67,6 +73,9 @@ reduction, affine seed transfer, and all IC-GN solves remain GPU-resident in one
 command submission. Per-level iteration and tolerance tuples are ordered from
 coarse to fine. Two levels are the default and recommended native configuration;
 three levels are opt-in for a larger expected displacement range.
+
+``interpolation`` applies to every pyramid level. ``linear`` and ``cubic``
+omit both FIR passes at every level; ``bspline`` retains the existing graph.
 
 See :doc:`../explanation/backend-selection` for a single table distinguishing
 the defaults of all public engines.

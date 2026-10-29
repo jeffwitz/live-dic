@@ -31,10 +31,11 @@ Data flow
    Python target frame
            |
            v
-   grayscale PNG data URL -----> target upload and FIR prefilter
+   grayscale PNG data URL -----> target upload
                                       |
                                       v
-                            cubic B-spline coefficients
+                    selected reconstruction preparation
+                   B-spline: FIR X + FIR Y; direct: none
                                       |
                                       v
                               affine IC-GN iterations
@@ -72,8 +73,10 @@ many targets is essential for sustained processing.
 Target stage
 ------------
 
-Every target is converted to grayscale, uploaded, and filtered into cubic
-B-spline coefficients. Three.js runs up to 30 affine IC-GN iterations inside
+Every target is converted to grayscale and uploaded. The default ``bspline``
+mode filters it into cubic B-spline coefficients; ``linear`` and ``cubic``
+sample the uploaded target directly and skip both FIR passes. Three.js runs up
+to 30 affine IC-GN iterations inside
 one compute dispatch and fills the measured subgroup when available (32 lanes
 on the validation GPU); its portable fallback uses 16 lanes. GPU-IO fuses the
 same iteration loop into one fragment per subset and scans the 16 x 16 tile
@@ -92,6 +95,11 @@ ordered command graph. The older selective ``ICGNWGPU`` option instead runs a
 fine solve first and performs CPU-orchestrated recovery only after failures;
 it is an optional compatibility path. See :doc:`backend-selection` for the
 public-engine policy.
+
+The reference intensities and gradients follow the selected reconstruction
+model. This is why interpolation is an engine-level choice rather than a
+per-call switch. :doc:`interpolation` defines the three models and their
+measured trade-offs.
 
 Control path
 ------------

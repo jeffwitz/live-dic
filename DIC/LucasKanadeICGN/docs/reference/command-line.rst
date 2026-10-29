@@ -31,6 +31,10 @@ Solver options
 ``--zncc-min VALUE``
    Minimum accepted ZNCC in ``[0, 1]``. Default: ``0.8``.
 
+``--interpolation {bspline,linear,cubic}``
+   Select historical Gaussian/B-spline reconstruction, direct bilinear
+   interpolation, or direct Keys cubic convolution. Default: ``bspline``.
+
 ``--pyramid-levels {1,2,3}``
    Full-pyramid depth for ``webgpu-wgsl``. The backend default is two levels;
    one selects the original single-scale path.

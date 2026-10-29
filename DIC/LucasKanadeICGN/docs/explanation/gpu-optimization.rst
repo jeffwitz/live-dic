@@ -48,10 +48,11 @@ Common numerical tile
 ---------------------
 
 One output grid point owns one 16 x 16 reference subset and one six-parameter
-affine warp. The target value at each of the 256 pixels is reconstructed from a
-4 x 4 neighbourhood of cubic B-spline coefficients. The reference image,
-gradients, inverse Hessian, ``J^T F``, and ``sum(J)`` are prepared once and
-reused for every target.
+affine warp. In the default mode, the target value at each of the 256 pixels is
+reconstructed from a 4 x 4 neighbourhood of cubic B-spline coefficients. The
+direct ``cubic`` mode also uses 4 x 4 samples, while ``linear`` uses four. The
+reference image, gradients, inverse Hessian, ``J^T F``, and ``sum(J)`` are
+prepared once and reused for every target.
 
 .. code-block:: text
 
@@ -70,7 +71,7 @@ reused for every target.
    y=15   |                                     |
       +----+----+----+--------------------+----+
 
-   each p -> affine warp -> 4 x 4 target-coefficient tile
+   each p -> affine warp -> 4 or 16 target values
           -> F, g, g^2, F*g, and six J*g contributions
 
 The target FIR prefilter is separable. The coefficient vector contains the same
@@ -108,6 +109,11 @@ The TSL path uses a conservative 16 x 16 output tile: 46 x 16 source values
 for the horizontal pass and 16 x 46 for the vertical pass. WebGL2 keeps its
 serial prefilter because workgroup memory and barriers are not available
 through that fallback.
+
+These FIR tiling rules apply only to ``interpolation="bspline"``. The direct
+``linear`` and ``cubic`` graphs skip both passes. Their trade-off moves into
+the solver: bilinear sampling performs four direct image reads per warped
+pixel, while Keys cubic convolution performs 16. See :doc:`interpolation`.
 
 WebGPU solver mappings
 ----------------------

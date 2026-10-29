@@ -17,6 +17,7 @@ from importlib.resources import files
 from typing import Any
 
 from .engine import ICGNError, ImageInput, ReferenceInfo, RegistrationResult, _as_uint8_gray
+from .interpolation import normalize_interpolation
 from .wgpu_backend import ICGNWGPU, _reduce_half, _validated_config
 
 DEFAULT_FULL_PYRAMID_LEVELS = 2
@@ -86,7 +87,9 @@ class ICGNWGPUFullPyramid:
     coarsest level to the finest level.  Reference preparation is performed
     once per level by :meth:`set_reference`; per target, all reductions,
     prefilters, solves, seed transfers, and median filters stay on one WebGPU
-    device and are encoded into one command buffer.
+    device and are encoded into one command buffer. ``linear`` and ``cubic``
+    interpolation omit the per-level prefilters; ``bspline`` remains the
+    compatibility default.
     """
 
     def __init__(
@@ -96,7 +99,9 @@ class ICGNWGPUFullPyramid:
         iterations_per_level: tuple[int, ...] | None = None,
         tolerance_per_level: tuple[float, ...] | None = None,
         power_preference: str = "high-performance",
+        interpolation: str = "bspline",
     ) -> None:
+        self.interpolation = normalize_interpolation(interpolation)
         self.pyramid_levels = _level_count(pyramid_levels)
         iteration_values = _schedule(
             iterations_per_level,
@@ -126,6 +131,7 @@ class ICGNWGPUFullPyramid:
             power_preference=power_preference,
             prefer_subgroups=False,
             pyramid_levels=1,
+            interpolation=self.interpolation,
         )
         self._root._ensure_seeded_solver()
         self._wgpu = self._root._wgpu
@@ -406,7 +412,7 @@ class ICGNWGPUFullPyramid:
             reference_build_wall_ms=reference_build_wall_ms,
             encoding_wall_ms=0.0,
             total_wall_ms=total_wall_ms,
-            config=dict(fine._config),
+            config={**fine._config, "interpolation": self.interpolation},
             device=self.device_name,
             grid=(fine.grid_width, fine.grid_height),
             width=fine.width,

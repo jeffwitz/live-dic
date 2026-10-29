@@ -22,6 +22,7 @@ import numpy as np
 import numpy.typing as npt
 
 from .engine import ICGNError, ImageInput, ReferenceInfo, RegistrationResult, _as_uint8_gray
+from .interpolation import INTERPOLATION_PIPELINE_CONSTANTS, normalize_interpolation
 
 SUBSET_SIZE = 16
 SUBSET_HALF_EXTENT = 7.5
@@ -356,36 +357,46 @@ def _cubic_bspline_prefilter(source: npt.NDArray[np.float64]) -> npt.NDArray[np.
 
 def _reference_arrays(
     image: npt.NDArray[np.uint8],
+    *,
+    interpolation: str = "bspline",
 ) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.float32], npt.NDArray[np.float32]]:
     """Build reference pixels, inverse Hessians, and solver metadata."""
 
     height, width = image.shape
     grid_width = width // SUBSET_SIZE
     grid_height = height // SUBSET_SIZE
-    filtered = _gaussian_sigma_one(image)
-    coefficients = _cubic_bspline_prefilter(filtered)
+    mode = normalize_interpolation(interpolation)
+    if mode == "bspline":
+        intensity = _gaussian_sigma_one(image)
+        gradient_source = _cubic_bspline_prefilter(intensity)
+    else:
+        # Direct interpolants operate on the acquired samples. Their IC-GN
+        # reference gradient is the centered derivative at integer pixels.
+        intensity = image.astype(np.float64)
+        gradient_source = intensity
 
-    padded = np.pad(coefficients, 1, mode="reflect")
+    padded = np.pad(gradient_source, 1, mode="reflect")
     gradient_x = 0.5 * (padded[1:-1, 2:] - padded[1:-1, :-2])
     gradient_y = 0.5 * (padded[2:, 1:-1] - padded[:-2, 1:-1])
-    gradient_x = (
-        0.5 * (padded[:-2, 2:] - padded[:-2, :-2])
-        + 4.0 * gradient_x
-        + 0.5 * (padded[2:, 2:] - padded[2:, :-2])
-    ) / 6.0
-    gradient_y = (
-        0.5 * (padded[2:, :-2] - padded[:-2, :-2])
-        + 4.0 * gradient_y
-        + 0.5 * (padded[2:, 2:] - padded[:-2, 2:])
-    ) / 6.0
+    if mode == "bspline":
+        gradient_x = (
+            0.5 * (padded[:-2, 2:] - padded[:-2, :-2])
+            + 4.0 * gradient_x
+            + 0.5 * (padded[2:, 2:] - padded[2:, :-2])
+        ) / 6.0
+        gradient_y = (
+            0.5 * (padded[2:, :-2] - padded[:-2, :-2])
+            + 4.0 * gradient_y
+            + 0.5 * (padded[2:, 2:] - padded[:-2, 2:])
+        ) / 6.0
 
     covered_height = grid_height * SUBSET_SIZE
     covered_width = grid_width * SUBSET_SIZE
-    tiled = filtered[:covered_height, :covered_width].reshape(
+    tiled = intensity[:covered_height, :covered_width].reshape(
         grid_height, SUBSET_SIZE, grid_width, SUBSET_SIZE
     )
     means = tiled.mean(axis=(1, 3))
-    centered = filtered.copy()
+    centered = intensity.copy()
     centered[:covered_height, :covered_width] -= np.repeat(
         np.repeat(means, SUBSET_SIZE, axis=0), SUBSET_SIZE, axis=1
     )
@@ -468,7 +479,9 @@ class ICGNWGPU:
     on the native GPU adapter. By default, reference preparation benchmarks
     the portable and subgroup solvers when both are available. Set
     ``prefer_subgroups`` to ``False`` or ``True`` to force either path for
-    qualification.
+    qualification. Direct ``linear`` and Keys ``cubic`` interpolation omit
+    target FIR passes and use the portable solver; ``bspline`` is the
+    historical default.
     """
 
     def __init__(
@@ -477,7 +490,11 @@ class ICGNWGPU:
         power_preference: str = "high-performance",
         prefer_subgroups: bool | None = None,
         pyramid_levels: int = DEFAULT_PYRAMID_LEVELS,
+        interpolation: str = "bspline",
     ) -> None:
+        self.interpolation = normalize_interpolation(interpolation)
+        if prefer_subgroups is True and self.interpolation != "bspline":
+            raise ValueError("prefer_subgroups=True is supported only with interpolation='bspline'")
         try:
             level_count = operator.index(pyramid_levels)
         except TypeError as error:
@@ -556,7 +573,13 @@ class ICGNWGPU:
         )
         self._portable_solver = self.device.create_compute_pipeline(
             layout=pipeline_layout,
-            compute={"module": shader, "entry_point": "solve"},
+            compute={
+                "module": shader,
+                "entry_point": "solve",
+                "constants": {
+                    "INTERPOLATION_MODE": INTERPOLATION_PIPELINE_CONSTANTS[self.interpolation]
+                },
+            },
         )
         self._subgroup_solver = None
         if subgroup_shader is not None:
@@ -621,6 +644,7 @@ class ICGNWGPU:
         ):
             setattr(level, name, getattr(self, name))
         level._solver_preference = False
+        level.interpolation = getattr(self, "interpolation", "bspline")
         level.solver_tuning_ms = {}
         level.solver = "portable-workgroup"
         level._solver = level._portable_solver
@@ -753,13 +777,23 @@ class ICGNWGPU:
         layout = self.device.create_pipeline_layout(
             bind_group_layouts=[self._seeded_bind_group_layout]
         )
+        interpolation = getattr(self, "interpolation", "bspline")
+        constants = {"INTERPOLATION_MODE": INTERPOLATION_PIPELINE_CONSTANTS[interpolation]}
         seeded_solver = self.device.create_compute_pipeline(
             layout=layout,
-            compute={"module": self._shader, "entry_point": "solve_seeded"},
+            compute={
+                "module": self._shader,
+                "entry_point": "solve_seeded",
+                "constants": constants,
+            },
         )
         retry_solver = self.device.create_compute_pipeline(
             layout=layout,
-            compute={"module": self._shader, "entry_point": "retry_seeded"},
+            compute={
+                "module": self._shader,
+                "entry_point": "retry_seeded",
+                "constants": constants,
+            },
         )
         self._seeded_solver = seeded_solver
         self._retry_solver = retry_solver
@@ -1020,22 +1054,37 @@ class ICGNWGPU:
 
         encoder.clear_buffer(slot.buffers["state"])
         encoder.clear_buffer(slot.buffers["filtered_state"])
-        prefilter_x_workgroups = ((self.width + 31) // 32, (self.height + 7) // 8, 1)
-        prefilter_y_workgroups = ((self.width + 7) // 8, (self.height + 31) // 32, 1)
-        for pipeline, workgroups, bind_group in (
-            (self._prefilter_x, prefilter_x_workgroups, slot.bind_group),
-            (self._prefilter_y, prefilter_y_workgroups, slot.bind_group),
+        passes = []
+        if self.interpolation == "bspline":
+            passes.extend(
+                (
+                    (
+                        self._prefilter_x,
+                        ((self.width + 31) // 32, (self.height + 7) // 8, 1),
+                        slot.bind_group,
+                    ),
+                    (
+                        self._prefilter_y,
+                        ((self.width + 7) // 8, (self.height + 31) // 32, 1),
+                        slot.bind_group,
+                    ),
+                )
+            )
+        passes.extend(
             (
-                solver_pipeline,
-                (self.grid_width * self.grid_height, 1, 1),
-                solver_bind_group,
-            ),
-            (
-                self._median_filter,
-                ((self.grid_width * self.grid_height + 255) // 256, 1, 1),
-                slot.bind_group,
-            ),
-        ):
+                (
+                    solver_pipeline,
+                    (self.grid_width * self.grid_height, 1, 1),
+                    solver_bind_group,
+                ),
+                (
+                    self._median_filter,
+                    ((self.grid_width * self.grid_height + 255) // 256, 1, 1),
+                    slot.bind_group,
+                ),
+            )
+        )
+        for pipeline, workgroups, bind_group in passes:
             compute_pass = encoder.begin_compute_pass()
             compute_pass.set_pipeline(pipeline)
             compute_pass.set_bind_group(0, bind_group)
@@ -1124,22 +1173,37 @@ class ICGNWGPU:
         encoder = self.device.create_command_encoder(label="DIC-RT selective coarse solve")
         encoder.clear_buffer(slot.buffers["state"])
         encoder.clear_buffer(slot.buffers["filtered_state"])
-        prefilter_x_workgroups = ((self.width + 31) // 32, (self.height + 7) // 8, 1)
-        prefilter_y_workgroups = ((self.width + 7) // 8, (self.height + 31) // 32, 1)
-        for pipeline, workgroups, bind_group in (
-            (self._prefilter_x, prefilter_x_workgroups, slot.bind_group),
-            (self._prefilter_y, prefilter_y_workgroups, slot.bind_group),
+        passes = []
+        if self.interpolation == "bspline":
+            passes.extend(
+                (
+                    (
+                        self._prefilter_x,
+                        ((self.width + 31) // 32, (self.height + 7) // 8, 1),
+                        slot.bind_group,
+                    ),
+                    (
+                        self._prefilter_y,
+                        ((self.width + 7) // 8, (self.height + 31) // 32, 1),
+                        slot.bind_group,
+                    ),
+                )
+            )
+        passes.extend(
             (
-                self._seeded_solver,
-                (self.grid_width * self.grid_height, 1, 1),
-                slot.seeded_bind_group,
-            ),
-            (
-                self._median_filter,
-                ((self.grid_width * self.grid_height + 255) // 256, 1, 1),
-                slot.bind_group,
-            ),
-        ):
+                (
+                    self._seeded_solver,
+                    (self.grid_width * self.grid_height, 1, 1),
+                    slot.seeded_bind_group,
+                ),
+                (
+                    self._median_filter,
+                    ((self.grid_width * self.grid_height + 255) // 256, 1, 1),
+                    slot.bind_group,
+                ),
+            )
+        )
+        for pipeline, workgroups, bind_group in passes:
             compute_pass = encoder.begin_compute_pass()
             compute_pass.set_pipeline(pipeline)
             compute_pass.set_bind_group(0, bind_group)
@@ -1279,7 +1343,10 @@ class ICGNWGPU:
             mean_translation=mean_translation,
             mean_iterations=mean_iterations,
             timing=timing,
-            config=dict(self._config),
+            config={
+                **self._config,
+                "interpolation": getattr(self, "interpolation", "bspline"),
+            },
             width=self.width,
             height=self.height,
             subset_size=SUBSET_SIZE,
@@ -1367,7 +1434,11 @@ class ICGNWGPU:
         reduced = reference
         for _ in range(1, self.pyramid_levels):
             reduced = _reduce_half(reduced)
-            engine = ICGNWGPU(prefer_subgroups=False, pyramid_levels=1)
+            engine = ICGNWGPU(
+                prefer_subgroups=False,
+                pyramid_levels=1,
+                interpolation=self.interpolation,
+            )
             engine.set_reference(
                 reduced,
                 iterations=12,
@@ -1393,7 +1464,10 @@ class ICGNWGPU:
             raise ValueError("Reference dimensions must each be at least 16 pixels.")
         config = _validated_config(iterations, tolerance, zncc_min)
         reference_start = time.perf_counter()
-        reference, inverse, metadata = _reference_arrays(frame)
+        reference, inverse, metadata = _reference_arrays(
+            frame,
+            interpolation=self.interpolation,
+        )
         reference_wall_ms = (time.perf_counter() - reference_start) * 1_000.0
 
         # All CPU validation is complete. From this point onward a failure may
@@ -1409,7 +1483,8 @@ class ICGNWGPU:
         runtime_start = time.perf_counter()
         self._allocate_runtime(reference, inverse, metadata)
         self._update_config()
-        self._autotune_solver(frame)
+        if self.interpolation == "bspline":
+            self._autotune_solver(frame)
         self._prepare_pyramid(frame, zncc_min=zncc_min)
         runtime_wall_ms = (time.perf_counter() - runtime_start) * 1_000.0
         self._reference_ready = True
@@ -1420,7 +1495,10 @@ class ICGNWGPU:
             reference_build_wall_ms=reference_wall_ms,
             encoding_wall_ms=0.0,
             total_wall_ms=total_wall_ms,
-            config=dict(self._config),
+            config={
+                **self._config,
+                "interpolation": getattr(self, "interpolation", "bspline"),
+            },
             device=self.device_name,
             grid=(self.grid_width, self.grid_height),
             width=self.width,
@@ -1485,7 +1563,7 @@ class ICGNWGPU:
             mean_translation=mean_translation,
             mean_iterations=mean_iterations,
             timing=timing,
-            config=dict(config),
+            config={**config, "interpolation": getattr(self, "interpolation", "bspline")},
             width=self.width,
             height=self.height,
             subset_size=SUBSET_SIZE,

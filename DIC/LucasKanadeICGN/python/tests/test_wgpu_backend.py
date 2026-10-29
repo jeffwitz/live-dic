@@ -362,6 +362,35 @@ class NativeReferenceTests(unittest.TestCase):
         self.assertTrue(np.isfinite(inverse).all())
         self.assertTrue(np.all(metadata.reshape(-1, 16)[:, 1] == 1.0))
 
+    def test_reference_interpolation_modes_are_finite_and_distinct(self) -> None:
+        random = np.random.default_rng(20261029)
+        image = random.integers(0, 256, size=(32, 48), dtype=np.uint8)
+        default = _reference_arrays(image)
+        explicit_bspline = _reference_arrays(image, interpolation="bspline")
+        for default_array, explicit_array in zip(default, explicit_bspline, strict=True):
+            np.testing.assert_array_equal(default_array, explicit_array)
+
+        linear = _reference_arrays(image, interpolation="linear")
+        cubic = _reference_arrays(image, interpolation="cubic")
+        for prepared in (linear, cubic):
+            self.assertTrue(all(np.isfinite(array).all() for array in prepared))
+        # Both direct interpolants have the same integer-grid reference model.
+        for linear_array, cubic_array in zip(linear, cubic, strict=True):
+            np.testing.assert_array_equal(linear_array, cubic_array)
+        self.assertFalse(np.array_equal(default[0], linear[0]))
+
+    def test_unknown_reference_interpolation_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ValueError, "interpolation"):
+            _reference_arrays(np.zeros((32, 32), dtype=np.uint8), interpolation="nearest")
+
+    def test_native_interpolation_is_validated_before_gpu_creation(self) -> None:
+        with self.assertRaisesRegex(ValueError, "interpolation"):
+            ICGNWGPU(interpolation="nearest")
+        with self.assertRaisesRegex(ValueError, "prefer_subgroups"):
+            ICGNWGPU(interpolation="linear", prefer_subgroups=True)
+        with self.assertRaisesRegex(ValueError, "interpolation"):
+            ICGNWGPUFullPyramid(interpolation="nearest")
+
     def test_flat_reference_has_finite_rejected_inverse_hessians(self) -> None:
         image = np.full((64, 64), 137, dtype=np.uint8)
         _, inverse, metadata = _reference_arrays(image)

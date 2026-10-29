@@ -221,6 +221,22 @@ class RuntimeAssetTests(unittest.TestCase):
             2,
         )
 
+    def test_interpolation_mode_is_validated_and_forwarded(self) -> None:
+        for mode in ("bspline", "linear", "cubic"):
+            with self.subTest(mode=mode):
+                engine = ICGNWebGL(backend="webgpu-wgsl", interpolation=mode)
+                self.assertEqual(engine.interpolation, mode)
+                self.assertEqual(
+                    engine._options(iterations=None, tolerance=None, zncc_min=None)[
+                        "interpolation"
+                    ],
+                    mode,
+                )
+        with self.assertRaisesRegex(ValueError, "interpolation"):
+            ICGNWebGL(interpolation="nearest")
+        with self.assertRaisesRegex(ValueError, "supports only"):
+            ICGNWebGL(backend="gpuio", interpolation="linear")
+
     def test_browser_pyramid_options_are_validated(self) -> None:
         for levels in (0, 4, 1.5, True):
             with self.subTest(levels=levels), self.assertRaisesRegex(ValueError, "pyramid_levels"):

@@ -29,6 +29,8 @@ import numpy.typing as npt
 import websockets
 from PIL import Image
 
+from .interpolation import normalize_interpolation
+
 MIN_FRAME_DIMENSION: Final = 16
 PARAMETER_ORDER: Final = ("tx", "du_dx", "du_dy", "ty", "dv_dx", "dv_dy")
 ImageInput: TypeAlias = str | os.PathLike[str] | bytes | Image.Image | npt.ArrayLike
@@ -66,7 +68,7 @@ class ReferenceInfo:
     reference_build_wall_ms: float
     encoding_wall_ms: float
     total_wall_ms: float
-    config: Mapping[str, float | int]
+    config: Mapping[str, float | int | str]
     device: str
     grid: tuple[int, int]
     width: int
@@ -92,7 +94,7 @@ class RegistrationResult:
     mean_translation: tuple[float, float] | None
     mean_iterations: float | None
     timing: Mapping[str, float]
-    config: Mapping[str, float | int]
+    config: Mapping[str, float | int | str]
     width: int = 512
     height: int = 512
     subset_size: int = 16
@@ -524,6 +526,10 @@ class ICGNWebGL:
 
     ``no_sandbox`` is enabled by default for container compatibility. Set it to
     ``False`` when Chromium's sandbox is available in the execution environment.
+
+    ``interpolation`` selects ``"bspline"`` (historical default), direct
+    ``"linear"``, or direct Keys ``"cubic"`` reconstruction. The deprecated
+    GPU-IO backend supports only ``"bspline"``.
     """
 
     def __init__(
@@ -540,6 +546,7 @@ class ICGNWebGL:
         pyramid_levels: int | None = None,
         iterations_per_level: Iterable[int] | None = None,
         tolerance_per_level: Iterable[float] | None = None,
+        interpolation: str = "bspline",
     ) -> None:
         if startup_timeout <= 0:
             raise ValueError("startup_timeout must be greater than zero")
@@ -549,6 +556,9 @@ class ICGNWebGL:
             raise ValueError("backend must be 'gpuio', 'three-tsl', or 'webgpu-wgsl'")
         if force_three_webgl and backend != "three-tsl":
             raise ValueError("force_three_webgl is supported only by the 'three-tsl' backend")
+        self.interpolation = normalize_interpolation(interpolation)
+        if backend == "gpuio" and self.interpolation != "bspline":
+            raise ValueError("The deprecated 'gpuio' backend supports only interpolation='bspline'")
         pyramid_options = (pyramid_levels, iterations_per_level, tolerance_per_level)
         if backend != "webgpu-wgsl" and any(value is not None for value in pyramid_options):
             raise ValueError("Pyramid options are supported only by the 'webgpu-wgsl' backend")
@@ -778,6 +788,7 @@ class ICGNWebGL:
         zncc_min: float | None,
     ) -> dict[str, Any]:
         options: dict[str, Any] = {}
+        options["interpolation"] = self.interpolation
         if iterations is not None:
             options["iterations"] = int(iterations)
         if tolerance is not None:
@@ -1041,6 +1052,7 @@ def register_pair(
     pyramid_levels: int | None = None,
     iterations_per_level: Iterable[int] | None = None,
     tolerance_per_level: Iterable[float] | None = None,
+    interpolation: str = "bspline",
     iterations: int | None = None,
     tolerance: float | None = None,
     zncc_min: float | None = None,
@@ -1055,6 +1067,7 @@ def register_pair(
         pyramid_levels=pyramid_levels,
         iterations_per_level=iterations_per_level,
         tolerance_per_level=tolerance_per_level,
+        interpolation=interpolation,
     ) as engine:
         return engine.register_pair(
             reference,
