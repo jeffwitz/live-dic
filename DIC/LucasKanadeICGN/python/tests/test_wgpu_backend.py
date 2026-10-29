@@ -20,6 +20,7 @@ from lucas_kanade_icgn.full_pyramid_backend import (
     _DEFAULT_TOLERANCES,
     _schedule,
 )
+from lucas_kanade_icgn.subset import normalize_subset_stride, subset_grid_shape
 from lucas_kanade_icgn.wgpu_backend import (
     FIR_RADIUS,
     FIR_RUNTIME_RADIUS,
@@ -132,6 +133,38 @@ class NativeReferenceTests(unittest.TestCase):
                     self.assertRaisesRegex(ValueError, "subset_size"),
                 ):
                     engine_type(subset_size=value)
+
+    def test_subset_stride_defaults_to_size_and_validates_overlap(self) -> None:
+        self.assertEqual(normalize_subset_stride(None, subset_size=32), 32)
+        self.assertEqual(normalize_subset_stride(16, subset_size=32), 16)
+        self.assertEqual(
+            subset_grid_shape(3840, 2160, subset_size=32, subset_stride=16),
+            (239, 134),
+        )
+        for value in (0, 33, True, 16.0):
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, "subset_stride"):
+                normalize_subset_stride(value, subset_size=32)
+
+    def test_overlapping_reference_layout_keeps_per_subset_means(self) -> None:
+        image = np.arange(64 * 96, dtype=np.uint8).reshape(64, 96)
+        reference, inverse, metadata = _reference_arrays(
+            image,
+            subset_size=32,
+            subset_stride=16,
+            interpolation="linear",
+        )
+        grid_width, grid_height = 5, 3
+        reference_pixels = reference.reshape(64, 96, 4)
+        metadata_rows = metadata.reshape(grid_height, grid_width, 16)
+        self.assertEqual(inverse.shape, (grid_width * grid_height * 36,))
+        np.testing.assert_allclose(reference_pixels[..., 0], image, rtol=0.0, atol=0.0)
+        expected_means = np.asarray(
+            [
+                [image[y : y + 32, x : x + 32].mean() for x in range(0, 65, 16)]
+                for y in range(0, 33, 16)
+            ]
+        )
+        np.testing.assert_allclose(metadata_rows[..., 14], expected_means, atol=1e-5)
 
     def test_reference_layout_supports_all_subset_sizes(self) -> None:
         image = np.arange(64 * 96, dtype=np.uint8).reshape(64, 96)

@@ -61,6 +61,11 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--pyramid-levels", type=int, choices=(1, 2, 3), default=2)
     parser.add_argument("--subset-size", type=int, choices=(8, 16, 32), default=16)
     parser.add_argument(
+        "--subset-stride",
+        type=int,
+        help="subset-centre spacing (defaults to --subset-size)",
+    )
+    parser.add_argument(
         "--interpolation",
         choices=("bspline", "linear", "cubic"),
         default="bspline",
@@ -122,6 +127,7 @@ def _engine(
     interpolation: str,
     motion_model: str,
     subset_size: int,
+    subset_stride: int | None,
 ) -> AbstractContextManager[Any]:
     if backend == "native-pyramid":
         return ICGNWGPUFullPyramid(
@@ -129,6 +135,7 @@ def _engine(
             interpolation=interpolation,
             motion_model=motion_model,
             subset_size=subset_size,
+            subset_stride=subset_stride,
         )
     return ICGNWebGL(
         backend="webgpu-wgsl" if backend == "webgpu-wgsl" else "three-tsl",
@@ -137,6 +144,7 @@ def _engine(
         interpolation=interpolation,
         motion_model=motion_model,
         subset_size=subset_size,
+        subset_stride=subset_stride,
         startup_timeout=120,
         call_timeout=600,
     )
@@ -288,6 +296,7 @@ def main() -> int:
             interpolation=args.interpolation,
             motion_model=args.motion_model,
             subset_size=args.subset_size,
+            subset_stride=args.subset_stride,
         ) as engine:
             preparation = engine.set_reference(reference)
             campaigns = [
@@ -322,6 +331,7 @@ def main() -> int:
                 },
                 "pyramid_levels": args.pyramid_levels,
                 "subset_size": args.subset_size,
+                "subset_stride": args.subset_stride or args.subset_size,
                 "interpolation": args.interpolation,
                 "motion_model": args.motion_model,
                 "pipeline_depth": args.pipeline_depth,

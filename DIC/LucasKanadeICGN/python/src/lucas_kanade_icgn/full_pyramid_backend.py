@@ -21,7 +21,7 @@ from typing import Any
 from .engine import ICGNError, ImageInput, ReferenceInfo, RegistrationResult, _as_uint8_gray
 from .interpolation import normalize_interpolation
 from .motion import MOTION_MODEL_PIPELINE_CONSTANTS, normalize_motion_model
-from .subset import DEFAULT_SUBSET_SIZE, normalize_subset_size
+from .subset import DEFAULT_SUBSET_SIZE, normalize_subset_size, normalize_subset_stride
 from .wgpu_backend import (
     DEFAULT_IN_FLIGHT_FRAMES,
     ICGNWGPU,
@@ -120,7 +120,7 @@ class ICGNWGPUFullPyramid:
     device and are encoded into one command buffer. ``linear`` and ``cubic``
     interpolation omit the per-level prefilters; ``bspline`` remains the
     compatibility default. ``subset_size`` selects an 8, 16, or 32 pixel
-    square and also sets the field spacing.
+    square; ``subset_stride`` independently selects the field spacing.
     """
 
     def __init__(
@@ -133,10 +133,15 @@ class ICGNWGPUFullPyramid:
         interpolation: str = "bspline",
         motion_model: str = "affine",
         subset_size: int = DEFAULT_SUBSET_SIZE,
+        subset_stride: int | None = None,
     ) -> None:
         self.interpolation = normalize_interpolation(interpolation)
         self.motion_model = normalize_motion_model(motion_model)
         self.subset_size = normalize_subset_size(subset_size)
+        self.subset_stride = normalize_subset_stride(
+            subset_stride,
+            subset_size=self.subset_size,
+        )
         self.pyramid_levels = _level_count(pyramid_levels)
         iteration_values = _schedule(
             iterations_per_level,
@@ -169,6 +174,7 @@ class ICGNWGPUFullPyramid:
             interpolation=self.interpolation,
             motion_model=self.motion_model,
             subset_size=self.subset_size,
+            subset_stride=self.subset_stride,
         )
         self._root._ensure_seeded_solver()
         self._wgpu = self._root._wgpu
@@ -282,6 +288,7 @@ class ICGNWGPUFullPyramid:
                 "constants": {
                     "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
                     "SUBSET_SIZE": self.subset_size,
+                    "SUBSET_STRIDE": self.subset_stride,
                 },
             },
         )
@@ -495,12 +502,14 @@ class ICGNWGPUFullPyramid:
                 **fine._config,
                 "interpolation": self.interpolation,
                 "motionModel": self.motion_model,
+                "subsetStride": self.subset_stride,
             },
             device=self.device_name,
             grid=(fine.grid_width, fine.grid_height),
             width=fine.width,
             height=fine.height,
             subset_size=self.subset_size,
+            subset_stride=self.subset_stride,
         )
 
     def _encode_reductions(self, encoder: Any, edges: list[_ReductionEdge]) -> None:

@@ -27,11 +27,13 @@ Geometry and input
 * GPU-IO dimensions must be exact multiples of the selected subset size because its texture grid is
   allocated when the private headless page starts. A dimension change rebuilds
   that page automatically.
-* ``subset_size`` supports 8, 16, and 32 pixels and also sets the grid spacing.
-  Independent subset width and grid-step controls are not implemented.
-* Grid dimensions are ``floor(width / subset_size)`` by
-  ``floor(height / subset_size)``;
-  uncovered right or bottom pixels are not assigned to a subset.
+* ``subset_size`` supports 8, 16, and 32 pixels. ``subset_stride`` defaults to
+  the selected size and can be reduced to create overlapping subsets on the
+  native and browser shared-WGSL backends. Three.js/TSL, WebGL2, and GPU-IO
+  still require stride equal to size.
+* Grid dimensions are ``1 + floor((width - subset_size) / subset_stride)`` by
+  ``1 + floor((height - subset_size) / subset_stride)``; only fully contained
+  subsets are emitted.
 * Inputs are converted to 8-bit grayscale.
 * Three.js and raw WGSL browser targets use a persistent binary loopback
   transport; per-frame PNG and JSON field serialization have been removed.

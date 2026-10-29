@@ -32,7 +32,8 @@ when a kernel, driver, browser, or measurement boundary changes.
 - native WebGPU: wgpu-py 0.32.0, wgpu-native Vulkan.
 
 The offline validation texture is tiled to 3840 × 2160, producing 240 × 135,
-or 32,400, 16 × 16 subsets. No camera or H.264 stage is included.
+or 32,400, 16 × 16 subsets with the default 16-pixel stride. No published row
+below uses overlapping subsets. No camera or H.264 stage is included.
 
 ## Primary UHD image-to-field stream boundary
 

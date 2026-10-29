@@ -51,8 +51,9 @@ does not claim that host-to-device transfer has disappeared.
 Algorithm mapping
 -----------------
 
-The native backend uses the same selectable 8 x 8, 16 x 16, or 32 x 32
-subsets, affine parameter order, 31-value radius-15 target filter vector,
+The native backend uses selectable 8 x 8, 16 x 16, or 32 x 32 subsets and an
+independent stride from 1 through the selected size. Stride defaults to size.
+It retains the affine parameter order, 31-value radius-15 target filter vector,
 inverse-compositional update, ZNCC
 test, and median replacement as the browser implementations. The WGSL runtime
 omits only the six outer taps whose combined absolute weight is below ``7e-8``
@@ -73,7 +74,7 @@ collectives. It is compiled to SPIR-V at build time because the Naga frontend
 bundled with wgpu-py 0.32 cannot parse the WGSL subgroup extension. Both the
 GLSL source and generated SPIR-V are included in the wheel; no shader compiler
 or network access is needed at runtime. This binary is specialized for 16 x
-16; sizes 8 and 32 use the portable WGSL solver.
+16 with a 16-pixel stride; other sizes or strides use the portable WGSL solver.
 
 By default, ``set_reference`` benchmarks both valid solver pipelines on a
 representative shifted frame and retains the faster one. This tuning belongs
@@ -81,7 +82,8 @@ to preparation, not the per-target loop. Pass ``prefer_subgroups=False`` to
 force the portable path or ``prefer_subgroups=True`` to force the subgroup
 path for qualification. On the validation Intel driver, native subgroup
 collectives were slower, so automatic selection correctly retained WGSL.
-``prefer_subgroups=True`` therefore requires ``subset_size=16``.
+``prefer_subgroups=True`` therefore requires both ``subset_size=16`` and
+``subset_stride=16``.
 
 Python use: single-scale and streaming engine
 ---------------------------------------------

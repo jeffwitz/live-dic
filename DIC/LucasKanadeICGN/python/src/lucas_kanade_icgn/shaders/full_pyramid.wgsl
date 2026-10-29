@@ -23,6 +23,7 @@ struct SeedConfig {
 }
 
 override SUBSET_SIZE: f32 = 16.0;
+override SUBSET_STRIDE: f32 = 16.0;
 // Matches icgn.wgsl: 0 affine, 1 translation, 2 quadratic.
 override MOTION_MODEL: u32 = 0u;
 
@@ -172,8 +173,8 @@ fn transfer_seed(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let source_offset = (1.0 - seed_config.source_scale) * 0.5;
     let destination_offset = (1.0 - seed_config.destination_scale) * 0.5;
     let destination_center = vec2<f32>(
-        0.5 * SUBSET_SIZE + SUBSET_SIZE * f32(destination_x),
-        0.5 * SUBSET_SIZE + SUBSET_SIZE * f32(destination_y),
+        0.5 * SUBSET_SIZE + SUBSET_STRIDE * f32(destination_x),
+        0.5 * SUBSET_SIZE + SUBSET_STRIDE * f32(destination_y),
     );
     let source_coordinate = (
         seed_config.destination_scale * destination_center
@@ -181,7 +182,7 @@ fn transfer_seed(@builtin(global_invocation_id) global_id: vec3<u32>) {
     ) / seed_config.source_scale;
     let source_grid_coordinate = (
         source_coordinate - vec2<f32>(0.5 * SUBSET_SIZE)
-    ) / SUBSET_SIZE;
+    ) / SUBSET_STRIDE;
     let maximum_lower = vec2<i32>(
         i32(seed_config.source_grid_width) - 2,
         i32(seed_config.source_grid_height) - 2,
@@ -201,8 +202,8 @@ fn transfer_seed(@builtin(global_invocation_id) global_id: vec3<u32>) {
         let weight_x = select(1.0 - fraction.x, fraction.x, offset.x == 1);
         let weight_y = select(1.0 - fraction.y, fraction.y, offset.y == 1);
         let source_center = vec2<f32>(
-            0.5 * SUBSET_SIZE + SUBSET_SIZE * f32(source_grid.x),
-            0.5 * SUBSET_SIZE + SUBSET_SIZE * f32(source_grid.y),
+            0.5 * SUBSET_SIZE + SUBSET_STRIDE * f32(source_grid.x),
+            0.5 * SUBSET_SIZE + SUBSET_STRIDE * f32(source_grid.y),
         );
         accumulate_seed(
             source_index,

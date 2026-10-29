@@ -103,20 +103,25 @@ with ICGNWGPUFullPyramid(interpolation="linear") as engine:
     result = engine.register(target)
 ```
 
-The square subset width can be selected at engine construction. It also sets
-the result-grid spacing; 16 remains the qualified default:
+The square subset width and the result-grid spacing can be selected
+independently. Stride defaults to size, so existing code retains the qualified
+16-pixel geometry:
 
 ```python
-with ICGNWGPUFullPyramid(subset_size=32) as engine:
+with ICGNWGPUFullPyramid(subset_size=32, subset_stride=16) as engine:
     info = engine.set_reference(reference)
     result = engine.register(target)
 
 assert info.subset_size == 32
+assert info.subset_stride == 16
+assert result.parameters.shape[:2] == (134, 239)  # for a 3840 x 2160 frame
 ```
 
-The supported values are 8, 16, and 32. Non-default native sizes use the
-portable WGSL solver because the optional subgroup SPIR-V binary is specialized
-for 16 x 16 subsets.
+The supported sizes are 8, 16, and 32; stride is an integer from 1 through the
+selected size. Independent stride is available in native ``wgpu-py`` and
+browser ``webgpu-wgsl``. Three.js/TSL, WebGL2, and GPU-IO require stride equal
+to size. Any native size or stride other than 16 uses the portable WGSL solver
+because the optional subgroup SPIR-V binary is specialized for 16 x 16.
 
 The choices are `"bspline"` (historical default), `"linear"`, and `"cubic"`
 (Keys cubic convolution). The two direct modes skip target FIR prefiltering.

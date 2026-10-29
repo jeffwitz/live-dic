@@ -308,8 +308,12 @@ Versions, hashes, and licence locations are recorded in
 Default parameters match the SYCL geometry: a 16-pixel grid spacing, 16 x 16
 subsets centered at `(8 + 16i, 8 + 16j)` and a minimum ZNCC of `0.8`.
 All Python engines also accept `subset_size=8` or `subset_size=32`; the chosen
-width is both the square subset size and the grid spacing. The published
-performance campaign remains a qualification of the default value 16.
+width remains the grid spacing unless `subset_stride` is provided. Native
+`wgpu-py` and browser `webgpu-wgsl` accept a stride from 1 through the subset
+size, so `subset_size=32, subset_stride=16` produces overlapping 32 x 32
+windows. Three.js/TSL, WebGL2, and GPU-IO still require stride equal to size.
+The published performance campaign remains a qualification of the default
+16-pixel size and stride.
 Single-scale engines use a `1e-3` pixel tolerance and at most 30 iterations;
 the qualified two-level full pyramid uses `(5e-3, 5e-3)` tolerances and
 `(8, 16)` iteration ceilings from coarse to fine.

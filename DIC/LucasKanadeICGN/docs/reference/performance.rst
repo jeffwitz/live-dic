@@ -59,7 +59,9 @@ Current workload and protocol
 -----------------------------
 
 The offline validation images are tiled to 3840 x 2160. The resulting grid is
-240 x 135, or 32,400 subsets of 16 x 16 pixels. Both motion models measured in
+240 x 135, or 32,400 subsets with ``subset_size=16`` and the default
+``subset_stride=16``. No published timing on this page uses overlapping
+subsets. Both motion models measured in
 the published UHD campaign use
 Gaussian/inverse-spline target filtering, 4 x 4 cubic B-spline interpolation,
 a ``5e-3`` fine-scale tolerance, minimum ZNCC ``0.8``, and spatial median

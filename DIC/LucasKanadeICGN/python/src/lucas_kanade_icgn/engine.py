@@ -33,7 +33,7 @@ from PIL import Image
 
 from .interpolation import normalize_interpolation
 from .motion import AFFINE_PARAMETER_ORDER, normalize_motion_model, parameter_order
-from .subset import DEFAULT_SUBSET_SIZE, normalize_subset_size
+from .subset import DEFAULT_SUBSET_SIZE, normalize_subset_size, normalize_subset_stride
 
 MIN_FRAME_DIMENSION: Final = 16
 PARAMETER_ORDER: Final = AFFINE_PARAMETER_ORDER
@@ -58,6 +58,7 @@ class EngineInfo:
     height: int
     grid: tuple[int, int]
     subset_size: int
+    subset_stride: int
     device: str
     timer_query: bool
     solver: str = "unknown"
@@ -83,6 +84,7 @@ class ReferenceInfo:
     width: int
     height: int
     subset_size: int
+    subset_stride: int
 
 
 @dataclass(slots=True)
@@ -108,6 +110,7 @@ class RegistrationResult:
     width: int = 512
     height: int = 512
     subset_size: int = 16
+    subset_stride: int = 16
 
     @property
     def displacement(self) -> np.ndarray:
@@ -178,6 +181,7 @@ class RegistrationResult:
             width=int(payload["width"]),
             height=int(payload["height"]),
             subset_size=int(payload["subsetSize"]),
+            subset_stride=int(payload.get("subsetStride", payload["subsetSize"])),
         )
 
     @classmethod
@@ -231,6 +235,7 @@ class RegistrationResult:
             width=int(payload["width"]),
             height=int(payload["height"]),
             subset_size=int(payload["subsetSize"]),
+            subset_stride=int(payload.get("subsetStride", payload["subsetSize"])),
         )
 
 
@@ -787,7 +792,8 @@ class ICGNWebGL:
     ``interpolation`` selects ``"bspline"`` (historical default), direct
     ``"linear"``, or direct Keys ``"cubic"`` reconstruction. The deprecated
     GPU-IO backend supports only ``"bspline"``. ``subset_size`` selects an 8,
-    16, or 32 pixel square and also sets the field spacing.
+    16, or 32 pixel square. ``subset_stride`` independently selects the field
+    spacing and defaults to ``subset_size``.
     """
 
     def __init__(
@@ -807,6 +813,7 @@ class ICGNWebGL:
         interpolation: str = "bspline",
         motion_model: str = "affine",
         subset_size: int = DEFAULT_SUBSET_SIZE,
+        subset_stride: int | None = None,
     ) -> None:
         if startup_timeout <= 0:
             raise ValueError("startup_timeout must be greater than zero")
@@ -819,12 +826,21 @@ class ICGNWebGL:
         self.interpolation = normalize_interpolation(interpolation)
         self.motion_model = normalize_motion_model(motion_model)
         self.subset_size = normalize_subset_size(subset_size)
+        self.subset_stride = normalize_subset_stride(
+            subset_stride,
+            subset_size=self.subset_size,
+        )
         if backend == "gpuio" and self.interpolation != "bspline":
             raise ValueError("The deprecated 'gpuio' backend supports only interpolation='bspline'")
         if backend == "gpuio" and self.motion_model != "affine":
             raise ValueError("The deprecated 'gpuio' backend supports only motion_model='affine'")
         if self.motion_model == "quadratic" and backend != "webgpu-wgsl":
             raise ValueError("motion_model='quadratic' currently requires backend='webgpu-wgsl'")
+        if self.subset_stride != self.subset_size and backend != "webgpu-wgsl":
+            raise ValueError(
+                "Overlapping subsets currently require backend='webgpu-wgsl'; "
+                "Three.js and GPU-IO require subset_stride=subset_size"
+            )
         pyramid_options = (pyramid_levels, iterations_per_level, tolerance_per_level)
         if backend != "webgpu-wgsl" and any(value is not None for value in pyramid_options):
             raise ValueError("Pyramid options are supported only by the 'webgpu-wgsl' backend")
@@ -918,6 +934,7 @@ class ICGNWebGL:
         self._log_handle = log_path.open("wb")
         page_url = f"http://127.0.0.1:{self._server.port}/{self._headless_path}?headless=1"
         page_url += f"&subsetSize={self.subset_size}"
+        page_url += f"&subsetStride={self.subset_stride}"
         if self.backend != "gpuio":
             page_url += f"&binaryToken={self._server.transport_token}"
         if self.force_three_webgl:
@@ -1087,6 +1104,7 @@ class ICGNWebGL:
             height=int(payload["height"]),
             grid=tuple(map(int, payload["grid"])),
             subset_size=int(payload["subsetSize"]),
+            subset_stride=int(payload.get("subsetStride", payload["subsetSize"])),
             device=str(payload["device"]),
             timer_query=bool(payload["timerQuery"]),
             solver=str(payload.get("solver", "unknown")),
@@ -1145,6 +1163,7 @@ class ICGNWebGL:
             width=int(payload["width"]),
             height=int(payload["height"]),
             subset_size=int(payload["subsetSize"]),
+            subset_stride=int(payload.get("subsetStride", payload["subsetSize"])),
         )
 
     def register(
@@ -1388,6 +1407,7 @@ def register_pair(
     interpolation: str = "bspline",
     motion_model: str = "affine",
     subset_size: int = DEFAULT_SUBSET_SIZE,
+    subset_stride: int | None = None,
     iterations: int | None = None,
     tolerance: float | None = None,
     zncc_min: float | None = None,
@@ -1405,6 +1425,7 @@ def register_pair(
         interpolation=interpolation,
         motion_model=motion_model,
         subset_size=subset_size,
+        subset_stride=subset_stride,
     ) as engine:
         return engine.register_pair(
             reference,

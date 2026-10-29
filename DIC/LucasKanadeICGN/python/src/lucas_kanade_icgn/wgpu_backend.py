@@ -29,7 +29,12 @@ from .motion import (
     parameter_count,
     state_float_count,
 )
-from .subset import DEFAULT_SUBSET_SIZE, normalize_subset_size
+from .subset import (
+    DEFAULT_SUBSET_SIZE,
+    normalize_subset_size,
+    normalize_subset_stride,
+    subset_grid_shape,
+)
 
 FIR_RADIUS = 15
 #: Runtime FIR half-width after removing numerically negligible outer taps.
@@ -172,6 +177,7 @@ def _transfer_pyramid_seed(
     destination_grid: tuple[int, int],
     requested: npt.NDArray[np.bool_],
     subset_size: int = DEFAULT_SUBSET_SIZE,
+    subset_stride: int | None = None,
 ) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.uint32]]:
     """Interpolate coarse warps onto requested finer subset centres."""
 
@@ -197,19 +203,20 @@ def _transfer_pyramid_seed(
         return seeds, active
     destination_y = destinations[:, 0]
     destination_x = destinations[:, 1]
+    subset_stride = normalize_subset_stride(subset_stride, subset_size=subset_size)
     center_offset = 0.5 * subset_size
     x = (
-        destination_scale * (center_offset + subset_size * destination_x)
+        destination_scale * (center_offset + subset_stride * destination_x)
         + destination_offset
         - source_offset
     ) / source_scale
     y = (
-        destination_scale * (center_offset + subset_size * destination_y)
+        destination_scale * (center_offset + subset_stride * destination_y)
         + destination_offset
         - source_offset
     ) / source_scale
-    grid_x = (x - center_offset) / subset_size
-    grid_y = (y - center_offset) / subset_size
+    grid_x = (x - center_offset) / subset_stride
+    grid_y = (y - center_offset) / subset_stride
     lower_x = np.clip(np.floor(grid_x), 0, source_width - 2).astype(np.intp)
     lower_y = np.clip(np.floor(grid_y), 0, source_height - 2).astype(np.intp)
     fraction_x = np.clip(grid_x - lower_x, 0.0, 1.0)
@@ -224,8 +231,8 @@ def _transfer_pyramid_seed(
         weight_y = fraction_y if corner & 2 else 1.0 - fraction_y
         weight = weight_x * weight_y * valid
         parameters = result.parameters[source_y, source_x]
-        delta_x = x - (center_offset + subset_size * source_x)
-        delta_y = y - (center_offset + subset_size * source_y)
+        delta_x = x - (center_offset + subset_stride * source_x)
+        delta_y = y - (center_offset + subset_stride * source_y)
         translated = np.array(parameters, dtype=np.float64, copy=True)
         if motion_model == "quadratic":
             delta_x2 = delta_x * delta_x
@@ -272,6 +279,7 @@ def _pyramid_dependency_mask(
     destination_scale: int,
     requested: npt.NDArray[np.bool_],
     subset_size: int = DEFAULT_SUBSET_SIZE,
+    subset_stride: int | None = None,
 ) -> npt.NDArray[np.bool_]:
     """Return the four-source interpolation closure for requested subsets."""
 
@@ -284,24 +292,25 @@ def _pyramid_dependency_mask(
     destination_x = destinations[:, 1]
     source_offset = (1.0 - source_scale) * 0.5
     destination_offset = (1.0 - destination_scale) * 0.5
+    subset_stride = normalize_subset_stride(subset_stride, subset_size=subset_size)
     center_offset = 0.5 * subset_size
     x = (
-        destination_scale * (center_offset + subset_size * destination_x)
+        destination_scale * (center_offset + subset_stride * destination_x)
         + destination_offset
         - source_offset
     ) / source_scale
     y = (
-        destination_scale * (center_offset + subset_size * destination_y)
+        destination_scale * (center_offset + subset_stride * destination_y)
         + destination_offset
         - source_offset
     ) / source_scale
     lower_x = np.clip(
-        np.floor((x - center_offset) / subset_size),
+        np.floor((x - center_offset) / subset_stride),
         0,
         source_width - 2,
     ).astype(np.intp)
     lower_y = np.clip(
-        np.floor((y - center_offset) / subset_size),
+        np.floor((y - center_offset) / subset_stride),
         0,
         source_height - 2,
     ).astype(np.intp)
@@ -401,14 +410,20 @@ def _reference_arrays(
     interpolation: str = "bspline",
     motion_model: str = "affine",
     subset_size: int = DEFAULT_SUBSET_SIZE,
+    subset_stride: int | None = None,
 ) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.float32], npt.NDArray[np.float32]]:
     """Build reference pixels, inverse Hessians, and solver metadata."""
 
     height, width = image.shape
     subset_size = normalize_subset_size(subset_size)
+    subset_stride = normalize_subset_stride(subset_stride, subset_size=subset_size)
     half_extent = 0.5 * (subset_size - 1)
-    grid_width = width // subset_size
-    grid_height = height // subset_size
+    grid_width, grid_height = subset_grid_shape(
+        width,
+        height,
+        subset_size=subset_size,
+        subset_stride=subset_stride,
+    )
     mode = normalize_interpolation(interpolation)
     model = normalize_motion_model(motion_model)
     if mode == "bspline":
@@ -435,19 +450,31 @@ def _reference_arrays(
             + 0.5 * (padded[2:, 2:] - padded[:-2, 2:])
         ) / 6.0
 
-    covered_height = grid_height * subset_size
-    covered_width = grid_width * subset_size
-    tiled = intensity[:covered_height, :covered_width].reshape(
-        grid_height, subset_size, grid_width, subset_size
-    )
-    means = tiled.mean(axis=(1, 3))
-    centered = intensity.copy()
-    centered[:covered_height, :covered_width] -= np.repeat(
-        np.repeat(means, subset_size, axis=0), subset_size, axis=1
-    )
-
     reference = np.zeros((height, width, 4), dtype=np.float32)
-    reference[..., 0] = centered
+    independent_stride = subset_stride != subset_size
+    if independent_stride:
+        reference[..., 0] = intensity
+        intensity_windows = np.lib.stride_tricks.sliding_window_view(
+            intensity, (subset_size, subset_size)
+        )[::subset_stride, ::subset_stride][:grid_height, :grid_width]
+        gradient_x_windows = np.lib.stride_tricks.sliding_window_view(
+            gradient_x, (subset_size, subset_size)
+        )[::subset_stride, ::subset_stride][:grid_height, :grid_width]
+        gradient_y_windows = np.lib.stride_tricks.sliding_window_view(
+            gradient_y, (subset_size, subset_size)
+        )[::subset_stride, ::subset_stride][:grid_height, :grid_width]
+    else:
+        covered_height = grid_height * subset_size
+        covered_width = grid_width * subset_size
+        tiled = intensity[:covered_height, :covered_width].reshape(
+            grid_height, subset_size, grid_width, subset_size
+        )
+        means = tiled.mean(axis=(1, 3))
+        centered = intensity.copy()
+        centered[:covered_height, :covered_width] -= np.repeat(
+            np.repeat(means, subset_size, axis=0), subset_size, axis=1
+        )
+        reference[..., 0] = centered
     reference[..., 1] = gradient_x
     reference[..., 2] = gradient_y
 
@@ -466,13 +493,27 @@ def _reference_arrays(
     local_y = local_y.ravel()
 
     for grid_y in range(grid_height):
-        row_slice = slice(grid_y * subset_size, (grid_y + 1) * subset_size)
-        f_row = centered[row_slice, :covered_width].reshape(subset_size, grid_width, subset_size)
-        gx_row = gradient_x[row_slice, :covered_width].reshape(subset_size, grid_width, subset_size)
-        gy_row = gradient_y[row_slice, :covered_width].reshape(subset_size, grid_width, subset_size)
-        f_tiles = f_row.transpose(1, 0, 2).reshape(grid_width, -1)
-        gx_tiles = gx_row.transpose(1, 0, 2).reshape(grid_width, -1)
-        gy_tiles = gy_row.transpose(1, 0, 2).reshape(grid_width, -1)
+        if independent_stride:
+            raw_tiles = intensity_windows[grid_y].reshape(grid_width, -1)
+            row_means = raw_tiles.mean(axis=1)
+            f_tiles = raw_tiles - row_means[:, None]
+            gx_tiles = gradient_x_windows[grid_y].reshape(grid_width, -1)
+            gy_tiles = gradient_y_windows[grid_y].reshape(grid_width, -1)
+        else:
+            row_slice = slice(grid_y * subset_size, (grid_y + 1) * subset_size)
+            f_row = centered[row_slice, :covered_width].reshape(
+                subset_size, grid_width, subset_size
+            )
+            gx_row = gradient_x[row_slice, :covered_width].reshape(
+                subset_size, grid_width, subset_size
+            )
+            gy_row = gradient_y[row_slice, :covered_width].reshape(
+                subset_size, grid_width, subset_size
+            )
+            f_tiles = f_row.transpose(1, 0, 2).reshape(grid_width, -1)
+            gx_tiles = gx_row.transpose(1, 0, 2).reshape(grid_width, -1)
+            gy_tiles = gy_row.transpose(1, 0, 2).reshape(grid_width, -1)
+            row_means = np.zeros(grid_width, dtype=np.float64)
         energy = np.einsum("np,np->n", f_tiles, f_tiles, optimize=True)
         row_offset = grid_y * grid_width
         if model == "translation":
@@ -555,6 +596,7 @@ def _reference_arrays(
             row_offset : row_offset + grid_width,
             sum_offset : sum_offset + component_count,
         ] = sum_j
+        metadata[row_offset : row_offset + grid_width, sum_offset + component_count] = row_means
 
     return (
         np.ascontiguousarray(reference.ravel()),
@@ -572,8 +614,9 @@ class ICGNWGPU:
     ``prefer_subgroups`` to ``False`` or ``True`` to force either path for
     qualification. Direct ``linear`` and Keys ``cubic`` interpolation omit
     target FIR passes and use the portable solver; ``bspline`` is the
-    historical default. ``subset_size`` selects an 8, 16, or 32 pixel square
-    and also sets the field spacing. The subgroup SPIR-V path requires 16.
+    historical default. ``subset_size`` selects an 8, 16, or 32 pixel square;
+    ``subset_stride`` independently selects the field spacing. The subgroup
+    SPIR-V path requires both values to be 16.
     """
 
     def __init__(
@@ -585,12 +628,19 @@ class ICGNWGPU:
         interpolation: str = "bspline",
         motion_model: str = "affine",
         subset_size: int = DEFAULT_SUBSET_SIZE,
+        subset_stride: int | None = None,
     ) -> None:
         self.interpolation = normalize_interpolation(interpolation)
         self.motion_model = normalize_motion_model(motion_model)
         self.subset_size = normalize_subset_size(subset_size)
-        if prefer_subgroups is True and self.subset_size != DEFAULT_SUBSET_SIZE:
-            raise ValueError("prefer_subgroups=True requires subset_size=16")
+        self.subset_stride = normalize_subset_stride(
+            subset_stride,
+            subset_size=self.subset_size,
+        )
+        if prefer_subgroups is True and (
+            self.subset_size != DEFAULT_SUBSET_SIZE or self.subset_stride != DEFAULT_SUBSET_SIZE
+        ):
+            raise ValueError("prefer_subgroups=True requires subset_size=16 and subset_stride=16")
         if prefer_subgroups is True and (
             self.interpolation != "bspline" or self.motion_model != "affine"
         ):
@@ -630,6 +680,7 @@ class ICGNWGPU:
         if (
             self.motion_model == "affine"
             and self.subset_size == DEFAULT_SUBSET_SIZE
+            and self.subset_stride == DEFAULT_SUBSET_SIZE
             and prefer_subgroups is not False
             and "subgroup" in adapter.features
         ):
@@ -662,6 +713,7 @@ class ICGNWGPU:
         subgroup_shader = None
         if (
             self.subset_size == DEFAULT_SUBSET_SIZE
+            and self.subset_stride == DEFAULT_SUBSET_SIZE
             and self.subgroup_width >= DEFAULT_SUBSET_SIZE
             and self.motion_model == "affine"
         ):
@@ -703,6 +755,7 @@ class ICGNWGPU:
                     "INTERPOLATION_MODE": INTERPOLATION_PIPELINE_CONSTANTS[self.interpolation],
                     "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
                     "SUBSET_SIZE": self.subset_size,
+                    "SUBSET_STRIDE": self.subset_stride,
                 },
             },
         )
@@ -728,6 +781,7 @@ class ICGNWGPU:
                 "constants": {
                     "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
                     "SUBSET_SIZE": self.subset_size,
+                    "SUBSET_STRIDE": self.subset_stride,
                 },
             },
         )
@@ -783,6 +837,7 @@ class ICGNWGPU:
         level.interpolation = getattr(self, "interpolation", "bspline")
         level.motion_model = getattr(self, "motion_model", "affine")
         level.subset_size = self.subset_size
+        level.subset_stride = getattr(self, "subset_stride", self.subset_size)
         level.solver_tuning_ms = {}
         level.solver = "portable-workgroup"
         level._solver = level._portable_solver
@@ -939,6 +994,7 @@ class ICGNWGPU:
             "INTERPOLATION_MODE": INTERPOLATION_PIPELINE_CONSTANTS[interpolation],
             "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[motion_model],
             "SUBSET_SIZE": self.subset_size,
+            "SUBSET_STRIDE": getattr(self, "subset_stride", self.subset_size),
         }
         seeded_solver = self.device.create_compute_pipeline(
             layout=layout,
@@ -1426,6 +1482,7 @@ class ICGNWGPU:
                 destination_scale=destination_scale,
                 requested=requested,
                 subset_size=self.subset_size,
+                subset_stride=self.subset_stride,
             )
             requested_by_level.append(requested)
             destination_scale = level_scale
@@ -1458,6 +1515,7 @@ class ICGNWGPU:
                     destination_grid=(engine.grid_width, engine.grid_height),
                     requested=level_requested,
                     subset_size=self.subset_size,
+                    subset_stride=self.subset_stride,
                 )
             level_result = engine._register_seeded_frame(
                 reduced_targets[level_index],
@@ -1478,6 +1536,7 @@ class ICGNWGPU:
             destination_grid=(self.grid_width, self.grid_height),
             requested=failed,
             subset_size=self.subset_size,
+            subset_stride=self.subset_stride,
         )
         recovered = self._retry_seeded(slot, seeds, active, fine_result)
         recovered_count = int(np.count_nonzero(failed & (recovered.status >= 0.5)))
@@ -1519,10 +1578,12 @@ class ICGNWGPU:
                 **self._config,
                 "interpolation": getattr(self, "interpolation", "bspline"),
                 "motionModel": getattr(self, "motion_model", "affine"),
+                "subsetStride": self.subset_stride,
             },
             width=self.width,
             height=self.height,
             subset_size=self.subset_size,
+            subset_stride=self.subset_stride,
         )
         pyramid_wall_ms = (time.perf_counter() - started) * 1_000.0
         timing["pyramidWallMs"] = pyramid_wall_ms
@@ -1613,6 +1674,7 @@ class ICGNWGPU:
                 interpolation=self.interpolation,
                 motion_model=self.motion_model,
                 subset_size=self.subset_size,
+                subset_stride=self.subset_stride,
             )
             engine.set_reference(
                 reduced,
@@ -1633,8 +1695,13 @@ class ICGNWGPU:
         total_start = time.perf_counter()
         frame = _as_uint8_gray(image)
         height, width = frame.shape
-        grid_width = width // self.subset_size
-        grid_height = height // self.subset_size
+        subset_stride = getattr(self, "subset_stride", self.subset_size)
+        grid_width, grid_height = subset_grid_shape(
+            width,
+            height,
+            subset_size=self.subset_size,
+            subset_stride=subset_stride,
+        )
         if grid_width < 1 or grid_height < 1:
             raise ValueError(
                 f"Reference dimensions must each be at least {self.subset_size} pixels."
@@ -1646,6 +1713,7 @@ class ICGNWGPU:
             interpolation=self.interpolation,
             motion_model=self.motion_model,
             subset_size=self.subset_size,
+            subset_stride=subset_stride,
         )
         reference_wall_ms = (time.perf_counter() - reference_start) * 1_000.0
 
@@ -1678,12 +1746,14 @@ class ICGNWGPU:
                 **self._config,
                 "interpolation": getattr(self, "interpolation", "bspline"),
                 "motionModel": getattr(self, "motion_model", "affine"),
+                "subsetStride": subset_stride,
             },
             device=self.device_name,
             grid=(self.grid_width, self.grid_height),
             width=self.width,
             height=self.height,
             subset_size=self.subset_size,
+            subset_stride=subset_stride,
         )
 
     def _prepare_target(self, target: ImageInput) -> npt.NDArray[np.uint8]:
@@ -1719,6 +1789,7 @@ class ICGNWGPU:
         motion_model = getattr(self, "motion_model", "affine")
         component_count = parameter_count(motion_model)
         state_stride = state_float_count(motion_model)
+        subset_stride = getattr(self, "subset_stride", self.subset_size)
         packed = np.frombuffer(raw, dtype=np.float32).reshape(
             self.grid_height,
             self.grid_width,
@@ -1750,10 +1821,12 @@ class ICGNWGPU:
                 **config,
                 "interpolation": getattr(self, "interpolation", "bspline"),
                 "motionModel": getattr(self, "motion_model", "affine"),
+                "subsetStride": subset_stride,
             },
             width=self.width,
             height=self.height,
             subset_size=self.subset_size,
+            subset_stride=subset_stride,
         )
 
     def register(

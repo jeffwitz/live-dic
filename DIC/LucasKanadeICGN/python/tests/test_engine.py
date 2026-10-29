@@ -274,6 +274,26 @@ class RuntimeAssetTests(unittest.TestCase):
         engine = ICGNWebGL(subset_size=32)
         self.assertEqual(engine.subset_size, 32)
 
+    def test_browser_subset_stride_is_validated_and_scoped(self) -> None:
+        for subset_stride in (0, 33, True, 16.0):
+            with (
+                self.subTest(subset_stride=subset_stride),
+                self.assertRaisesRegex(ValueError, "subset_stride"),
+            ):
+                ICGNWebGL(
+                    backend="webgpu-wgsl",
+                    subset_size=32,
+                    subset_stride=subset_stride,
+                )
+        engine = ICGNWebGL(
+            backend="webgpu-wgsl",
+            subset_size=32,
+            subset_stride=16,
+        )
+        self.assertEqual(engine.subset_stride, 16)
+        with self.assertRaisesRegex(ValueError, "webgpu-wgsl"):
+            ICGNWebGL(backend="three-tsl", subset_size=32, subset_stride=16)
+
     def test_browser_discovery_is_lazy(self) -> None:
         with mock.patch(
             "lucas_kanade_icgn.engine._find_chromium",

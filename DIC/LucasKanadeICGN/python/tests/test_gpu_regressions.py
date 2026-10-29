@@ -288,6 +288,27 @@ class GPURegressionTests(unittest.TestCase):
                     engine.close()
                     engine.device.destroy()
 
+    def test_overlapping_subset_stride_runs_the_full_pyramid(self) -> None:
+        truth = (0.5, -0.375)
+        reference, target = _fractional_pair(256, 256, truth)
+        engine = ICGNWGPUFullPyramid(
+            pyramid_levels=2,
+            subset_size=32,
+            subset_stride=16,
+            interpolation="linear",
+        )
+        try:
+            info = engine.set_reference(reference)
+            result = engine.register(target)
+            self.assertEqual(info.subset_stride, 16)
+            self.assertEqual(result.subset_stride, 16)
+            self.assertEqual(result.parameters.shape[:2], (15, 15))
+            self.assertGreater(result.accepted, 0)
+            self.assertLess(result.rmse(truth), 0.08)
+        finally:
+            engine.close()
+            engine.device.destroy()
+
     def test_full_pyramid_stream_preserves_order_and_synchronous_results(self) -> None:
         translations = ((0.25, -0.125), (0.5, -0.375), (-0.375, 0.25))
         pairs = [_fractional_pair(128, 128, truth) for truth in translations]

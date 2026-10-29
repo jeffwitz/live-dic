@@ -67,6 +67,9 @@ override MOTION_MODEL: u32 = 0u;
 // Square subset width. Repository hosts expose the validated 8, 16, and 32
 // specializations while preserving 16 as the default pipeline constant.
 override SUBSET_SIZE: i32 = 16;
+// Distance in pixels between adjacent subset centres. It equals SUBSET_SIZE
+// in the historical non-overlapping configuration.
+override SUBSET_STRIDE: i32 = 16;
 // Keep standalone consumers safe. Repository hosts specialize this override
 // to zero for dimensions where one reflection already covers every tile load.
 override PREFILTER_CLAMP_HALO: u32 = 1u;
@@ -572,9 +575,15 @@ fn solve_subset(
 
     let grid_x = i32(subset_index % config.grid_width);
     let grid_y = i32(subset_index / config.grid_width);
-    let center = (vec2<f32>(f32(grid_x), f32(grid_y)) + vec2<f32>(0.5))
-        * f32(SUBSET_SIZE);
+    let center = vec2<f32>(0.5 * f32(SUBSET_SIZE))
+        + vec2<f32>(f32(grid_x), f32(grid_y)) * f32(SUBSET_STRIDE);
     let half_extent = subset_half_extent();
+    let mean_offset = select(14u, 26u, MOTION_MODEL == 2u);
+    let reference_mean = select(
+        0.0,
+        metadata_value(subset_index, mean_offset),
+        SUBSET_STRIDE != SUBSET_SIZE,
+    );
 
     for (var iteration = 0u; iteration < 30u; iteration = iteration + 1u) {
         if lane == 0u {
@@ -666,10 +675,10 @@ fn solve_subset(
             let current = sample_target(
                 center - vec2<f32>(0.5) + vec2<f32>(local_x, local_y) + displacement
             );
-            let pixel_x = grid_x * SUBSET_SIZE + column;
-            let pixel_y = grid_y * SUBSET_SIZE + row;
+            let pixel_x = grid_x * SUBSET_STRIDE + column;
+            let pixel_y = grid_y * SUBSET_STRIDE + row;
             let reference_value = reference_data.values[u32(pixel_y * i32(config.width) + pixel_x)];
-            let f = reference_value.x;
+            let f = reference_value.x - reference_mean;
             let gradient_x = reference_value.y;
             let gradient_y = reference_value.z;
             let gxg = gradient_x * current;
@@ -994,8 +1003,8 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
                 if d.x < 0.5 {
                     continue;
                 }
-                let offset_x = -f32(SUBSET_SIZE) * f32(dx);
-                let offset_y = -f32(SUBSET_SIZE) * f32(dy);
+                let offset_x = -f32(SUBSET_STRIDE) * f32(dx);
+                let offset_y = -f32(SUBSET_STRIDE) * f32(dy);
                 neighbours[count][0] = a.x + a.y * offset_x + a.z * offset_y
                     + 0.5 * b.z * offset_x * offset_x + b.w * offset_x * offset_y
                     + 0.5 * c.x * offset_y * offset_y;
@@ -1078,8 +1087,8 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
             if neighbor_b.z < 0.5 {
                 continue;
             }
-            let delta_x = -f32(SUBSET_SIZE) * f32(dx);
-            let delta_y = -f32(SUBSET_SIZE) * f32(dy);
+            let delta_x = -f32(SUBSET_STRIDE) * f32(dx);
+            let delta_y = -f32(SUBSET_STRIDE) * f32(dy);
             let p1 = neighbor_a.y;
             let p2 = neighbor_a.z;
             let p4 = neighbor_b.x;

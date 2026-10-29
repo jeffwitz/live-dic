@@ -54,8 +54,13 @@ Solver options
    backends reject it. Default: ``affine``.
 
 ``--subset-size {8,16,32}``
-   Select the square numerical subset width. The same value is used as the
-   grid spacing. Default: ``16``.
+   Select the square numerical subset width. Default: ``16``.
+
+``--subset-stride PIXELS``
+   Select the distance between adjacent subset centres. It must be an integer
+   from 1 through ``--subset-size`` and defaults to the subset size. A smaller
+   value creates overlapping subsets and currently requires
+   ``--backend webgpu-wgsl``.
 
 ``--pyramid-levels {1,2,3}``
    Full-pyramid depth for ``webgpu-wgsl``. The backend default is two levels;

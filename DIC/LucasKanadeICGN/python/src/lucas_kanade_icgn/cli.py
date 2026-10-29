@@ -25,7 +25,7 @@ from .engine import (
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="icgn-webgl",
-        description="Run affine IC-GN registration through a headless browser GPU backend.",
+        description="Run IC-GN registration through a headless browser GPU backend.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("reference", type=Path, help="reference image")
@@ -82,7 +82,12 @@ def _parser() -> argparse.ArgumentParser:
         type=int,
         choices=(8, 16, 32),
         default=16,
-        help="square subset width and grid spacing in pixels",
+        help="square subset width in pixels",
+    )
+    parser.add_argument(
+        "--subset-stride",
+        type=int,
+        help="subset-centre spacing in pixels (defaults to --subset-size)",
     )
     parser.add_argument(
         "--force-three-webgl",
@@ -330,6 +335,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             interpolation=args.interpolation,
             motion_model=args.motion_model,
             subset_size=args.subset_size,
+            subset_stride=args.subset_stride,
         ) as engine:
             info = engine.info()
             payload = (

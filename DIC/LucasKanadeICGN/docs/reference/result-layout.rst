@@ -4,12 +4,14 @@ Result layout and status values
 Grid geometry
 -------------
 
-For ``subset_size=S``, the frame is divided into ``floor(width / S)`` by
-``floor(height / S)`` subsets. Each grid point owns an ``S x S`` subset
-centered at ``(S/2 + S*i, S/2 + S*j)``. Border subsets that cannot support the
-selected interpolation are rejected. With the default ``S=16``, a 512 x 512
-frame produces a 32 x 32 grid and a 3840 x 2160 frame produces a 240 x 135
-grid. See :doc:`../explanation/subset-size`.
+For ``subset_size=S`` and ``subset_stride=D``, the complete-subset grid is
+``1 + floor((width - S) / D)`` by ``1 + floor((height - S) / D)``. Each point
+owns an ``S x S`` subset centered at ``(S/2 + D*i, S/2 + D*j)``. The stride
+defaults to the size. Border subsets that cannot support the selected
+interpolation are rejected. With the default ``S=D=16``, a 512 x 512 frame
+produces a 32 x 32 grid and a 3840 x 2160 frame produces a 240 x 135 grid.
+``ReferenceInfo`` and ``RegistrationResult`` expose the effective
+``subset_size`` and ``subset_stride``. See :doc:`../explanation/subset-size`.
 
 Motion parameters
 -----------------

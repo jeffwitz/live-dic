@@ -166,12 +166,20 @@ const invertSquare = (matrix, size) => {
 export const prepareReferenceGray = (
   gray,
   {
-    width, height, subsetSize = 16, interpolation = 'bspline', motionModel = 'affine',
+    width,
+    height,
+    subsetSize = 16,
+    subsetStride = subsetSize,
+    interpolation = 'bspline',
+    motionModel = 'affine',
   },
 ) => {
   const pixelCount = width * height;
-  const gridWidth = Math.floor(width / subsetSize);
-  const gridHeight = Math.floor(height / subsetSize);
+  if (!Number.isInteger(subsetStride) || subsetStride < 1 || subsetStride > subsetSize) {
+    throw new Error('subsetStride must be an integer between 1 and subsetSize');
+  }
+  const gridWidth = 1 + Math.floor((width - subsetSize) / subsetStride);
+  const gridHeight = 1 + Math.floor((height - subsetSize) / subsetStride);
   const gridCount = gridWidth * gridHeight;
   const halfExtent = (subsetSize - 1) / 2;
   const subsetPixels = subsetSize * subsetSize;
@@ -200,8 +208,8 @@ export const prepareReferenceGray = (
   for (let gridY = 0; gridY < gridHeight; ++gridY) {
     for (let gridX = 0; gridX < gridWidth; ++gridX) {
       const subsetIndex = gridY * gridWidth + gridX;
-      const x0 = gridX * subsetSize;
-      const y0 = gridY * subsetSize;
+      const x0 = gridX * subsetStride;
+      const y0 = gridY * subsetStride;
       let mean = 0;
       for (let yy = 0; yy < subsetSize; ++yy) {
         for (let xx = 0; xx < subsetSize; ++xx) mean += intensity[(y0 + yy) * width + x0 + xx];
@@ -237,7 +245,7 @@ export const prepareReferenceGray = (
           }
 
           const pixel = 4 * (y * width + x);
-          reference[pixel] = f;
+          reference[pixel] = subsetStride === subsetSize ? f : intensity[y * width + x];
           reference[pixel + 1] = gx;
           reference[pixel + 2] = gy;
           referenceEnergy += f * f;
@@ -296,6 +304,7 @@ export const prepareReferenceGray = (
       metadata[metaOffset + 1] = valid ? 1 : 0;
       metadata.set(jtReference, metaOffset + 2);
       metadata.set(sumJ, metaOffset + 2 + componentCount);
+      metadata[metaOffset + 2 + 2 * componentCount] = mean;
     }
   }
   return { reference, inverseHessian, metadata };
@@ -307,6 +316,7 @@ export const prepareReferenceData = (
     width,
     height,
     subsetSize = 16,
+    subsetStride = subsetSize,
     intensityScale = 1 / 255,
     interpolation = 'bspline',
     motionModel = 'affine',
@@ -314,7 +324,7 @@ export const prepareReferenceData = (
 ) => prepareReferenceGray(
   imageToGray(image, width, height, intensityScale),
   {
-    width, height, subsetSize, interpolation, motionModel,
+    width, height, subsetSize, subsetStride, interpolation, motionModel,
   },
 );
 

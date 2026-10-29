@@ -18,6 +18,10 @@ const SUBSET_SIZE = Number(URL_PARAMETERS.get('subsetSize') ?? 16);
 if (![8, 16, 32].includes(SUBSET_SIZE)) {
   throw new Error('subsetSize must be 8, 16, or 32');
 }
+const SUBSET_STRIDE = Number(URL_PARAMETERS.get('subsetStride') ?? SUBSET_SIZE);
+if (!Number.isInteger(SUBSET_STRIDE) || SUBSET_STRIDE < 1 || SUBSET_STRIDE > SUBSET_SIZE) {
+  throw new Error('subsetStride must be an integer between 1 and subsetSize');
+}
 const DEFAULT_MAX_ITERATIONS = 30;
 const DEFAULT_TOLERANCE = 1e-3;
 const DEFAULT_ZNCC_MIN = 0.8;
@@ -43,6 +47,7 @@ const INTERPOLATION_CONSTANTS = {
 const MOTION_MODEL_CONSTANTS = { affine: 0, translation: 1, quadratic: 2 };
 
 const configuration = {
+  subsetStride: SUBSET_STRIDE,
   iterations: DEFAULT_MAX_ITERATIONS,
   tolerance: DEFAULT_TOLERANCE,
   znccMin: DEFAULT_ZNCC_MIN,
@@ -202,8 +207,8 @@ const createRuntime = async (width, height) => {
   FRAME_WIDTH = width;
   FRAME_HEIGHT = height;
   PIXEL_COUNT = width * height;
-  GRID_WIDTH = Math.floor(width / SUBSET_SIZE);
-  GRID_HEIGHT = Math.floor(height / SUBSET_SIZE);
+  GRID_WIDTH = 1 + Math.floor((width - SUBSET_SIZE) / SUBSET_STRIDE);
+  GRID_HEIGHT = 1 + Math.floor((height - SUBSET_SIZE) / SUBSET_STRIDE);
   GRID_COUNT = GRID_WIDTH * GRID_HEIGHT;
 
   const largestBufferBytes = PIXEL_COUNT * 4 * Float32Array.BYTES_PER_ELEMENT;
@@ -314,6 +319,7 @@ const createRuntime = async (width, height) => {
       INTERPOLATION_MODE: constant,
       MOTION_MODEL: MOTION_MODEL_CONSTANTS[configuration.motionModel],
       SUBSET_SIZE,
+      SUBSET_STRIDE,
     };
     solvers[mode] = await pipeline(
       `DIC-RT shared ${mode} affine solver`, 'solve', shaderModule, layout, constants,
@@ -354,7 +360,11 @@ const createRuntime = async (width, height) => {
     seededSolvers,
     median: await pipeline(
       'DIC-RT shared median filter', 'median_filter', shaderModule, layout,
-      { MOTION_MODEL: MOTION_MODEL_CONSTANTS[configuration.motionModel], SUBSET_SIZE },
+      {
+        MOTION_MODEL: MOTION_MODEL_CONSTANTS[configuration.motionModel],
+        SUBSET_SIZE,
+        SUBSET_STRIDE,
+      },
     ),
     reduceX: await pipeline(
       'DIC-RT pyramid reduce X', 'reduce_x', pyramidShaderModule, reduceXLayout,
@@ -364,7 +374,11 @@ const createRuntime = async (width, height) => {
     ),
     transferSeed: await pipeline(
       'DIC-RT pyramid seed transfer', 'transfer_seed', pyramidShaderModule, seedLayout,
-      { MOTION_MODEL: MOTION_MODEL_CONSTANTS[configuration.motionModel], SUBSET_SIZE },
+      {
+        MOTION_MODEL: MOTION_MODEL_CONSTANTS[configuration.motionModel],
+        SUBSET_SIZE,
+        SUBSET_STRIDE,
+      },
     ),
   };
 
@@ -377,8 +391,8 @@ const createRuntime = async (width, height) => {
     const levelWidth = Math.floor(width / scale);
     const levelHeight = Math.floor(height / scale);
     const pixelCount = levelWidth * levelHeight;
-    const gridWidth = Math.floor(levelWidth / SUBSET_SIZE);
-    const gridHeight = Math.floor(levelHeight / SUBSET_SIZE);
+    const gridWidth = 1 + Math.floor((levelWidth - SUBSET_SIZE) / SUBSET_STRIDE);
+    const gridHeight = 1 + Math.floor((levelHeight - SUBSET_SIZE) / SUBSET_STRIDE);
     const gridCount = gridWidth * gridHeight;
     const gpuWritable = levelIndex > 0;
     const levelSourceTexture = device.createTexture({
@@ -843,6 +857,7 @@ const readResult = async (timing) => {
     width: FRAME_WIDTH,
     height: FRAME_HEIGHT,
     subsetSize: SUBSET_SIZE,
+    subsetStride: SUBSET_STRIDE,
     grid: [GRID_WIDTH, GRID_HEIGHT],
     stateStride,
     parameters: Array.from(parameters),
@@ -885,6 +900,7 @@ const setReference = async (dataUrl, options = {}) => {
         width: source.width,
         height: source.height,
         subsetSize: SUBSET_SIZE,
+        subsetStride: SUBSET_STRIDE,
         interpolation: configuration.interpolation,
         motionModel: configuration.motionModel,
       });
@@ -905,6 +921,7 @@ const setReference = async (dataUrl, options = {}) => {
     width: FRAME_WIDTH,
     height: FRAME_HEIGHT,
     subsetSize: SUBSET_SIZE,
+    subsetStride: SUBSET_STRIDE,
     grid: [GRID_WIDTH, GRID_HEIGHT],
     config: { ...configuration },
     device: (await info()).device,
@@ -991,6 +1008,7 @@ const info = async () => {
     height: FRAME_HEIGHT,
     grid: [GRID_WIDTH, GRID_HEIGHT],
     subsetSize: SUBSET_SIZE,
+    subsetStride: SUBSET_STRIDE,
     device: `Raw WebGPU shared WGSL${identity ? ` (${identity})` : ''}`,
     timerQuery: timestampQueries,
     backend: 'raw-webgpu-wgsl',

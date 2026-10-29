@@ -94,7 +94,7 @@ Choose the section that matches your task:
 * :doc:`explanation/interpolation` for the selectable B-spline, bilinear, and
   Keys-cubic target reconstruction paths;
 * :doc:`explanation/motion-models` for translation, affine, and quadratic solving;
-* :doc:`explanation/subset-size` for the 8, 16, and 32 pixel subset geometry;
+* :doc:`explanation/subset-size` for selectable subset size and overlapping stride;
 * :doc:`explanation/shared-kernel` for the common WGSL source and its exact
   host/buffer contract;
 * :doc:`explanation/native-backend` for the direct NumPy-to-WebGPU path and
