@@ -54,15 +54,17 @@ Python-supervised real-time DIC toward 4K60
 
 .. important:: Coefficient-wise robustness result
 
-   The default ``median_scope="all"`` applies a normalized median test
+   The default ``median_scope="all", median_replacement="flagged"`` applies a normalized median test
    independently to recentered affine gradients and quadratic curvatures,
    replacing only the coefficients that disagree with their direct
    neighbourhood. The alternative ``"displacement"`` scope changes only
-   ``tx`` and ``ty``. On the analytic quadratic
-   qualification, curvature RMSE decreased by 29.6--36.3%; the largest gain
+   ``tx`` and ``ty``. On the current analytic quadratic
+   qualification, curvature RMSE decreased by 31--37%; the largest gain
    occurred with one-gray-level image noise. Displacement RMSE was unchanged,
-   while gradient RMSE increased by 12.9--20.5%. This measured trade-off and
-   the bounded literature search are documented in
+   while gradient RMSE increased. The optional ``median_replacement="all"``
+   reduced curvature RMSE by 53--56%, but degraded displacement and gradient
+   accuracy enough that it is not the default. This measured trade-off and the
+   bounded literature search are documented in
    :doc:`explanation/component-wise-median`.
 
 This documentation describes a Python-supervised workflow for GPU-accelerated digital
@@ -107,8 +109,8 @@ Choose the section that matches your task:
 * :doc:`explanation/interpolation` for the selectable B-spline, bilinear, and
   Keys-cubic target reconstruction paths;
 * :doc:`explanation/motion-models` for translation, affine, and quadratic solving;
-* :doc:`explanation/component-wise-median` for the coefficient-wise robust
-  replacement rule and its measured 30--36% curvature-error reduction;
+* :doc:`explanation/component-wise-median` for the selectable robust
+  replacement policies and their measured curvature/displacement trade-off;
 * :doc:`explanation/subset-size` for selectable subset size and overlapping stride;
 * :doc:`explanation/shared-kernel` for the common WGSL source and its exact
   host/buffer contract;

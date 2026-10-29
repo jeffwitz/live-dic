@@ -68,6 +68,7 @@ const configuration = {
   interpolation: 'bspline',
   motionModel: 'affine',
   medianScope: 'all',
+  medianReplacement: 'flagged',
 };
 const toleranceNode = uniform(DEFAULT_TOLERANCE);
 const znccMinNode = uniform(DEFAULT_ZNCC_MIN);
@@ -106,6 +107,7 @@ let solverKind = 'uninitialized';
 let runtimeInterpolation = null;
 let runtimeMotionModel = null;
 let runtimeMedianScope = null;
+let runtimeMedianReplacement = null;
 let targetUsesPackedBytes = false;
 
 /** Allocate all resolution-dependent storage and rebuild the TSL compute graph. */
@@ -117,7 +119,8 @@ const initializeRuntime = (width, height) => {
   if (attributes && width === FRAME_WIDTH && height === FRAME_HEIGHT
       && runtimeInterpolation === configuration.interpolation
       && runtimeMotionModel === configuration.motionModel
-      && runtimeMedianScope === configuration.medianScope) return false;
+      && runtimeMedianScope === configuration.medianScope
+      && runtimeMedianReplacement === configuration.medianReplacement) return false;
 
   FRAME_WIDTH = width;
   FRAME_HEIGHT = height;
@@ -205,6 +208,7 @@ const initializeRuntime = (width, height) => {
   runtimeInterpolation = configuration.interpolation;
   runtimeMotionModel = configuration.motionModel;
   runtimeMedianScope = configuration.medianScope;
+  runtimeMedianReplacement = configuration.medianReplacement;
   referenceReady = false;
   targetUsesPackedBytes = false;
   return true;
@@ -1022,8 +1026,9 @@ const makeMedianKernel = () => Fn(() => {
   const filteredTranslation = translation.toVar();
   const filteredLinear = linear.toVar();
   const filteredStatus = status.toVar();
+  const anyFlagged = int(0).toVar();
   const derivativeFloor = 0.001 / Math.max(0.5 * (SUBSET_SIZE - 1), 1);
-  const filterComponent = (samples, ownValue, robustnessFloor, replace) => {
+  const filterComponent = (samples, ownValue, robustnessFloor, detect, replace) => {
     const values = array('float', 8).toVar();
     Loop(8, ({ i }) => {
       values.element(i).assign(samples.element(i));
@@ -1032,35 +1037,58 @@ const makeMedianKernel = () => Fn(() => {
     Loop(8, ({ i }) => {
       values.element(i).assign(samples.element(i).sub(median).abs());
     });
-    const spread = median8Node(values, count);
-    const flagged = ownValue.sub(median).abs()
-      .div(spread.add(robustnessFloor)).greaterThan(2);
-    If(flagged, () => {
-      replace(median);
-      filteredStatus.x.assign(2);
-    });
+    if (detect) {
+      const spread = median8Node(values, count);
+      const flagged = ownValue.sub(median).abs()
+        .div(spread.add(robustnessFloor)).greaterThan(2);
+      If(flagged, () => {
+        anyFlagged.assign(1);
+        if (configuration.medianReplacement === 'flagged') {
+          replace(median);
+          filteredStatus.x.assign(2);
+        }
+      });
+    }
+    return median;
   };
 
-  filterComponent(predictedX, translation.x, 0.1, (median) => {
+  const medianX = filterComponent(predictedX, translation.x, 0.1, true, (median) => {
     filteredTranslation.x.assign(median);
   });
-  if (configuration.motionModel === 'affine' && configuration.medianScope === 'all') {
-    filterComponent(p1, linear.x, derivativeFloor, (median) => {
+  let medianP1 = linear.x;
+  let medianP2 = linear.y;
+  const needsDerivativeMedians = configuration.motionModel === 'affine'
+    && (configuration.medianScope === 'all' || configuration.medianReplacement === 'all');
+  if (needsDerivativeMedians) {
+    const detectDerivatives = configuration.medianScope === 'all';
+    medianP1 = filterComponent(p1, linear.x, derivativeFloor, detectDerivatives, (median) => {
       filteredLinear.x.assign(median);
     });
-    filterComponent(p2, linear.y, derivativeFloor, (median) => {
+    medianP2 = filterComponent(p2, linear.y, derivativeFloor, detectDerivatives, (median) => {
       filteredLinear.y.assign(median);
     });
   }
-  filterComponent(predictedY, translation.y, 0.1, (median) => {
+  const medianY = filterComponent(predictedY, translation.y, 0.1, true, (median) => {
     filteredTranslation.y.assign(median);
   });
-  if (configuration.motionModel === 'affine' && configuration.medianScope === 'all') {
-    filterComponent(p4, linear.z, derivativeFloor, (median) => {
+  let medianP4 = linear.z;
+  let medianP5 = linear.w;
+  if (needsDerivativeMedians) {
+    const detectDerivatives = configuration.medianScope === 'all';
+    medianP4 = filterComponent(p4, linear.z, derivativeFloor, detectDerivatives, (median) => {
       filteredLinear.z.assign(median);
     });
-    filterComponent(p5, linear.w, derivativeFloor, (median) => {
+    medianP5 = filterComponent(p5, linear.w, derivativeFloor, detectDerivatives, (median) => {
       filteredLinear.w.assign(median);
+    });
+  }
+  if (configuration.medianReplacement === 'all') {
+    If(anyFlagged.greaterThan(0), () => {
+      filteredTranslation.assign(vec2(medianX, medianY));
+      if (configuration.motionModel === 'affine') {
+        filteredLinear.assign(vec4(medianP1, medianP2, medianP4, medianP5));
+      }
+      filteredStatus.x.assign(2);
     });
   }
 
@@ -1372,6 +1400,15 @@ function configure(options = {}, allowInterpolationRebuild = false) {
   if (!allowInterpolationRebuild && referenceReady && medianScope !== configuration.medianScope) {
     throw new Error('Changing medianScope requires setReference()');
   }
+  const medianReplacement = options.medianReplacement === undefined
+    ? configuration.medianReplacement : String(options.medianReplacement).toLowerCase();
+  if (!['flagged', 'all'].includes(medianReplacement)) {
+    throw new Error("medianReplacement must be 'flagged' or 'all'");
+  }
+  if (!allowInterpolationRebuild && referenceReady
+      && medianReplacement !== configuration.medianReplacement) {
+    throw new Error('Changing medianReplacement requires setReference()');
+  }
   const next = {
     iterations: options.iterations === undefined
       ? configuration.iterations : Number(options.iterations),
@@ -1381,6 +1418,7 @@ function configure(options = {}, allowInterpolationRebuild = false) {
     interpolation,
     motionModel,
     medianScope,
+    medianReplacement,
   };
   if (!Number.isInteger(next.iterations) || next.iterations < 1 || next.iterations > 30) {
     throw new Error('iterations must be an integer between 1 and 30');
@@ -1461,6 +1499,7 @@ const info = async () => {
     subgroupValidation,
     motionModel: configuration.motionModel,
     medianScope: configuration.medianScope,
+    medianReplacement: configuration.medianReplacement,
     solver: solverKind,
   };
 };

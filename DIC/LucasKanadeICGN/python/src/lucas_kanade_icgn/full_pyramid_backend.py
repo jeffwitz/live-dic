@@ -20,7 +20,7 @@ from typing import Any
 
 from .engine import ICGNError, ImageInput, ReferenceInfo, RegistrationResult, _as_uint8_gray
 from .interpolation import normalize_interpolation
-from .median import normalize_median_scope
+from .median import normalize_median_replacement, normalize_median_scope
 from .motion import MOTION_MODEL_PIPELINE_CONSTANTS, normalize_motion_model
 from .subset import DEFAULT_SUBSET_SIZE, normalize_subset_size, normalize_subset_stride
 from .weighting import normalize_gaussian_sigma, normalize_spatial_weighting
@@ -139,6 +139,7 @@ class ICGNWGPUFullPyramid:
         interpolation: str = "bspline",
         motion_model: str = "affine",
         median_scope: str = "all",
+        median_replacement: str = "flagged",
         subset_size: int = DEFAULT_SUBSET_SIZE,
         subset_stride: int | None = None,
         spatial_weighting: str = "uniform",
@@ -147,6 +148,7 @@ class ICGNWGPUFullPyramid:
         self.interpolation = normalize_interpolation(interpolation)
         self.motion_model = normalize_motion_model(motion_model)
         self.median_scope = normalize_median_scope(median_scope)
+        self.median_replacement = normalize_median_replacement(median_replacement)
         self.subset_size = normalize_subset_size(subset_size)
         self.subset_stride = normalize_subset_stride(
             subset_stride,
@@ -189,6 +191,7 @@ class ICGNWGPUFullPyramid:
             interpolation=self.interpolation,
             motion_model=self.motion_model,
             median_scope=self.median_scope,
+            median_replacement=self.median_replacement,
             subset_size=self.subset_size,
             subset_stride=self.subset_stride,
             spatial_weighting=self.spatial_weighting,
@@ -521,6 +524,7 @@ class ICGNWGPUFullPyramid:
                 "interpolation": self.interpolation,
                 "motionModel": self.motion_model,
                 "medianScope": self.median_scope,
+                "medianReplacement": self.median_replacement,
                 "subsetStride": self.subset_stride,
                 "spatialWeighting": self.spatial_weighting,
                 "gaussianSigma": self.gaussian_sigma,

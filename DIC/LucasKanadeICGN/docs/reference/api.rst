@@ -58,9 +58,11 @@ affine, and deprecated GPU-IO is affine-only. See
 :doc:`../explanation/motion-models`.
 
 Every engine accepts ``median_scope="all"`` (the default) or
-``median_scope="displacement"``. The default validates and replaces each
-active coefficient independently. The displacement scope validates and
-replaces only ``tx`` and ``ty`` while preserving all gradients and curvatures.
+``median_scope="displacement"`` to select which coefficients can trigger the
+robustness filter. ``median_replacement="flagged"`` (the default) replaces
+only flagged coefficients; ``median_replacement="all"`` replaces the complete
+active motion state after any trigger. Thus the default remains the
+component-wise ``all/flagged`` policy.
 See :doc:`../explanation/component-wise-median` for the equations, accuracy
 trade-off, and backend contract.
 
@@ -166,6 +168,8 @@ Constants and input types
 .. autodata:: lucas_kanade_icgn.MOTION_MODELS
 
 .. autodata:: lucas_kanade_icgn.MEDIAN_SCOPES
+
+.. autodata:: lucas_kanade_icgn.MEDIAN_REPLACEMENTS
 
 .. autodata:: lucas_kanade_icgn.DEFAULT_IN_FLIGHT_FRAMES
 

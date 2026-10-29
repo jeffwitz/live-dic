@@ -37,20 +37,15 @@ below uses overlapping subsets. No camera or H.264 stage is included.
 
 ## Primary UHD image-to-field stream boundary
 
-Current affine and quadratic measurements use the default
-`median_scope="all"`. Against `median_scope="displacement"`, the analytic
-32 x 32 uniform quadratic benchmark measured these changes:
-
-| Analytic field | `displacement` | `all` | Change |
-|---|---:|---:|---:|
-| Moderate clean | 5.727e-5 | **3.970e-5** | **-30.7%** |
-| Strong clean | 6.428e-5 | **4.525e-5** | **-29.6%** |
-| One-gray-level image noise | 1.981e-4 | **1.263e-4** | **-36.3%** |
-
-Displacement RMSE changed by less than 0.06%. Gradient RMSE increased by
-12.9--20.5%, so this is a curvature-robustness result rather than a universal
-denoising claim. The equations, literature boundary, complete accuracy table,
-and runtime cost are in the
+Primary backend performance measurements use the default `median_scope="all",
+median_replacement="flagged"`. On the analytic 31 x 31 Gaussian quadratic
+benchmark, this component-wise policy reduced curvature RMSE by 31--37%
+relative to displacement-only detection while preserving displacement RMSE.
+The optional `all/all` policy reduced curvature RMSE by 53--56%, but worsened
+displacement RMSE by 21--32% and gradient RMSE by 32--37% relative to the
+default. It is therefore an explicit curvature-oriented option, not the
+general default. The equations, four-policy table, literature boundary, and
+runtime cost are in the
 [component-wise median explanation](docs/explanation/component-wise-median.rst).
 
 This is the deployable Python boundary used for performance claims. A
@@ -233,8 +228,8 @@ depth is unrelated to image-pyramid depth.
 The opt-in GPU regressions validate partial FIR tiles, exact integer pyramid
 reduction, fresh seeded state, selective-retry neighbour preservation, and the
 translation-only fractional-displacement contract. They also inject isolated
-affine-gradient and quadratic-curvature outliers to verify both median scopes
-and component-wise replacement. All 102 tests pass when GPU execution is
+affine-gradient and quadratic-curvature outliers to verify both detection
+scopes and both replacement policies. All 106 tests pass when GPU execution is
 enabled.
 
 ## Reproduce the current measurements

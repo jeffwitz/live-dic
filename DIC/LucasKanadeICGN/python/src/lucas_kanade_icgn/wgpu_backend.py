@@ -23,7 +23,12 @@ import numpy.typing as npt
 
 from .engine import ICGNError, ImageInput, ReferenceInfo, RegistrationResult, _as_uint8_gray
 from .interpolation import INTERPOLATION_PIPELINE_CONSTANTS, normalize_interpolation
-from .median import MEDIAN_SCOPE_PIPELINE_CONSTANTS, normalize_median_scope
+from .median import (
+    MEDIAN_REPLACEMENT_PIPELINE_CONSTANTS,
+    MEDIAN_SCOPE_PIPELINE_CONSTANTS,
+    normalize_median_replacement,
+    normalize_median_scope,
+)
 from .motion import (
     MOTION_MODEL_PIPELINE_CONSTANTS,
     normalize_motion_model,
@@ -672,6 +677,7 @@ class ICGNWGPU:
         interpolation: str = "bspline",
         motion_model: str = "affine",
         median_scope: str = "all",
+        median_replacement: str = "flagged",
         subset_size: int = DEFAULT_SUBSET_SIZE,
         subset_stride: int | None = None,
         spatial_weighting: str = "uniform",
@@ -680,6 +686,7 @@ class ICGNWGPU:
         self.interpolation = normalize_interpolation(interpolation)
         self.motion_model = normalize_motion_model(motion_model)
         self.median_scope = normalize_median_scope(median_scope)
+        self.median_replacement = normalize_median_replacement(median_replacement)
         self.subset_size = normalize_subset_size(subset_size)
         self.subset_stride = normalize_subset_stride(
             subset_stride,
@@ -843,6 +850,9 @@ class ICGNWGPU:
                 "constants": {
                     "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
                     "MEDIAN_SCOPE": MEDIAN_SCOPE_PIPELINE_CONSTANTS[self.median_scope],
+                    "MEDIAN_REPLACEMENT": MEDIAN_REPLACEMENT_PIPELINE_CONSTANTS[
+                        self.median_replacement
+                    ],
                     "SUBSET_SIZE": self.subset_size,
                     "SUBSET_STRIDE": self.subset_stride,
                 },
@@ -900,6 +910,7 @@ class ICGNWGPU:
         level.interpolation = getattr(self, "interpolation", "bspline")
         level.motion_model = getattr(self, "motion_model", "affine")
         level.median_scope = getattr(self, "median_scope", "all")
+        level.median_replacement = getattr(self, "median_replacement", "flagged")
         level.subset_size = self.subset_size
         level.subset_stride = getattr(self, "subset_stride", self.subset_size)
         level.spatial_weighting = getattr(self, "spatial_weighting", "uniform")
@@ -1657,6 +1668,7 @@ class ICGNWGPU:
                 "interpolation": getattr(self, "interpolation", "bspline"),
                 "motionModel": getattr(self, "motion_model", "affine"),
                 "medianScope": getattr(self, "median_scope", "all"),
+                "medianReplacement": getattr(self, "median_replacement", "flagged"),
                 "subsetStride": self.subset_stride,
                 "spatialWeighting": getattr(self, "spatial_weighting", "uniform"),
                 "gaussianSigma": getattr(
@@ -1759,6 +1771,7 @@ class ICGNWGPU:
                 interpolation=self.interpolation,
                 motion_model=self.motion_model,
                 median_scope=self.median_scope,
+                median_replacement=self.median_replacement,
                 subset_size=self.subset_size,
                 subset_stride=self.subset_stride,
                 spatial_weighting=self.spatial_weighting,
@@ -1837,6 +1850,7 @@ class ICGNWGPU:
                 "interpolation": getattr(self, "interpolation", "bspline"),
                 "motionModel": getattr(self, "motion_model", "affine"),
                 "medianScope": getattr(self, "median_scope", "all"),
+                "medianReplacement": getattr(self, "median_replacement", "flagged"),
                 "subsetStride": subset_stride,
                 "spatialWeighting": getattr(self, "spatial_weighting", "uniform"),
                 "gaussianSigma": getattr(
@@ -1919,6 +1933,7 @@ class ICGNWGPU:
                 "interpolation": getattr(self, "interpolation", "bspline"),
                 "motionModel": getattr(self, "motion_model", "affine"),
                 "medianScope": getattr(self, "median_scope", "all"),
+                "medianReplacement": getattr(self, "median_replacement", "flagged"),
                 "subsetStride": subset_stride,
                 "spatialWeighting": getattr(self, "spatial_weighting", "uniform"),
                 "gaussianSigma": getattr(

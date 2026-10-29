@@ -82,11 +82,12 @@ The implementation retains the main algorithmic choices of the SYCL version:
 - selectable historical B-spline, direct bilinear, and direct Keys-cubic
   target reconstruction;
 - one constant inverse Hessian prepared with the reference image;
-- ZNCC rejection and component-wise normalized median replacement of spatial
-  outliers. On analytic quadratic fields, this reduced curvature RMSE by
-  30--36%, including 36.3% with one-gray-level image noise, while leaving
-  displacement RMSE effectively unchanged. The measured gradient trade-off and
-  literature boundary are documented in the
+- ZNCC rejection and selectable normalized median replacement of spatial
+  outliers. The default component-wise policy reduced analytic curvature RMSE
+  by 31--37% while leaving displacement RMSE effectively unchanged. Optional
+  whole-state replacement reached 53--56% curvature reduction but worsened
+  displacement and gradient accuracy. The measured trade-off and literature
+  boundary are documented in the
   [component-wise median explanation](./docs/explanation/component-wise-median.rst).
 
 The GPU-IO backend requires a different memory layout from C++/SYCL. Translation and the
@@ -154,12 +155,12 @@ when within-subset displacement curvature is required. See
 [`Motion models`](./docs/explanation/motion-models.rst) for the equations,
 backend coverage, and current A/B results.
 
-The spatial robustness pass is independently configurable. The default
-``median_scope="all"`` tests and replaces every active affine or quadratic
-coefficient separately. ``median_scope="displacement"`` tests and changes
-only ``tx`` and ``ty`` while leaving all gradients and curvatures untouched.
-Both modes recenter neighbour polynomials before testing the centre
-displacements. See
+The spatial robustness pass separates detection from replacement. The default
+``median_scope="all", median_replacement="flagged"`` tests every active
+coefficient and replaces only the outliers. ``median_scope="displacement"``
+restricts triggers to ``tx`` and ``ty``; ``median_replacement="all"`` makes
+any detected outlier replace the complete local motion state. All four
+combinations recenter neighbour polynomials. See
 [`Component-wise median replacement`](./docs/explanation/component-wise-median.rst).
 
 Quadratic mode is currently a correctness-first path, not the 4K60 default.

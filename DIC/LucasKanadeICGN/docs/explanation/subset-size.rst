@@ -115,7 +115,8 @@ B-spline interpolation, stride 16, a moderate noise-free curvature field, and
 
 The 32 x 32 uniform window was also best in the strong clean and noisy cases
 of this campaign. The experiment therefore does not justify changing the
-default. The default ``median_scope="all"`` reduces the moderate uniform-window
+default. The default ``median_scope="all", median_replacement="flagged"``
+reduces the moderate uniform-window
 curvature error relative to ``median_scope="displacement"``, but its
 RMSE still exceeds the RMS magnitude of the injected curvature. The direct
 quadratic coefficients are therefore not yet a qualified curvature

@@ -29,6 +29,11 @@ def _arguments() -> argparse.Namespace:
         choices=("displacement", "all"),
         default="all",
     )
+    parser.add_argument(
+        "--median-replacement",
+        choices=("flagged", "all"),
+        default="flagged",
+    )
     args = parser.parse_args()
     if args.width < 128 or args.height < 128:
         parser.error("--width and --height must be at least 128")
@@ -241,6 +246,7 @@ def main() -> None:
         "interpolation": "bspline",
         "motion_model": "quadratic",
         "median_scope": args.median_scope,
+        "median_replacement": args.median_replacement,
         "subset_stride": 16,
         "gaussian_sigma": args.gaussian_sigma,
         "cases": {},
@@ -265,6 +271,7 @@ def main() -> None:
                 interpolation="bspline",
                 motion_model="quadratic",
                 median_scope=args.median_scope,
+                median_replacement=args.median_replacement,
                 subset_stride=16,
                 **options,
             )

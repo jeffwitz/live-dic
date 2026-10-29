@@ -81,7 +81,13 @@ def _parser() -> argparse.ArgumentParser:
         "--median-scope",
         choices=("displacement", "all"),
         default="all",
-        help="motion coefficients checked and replaced by the spatial median filter",
+        help="motion coefficients checked by the spatial median filter",
+    )
+    parser.add_argument(
+        "--median-replacement",
+        choices=("flagged", "all"),
+        default="flagged",
+        help="replace only flagged coefficients or the complete local motion state",
     )
     parser.add_argument(
         "--subset-size",
@@ -341,6 +347,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             interpolation=args.interpolation,
             motion_model=args.motion_model,
             median_scope=args.median_scope,
+            median_replacement=args.median_replacement,
             subset_size=args.subset_size,
             subset_stride=args.subset_stride,
         ) as engine:

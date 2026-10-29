@@ -46,6 +46,7 @@ const INTERPOLATION_CONSTANTS = {
 };
 const MOTION_MODEL_CONSTANTS = { affine: 0, translation: 1, quadratic: 2 };
 const MEDIAN_SCOPE_CONSTANTS = { displacement: 0, all: 1 };
+const MEDIAN_REPLACEMENT_CONSTANTS = { flagged: 0, all: 1 };
 
 const configuration = {
   subsetStride: SUBSET_STRIDE,
@@ -58,6 +59,7 @@ const configuration = {
   interpolation: 'bspline',
   motionModel: 'affine',
   medianScope: 'all',
+  medianReplacement: 'flagged',
 };
 
 let adapter = null;
@@ -83,6 +85,7 @@ let seedEdges = new Map();
 let runtimePyramidLevels = 0;
 let runtimeMotionModel = null;
 let runtimeMedianScope = null;
+let runtimeMedianReplacement = null;
 let FRAME_WIDTH = 0;
 let FRAME_HEIGHT = 0;
 let PIXEL_COUNT = 0;
@@ -198,7 +201,8 @@ const createRuntime = async (width, height) => {
   if (buffers && width === FRAME_WIDTH && height === FRAME_HEIGHT
       && runtimePyramidLevels === levelCount
       && runtimeMotionModel === configuration.motionModel
-      && runtimeMedianScope === configuration.medianScope) return false;
+      && runtimeMedianScope === configuration.medianScope
+      && runtimeMedianReplacement === configuration.medianReplacement) return false;
   await ensureDevice();
   if (levelCount > 1 && device.limits.maxStorageBuffersPerShaderStage < 10) {
     throw new Error(
@@ -367,6 +371,7 @@ const createRuntime = async (width, height) => {
       {
         MOTION_MODEL: MOTION_MODEL_CONSTANTS[configuration.motionModel],
         MEDIAN_SCOPE: MEDIAN_SCOPE_CONSTANTS[configuration.medianScope],
+        MEDIAN_REPLACEMENT: MEDIAN_REPLACEMENT_CONSTANTS[configuration.medianReplacement],
         SUBSET_SIZE,
         SUBSET_STRIDE,
       },
@@ -565,6 +570,7 @@ const createRuntime = async (width, height) => {
   runtimePyramidLevels = levelCount;
   runtimeMotionModel = configuration.motionModel;
   runtimeMedianScope = configuration.medianScope;
+  runtimeMedianReplacement = configuration.medianReplacement;
   if (timestampQueries) {
     const passCount = 7 * levelCount - 3;
     querySet = device.createQuerySet({ type: 'timestamp', count: 2 * passCount });
@@ -633,6 +639,15 @@ const configure = (options = {}, allowPyramidRebuild = false) => {
   if (!allowPyramidRebuild && referenceReady && medianScope !== configuration.medianScope) {
     throw new Error('Changing medianScope requires setReference()');
   }
+  const medianReplacement = options.medianReplacement === undefined
+    ? configuration.medianReplacement : String(options.medianReplacement).toLowerCase();
+  if (!(medianReplacement in MEDIAN_REPLACEMENT_CONSTANTS)) {
+    throw new Error("medianReplacement must be 'flagged' or 'all'");
+  }
+  if (!allowPyramidRebuild && referenceReady
+      && medianReplacement !== configuration.medianReplacement) {
+    throw new Error('Changing medianReplacement requires setReference()');
+  }
   const changedLevels = pyramidLevels !== configuration.pyramidLevels;
   const iterationsPerLevel = options.iterationsPerLevel === undefined
     ? (changedLevels
@@ -661,6 +676,7 @@ const configure = (options = {}, allowPyramidRebuild = false) => {
     interpolation,
     motionModel,
     medianScope,
+    medianReplacement,
   };
   next.iterationsPerLevel[pyramidLevels - 1] = next.iterations;
   next.tolerancePerLevel[pyramidLevels - 1] = next.tolerance;
@@ -1039,6 +1055,7 @@ const info = async () => {
     interpolation: configuration.interpolation,
     motionModel: configuration.motionModel,
     medianScope: configuration.medianScope,
+    medianReplacement: configuration.medianReplacement,
     iterationsPerLevel: [...configuration.iterationsPerLevel],
     tolerancePerLevel: [...configuration.tolerancePerLevel],
     solver: configuration.pyramidLevels > 1

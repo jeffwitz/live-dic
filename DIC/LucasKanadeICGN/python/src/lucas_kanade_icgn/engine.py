@@ -32,7 +32,7 @@ import websockets
 from PIL import Image
 
 from .interpolation import normalize_interpolation
-from .median import normalize_median_scope
+from .median import normalize_median_replacement, normalize_median_scope
 from .motion import AFFINE_PARAMETER_ORDER, normalize_motion_model, parameter_order
 from .subset import DEFAULT_SUBSET_SIZE, normalize_subset_size, normalize_subset_stride
 
@@ -69,6 +69,7 @@ class EngineInfo:
     subgroup_validation: str = "unavailable"
     motion_model: str = "affine"
     median_scope: str = "all"
+    median_replacement: str = "flagged"
 
 
 @dataclass(frozen=True, slots=True)
@@ -815,6 +816,7 @@ class ICGNWebGL:
         interpolation: str = "bspline",
         motion_model: str = "affine",
         median_scope: str = "all",
+        median_replacement: str = "flagged",
         subset_size: int = DEFAULT_SUBSET_SIZE,
         subset_stride: int | None = None,
     ) -> None:
@@ -829,6 +831,7 @@ class ICGNWebGL:
         self.interpolation = normalize_interpolation(interpolation)
         self.motion_model = normalize_motion_model(motion_model)
         self.median_scope = normalize_median_scope(median_scope)
+        self.median_replacement = normalize_median_replacement(median_replacement)
         self.subset_size = normalize_subset_size(subset_size)
         self.subset_stride = normalize_subset_stride(
             subset_stride,
@@ -1091,6 +1094,7 @@ class ICGNWebGL:
         options["interpolation"] = self.interpolation
         options["motionModel"] = self.motion_model
         options["medianScope"] = self.median_scope
+        options["medianReplacement"] = self.median_replacement
         if iterations is not None:
             options["iterations"] = int(iterations)
         if tolerance is not None:
@@ -1124,6 +1128,7 @@ class ICGNWebGL:
             subgroup_validation=str(payload.get("subgroupValidation", "unavailable")),
             motion_model=str(payload.get("motionModel", self.motion_model)),
             median_scope=str(payload.get("medianScope", self.median_scope)),
+            median_replacement=str(payload.get("medianReplacement", self.median_replacement)),
         )
 
     def set_reference(
@@ -1418,6 +1423,7 @@ def register_pair(
     interpolation: str = "bspline",
     motion_model: str = "affine",
     median_scope: str = "all",
+    median_replacement: str = "flagged",
     subset_size: int = DEFAULT_SUBSET_SIZE,
     subset_stride: int | None = None,
     iterations: int | None = None,
@@ -1437,6 +1443,7 @@ def register_pair(
         interpolation=interpolation,
         motion_model=motion_model,
         median_scope=median_scope,
+        median_replacement=median_replacement,
         subset_size=subset_size,
         subset_stride=subset_stride,
     ) as engine:

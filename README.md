@@ -75,11 +75,12 @@ The implementation in [`DIC/LucasKanadeICGN/`](./DIC/LucasKanadeICGN/) adds:
 - selectable target interpolation: historical Gaussian/cubic B-spline,
   direct bilinear, or direct Keys cubic convolution;
 - reference gradients and a constant inverse Hessian prepared once;
-- ZNCC validation and selectable normalized median replacement:
-  `median_scope="displacement"` changes only `tx/ty`, while the default
-  `median_scope="all"` treats every active coefficient independently. The
-  all-coefficient rule reduced analytic curvature RMSE by 30--36% while
-  preserving displacement accuracy; see the
+- ZNCC validation and selectable normalized median replacement. Detection
+  scope (`displacement` or `all`) and replacement policy (`flagged` or `all`)
+  are independent. The default `all/flagged` policy reduced analytic
+  curvature RMSE by 31--37% while preserving displacement accuracy. The
+  optional `all/all` policy reached 53--56% but degraded displacement and
+  gradient accuracy; see the
   [measured explanation](DIC/LucasKanadeICGN/docs/explanation/component-wise-median.rst);
 - configurable square subsets including centred odd widths 15, 17, 31, and
   33, plus optional centred Gaussian integration on native wgpu, and an

@@ -167,20 +167,26 @@ available in native wgpu and `backend="webgpu-wgsl"`; Three.js and deprecated
 GPU-IO reject it.
 Changing the model requires a new engine and new reference preparation.
 
-## Median-filter scope
+## Median-filter policy
 
 The default validates every active polynomial coefficient independently:
 
 ```python
-with ICGNWGPUFullPyramid(median_scope="all") as engine:
+with ICGNWGPUFullPyramid(
+    median_scope="all",
+    median_replacement="flagged",
+) as engine:
     engine.set_reference(reference)
     result = engine.register(target)
 ```
 
-Use `median_scope="displacement"` to test and replace only `tx` and `ty`.
-Gradients and curvatures are then preserved even when they disagree with their
-direct neighbourhood. Both scopes use recentered neighbour polynomials for the
-translation test. The selected scope is returned as `config["medianScope"]`.
+Use `median_scope="displacement"` to let only `tx` and `ty` trigger the
+filter. Use `median_replacement="all"` to replace the complete active motion
+state whenever any selected coefficient is an outlier. The default
+`all/flagged` combination replaces coefficients independently; `all/all` is
+the strongest smoothing option and is not the general default. Both values
+are returned as `config["medianScope"]` and
+`config["medianReplacement"]`.
 
 ## Persistent Python supervisor
 

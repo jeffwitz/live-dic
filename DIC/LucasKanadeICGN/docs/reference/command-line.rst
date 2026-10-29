@@ -54,12 +54,16 @@ Solver options
    backends reject it. Default: ``affine``.
 
 ``--median-scope {displacement,all}``
-   Select the coefficients checked and replaced by the normalized median
-   filter. ``displacement`` changes only ``tx`` and ``ty``; ``all`` treats
-   every active affine or quadratic coefficient independently. Default:
-   ``all``.
+   Select the coefficients that can trigger the normalized median filter.
+   ``displacement`` checks only ``tx`` and ``ty``; ``all`` checks every active
+   affine or quadratic coefficient. Default: ``all``.
 
-``--subset-size {8,16,32}``
+``--median-replacement {flagged,all}``
+   Select what a detected outlier changes. ``flagged`` replaces only flagged
+   coefficients; ``all`` replaces the complete active motion state. Default:
+   ``flagged``.
+
+``--subset-size {8,15,16,17,31,32,33}``
    Select the square numerical subset width. Default: ``16``.
 
 ``--subset-stride PIXELS``

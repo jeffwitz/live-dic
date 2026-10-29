@@ -1,10 +1,12 @@
-Component-wise median replacement
-=================================
+Median validation and replacement policies
+==========================================
 
 The component-wise normalized median replacement is an experimental DIC-RT
 contribution. It extends the normalized median test from displacement vectors
 to the coefficients of a local affine or quadratic displacement polynomial.
-Each coefficient is validated and, when necessary, replaced independently.
+Detection and replacement are two independent choices: the filter can inspect
+only centre displacement or every active coefficient, then replace either only
+the flagged coefficients or the complete local motion state.
 
 This distinction is important. A subset can contain a reliable translation
 and first derivative but one unstable curvature coefficient. Replacing its
@@ -40,8 +42,9 @@ state was replaced. Consequently:
 * the decision threshold had pixel units and could not be applied directly to
   dimensionless gradients or inverse-pixel curvatures.
 
-The new pass treats the affine or quadratic polynomial as six or twelve
-related measurements rather than one indivisible record.
+The current implementation exposes both the historical whole-state policy and
+the DIC-RT component-wise policy, so their metrological effect can be measured
+without changing kernels.
 
 Algorithm
 ---------
@@ -61,7 +64,7 @@ comparable coefficients :math:`\widetilde p_{n\rightarrow s,k}` for component
    at the current subset centre
               |
               v
-   for each coefficient independently
+   for each coefficient selected by median_scope
       median + median absolute deviation
               |
               v
@@ -69,10 +72,17 @@ comparable coefficients :math:`\widetilde p_{n\rightarrow s,k}` for component
         |                 |
        yes                no
         |                 |
-   replace only k      retain k
+   mark k as outlier   retain k
         \_________________/
                   |
-        status 2 if any k changed
+      median_replacement
+       |             |
+    flagged          all
+       |             |
+   replace k     replace complete state
+       \_____________/
+              |
+       status 2 if changed
 
 For one component, the neighbour median and robust local spread are
 
@@ -89,36 +99,65 @@ The normalized residual is
 
    r_{s,k} = \frac{|p_{s,k}-m_{s,k}|}{d_{s,k}+\epsilon_k}.
 
-Only component :math:`k` is replaced when :math:`r_{s,k}>2`. At least four
-accepted neighbours are required. Otherwise the subset is left unchanged.
-Status 2 means that at least one coefficient was replaced; it does not imply
-that the complete polynomial was replaced.
+Component :math:`k` is flagged when :math:`r_{s,k}>2`. At least four accepted
+neighbours are required. Otherwise the subset is left unchanged. Status 2
+means that the selected replacement policy changed the result; consult the
+configuration to know whether individual coefficients or the complete state
+were replaced.
 
 Selecting the filtered coefficients
 -----------------------------------
 
-The filter scope is fixed when the engine is constructed. Two choices are
+The filter is fixed when the engine is constructed. Two orthogonal options are
 available on every backend:
 
 .. code-block:: python
 
-   # Default: test and replace every active polynomial coefficient.
-   engine = ICGNWGPUFullPyramid(median_scope="all")
+   # Default: test every coefficient, replace only those classified as outliers.
+   engine = ICGNWGPUFullPyramid(
+       median_scope="all",
+       median_replacement="flagged",
+   )
 
-   # Test and replace tx and ty only; preserve every derivative coefficient.
-   engine = ICGNWGPUFullPyramid(median_scope="displacement")
+   # Test every coefficient; one outlier replaces the complete local state.
+   engine = ICGNWGPUFullPyramid(
+       median_scope="all",
+       median_replacement="all",
+   )
 
-``median_scope="displacement"`` still recentres each neighbouring affine or
-quadratic polynomial before computing the two centre-displacement medians.
-If :math:`t_x` is an outlier, only :math:`t_x` is replaced; :math:`t_y`, all
-gradients, and all curvatures are retained. ``median_scope="all"`` applies the
-same independent decision to every active coefficient and remains the default.
+``median_scope`` selects the coefficients allowed to trigger the filter.
+``median_replacement`` selects what is changed after any trigger. This gives
+four explicit strategies:
+
+.. list-table:: Median-filter strategies
+   :header-rows: 1
+
+   * - ``median_scope``
+     - ``median_replacement``
+     - Behaviour
+   * - ``displacement``
+     - ``flagged``
+     - Test :math:`t_x,t_y`; replace only the flagged displacement component.
+   * - ``all``
+     - ``flagged``
+     - Test every active coefficient; replace only flagged coefficients. **Default.**
+   * - ``displacement``
+     - ``all``
+     - Test :math:`t_x,t_y`; either displacement outlier replaces the complete state.
+   * - ``all``
+     - ``all``
+     - Test every coefficient; any outlier replaces the complete state.
+
+All strategies recenter neighbouring affine or quadratic polynomials before
+computing centre-displacement medians. ``replacement="all"`` also computes
+every active neighbour median so that a trigger replaces a coherent complete
+polynomial, not a mixture of old and filtered values.
 
 For ``motion_model="translation"`` the two scopes are numerically equivalent
 because :math:`t_x` and :math:`t_y` are the only active coefficients. The
-selected value is reported as ``medianScope`` in reference and registration
-configuration dictionaries. Changing it requires constructing the intended
-engine configuration and preparing the reference for that engine.
+selected values are reported as ``medianScope`` and ``medianReplacement`` in
+reference and registration configuration dictionaries. Changing either
+specialization requires preparing the reference for the intended engine.
 
 Unit-aware robustness floors
 ----------------------------
@@ -155,14 +194,10 @@ Measured curvature result
 -------------------------
 
 The comparison below uses exactly the same analytic image generator, GPU, and
-current implementation. The only changed setting is ``median_scope``:
+current implementation. Only the two median-policy options change:
 
-* ``displacement``: independently validate and replace only :math:`t_x` and
-  :math:`t_y`;
-* ``all``: independently validate and replace all twelve quadratic
-  coefficients;
 * 768 x 768 continuous analytic texture rasterized to 8-bit grayscale;
-* 32 x 32 uniform subsets, stride 16, B-spline interpolation;
+* centred 31 x 31 Gaussian subsets (sigma 12), stride 16, B-spline interpolation;
 * eight measured registrations after three warm-ups;
 * exact second-order displacement truth evaluated at every subset centre.
 
@@ -171,70 +206,57 @@ current implementation. The only changed setting is ``median_scope``:
    :align: center
    :width: 90%
 
-.. list-table:: Analytic A/B result for the 32 x 32 uniform subset
+.. list-table:: Analytic four-policy result for the 31 x 31 Gaussian subset
    :header-rows: 1
 
-   * - Field and image condition
-     - ``displacement``
-     - ``all``
-     - Relative change
-   * - Displacement RMSE, moderate clean (px)
-     - 0.00623126
-     - 0.00623133
-     - unchanged (<0.01%)
-   * - Gradient RMSE, moderate clean
-     - 5.729e-4
-     - 6.494e-4
-     - **+13.3%**
-   * - Curvature RMSE/component, moderate clean
-     - 5.727e-5
-     - **3.970e-5**
-     - **-30.7%**
-   * - Displacement RMSE, strong clean (px)
-     - 0.00679760
-     - 0.00679397
-     - -0.05%
-   * - Gradient RMSE, strong clean
-     - 6.390e-4
-     - 7.702e-4
-     - **+20.5%**
-   * - Curvature RMSE/component, strong clean
-     - 6.428e-5
-     - **4.525e-5**
-     - **-29.6%**
-   * - Displacement RMSE, noise :math:`\sigma=1` gray level (px)
-     - 0.02244174
-     - 0.02244163
-     - unchanged (<0.01%)
-   * - Gradient RMSE, noise :math:`\sigma=1` gray level
-     - 2.046e-3
-     - 2.309e-3
-     - **+12.9%**
-   * - Curvature RMSE/component, noise :math:`\sigma=1` gray level
-     - 1.981e-4
-     - **1.263e-4**
-     - **-36.3%**
+   * - Policy ``scope/replacement``
+     - Moderate: displacement / gradient / curvature RMSE
+     - Strong: displacement / gradient / curvature RMSE
+     - Noise :math:`\sigma=1`: displacement / gradient / curvature RMSE
+   * - ``displacement/flagged``
+     - 0.006894 / 6.787e-4 / 6.849e-5
+     - 0.007570 / 7.761e-4 / 7.787e-5
+     - 0.024683 / 2.419e-3 / 2.364e-4
+   * - ``displacement/all``
+     - 0.006894 / 6.787e-4 / 6.849e-5
+     - 0.007570 / 7.761e-4 / 7.787e-5
+     - 0.024683 / 2.419e-3 / 2.364e-4
+   * - ``all/flagged`` **default**
+     - 0.006898 / 7.822e-4 / **4.635e-5**
+     - 0.007565 / 9.146e-4 / **5.358e-5**
+     - 0.024676 / 2.728e-3 / **1.496e-4**
+   * - ``all/all``
+     - 0.008531 / 1.042e-3 / **3.203e-5**
+     - 0.009133 / 1.253e-3 / **3.587e-5**
+     - 0.032474 / 3.588e-3 / **1.034e-4**
 
-The accepted fraction is identical before and after the change in all three
-cases. Displacement accuracy is also effectively unchanged. The important
-result is therefore specific and reproducible: independent coefficient
-replacement reduces curvature RMSE by approximately 30--36%, with the largest
-gain in the noisy case. The measured cost is a 13--21% increase in gradient
-RMSE. This is not a universal smoothing improvement and the gradient trade-off
-must remain visible when the method is reported.
+The default component-wise policy reduces curvature RMSE by 31--37% relative
+to displacement-only detection. Whole-state replacement after any coefficient
+outlier reduces it further, by 53--56% relative to displacement-only, but its
+displacement RMSE is 21--32% worse and its gradient RMSE 32--37% worse than the
+default. The new ``all/all`` strategy is therefore useful when curvature is
+the dominant observable, but it is not a better general default.
 
 Runtime cost
 ------------
 
-``displacement`` specializes the shared WGSL median pass to two components;
-``all`` evaluates six affine or twelve quadratic components. The saving is
-small relative to the complete image-to-field graph. In the UHD affine check
-on the validation machine (five campaigns, 20 frames each), the complete
-single-slot medians were 11.62 ms for ``displacement`` and 11.49 ms for
-``all``. Their campaign ranges overlapped, so this check does not establish a
-significant end-to-end speed difference. Select the scope for its metrological
-behaviour, not for a claimed frame-rate gain. Both remain below the 16.667 ms
-period of 60 FPS on this machine.
+``displacement`` detection needs two robust tests; ``all`` needs six affine or
+twelve quadratic tests. Whole-state replacement also needs all active medians
+even when only displacement can trigger. The 768 x 768 analytic timings varied
+between runs and did not establish a stable ordering between policies. Select
+the policy for its metrological behaviour, not for a claimed frame-rate gain.
+
+A separate UHD quadratic check (31 x 31 Gaussian subsets, stride 16, two
+pyramid levels, 20 frames in each of three campaigns) measured 86.4--92.9 ms
+median depending on policy. Those values qualify the correctness-first
+quadratic path and must not be confused with the approximately 10--12 ms UHD
+affine configuration used for the 4K60 target.
+
+After adding the replacement option, the unchanged default affine policy was
+revalidated on five campaigns of 20 changing UHD frames after five warm-ups.
+The median campaign measured 11.182 ms median, 11.972 ms p95, and 89.09 FPS
+from the resident NumPy image to the complete NumPy field. It therefore keeps
+the required margin below the 16.667 ms frame period on this machine.
 
 Browser-supervised calls have additional transport and synchronization noise.
 See :doc:`../reference/performance` for the qualified default ``all``
@@ -243,9 +265,9 @@ measurements.
 Backend coverage
 ----------------
 
-The complete twelve-component rule is in the canonical WGSL used by native
-wgpu-py and raw browser WebGPU. The six-component affine rule is also
-implemented in Three.js/TSL and the deprecated GPU-IO compatibility backend.
+All four policies are in the canonical WGSL used by native wgpu-py and raw
+browser WebGPU. The six-component affine policies are also implemented in
+Three.js/TSL and the deprecated GPU-IO compatibility backend.
 Translation-only kernels test only their two active coefficients and do not
 pay for inactive affine comparisons.
 

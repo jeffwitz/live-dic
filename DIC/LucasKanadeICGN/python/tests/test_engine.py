@@ -447,6 +447,21 @@ class RuntimeAssetTests(unittest.TestCase):
             ICGNWebGL(median_scope="translation")
         self.assertIn("median_scope", inspect.signature(register_pair).parameters)
 
+    def test_browser_median_replacement_is_validated_and_forwarded(self) -> None:
+        for replacement in ("flagged", "all"):
+            with self.subTest(replacement=replacement):
+                engine = ICGNWebGL(backend="webgpu-wgsl", median_replacement=replacement)
+                self.assertEqual(engine.median_replacement, replacement)
+                self.assertEqual(
+                    engine._options(iterations=None, tolerance=None, zncc_min=None)[
+                        "medianReplacement"
+                    ],
+                    replacement,
+                )
+        with self.assertRaisesRegex(ValueError, "median_replacement"):
+            ICGNWebGL(median_replacement="component")
+        self.assertIn("median_replacement", inspect.signature(register_pair).parameters)
+
     def test_three_webgl_fallback_is_explicitly_testable(self) -> None:
         engine = ICGNWebGL(backend="three-tsl", force_three_webgl=True)
         self.assertTrue(engine.force_three_webgl)
