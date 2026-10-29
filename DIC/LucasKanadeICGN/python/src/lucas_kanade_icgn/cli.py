@@ -73,6 +73,12 @@ def _parser() -> argparse.ArgumentParser:
         help="target-image interpolation (bspline is the historical default)",
     )
     parser.add_argument(
+        "--motion-model",
+        choices=("affine", "translation"),
+        default="affine",
+        help="estimated warp model (translation uses an analytic 2x2 inverse Hessian)",
+    )
+    parser.add_argument(
         "--force-three-webgl",
         action="store_true",
         help="force the Three.js backend to use its WebGL2 compatibility path",
@@ -316,6 +322,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             iterations_per_level=args.iterations_per_level,
             tolerance_per_level=args.tolerance_per_level,
             interpolation=args.interpolation,
+            motion_model=args.motion_model,
         ) as engine:
             info = engine.info()
             payload = (

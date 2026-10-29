@@ -60,6 +60,7 @@ const configuration = {
   tolerance: DEFAULT_TOLERANCE,
   znccMin: DEFAULT_ZNCC_MIN,
   interpolation: 'bspline',
+  motionModel: 'affine',
 };
 const toleranceNode = uniform(DEFAULT_TOLERANCE);
 const znccMinNode = uniform(DEFAULT_ZNCC_MIN);
@@ -95,6 +96,7 @@ let subgroupValidation = 'unavailable';
 let useSubgroupSolver = false;
 let solverKind = 'uninitialized';
 let runtimeInterpolation = null;
+let runtimeMotionModel = null;
 
 /** Allocate all resolution-dependent storage and rebuild the TSL compute graph. */
 const initializeRuntime = (width, height) => {
@@ -103,7 +105,8 @@ const initializeRuntime = (width, height) => {
     throw new Error(`Image dimensions must be integers of at least ${SUBSET_SIZE} pixels`);
   }
   if (attributes && width === FRAME_WIDTH && height === FRAME_HEIGHT
-      && runtimeInterpolation === configuration.interpolation) return false;
+      && runtimeInterpolation === configuration.interpolation
+      && runtimeMotionModel === configuration.motionModel) return false;
 
   FRAME_WIDTH = width;
   FRAME_HEIGHT = height;
@@ -183,6 +186,7 @@ const initializeRuntime = (width, height) => {
   subgroupValidation = useSubgroupSolver ? 'pending' : 'unavailable';
   kernels = buildKernels();
   runtimeInterpolation = configuration.interpolation;
+  runtimeMotionModel = configuration.motionModel;
   referenceReady = false;
   return true;
 };
@@ -194,6 +198,7 @@ const prepareReference = (image) => {
     height: FRAME_HEIGHT,
     subsetSize: SUBSET_SIZE,
     interpolation: configuration.interpolation,
+    motionModel: configuration.motionModel,
   });
   attributes.reference.array.set(prepared.reference);
   attributes.hessianInverse.array.set(prepared.inverseHessian);
@@ -384,7 +389,32 @@ const sampleTarget = (position) => {
   return sampleCubic(position);
 };
 
+const activeMotionComponents = () => (configuration.motionModel === 'translation'
+  ? [0, 3] : [0, 1, 2, 3, 4, 5]);
+
+const displacementAt = (translation, linear, localX, localY) => (
+  configuration.motionModel === 'translation'
+    ? translation
+    : translation.add(vec2(
+      linear.x.mul(localX).add(linear.y.mul(localY)),
+      linear.z.mul(localX).add(linear.w.mul(localY)),
+    ))
+);
+
 const solveIncrement = (subsetIndex, reducedJ, currentMean, ratio) => {
+  if (configuration.motionModel === 'translation') {
+    const residualX = metadataValue(subsetIndex, 2).sub(ratio.mul(
+      reducedJ[0].sub(currentMean.mul(metadataValue(subsetIndex, 8))),
+    ));
+    const residualY = metadataValue(subsetIndex, 5).sub(ratio.mul(
+      reducedJ[3].sub(currentMean.mul(metadataValue(subsetIndex, 11))),
+    ));
+    const deltaX = hessianValue(subsetIndex, 0).mul(residualX)
+      .add(hessianValue(subsetIndex, 3).mul(residualY)).negate();
+    const deltaY = hessianValue(subsetIndex, 18).mul(residualX)
+      .add(hessianValue(subsetIndex, 21).mul(residualY)).negate();
+    return [deltaX, float(0), float(0), deltaY, float(0), float(0)];
+  }
   const residual = Array.from({ length: 6 }, (_, component) => metadataValue(
     subsetIndex,
     2 + component,
@@ -400,10 +430,12 @@ const solveIncrement = (subsetIndex, reducedJ, currentMean, ratio) => {
   });
 };
 
-const incrementDeterminant = (delta) => delta[1].add(1).mul(delta[5].add(1))
-  .sub(delta[2].mul(delta[4]));
+const incrementDeterminant = (delta) => (configuration.motionModel === 'translation'
+  ? float(1)
+  : delta[1].add(1).mul(delta[5].add(1)).sub(delta[2].mul(delta[4])));
 
 const cornerChange = (delta) => {
+  if (configuration.motionModel === 'translation') return vec2(delta[0], delta[3]).length();
   const maximum = float(0).toVar();
   for (let corner = 0; corner < 4; ++corner) {
     const x = corner === 1 || corner === 3 ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
@@ -418,6 +450,13 @@ const cornerChange = (delta) => {
 };
 
 const composeInverseUpdate = (translation, linear, delta, determinant) => {
+  if (configuration.motionModel === 'translation') {
+    return {
+      translation: translation.sub(vec2(delta[0], delta[3])),
+      linear: vec4(0),
+      cornerChange: cornerChange(delta),
+    };
+  }
   const inverse11 = delta[5].add(1).div(determinant);
   const inverse12 = delta[2].negate().div(determinant);
   const inverse21 = delta[4].negate().div(determinant);
@@ -487,10 +526,7 @@ const makeSerialSolverKernel = () => Fn(() => {
         ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
       const localY = corner >= 2 ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
       const position = center.sub(0.5).add(vec2(localX, localY))
-        .add(currentTranslation).add(vec2(
-          currentLinear.x.mul(localX).add(currentLinear.y.mul(localY)),
-          currentLinear.z.mul(localX).add(currentLinear.w.mul(localY)),
-        ));
+        .add(displacementAt(currentTranslation, currentLinear, localX, localY));
       const valid = position.x.greaterThanEqual(2).and(position.y.greaterThanEqual(2))
         .and(position.x.lessThanEqual(FRAME_WIDTH - 3))
         .and(position.y.lessThanEqual(FRAME_HEIGHT - 3));
@@ -521,10 +557,7 @@ const makeSerialSolverKernel = () => Fn(() => {
       }, ({ column }) => {
         const localX = float(column).sub(SUBSET_HALF_EXTENT);
         const localY = float(row).sub(SUBSET_HALF_EXTENT);
-        const displacement = currentTranslation.add(vec2(
-          currentLinear.x.mul(localX).add(currentLinear.y.mul(localY)),
-          currentLinear.z.mul(localX).add(currentLinear.w.mul(localY)),
-        ));
+        const displacement = displacementAt(currentTranslation, currentLinear, localX, localY);
         const current = sampleTarget(
           center.sub(0.5).add(vec2(localX, localY)).add(displacement),
         );
@@ -542,7 +575,7 @@ const makeSerialSolverKernel = () => Fn(() => {
         sumCurrent.addAssign(current);
         sumCurrent2.addAssign(current.mul(current));
         sumReferenceCurrent.addAssign(reference.x.mul(current));
-        for (let component = 0; component < 6; ++component) {
+        for (const component of activeMotionComponents()) {
           sumJCurrent[component].addAssign(jacobian[component].mul(current));
         }
       });
@@ -636,10 +669,8 @@ const makeFusedCooperativeSolverKernel = () => Fn(() => {
     for (let corner = 0; corner < 4; ++corner) {
       const localX = corner === 1 || corner === 3 ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
       const localY = corner >= 2 ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
-      const position = center.sub(0.5).add(vec2(localX, localY)).add(oldTranslation).add(vec2(
-        oldLinear.x.mul(localX).add(oldLinear.y.mul(localY)),
-        oldLinear.z.mul(localX).add(oldLinear.w.mul(localY)),
-      ));
+      const position = center.sub(0.5).add(vec2(localX, localY))
+        .add(displacementAt(oldTranslation, oldLinear, localX, localY));
       const valid = position.x.greaterThanEqual(2).and(position.y.greaterThanEqual(2))
         .and(position.x.lessThanEqual(FRAME_WIDTH - 3)).and(position.y.lessThanEqual(FRAME_HEIGHT - 3));
       inside.mulAssign(select(valid, 1, 0));
@@ -658,10 +689,7 @@ const makeFusedCooperativeSolverKernel = () => Fn(() => {
       Loop({ start: int(0), end: int(SUBSET_SIZE), type: 'int', condition: '<', name: 'row' }, ({ row }) => {
         const localX = float(lane).sub(SUBSET_HALF_EXTENT);
         const localY = float(row).sub(SUBSET_HALF_EXTENT);
-        const displacement = oldTranslation.add(vec2(
-          oldLinear.x.mul(localX).add(oldLinear.y.mul(localY)),
-          oldLinear.z.mul(localX).add(oldLinear.w.mul(localY)),
-        ));
+        const displacement = displacementAt(oldTranslation, oldLinear, localX, localY);
         const current = sampleTarget(center.sub(0.5).add(vec2(localX, localY)).add(displacement));
         const templateIndex = uint(gridY.mul(SUBSET_SIZE).add(row).mul(FRAME_WIDTH)
           .add(gridX.mul(SUBSET_SIZE)).add(lane));
@@ -677,7 +705,7 @@ const makeFusedCooperativeSolverKernel = () => Fn(() => {
         sumCurrent.addAssign(current);
         sumCurrent2.addAssign(current.mul(current));
         sumReferenceCurrent.addAssign(reference.x.mul(current));
-        for (let component = 0; component < 6; ++component) {
+        for (const component of activeMotionComponents()) {
           sumJCurrent[component].addAssign(jacobian[component].mul(current));
         }
       });
@@ -789,10 +817,8 @@ const makeSubgroupSolverKernel = () => {
     for (let corner = 0; corner < 4; ++corner) {
       const localX = corner === 1 || corner === 3 ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
       const localY = corner >= 2 ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
-      const position = center.sub(0.5).add(vec2(localX, localY)).add(currentTranslation).add(vec2(
-        currentLinear.x.mul(localX).add(currentLinear.y.mul(localY)),
-        currentLinear.z.mul(localX).add(currentLinear.w.mul(localY)),
-      ));
+      const position = center.sub(0.5).add(vec2(localX, localY))
+        .add(displacementAt(currentTranslation, currentLinear, localX, localY));
       const valid = position.x.greaterThanEqual(2).and(position.y.greaterThanEqual(2))
         .and(position.x.lessThanEqual(FRAME_WIDTH - 3)).and(position.y.lessThanEqual(FRAME_HEIGHT - 3));
       inside.mulAssign(select(valid, 1, 0));
@@ -812,10 +838,7 @@ const makeSubgroupSolverKernel = () => {
           const pixelY = pixel.div(SUBSET_SIZE);
           const localX = float(pixelX).sub(SUBSET_HALF_EXTENT);
           const localY = float(pixelY).sub(SUBSET_HALF_EXTENT);
-          const displacement = currentTranslation.add(vec2(
-            currentLinear.x.mul(localX).add(currentLinear.y.mul(localY)),
-            currentLinear.z.mul(localX).add(currentLinear.w.mul(localY)),
-          ));
+          const displacement = displacementAt(currentTranslation, currentLinear, localX, localY);
           const current = sampleTarget(center.sub(0.5).add(vec2(localX, localY)).add(displacement));
           const templateIndex = uint(gridY.mul(SUBSET_SIZE).add(pixelY).mul(FRAME_WIDTH)
             .add(gridX.mul(SUBSET_SIZE)).add(pixelX));
@@ -831,7 +854,7 @@ const makeSubgroupSolverKernel = () => {
           sumCurrent.addAssign(current);
           sumCurrent2.addAssign(current.mul(current));
           sumReferenceCurrent.addAssign(reference.x.mul(current));
-          for (let component = 0; component < 6; ++component) {
+          for (const component of activeMotionComponents()) {
             sumJCurrent[component].addAssign(jacobian[component].mul(current));
           }
         });
@@ -1232,6 +1255,14 @@ function configure(options = {}, allowInterpolationRebuild = false) {
       && interpolation !== configuration.interpolation) {
     throw new Error('Changing interpolation requires setReference()');
   }
+  const motionModel = options.motionModel === undefined
+    ? configuration.motionModel : String(options.motionModel).toLowerCase();
+  if (!['affine', 'translation'].includes(motionModel)) {
+    throw new Error("motionModel must be 'affine' or 'translation'");
+  }
+  if (!allowInterpolationRebuild && referenceReady && motionModel !== configuration.motionModel) {
+    throw new Error('Changing motionModel requires setReference()');
+  }
   const next = {
     iterations: options.iterations === undefined
       ? configuration.iterations : Number(options.iterations),
@@ -1239,6 +1270,7 @@ function configure(options = {}, allowInterpolationRebuild = false) {
       ? configuration.tolerance : Number(options.tolerance),
     znccMin: options.znccMin === undefined ? configuration.znccMin : Number(options.znccMin),
     interpolation,
+    motionModel,
   };
   if (!Number.isInteger(next.iterations) || next.iterations < 1 || next.iterations > 30) {
     throw new Error('iterations must be an integer between 1 and 30');
@@ -1317,6 +1349,7 @@ const info = async () => {
     subgroupProbeWidth,
     subgroupSolverWidth,
     subgroupValidation,
+    motionModel: configuration.motionModel,
     solver: solverKind,
   };
 };

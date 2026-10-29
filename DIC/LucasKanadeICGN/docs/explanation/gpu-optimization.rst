@@ -1,11 +1,17 @@
 GPU tiling and grouping strategies
 ==================================
 
-All backends evaluate the same affine IC-GN equations, but WebGPU and WebGL2
+All active backends evaluate the same selected IC-GN motion model, but WebGPU and WebGL2
 offer different synchronization models. This page distinguishes three notions
 that older descriptions sometimes conflated: the 16 x 16 *numerical subset*,
 the rectangular *FIR output tile*, and the one-dimensional *solver workgroup*.
 They are independent scheduling choices.
+
+With ``motion_model="translation"``, the subset and workgroup mappings stay
+unchanged. The specialized kernels omit four Jacobian products, the general
+6 by 6 increment solve, affine composition, and four-corner convergence test.
+Keeping the scheduling identical preserves pyramid and result-buffer
+compatibility while reducing arithmetic inside each iteration.
 
 .. list-table:: Current kernel mapping
    :header-rows: 1

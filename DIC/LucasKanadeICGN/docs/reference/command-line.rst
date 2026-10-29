@@ -37,6 +37,12 @@ Solver options
    Select historical Gaussian/B-spline reconstruction, direct bilinear
    interpolation, or direct Keys cubic convolution. Default: ``bspline``.
 
+``--motion-model {affine,translation}``
+   Select the default six-parameter affine model or the displacement-only
+   translation model with an analytic 2 by 2 Hessian inverse. Translation mode
+   keeps the six-component result layout and writes zero deformation terms.
+   The deprecated ``gpuio`` backend does not support it. Default: ``affine``.
+
 ``--pyramid-levels {1,2,3}``
    Full-pyramid depth for ``webgpu-wgsl``. The backend default is two levels;
    one selects the original single-scale path.

@@ -28,6 +28,9 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--iterations-per-level", type=int, nargs="+")
     parser.add_argument("--tolerance-per-level", type=float, nargs="+")
     parser.add_argument(
+        "--motion-model", choices=("affine", "translation"), default="affine"
+    )
+    parser.add_argument(
         "--interpolation",
         nargs="+",
         choices=("bspline", "linear", "cubic"),
@@ -115,7 +118,7 @@ def main() -> int:
     measurements = {}
     device = None
     for interpolation in args.interpolation:
-        options = {"interpolation": interpolation}
+        options = {"interpolation": interpolation, "motion_model": args.motion_model}
         reference_options = {}
         if args.backend == "native":
             engine_type = ICGNWGPU if args.levels == 1 else ICGNWGPUFullPyramid
@@ -168,6 +171,7 @@ def main() -> int:
                 "truth": list(truth),
                 "pyramid_levels": args.levels,
                 "backend": args.backend,
+                "motion_model": args.motion_model,
                 "warmups": args.warmups,
                 "repeats": args.repeats,
                 "measurements": measurements,

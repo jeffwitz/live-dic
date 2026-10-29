@@ -38,6 +38,13 @@ direct modes skip per-target FIR coefficient construction and require matching
 raw-sample reference preparation. The deprecated GPU-IO backend accepts only
 ``bspline``. See :doc:`../explanation/interpolation`.
 
+All active engines also accept ``motion_model="affine"`` or
+``motion_model="translation"`` at construction. ``affine`` remains the
+six-parameter default. Translation mode estimates only ``tx`` and ``ty`` with
+an analytic 2 by 2 inverse while retaining the six-component result layout;
+the four deformation components are exact zeros. The deprecated GPU-IO backend
+is affine-only. See :doc:`../explanation/motion-models`.
+
 Native single-scale and streaming engine
 ----------------------------------------
 
@@ -81,6 +88,7 @@ three levels are opt-in for a larger expected displacement range.
 
 ``interpolation`` applies to every pyramid level. ``linear`` and ``cubic``
 omit both FIR passes at every level; ``bspline`` retains the existing graph.
+``motion_model`` likewise applies to every level and to every transferred seed.
 
 See :doc:`../explanation/backend-selection` for a single table distinguishing
 the defaults of all public engines.
@@ -114,6 +122,8 @@ Constants and input types
 -------------------------
 
 .. autodata:: lucas_kanade_icgn.PARAMETER_ORDER
+
+.. autodata:: lucas_kanade_icgn.MOTION_MODELS
 
 .. autodata:: lucas_kanade_icgn.DEFAULT_IN_FLIGHT_FRAMES
 

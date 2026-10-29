@@ -55,6 +55,8 @@ const PREFILTER_TILE_PIXELS: u32 = 448u;
 // 1: direct bilinear interpolation
 // 2: direct Keys cubic convolution (a = -0.5)
 override INTERPOLATION_MODE: u32 = 0u;
+// 0: six-parameter affine warp, 1: translation-only warp.
+override MOTION_MODEL: u32 = 0u;
 // Keep standalone consumers safe. Repository hosts specialize this override
 // to zero for dimensions where one reflection already covers every tile load.
 override PREFILTER_CLAMP_HALO: u32 = 1u;
@@ -260,6 +262,22 @@ fn solve_increment(
     current_mean: f32,
     ratio: f32,
 ) -> array<f32, 6> {
+    if MOTION_MODEL == 1u {
+        let residual_x = metadata_value(subset_index, 2u)
+            - ratio * (reduced_j[0] - current_mean * metadata_value(subset_index, 8u));
+        let residual_y = metadata_value(subset_index, 5u)
+            - ratio * (reduced_j[3] - current_mean * metadata_value(subset_index, 11u));
+        var translation_delta = array<f32, 6>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        translation_delta[0] = -(
+            hessian_value(subset_index, 0u) * residual_x
+            + hessian_value(subset_index, 3u) * residual_y
+        );
+        translation_delta[3] = -(
+            hessian_value(subset_index, 18u) * residual_x
+            + hessian_value(subset_index, 21u) * residual_y
+        );
+        return translation_delta;
+    }
     var residual: array<f32, 6>;
     for (var component = 0u; component < 6u; component = component + 1u) {
         residual[component] = metadata_value(subset_index, 2u + component)
@@ -278,6 +296,9 @@ fn solve_increment(
 }
 
 fn increment_determinant(delta: array<f32, 6>) -> f32 {
+    if MOTION_MODEL == 1u {
+        return 1.0;
+    }
     return (1.0 + delta[1]) * (1.0 + delta[5]) - delta[2] * delta[4];
 }
 
@@ -287,6 +308,12 @@ fn compose_inverse_update(
     delta: array<f32, 6>,
     determinant: f32,
 ) -> WarpUpdate {
+    if MOTION_MODEL == 1u {
+        return WarpUpdate(
+            translation - vec2<f32>(delta[0], delta[3]),
+            vec4<f32>(0.0),
+        );
+    }
     let inverse11 = (1.0 + delta[5]) / determinant;
     let inverse12 = -delta[2] / determinant;
     let inverse21 = -delta[4] / determinant;
@@ -312,6 +339,9 @@ fn compose_inverse_update(
 }
 
 fn corner_change(delta: array<f32, 6>) -> f32 {
+    if MOTION_MODEL == 1u {
+        return length(vec2<f32>(delta[0], delta[3]));
+    }
     var maximum = 0.0;
     for (var corner = 0; corner < 4; corner = corner + 1) {
         let x = select(-SUBSET_HALF_EXTENT, SUBSET_HALF_EXTENT, corner == 1 || corner == 3);
@@ -342,7 +372,7 @@ fn solve_subset(
 ) {
     if lane == 0u {
         shared_translation = initial_translation;
-        shared_linear = initial_linear;
+        shared_linear = select(initial_linear, vec4<f32>(0.0), MOTION_MODEL == 1u);
         let valid = enabled && metadata_value(subset_index, 1u) >= 0.5;
         shared_status = vec2<f32>(select(-1.0, 0.0, valid), 0.0);
     }
@@ -355,17 +385,25 @@ fn solve_subset(
     for (var iteration = 0u; iteration < 30u; iteration = iteration + 1u) {
         if lane == 0u {
             var inside = true;
-            for (var corner = 0; corner < 4; corner = corner + 1) {
-                let local_x = select(-SUBSET_HALF_EXTENT, SUBSET_HALF_EXTENT, corner == 1 || corner == 3);
-                let local_y = select(-SUBSET_HALF_EXTENT, SUBSET_HALF_EXTENT, corner >= 2);
-                let local = vec2<f32>(local_x, local_y);
-                let position = center - vec2<f32>(0.5) + local + shared_translation + vec2<f32>(
-                    shared_linear.x * local_x + shared_linear.y * local_y,
-                    shared_linear.z * local_x + shared_linear.w * local_y,
-                );
-                inside = inside && position.x >= 2.0 && position.y >= 2.0
-                    && position.x <= f32(config.width) - 3.0
-                    && position.y <= f32(config.height) - 3.0;
+            if MOTION_MODEL == 1u {
+                let minimum = center - vec2<f32>(0.5 + SUBSET_HALF_EXTENT) + shared_translation;
+                let maximum = center + vec2<f32>(SUBSET_HALF_EXTENT - 0.5) + shared_translation;
+                inside = minimum.x >= 2.0 && minimum.y >= 2.0
+                    && maximum.x <= f32(config.width) - 3.0
+                    && maximum.y <= f32(config.height) - 3.0;
+            } else {
+                for (var corner = 0; corner < 4; corner = corner + 1) {
+                    let local_x = select(-SUBSET_HALF_EXTENT, SUBSET_HALF_EXTENT, corner == 1 || corner == 3);
+                    let local_y = select(-SUBSET_HALF_EXTENT, SUBSET_HALF_EXTENT, corner >= 2);
+                    let local = vec2<f32>(local_x, local_y);
+                    let position = center - vec2<f32>(0.5) + local + shared_translation + vec2<f32>(
+                        shared_linear.x * local_x + shared_linear.y * local_y,
+                        shared_linear.z * local_x + shared_linear.w * local_y,
+                    );
+                    inside = inside && position.x >= 2.0 && position.y >= 2.0
+                        && position.x <= f32(config.width) - 3.0
+                        && position.y <= f32(config.height) - 3.0;
+                }
             }
             if !inside {
                 shared_status.x = -1.0;
@@ -384,10 +422,13 @@ fn solve_subset(
         let local_x = f32(lane) - SUBSET_HALF_EXTENT;
         for (var row = 0; row < SUBSET_SIZE; row = row + 1) {
             let local_y = f32(row) - SUBSET_HALF_EXTENT;
-            let displacement = shared_translation + vec2<f32>(
-                shared_linear.x * local_x + shared_linear.y * local_y,
-                shared_linear.z * local_x + shared_linear.w * local_y,
-            );
+            var displacement = shared_translation;
+            if MOTION_MODEL == 0u {
+                displacement = displacement + vec2<f32>(
+                    shared_linear.x * local_x + shared_linear.y * local_y,
+                    shared_linear.z * local_x + shared_linear.w * local_y,
+                );
+            }
             let current = sample_target(
                 center - vec2<f32>(0.5) + vec2<f32>(local_x, local_y) + displacement
             );
@@ -403,11 +444,13 @@ fn solve_subset(
             sum_current2 = sum_current2 + current * current;
             sum_reference_current = sum_reference_current + f * current;
             sum_j_current[0] = sum_j_current[0] + gxg;
-            sum_j_current[1] = sum_j_current[1] + gxg * local_x;
-            sum_j_current[2] = sum_j_current[2] + gxg * local_y;
             sum_j_current[3] = sum_j_current[3] + gyg;
-            sum_j_current[4] = sum_j_current[4] + gyg * local_x;
-            sum_j_current[5] = sum_j_current[5] + gyg * local_y;
+            if MOTION_MODEL == 0u {
+                sum_j_current[1] = sum_j_current[1] + gxg * local_x;
+                sum_j_current[2] = sum_j_current[2] + gxg * local_y;
+                sum_j_current[4] = sum_j_current[4] + gyg * local_x;
+                sum_j_current[5] = sum_j_current[5] + gyg * local_y;
+            }
         }
 
         partial_a[lane] = vec4<f32>(sum_current, sum_current2, sum_reference_current, sum_j_current[0]);

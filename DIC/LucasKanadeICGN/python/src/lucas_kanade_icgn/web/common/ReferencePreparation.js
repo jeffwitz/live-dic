@@ -165,7 +165,7 @@ const invert6 = (matrix) => {
 export const prepareReferenceGray = (
   gray,
   {
-    width, height, subsetSize = 16, interpolation = 'bspline',
+    width, height, subsetSize = 16, interpolation = 'bspline', motionModel = 'affine',
   },
 ) => {
   const pixelCount = width * height;
@@ -179,6 +179,9 @@ export const prepareReferenceGray = (
   }
   if (!['bspline', 'linear', 'cubic'].includes(interpolation)) {
     throw new Error("interpolation must be 'bspline', 'linear', or 'cubic'");
+  }
+  if (!['affine', 'translation'].includes(motionModel)) {
+    throw new Error("motionModel must be 'affine' or 'translation'");
   }
   const intensity = interpolation === 'bspline'
     ? gaussianSigmaOne(gray, width, height)
@@ -234,23 +237,51 @@ export const prepareReferenceGray = (
           reference[pixel] = f;
           reference[pixel + 1] = gx;
           reference[pixel + 2] = gy;
-          const jacobian = [gx, gx * localX, gx * localY, gy, gy * localX, gy * localY];
           referenceEnergy += f * f;
-          for (let row = 0; row < 6; ++row) {
-            jtReference[row] += jacobian[row] * f;
-            sumJ[row] += jacobian[row];
-            for (let column = 0; column < 6; ++column) {
-              hessian[6 * row + column] += jacobian[row] * jacobian[column];
+          if (motionModel === 'translation') {
+            jtReference[0] += gx * f;
+            jtReference[3] += gy * f;
+            sumJ[0] += gx;
+            sumJ[3] += gy;
+            hessian[0] += gx * gx;
+            hessian[3] += gx * gy;
+            hessian[18] += gx * gy;
+            hessian[21] += gy * gy;
+          } else {
+            const jacobian = [gx, gx * localX, gx * localY, gy, gy * localX, gy * localY];
+            for (let row = 0; row < 6; ++row) {
+              jtReference[row] += jacobian[row] * f;
+              sumJ[row] += jacobian[row];
+              for (let column = 0; column < 6; ++column) {
+                hessian[6 * row + column] += jacobian[row] * jacobian[column];
+              }
             }
           }
         }
       }
 
-      const inverse = invert6(hessian);
-      if (inverse) inverseHessian.set(inverse, subsetIndex * 36);
+      let valid = false;
+      if (motionModel === 'translation') {
+        const determinant = hessian[0] * hessian[21] - hessian[3] * hessian[18];
+        const scale = Math.max(Math.abs(hessian[0] * hessian[21]), 1);
+        valid = Number.isFinite(determinant)
+          && Math.abs(determinant) > Number.EPSILON * scale
+          && referenceEnergy > 1e-12;
+        if (valid) {
+          const inverseOffset = subsetIndex * 36;
+          inverseHessian[inverseOffset] = hessian[21] / determinant;
+          inverseHessian[inverseOffset + 3] = -hessian[3] / determinant;
+          inverseHessian[inverseOffset + 18] = -hessian[18] / determinant;
+          inverseHessian[inverseOffset + 21] = hessian[0] / determinant;
+        }
+      } else {
+        const inverse = invert6(hessian);
+        valid = Boolean(inverse) && referenceEnergy > 1e-12;
+        if (inverse) inverseHessian.set(inverse, subsetIndex * 36);
+      }
       const metaOffset = subsetIndex * 16;
       metadata[metaOffset] = Math.sqrt(referenceEnergy);
-      metadata[metaOffset + 1] = inverse && referenceEnergy > 1e-12 ? 1 : 0;
+      metadata[metaOffset + 1] = valid ? 1 : 0;
       metadata.set(jtReference, metaOffset + 2);
       metadata.set(sumJ, metaOffset + 8);
     }
@@ -266,11 +297,12 @@ export const prepareReferenceData = (
     subsetSize = 16,
     intensityScale = 1 / 255,
     interpolation = 'bspline',
+    motionModel = 'affine',
   },
 ) => prepareReferenceGray(
   imageToGray(image, width, height, intensityScale),
   {
-    width, height, subsetSize, interpolation,
+    width, height, subsetSize, interpolation, motionModel,
   },
 );
 

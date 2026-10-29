@@ -29,6 +29,9 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--levels", type=int, nargs="+", default=(2, 3))
     parser.add_argument("--warmups", type=int, default=3)
     parser.add_argument("--repeats", type=int, default=10)
+    parser.add_argument(
+        "--motion-model", choices=("affine", "translation"), default="affine"
+    )
     return parser.parse_args()
 
 
@@ -78,7 +81,11 @@ def main() -> int:
     reference, target = _pair(args.texture, args.width, args.height)
     measurements: dict[str, Any] = {}
 
-    with ICGNWGPU(prefer_subgroups=False, pyramid_levels=1) as engine:
+    with ICGNWGPU(
+        prefer_subgroups=False,
+        pyramid_levels=1,
+        motion_model=args.motion_model,
+    ) as engine:
         preparation = engine.set_reference(reference)
         measurements["one-scale"] = {
             "preparation_ms": preparation.total_wall_ms,
@@ -87,7 +94,10 @@ def main() -> int:
         device = engine.device_name
 
     for levels in args.levels:
-        with ICGNWGPUFullPyramid(pyramid_levels=levels) as engine:
+        with ICGNWGPUFullPyramid(
+            pyramid_levels=levels,
+            motion_model=args.motion_model,
+        ) as engine:
             preparation = engine.set_reference(reference)
             measurements[f"full-pyramid-{levels}"] = {
                 "preparation_ms": preparation.total_wall_ms,
@@ -102,6 +112,7 @@ def main() -> int:
                 "device": device,
                 "resolution": [args.width, args.height],
                 "truth": list(TRUTH),
+                "motion_model": args.motion_model,
                 "warmups": args.warmups,
                 "repeats": args.repeats,
                 "measurements": measurements,

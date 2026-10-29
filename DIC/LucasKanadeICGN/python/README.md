@@ -84,6 +84,23 @@ The choices are `"bspline"` (historical default), `"linear"`, and `"cubic"`
 Changing the mode requires preparing the reference again. GPU-IO is deprecated
 and accepts only `"bspline"`.
 
+## Motion model
+
+Every active engine also accepts `motion_model="affine"` (the default) or
+`motion_model="translation"`:
+
+```python
+with ICGNWGPUFullPyramid(motion_model="translation") as engine:
+    engine.set_reference(reference)
+    result = engine.register(target)
+```
+
+Translation mode estimates only `tx` and `ty` with an analytic 2 × 2 Hessian
+inverse. It keeps the public six-parameter result layout and writes exact zeros
+to `du/dx`, `du/dy`, `dv/dx`, and `dv/dy`. Use it for rigid displacement-only
+work, not for strain measurement. The deprecated GPU-IO backend is affine-only.
+Changing the model requires a new engine and new reference preparation.
+
 ## Persistent engine
 
 Reuse one engine for an image sequence. This keeps Chromium alive and prepares

@@ -30,6 +30,7 @@ import websockets
 from PIL import Image
 
 from .interpolation import normalize_interpolation
+from .motion import normalize_motion_model
 
 MIN_FRAME_DIMENSION: Final = 16
 PARAMETER_ORDER: Final = ("tx", "du_dx", "du_dy", "ty", "dv_dx", "dv_dy")
@@ -60,6 +61,7 @@ class EngineInfo:
     subgroup_probe_width: int = 0
     subgroup_solver_width: int = 0
     subgroup_validation: str = "unavailable"
+    motion_model: str = "affine"
 
 
 @dataclass(frozen=True, slots=True)
@@ -550,6 +552,7 @@ class ICGNWebGL:
         iterations_per_level: Iterable[int] | None = None,
         tolerance_per_level: Iterable[float] | None = None,
         interpolation: str = "bspline",
+        motion_model: str = "affine",
     ) -> None:
         if startup_timeout <= 0:
             raise ValueError("startup_timeout must be greater than zero")
@@ -560,8 +563,11 @@ class ICGNWebGL:
         if force_three_webgl and backend != "three-tsl":
             raise ValueError("force_three_webgl is supported only by the 'three-tsl' backend")
         self.interpolation = normalize_interpolation(interpolation)
+        self.motion_model = normalize_motion_model(motion_model)
         if backend == "gpuio" and self.interpolation != "bspline":
             raise ValueError("The deprecated 'gpuio' backend supports only interpolation='bspline'")
+        if backend == "gpuio" and self.motion_model != "affine":
+            raise ValueError("The deprecated 'gpuio' backend supports only motion_model='affine'")
         pyramid_options = (pyramid_levels, iterations_per_level, tolerance_per_level)
         if backend != "webgpu-wgsl" and any(value is not None for value in pyramid_options):
             raise ValueError("Pyramid options are supported only by the 'webgpu-wgsl' backend")
@@ -792,6 +798,7 @@ class ICGNWebGL:
     ) -> dict[str, Any]:
         options: dict[str, Any] = {}
         options["interpolation"] = self.interpolation
+        options["motionModel"] = self.motion_model
         if iterations is not None:
             options["iterations"] = int(iterations)
         if tolerance is not None:
@@ -822,6 +829,7 @@ class ICGNWebGL:
             subgroup_probe_width=int(payload.get("subgroupProbeWidth", 0)),
             subgroup_solver_width=int(payload.get("subgroupSolverWidth", 0)),
             subgroup_validation=str(payload.get("subgroupValidation", "unavailable")),
+            motion_model=str(payload.get("motionModel", self.motion_model)),
         )
 
     def set_reference(
@@ -1059,6 +1067,7 @@ def register_pair(
     iterations_per_level: Iterable[int] | None = None,
     tolerance_per_level: Iterable[float] | None = None,
     interpolation: str = "bspline",
+    motion_model: str = "affine",
     iterations: int | None = None,
     tolerance: float | None = None,
     zncc_min: float | None = None,
@@ -1074,6 +1083,7 @@ def register_pair(
         iterations_per_level=iterations_per_level,
         tolerance_per_level=tolerance_per_level,
         interpolation=interpolation,
+        motion_model=motion_model,
     ) as engine:
         return engine.register_pair(
             reference,

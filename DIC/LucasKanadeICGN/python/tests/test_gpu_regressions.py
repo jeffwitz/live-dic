@@ -211,6 +211,25 @@ class GPURegressionTests(unittest.TestCase):
                     engine.close()
                     engine.device.destroy()
 
+    def test_translation_model_recovers_fractional_shift_without_strain(self) -> None:
+        truth = (0.5, -0.375)
+        reference, target = _fractional_pair(256, 256, truth)
+        engine = ICGNWGPUFullPyramid(
+            pyramid_levels=2,
+            motion_model="translation",
+        )
+        try:
+            info = engine.set_reference(reference)
+            result = engine.register(target)
+            self.assertEqual(info.config["motionModel"], "translation")
+            self.assertEqual(result.config["motionModel"], "translation")
+            self.assertGreater(result.accepted, 180)
+            self.assertLess(result.rmse(truth), 0.03)
+            np.testing.assert_array_equal(result.parameters[..., (1, 2, 4, 5)], 0.0)
+        finally:
+            engine.close()
+            engine.device.destroy()
+
     def test_three_level_pyramid_prefilter_handles_small_halo_levels(self) -> None:
         truth = (0.5, -0.375)
         reference, target = _fractional_pair(64, 64, truth)

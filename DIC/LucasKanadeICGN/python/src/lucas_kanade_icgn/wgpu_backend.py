@@ -23,6 +23,7 @@ import numpy.typing as npt
 
 from .engine import ICGNError, ImageInput, ReferenceInfo, RegistrationResult, _as_uint8_gray
 from .interpolation import INTERPOLATION_PIPELINE_CONSTANTS, normalize_interpolation
+from .motion import MOTION_MODEL_PIPELINE_CONSTANTS, normalize_motion_model
 
 SUBSET_SIZE = 16
 SUBSET_HALF_EXTENT = 7.5
@@ -359,6 +360,7 @@ def _reference_arrays(
     image: npt.NDArray[np.uint8],
     *,
     interpolation: str = "bspline",
+    motion_model: str = "affine",
 ) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.float32], npt.NDArray[np.float32]]:
     """Build reference pixels, inverse Hessians, and solver metadata."""
 
@@ -366,6 +368,7 @@ def _reference_arrays(
     grid_width = width // SUBSET_SIZE
     grid_height = height // SUBSET_SIZE
     mode = normalize_interpolation(interpolation)
+    model = normalize_motion_model(motion_model)
     if mode == "bspline":
         intensity = _gaussian_sigma_one(image)
         gradient_source = _cubic_bspline_prefilter(intensity)
@@ -425,34 +428,59 @@ def _reference_arrays(
         f_tiles = f_row.transpose(1, 0, 2).reshape(grid_width, -1)
         gx_tiles = gx_row.transpose(1, 0, 2).reshape(grid_width, -1)
         gy_tiles = gy_row.transpose(1, 0, 2).reshape(grid_width, -1)
-        jacobian = np.stack(
-            (
-                gx_tiles,
-                gx_tiles * local_x,
-                gx_tiles * local_y,
-                gy_tiles,
-                gy_tiles * local_x,
-                gy_tiles * local_y,
-            ),
-            axis=2,
-        )
-        hessian = np.einsum("npi,npj->nij", jacobian, jacobian, optimize=True)
-        jt_reference = np.einsum("npi,np->ni", jacobian, f_tiles, optimize=True)
-        sum_j = jacobian.sum(axis=1)
         energy = np.einsum("np,np->n", f_tiles, f_tiles, optimize=True)
         row_offset = grid_y * grid_width
-        try:
-            row_inverse = np.linalg.inv(hessian)
-            valid = np.isfinite(row_inverse).all(axis=(1, 2)) & (energy > 1e-12)
-        except np.linalg.LinAlgError:
-            row_inverse = np.zeros_like(hessian)
-            valid = np.zeros(grid_width, dtype=bool)
-            for index in range(grid_width):
-                try:
-                    row_inverse[index] = np.linalg.inv(hessian[index])
-                    valid[index] = energy[index] > 1e-12
-                except np.linalg.LinAlgError:
-                    pass
+        if model == "translation":
+            hessian_xx = np.einsum("np,np->n", gx_tiles, gx_tiles, optimize=True)
+            hessian_xy = np.einsum("np,np->n", gx_tiles, gy_tiles, optimize=True)
+            hessian_yy = np.einsum("np,np->n", gy_tiles, gy_tiles, optimize=True)
+            determinant = hessian_xx * hessian_yy - hessian_xy * hessian_xy
+            scale = np.maximum(np.abs(hessian_xx * hessian_yy), 1.0)
+            valid = (
+                np.isfinite(determinant)
+                & (np.abs(determinant) > np.finfo(np.float64).eps * scale)
+                & (energy > 1e-12)
+            )
+            inverse_determinant = np.zeros(grid_width, dtype=np.float64)
+            inverse_determinant[valid] = 1.0 / determinant[valid]
+            row_inverse = np.zeros((grid_width, 6, 6), dtype=np.float64)
+            row_inverse[:, 0, 0] = hessian_yy * inverse_determinant
+            row_inverse[:, 0, 3] = -hessian_xy * inverse_determinant
+            row_inverse[:, 3, 0] = -hessian_xy * inverse_determinant
+            row_inverse[:, 3, 3] = hessian_xx * inverse_determinant
+            jt_reference = np.zeros((grid_width, 6), dtype=np.float64)
+            jt_reference[:, 0] = np.einsum("np,np->n", gx_tiles, f_tiles, optimize=True)
+            jt_reference[:, 3] = np.einsum("np,np->n", gy_tiles, f_tiles, optimize=True)
+            sum_j = np.zeros((grid_width, 6), dtype=np.float64)
+            sum_j[:, 0] = gx_tiles.sum(axis=1)
+            sum_j[:, 3] = gy_tiles.sum(axis=1)
+        else:
+            jacobian = np.stack(
+                (
+                    gx_tiles,
+                    gx_tiles * local_x,
+                    gx_tiles * local_y,
+                    gy_tiles,
+                    gy_tiles * local_x,
+                    gy_tiles * local_y,
+                ),
+                axis=2,
+            )
+            hessian = np.einsum("npi,npj->nij", jacobian, jacobian, optimize=True)
+            jt_reference = np.einsum("npi,np->ni", jacobian, f_tiles, optimize=True)
+            sum_j = jacobian.sum(axis=1)
+            try:
+                row_inverse = np.linalg.inv(hessian)
+                valid = np.isfinite(row_inverse).all(axis=(1, 2)) & (energy > 1e-12)
+            except np.linalg.LinAlgError:
+                row_inverse = np.zeros_like(hessian)
+                valid = np.zeros(grid_width, dtype=bool)
+                for index in range(grid_width):
+                    try:
+                        row_inverse[index] = np.linalg.inv(hessian[index])
+                        valid[index] = energy[index] > 1e-12
+                    except np.linalg.LinAlgError:
+                        pass
         representable = np.max(np.abs(row_inverse), axis=(1, 2)) <= np.finfo(np.float32).max
         valid &= representable
         # Invalid subsets are rejected through metadata. Keep their unused
@@ -491,10 +519,16 @@ class ICGNWGPU:
         prefer_subgroups: bool | None = None,
         pyramid_levels: int = DEFAULT_PYRAMID_LEVELS,
         interpolation: str = "bspline",
+        motion_model: str = "affine",
     ) -> None:
         self.interpolation = normalize_interpolation(interpolation)
-        if prefer_subgroups is True and self.interpolation != "bspline":
-            raise ValueError("prefer_subgroups=True is supported only with interpolation='bspline'")
+        self.motion_model = normalize_motion_model(motion_model)
+        if prefer_subgroups is True and (
+            self.interpolation != "bspline" or self.motion_model != "affine"
+        ):
+            raise ValueError(
+                "prefer_subgroups=True requires interpolation='bspline' and motion_model='affine'"
+            )
         try:
             level_count = operator.index(pyramid_levels)
         except TypeError as error:
@@ -525,7 +559,11 @@ class ICGNWGPU:
         self._wgpu = wgpu
         self.adapter = adapter
         required_features = []
-        if prefer_subgroups is not False and "subgroup" in adapter.features:
+        if (
+            self.motion_model == "affine"
+            and prefer_subgroups is not False
+            and "subgroup" in adapter.features
+        ):
             required_features.append("subgroup")
         try:
             self.device = adapter.request_device_sync(
@@ -553,7 +591,7 @@ class ICGNWGPU:
         shader = self.device.create_shader_module(code=shader_source)
         self._shader = shader
         subgroup_shader = None
-        if self.subgroup_width >= SUBSET_SIZE:
+        if self.subgroup_width >= SUBSET_SIZE and self.motion_model == "affine":
             subgroup_path = files("lucas_kanade_icgn").joinpath("shaders/icgn_subgroup.spv")
             subgroup_shader = self.device.create_shader_module(
                 label="DIC-RT subgroup compute solver",
@@ -589,7 +627,8 @@ class ICGNWGPU:
                 "module": shader,
                 "entry_point": "solve",
                 "constants": {
-                    "INTERPOLATION_MODE": INTERPOLATION_PIPELINE_CONSTANTS[self.interpolation]
+                    "INTERPOLATION_MODE": INTERPOLATION_PIPELINE_CONSTANTS[self.interpolation],
+                    "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
                 },
             },
         )
@@ -661,6 +700,7 @@ class ICGNWGPU:
             setattr(level, name, getattr(self, name))
         level._solver_preference = False
         level.interpolation = getattr(self, "interpolation", "bspline")
+        level.motion_model = getattr(self, "motion_model", "affine")
         level.solver_tuning_ms = {}
         level.solver = "portable-workgroup"
         level._solver = level._portable_solver
@@ -812,7 +852,11 @@ class ICGNWGPU:
             bind_group_layouts=[self._seeded_bind_group_layout]
         )
         interpolation = getattr(self, "interpolation", "bspline")
-        constants = {"INTERPOLATION_MODE": INTERPOLATION_PIPELINE_CONSTANTS[interpolation]}
+        motion_model = getattr(self, "motion_model", "affine")
+        constants = {
+            "INTERPOLATION_MODE": INTERPOLATION_PIPELINE_CONSTANTS[interpolation],
+            "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[motion_model],
+        }
         seeded_solver = self.device.create_compute_pipeline(
             layout=layout,
             compute={
@@ -1382,6 +1426,7 @@ class ICGNWGPU:
             config={
                 **self._config,
                 "interpolation": getattr(self, "interpolation", "bspline"),
+                "motionModel": getattr(self, "motion_model", "affine"),
             },
             width=self.width,
             height=self.height,
@@ -1474,6 +1519,7 @@ class ICGNWGPU:
                 prefer_subgroups=False,
                 pyramid_levels=1,
                 interpolation=self.interpolation,
+                motion_model=self.motion_model,
             )
             engine.set_reference(
                 reduced,
@@ -1503,6 +1549,7 @@ class ICGNWGPU:
         reference, inverse, metadata = _reference_arrays(
             frame,
             interpolation=self.interpolation,
+            motion_model=self.motion_model,
         )
         reference_wall_ms = (time.perf_counter() - reference_start) * 1_000.0
 
@@ -1534,6 +1581,7 @@ class ICGNWGPU:
             config={
                 **self._config,
                 "interpolation": getattr(self, "interpolation", "bspline"),
+                "motionModel": getattr(self, "motion_model", "affine"),
             },
             device=self.device_name,
             grid=(self.grid_width, self.grid_height),
@@ -1599,7 +1647,11 @@ class ICGNWGPU:
             mean_translation=mean_translation,
             mean_iterations=mean_iterations,
             timing=timing,
-            config={**config, "interpolation": getattr(self, "interpolation", "bspline")},
+            config={
+                **config,
+                "interpolation": getattr(self, "interpolation", "bspline"),
+                "motionModel": getattr(self, "motion_model", "affine"),
+            },
             width=self.width,
             height=self.height,
             subset_size=SUBSET_SIZE,

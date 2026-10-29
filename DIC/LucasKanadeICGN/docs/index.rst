@@ -13,8 +13,8 @@ Real-Time DIC in Python toward 4K60
 
    The engineering objective is sustained DIC on 3840 x 2160 frames at 60
    frames per second over the complete acquisition-to-result pipeline. The
-   recommended two-level native full pyramid measured 10.863 ms median and
-   12.915 ms p95 on the validation machine after convergence-schedule tuning.
+   recommended two-level native full pyramid measured 10.684 ms median and
+   13.238 ms p95 on the validation machine after convergence-schedule tuning.
    Both are below the 16.667 ms frame period.
    Direct upload, GPU computation, packed readback, and NumPy result
    construction are included; camera acquisition and downstream consumers are
@@ -32,8 +32,8 @@ Real-Time DIC in Python toward 4K60
    :doc:`how-to/migrate-from-gpuio`.
 
 This documentation describes a Python workflow for GPU-accelerated digital
-image correlation (DIC). The current implementation performs affine
-inverse-compositional Gauss-Newton registration on grayscale frames through
+image correlation (DIC). The current implementation performs affine or
+translation-only inverse-compositional Gauss-Newton registration on grayscale frames through
 Three.js/TSL with WebGPU and WebGL2 backends, raw browser WebGPU with shared
 WGSL kernels, and native wgpu-py backends. The deprecated GPU-IO/WebGL2 path is
 retained as a historical comparison. Three.js is the default browser backend.
@@ -45,8 +45,8 @@ seed transfer, solving, and final readback on the GPU.  The older
 ``ICGNWGPU(pyramid_levels=2 or 3)`` selective-recovery mode remains available
 only as an optional exception path: it first runs a fine solve and performs
 CPU-orchestrated recovery for failures.  The current ``(+4, -2)`` UHD campaign
-measured 10.863 ms median / 12.915 ms p95 for the recommended two-level graph
-and 11.354 / 13.172 ms for three levels.  These figures qualify offline
+measured 10.684 ms median / 13.238 ms p95 for the recommended two-level graph
+and 10.891 / 13.161 ms for three levels.  These figures qualify offline
 compute on that pair, not camera-to-consumer latency.
 
 The engineering objective is sustained, measurable DIC processing from Python.
@@ -70,6 +70,7 @@ Choose the section that matches your task:
   and reduction strategies;
 * :doc:`explanation/interpolation` for the selectable B-spline, bilinear, and
   Keys-cubic target reconstruction paths;
+* :doc:`explanation/motion-models` for affine and translation-only solving;
 * :doc:`explanation/shared-kernel` for the common WGSL source and its exact
   host/buffer contract;
 * :doc:`explanation/native-backend` for the direct NumPy-to-WebGPU path and
@@ -81,7 +82,8 @@ Current scope
 -------------
 
 The implementation currently provides a resolution-dependent grid of 16 x 16
-subsets, six affine parameters per subset, selectable B-spline, bilinear, or
+subsets, either six affine parameters or two translation parameters per subset,
+selectable B-spline, bilinear, or
 Keys-cubic target interpolation, ZNCC validation, and median outlier
 replacement. The test dataset is offline;
 camera acquisition and codec integration are deliberately outside the current
@@ -128,6 +130,7 @@ path.
    explanation/backend-selection
    explanation/icgn
    explanation/interpolation
+   explanation/motion-models
    explanation/gpu-optimization
    explanation/shared-kernel
    explanation/native-backend

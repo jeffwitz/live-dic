@@ -220,10 +220,10 @@ Measured effect
 ---------------
 
 On the validation machine, the latest 50-run UHD campaign measured the
-recommended two-level full pyramid at 10.863 ms median and 12.915 ms p95 for
+recommended two-level full pyramid at 10.684 ms median and 13.238 ms p95 for
 the complete Python call. It accepted 31,724 of 32,400 subsets on the difficult
-``(4, -2)`` pair with ``0.001873`` px truth RMSE. Three levels measured 11.354
-ms median and 13.172 ms p95. These boundaries include direct target upload,
+``(4, -2)`` pair with ``0.001873`` px truth RMSE. Three levels measured 10.891
+ms median and 13.161 ms p95. These boundaries include direct target upload,
 GPU pyramid construction and solving, packed result readback, and NumPy result
 construction, but exclude camera acquisition and downstream consumers.
 

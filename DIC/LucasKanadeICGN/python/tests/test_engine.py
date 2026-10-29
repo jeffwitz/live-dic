@@ -260,6 +260,16 @@ class RuntimeAssetTests(unittest.TestCase):
                     iterations_per_level=schedule,
                 )
 
+    def test_browser_motion_model_is_validated_and_forwarded(self) -> None:
+        with self.assertRaisesRegex(ValueError, "motion_model"):
+            ICGNWebGL(motion_model="rigid")
+        with self.assertRaisesRegex(ValueError, "supports only"):
+            ICGNWebGL(backend="gpuio", motion_model="translation")
+
+        engine = ICGNWebGL(backend="three-tsl", motion_model="translation")
+        options = engine._options(iterations=30, tolerance=1e-3, zncc_min=0.8)
+        self.assertEqual(options["motionModel"], "translation")
+
     def test_three_webgl_fallback_is_explicitly_testable(self) -> None:
         engine = ICGNWebGL(backend="three-tsl", force_three_webgl=True)
         self.assertTrue(engine.force_three_webgl)

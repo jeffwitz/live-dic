@@ -115,6 +115,9 @@ fallback separately from its normal WebGPU path.
 Use ``--backend wgpu-native`` for the browser-free complete Python-call path.
 Add ``--native-solver portable`` or ``--native-solver subgroup`` to bypass
 automatic selection during a diagnostic campaign.
+Add ``--motion-model translation`` to compare the displacement-only analytic
+solver with the default affine model. Keep the interpolation, pyramid depth,
+motion, warm-up count, and repetition count identical for an A/B comparison.
 
 To distinguish native sequence throughput from per-result latency, compare
 bounded pipeline depths explicitly:
@@ -141,3 +144,7 @@ This command reports each requested full-pyramid depth on the same exact
 ``(4, -2)`` target. It also records the coarse-to-fine
 iteration schedule, accepted subset count, truth RMSE, and number of queue
 submissions.
+
+Repeat it with ``--motion-model translation`` when the application can assume
+rigid subset motion. Do not compare its zero deformation terms with affine
+strain output; compare displacement, accepted subsets, iterations, and timing.

@@ -74,32 +74,76 @@ Current UHD results
    * - Boundary and translation
      - Current median / p95
      - Current numerical result
-   * - Native full pyramid, 2 levels, ``(4, -2)``
-     - **10.863 / 12.915 ms**
+   * - Native affine full pyramid, 2 levels, ``(4, -2)``
+     - **10.684 / 13.238 ms**
      - 31,724 accepted; 0.001873 px RMSE
-   * - Native full pyramid, 3 levels, ``(4, -2)``
-     - **11.354 / 13.172 ms**
+   * - Native affine full pyramid, 3 levels, ``(4, -2)``
+     - **10.891 / 13.161 ms**
      - 31,734 accepted; 0.001937 px RMSE
-   * - Raw browser WGSL, 2 levels, ``(4, -2)``
-     - **9.277 / 10.681 ms**
+   * - Raw browser WGSL affine, 2 levels, ``(4, -2)``
+     - **8.681 / 11.698 ms**
      - 31,724 accepted; 0.001804 px RMSE
-   * - Three.js TSL subgroup, ``(4, -2)``
-     - **24.300 / 26.627 ms**
+   * - Three.js TSL affine subgroup, ``(4, -2)``
+     - **26.657 / 28.441 ms**
      - 22,401 accepted; 0.096354 px RMSE
-   * - Three.js TSL subgroup, ``(2, -1)``
-     - **11.893 / 12.798 ms**
+   * - Three.js TSL affine subgroup, ``(2, -1)``
+     - **12.568 / 14.552 ms**
      - 31,654 accepted; 0.0000305 px RMSE
 
-The recommended native two-level result corresponds to 92.1 calls/s from the
-median and 77.4 calls/s from p95. The complete-call boundary includes target
+The recommended native two-level result corresponds to 93.6 calls/s from the
+median and 75.5 calls/s from p95. The complete-call boundary includes target
 upload, GPU pyramid construction, all coarse-to-fine solves, packed readback,
 and NumPy result construction. Camera acquisition and downstream consumers are
 excluded.
 
-The raw-browser two-level GPU boundary corresponds to 107.8 frames/s from the
-median. Its synchronized browser wall time was 10.7 ms median and 12.6 ms p95.
-The Three.js nominal browser wall time was 13.5 / 14.7 ms; the difficult
-single-scale pair measured 26.2 / 28.7 ms.
+The raw-browser two-level GPU boundary corresponds to 115.2 frames/s from the
+median. Its synchronized browser wall time was 10.8 ms median and 14.2 ms p95.
+The Three.js nominal browser wall time was 14.3 / 16.0 ms; the difficult
+single-scale pair measured 28.7 / 30.7 ms.
+
+Current translation-only A/B comparison
+---------------------------------------
+
+The same protocol was repeated with ``motion_model="translation"``. The
+translation solver uses an analytic 2 by 2 inverse and omits all four affine
+Jacobian components and update terms. Result arrays retain the six-parameter
+layout, with the deformation components set to zero.
+
+.. list-table:: Affine versus translation-only current kernels
+   :header-rows: 1
+
+   * - Execution boundary
+     - Affine median / p95
+     - Translation median / p95
+     - Median change
+   * - Native one scale, ``(4, -2)``, complete call
+     - 34.683 / 35.766 ms
+     - **14.948 / 17.696 ms**
+     - **-56.9%**
+   * - Native full pyramid, 2 levels, ``(4, -2)``, complete call
+     - 10.684 / 13.238 ms
+     - **10.121 / 12.352 ms**
+     - **-5.3%**
+   * - Raw browser WGSL, 2 levels, ``(4, -2)``, GPU timestamp
+     - **8.681 / 11.698 ms**
+     - 8.777 / 11.099 ms
+     - +1.1%
+   * - Three.js subgroup, one scale, ``(2, -1)``, GPU timestamp
+     - 12.568 / 14.552 ms
+     - **9.087 / 10.560 ms**
+     - **-27.7%**
+
+The gain is largest when IC-GN iterations dominate. Both two-level paths
+average about one iteration per level on this pair; image reduction, B-spline
+prefiltering, upload, readback, and result construction therefore dominate.
+The raw-WGSL median difference is within run-to-run variation and does not show
+a speed-up in this campaign, although its p95 decreased by 5.1%.
+
+Translation mode accepted 30,185 subsets at 0.0000642 px RMSE in the native
+one-scale difficult case, 31,781 at 0.002110 px in the native pyramid, 31,783
+at 0.002141 px in raw WGSL, and the same 31,654 subsets at 0.0000654 px in
+Three.js. These results validate displacement only; the model cannot measure
+strain. See :doc:`../explanation/motion-models`.
 
 Current fractional-interpolation comparison
 -------------------------------------------
@@ -199,8 +243,9 @@ Kernel configuration represented by the results
   readback.
 
 The opt-in GPU tests validate partial FIR tiles, exact integer pyramid
-reduction, fresh seeded state, and selective-retry neighbour preservation. All
-67 tests pass when GPU execution is enabled.
+reduction, fresh seeded state, selective-retry neighbour preservation, and the
+translation-only fractional-displacement contract. All 78 tests pass when GPU
+execution is enabled.
 
 Timing boundaries
 -----------------

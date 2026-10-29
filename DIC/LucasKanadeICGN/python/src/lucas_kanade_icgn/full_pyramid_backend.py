@@ -18,6 +18,7 @@ from typing import Any
 
 from .engine import ICGNError, ImageInput, ReferenceInfo, RegistrationResult, _as_uint8_gray
 from .interpolation import normalize_interpolation
+from .motion import normalize_motion_model
 from .wgpu_backend import ICGNWGPU, _reduce_half, _validated_config
 
 DEFAULT_FULL_PYRAMID_LEVELS = 2
@@ -100,8 +101,10 @@ class ICGNWGPUFullPyramid:
         tolerance_per_level: tuple[float, ...] | None = None,
         power_preference: str = "high-performance",
         interpolation: str = "bspline",
+        motion_model: str = "affine",
     ) -> None:
         self.interpolation = normalize_interpolation(interpolation)
+        self.motion_model = normalize_motion_model(motion_model)
         self.pyramid_levels = _level_count(pyramid_levels)
         iteration_values = _schedule(
             iterations_per_level,
@@ -132,6 +135,7 @@ class ICGNWGPUFullPyramid:
             prefer_subgroups=False,
             pyramid_levels=1,
             interpolation=self.interpolation,
+            motion_model=self.motion_model,
         )
         self._root._ensure_seeded_solver()
         self._wgpu = self._root._wgpu
@@ -412,7 +416,11 @@ class ICGNWGPUFullPyramid:
             reference_build_wall_ms=reference_build_wall_ms,
             encoding_wall_ms=0.0,
             total_wall_ms=total_wall_ms,
-            config={**fine._config, "interpolation": self.interpolation},
+            config={
+                **fine._config,
+                "interpolation": self.interpolation,
+                "motionModel": self.motion_model,
+            },
             device=self.device_name,
             grid=(fine.grid_width, fine.grid_height),
             width=fine.width,

@@ -66,6 +66,9 @@ def _arguments() -> argparse.Namespace:
         action="store_true",
         help="force Three.js to use its WebGL2 compatibility backend",
     )
+    parser.add_argument(
+        "--motion-model", choices=("affine", "translation"), default="affine"
+    )
     args = parser.parse_args()
     if args.pyramid_levels is not None and args.backend != "webgpu-wgsl":
         parser.error("--pyramid-levels requires --backend webgpu-wgsl")
@@ -95,6 +98,7 @@ def _browser_report(
     pyramid_levels: int | None,
     force_three_webgl: bool,
     truth: tuple[int, int],
+    motion_model: str,
 ) -> dict[str, Any]:
     with ICGNWebGL(
         backend=backend,
@@ -102,6 +106,7 @@ def _browser_report(
         force_three_webgl=force_three_webgl,
         startup_timeout=120,
         call_timeout=600,
+        motion_model=motion_model,
     ) as engine:
         preparation = engine.set_reference(reference)
         runtime = engine.info()
@@ -152,8 +157,12 @@ def _native_report(
     *,
     prefer_subgroups: bool | None,
     truth: tuple[int, int],
+    motion_model: str,
 ) -> dict[str, Any]:
-    with ICGNWGPU(prefer_subgroups=prefer_subgroups) as engine:
+    with ICGNWGPU(
+        prefer_subgroups=prefer_subgroups,
+        motion_model=motion_model,
+    ) as engine:
         preparation = engine.set_reference(reference)
         for _ in range(warmups):
             engine.register(target)
@@ -219,6 +228,7 @@ def main() -> int:
                 args.native_solver
             ],
             truth=truth,
+            motion_model=args.motion_model,
         )
     else:
         report = _browser_report(
@@ -230,6 +240,7 @@ def main() -> int:
             args.pyramid_levels,
             args.force_three_webgl,
             truth,
+            args.motion_model,
         )
     print(json.dumps(report, indent=2, allow_nan=False))
     return 0

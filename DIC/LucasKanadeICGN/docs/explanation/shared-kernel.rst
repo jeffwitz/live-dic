@@ -1,8 +1,8 @@
 Shared numerical kernel and adapter contract
 ============================================
 
-The portable WebGPU path follows one rule: the affine IC-GN equations are
-defined once, while each host owns only resource allocation, transfers,
+The portable WebGPU path follows one rule: the IC-GN equations are defined
+once, while each host owns only resource allocation, transfers,
 dispatch, and result conversion. The canonical sources are
 ``lucas_kanade_icgn/shaders/icgn.wgsl`` and ``full_pyramid.wgsl``. Both the raw
 browser WebGPU adapter and wgpu-py load those files without generating or
@@ -12,6 +12,10 @@ translating shader code.
 hosts compile the same solver body into B-spline, bilinear, and Keys-cubic
 pipelines. Only the sampling function is specialized; increment solving,
 inverse composition, convergence, status, and median rules remain single-source.
+The ``MOTION_MODEL`` override similarly specializes the same source for the
+six-parameter affine model or the two-parameter translation model. Pipeline
+specialization removes unused translation-mode branches from the per-subset
+loop.
 
 Three.js remains the default *browser entry point* because its
 subgroup-specialized TSL solver is faster on the validation GPU and it supplies
@@ -80,6 +84,10 @@ Geometry
 * subset centre: ``(8 + 16 gx, 8 + 16 gy)``;
 * local coordinates: ``[-7.5, 7.5]`` on each axis;
 * affine parameter order: ``[tx, du/dx, du/dy, ty, dv/dx, dv/dy]``.
+
+The translation model retains this layout but only indices 0 and 3 are active;
+the other four entries are zero. Its convergence value is the Euclidean norm
+of the translation increment. See :doc:`motion-models`.
 
 The convergence value is the maximum Euclidean displacement caused by the
 increment at the four subset corners. Single-scale engines default to a

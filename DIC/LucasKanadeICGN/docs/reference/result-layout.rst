@@ -41,6 +41,12 @@ The final axis is:
      - ``dv_dy``
      - vertical displacement gradient in y
 
+When an engine is constructed with ``motion_model="translation"``, this public
+layout is unchanged. Indices 1, 2, 4, and 5 are exact zeros by construction;
+only ``tx`` and ``ty`` are estimated. This preserves consumers that read
+``displacement`` or export the full parameter array, but the zero gradients
+must not be interpreted as measured zero strain.
+
 ``RegistrationResult.displacement`` selects indices 0 and 3 and has shape
 ``(grid_height, grid_width, 2)``.
 

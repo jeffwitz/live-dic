@@ -369,6 +369,39 @@ class NativeReferenceTests(unittest.TestCase):
         self.assertTrue(np.isfinite(inverse).all())
         self.assertTrue(np.all(metadata.reshape(-1, 16)[:, 1] == 1.0))
 
+    def test_translation_reference_uses_analytic_two_parameter_inverse(self) -> None:
+        image = np.random.default_rng(20261029).integers(0, 256, size=(32, 48), dtype=np.uint8)
+        reference, inverse, metadata = _reference_arrays(
+            image,
+            motion_model="translation",
+        )
+        gradients = reference.reshape(32, 48, 4)[..., 1:3]
+        inverse_blocks = inverse.reshape(-1, 6, 6)
+        metadata_blocks = metadata.reshape(-1, 16)
+        active = np.array([0, 3])
+        inactive = np.array([1, 2, 4, 5])
+
+        np.testing.assert_array_equal(inverse_blocks[:, inactive, :], 0.0)
+        np.testing.assert_array_equal(inverse_blocks[:, :, inactive], 0.0)
+        np.testing.assert_array_equal(metadata_blocks[:, 2:8][:, inactive], 0.0)
+        np.testing.assert_array_equal(metadata_blocks[:, 8:14][:, inactive], 0.0)
+
+        for grid_y in range(2):
+            for grid_x in range(3):
+                index = grid_y * 3 + grid_x
+                tile = gradients[
+                    grid_y * 16 : (grid_y + 1) * 16,
+                    grid_x * 16 : (grid_x + 1) * 16,
+                ].reshape(-1, 2)
+                hessian = tile.T @ tile
+                analytic_inverse = inverse_blocks[index][np.ix_(active, active)]
+                np.testing.assert_allclose(
+                    hessian @ analytic_inverse,
+                    np.eye(2),
+                    rtol=2e-5,
+                    atol=2e-5,
+                )
+
     def test_reference_interpolation_modes_are_finite_and_distinct(self) -> None:
         random = np.random.default_rng(20261029)
         image = random.integers(0, 256, size=(32, 48), dtype=np.uint8)
@@ -397,6 +430,14 @@ class NativeReferenceTests(unittest.TestCase):
             ICGNWGPU(interpolation="linear", prefer_subgroups=True)
         with self.assertRaisesRegex(ValueError, "interpolation"):
             ICGNWGPUFullPyramid(interpolation="nearest")
+
+    def test_native_motion_model_is_validated_before_gpu_creation(self) -> None:
+        with self.assertRaisesRegex(ValueError, "motion_model"):
+            ICGNWGPU(motion_model="rigid")
+        with self.assertRaisesRegex(ValueError, "motion_model"):
+            ICGNWGPUFullPyramid(motion_model="rigid")
+        with self.assertRaisesRegex(ValueError, "prefer_subgroups"):
+            ICGNWGPU(motion_model="translation", prefer_subgroups=True)
 
     def test_flat_reference_has_finite_rejected_inverse_hessians(self) -> None:
         image = np.full((64, 64), 137, dtype=np.uint8)

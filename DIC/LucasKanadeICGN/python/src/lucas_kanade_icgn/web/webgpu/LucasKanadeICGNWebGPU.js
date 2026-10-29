@@ -45,6 +45,7 @@ const configuration = {
   iterationsPerLevel: [...ITERATION_SCHEDULES[DEFAULT_PYRAMID_LEVELS]],
   tolerancePerLevel: [...TOLERANCE_SCHEDULES[DEFAULT_PYRAMID_LEVELS]],
   interpolation: 'bspline',
+  motionModel: 'affine',
 };
 
 let adapter = null;
@@ -301,7 +302,10 @@ const createRuntime = async (width, height) => {
   const solvers = {};
   const seededSolvers = {};
   for (const [mode, constant] of Object.entries(INTERPOLATION_CONSTANTS)) {
-    const constants = { INTERPOLATION_MODE: constant };
+    const constants = {
+      INTERPOLATION_MODE: constant,
+      MOTION_MODEL: configuration.motionModel === 'translation' ? 1 : 0,
+    };
     solvers[mode] = await pipeline(
       `DIC-RT shared ${mode} affine solver`, 'solve', shaderModule, layout, constants,
     );
@@ -576,6 +580,14 @@ const configure = (options = {}, allowPyramidRebuild = false) => {
       && interpolation !== configuration.interpolation) {
     throw new Error('Changing interpolation requires setReference()');
   }
+  const motionModel = options.motionModel === undefined
+    ? configuration.motionModel : String(options.motionModel).toLowerCase();
+  if (!['affine', 'translation'].includes(motionModel)) {
+    throw new Error("motionModel must be 'affine' or 'translation'");
+  }
+  if (!allowPyramidRebuild && referenceReady && motionModel !== configuration.motionModel) {
+    throw new Error('Changing motionModel requires setReference()');
+  }
   const changedLevels = pyramidLevels !== configuration.pyramidLevels;
   const iterationsPerLevel = options.iterationsPerLevel === undefined
     ? (changedLevels
@@ -602,6 +614,7 @@ const configure = (options = {}, allowPyramidRebuild = false) => {
     iterationsPerLevel,
     tolerancePerLevel,
     interpolation,
+    motionModel,
   };
   next.iterationsPerLevel[pyramidLevels - 1] = next.iterations;
   next.tolerancePerLevel[pyramidLevels - 1] = next.tolerance;
@@ -835,6 +848,7 @@ const setReference = async (dataUrl, options = {}) => {
         height: source.height,
         subsetSize: SUBSET_SIZE,
         interpolation: configuration.interpolation,
+        motionModel: configuration.motionModel,
       });
       device.queue.writeBuffer(level.buffers.reference, 0, prepared.reference);
       device.queue.writeBuffer(level.buffers.inverse, 0, prepared.inverseHessian);
@@ -940,6 +954,7 @@ const info = async () => {
     subgroupWidth: 0,
     pyramidLevels: configuration.pyramidLevels,
     interpolation: configuration.interpolation,
+    motionModel: configuration.motionModel,
     iterationsPerLevel: [...configuration.iterationsPerLevel],
     tolerancePerLevel: [...configuration.tolerancePerLevel],
     solver: configuration.pyramidLevels > 1

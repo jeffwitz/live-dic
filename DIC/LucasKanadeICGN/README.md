@@ -1,4 +1,4 @@
-# Affine IC-GN GPU backends toward 4K60
+# IC-GN GPU backends toward 4K60
 
 > **Foundational acknowledgement — Pierre Margerit.** This work would not exist
 > without [Pierre Margerit's original `tests_gpuio`
@@ -13,7 +13,7 @@
 
 The long-term objective is sustained 3840 x 2160 DIC at 60 FPS over the full
 acquisition-to-result path. The latest recommended two-level native
-full-pyramid campaign measured 10.863 ms median and 12.915 ms p95 for the
+full-pyramid affine campaign measured 10.684 ms median and 13.238 ms p95 for the
 complete Python registration call on the validation machine. Direct upload,
 GPU pyramid construction and solving, packed readback, and NumPy result
 construction are included. Acquisition and downstream work are excluded, so
@@ -41,7 +41,8 @@ camera or an H.264 pipeline.
 
 The implementation retains the main algorithmic choices of the SYCL version:
 
-- one six-parameter affine transformation per subset;
+- one six-parameter affine transformation per subset by default, or an
+  explicitly selected two-parameter translation;
 - reference-image gradients and a reference-dependent Hessian;
 - inverse-compositional warp updates;
 - convergence based on the maximum update at the four subset corners;
@@ -60,7 +61,7 @@ shader accumulates ZNSSD statistics and `J^T g` in one pass before applying the
 inverse-compositional update.
 
 The Three.js backend implements those same operations as TSL storage-buffer
-compute kernels: two target prefilter passes, the six-parameter affine IC-GN
+compute kernels: two target prefilter passes, the selected IC-GN motion model,
 solver, and the final median consistency pass. A startup probe nominates a
 fused subgroup solver sized to the measured hardware subgroup. Reference
 preparation then checks the subgroup width reported by that actual solver
@@ -102,6 +103,17 @@ both prefilter dispatches. Direct modes also prepare the reference from raw
 samples with centered gradients. See
 [`Interpolation modes`](./docs/explanation/interpolation.rst) for equations,
 backend coverage, fractional-displacement checks, and current measurements.
+
+The motion model is also fixed at engine creation. ``motion_model="affine"``
+is the six-parameter default. ``motion_model="translation"`` estimates only
+``tx`` and ``ty`` using an analytic 2 by 2 inverse and specialized GPU kernels;
+the existing six-component result layout is preserved with exact zeros for the
+four deformation terms. Translation mode is available in native wgpu, raw
+browser WGSL, Three.js WebGPU, and its WebGL2 fallback. GPU-IO remains
+affine-only. Use translation for rigid displacement-only work, not strain
+measurement. See
+[`Motion models`](./docs/explanation/motion-models.rst) for the equations,
+backend coverage, and current A/B results.
 
 ## Backend and pyramid policy
 
@@ -166,8 +178,8 @@ levels in one command buffer and performs one final readback. Iterations and
 tolerances are configurable per scale from coarse to fine. Two levels are the
 recommended native default. Three levels remain available explicitly for
 larger expected displacements. After the October 29 FIR tiling optimization,
-a 50-run UHD campaign measured **10.863 ms median /
-12.915 ms p95 (92.1 FPS from the median)** for two levels and **11.354 / 13.172
+a 50-run UHD campaign measured **10.684 ms median /
+13.238 ms p95 (93.6 FPS from the median)** for two levels and **10.891 / 13.161
 ms** for three levels. Both are below the 16.667 ms 60 FPS period on this
 machine; two levels remain the lower-cost default. See the performance
 reference for the exact boundaries, protocol, and caveats.
