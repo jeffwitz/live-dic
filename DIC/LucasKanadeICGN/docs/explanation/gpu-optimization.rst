@@ -229,10 +229,10 @@ production-pipeline validation agrees. ``EngineInfo.subgroup_probe_width``,
 check triggers the fallback. The raw browser adapter deliberately selects the
 portable shared WGSL. Native
 ``ICGNWGPU`` goes one step further: during reference preparation it measures
-the complete portable shared-WGSL and subgroup SPIR-V pipelines on a
+the complete portable and subgroup WGSL pipelines on a
 representative shifted frame, then retains the faster one. This matters
 because subgroup availability is a capability result, not a performance
-guarantee. On the validation Intel driver the native SPIR-V subgroup pipeline
+guarantee. On the validation Intel driver the native WGSL subgroup pipeline
 was slower, while the Three.js WGSL subgroup pipeline remained the browser's
 faster implementation.
 

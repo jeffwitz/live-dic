@@ -124,7 +124,7 @@ Backend coverage
      - yes
      - no
 
-The native specialized SPIR-V subgroup solver is affine-only. Translation and
+The native specialized WGSL subgroup solver is affine-only. Translation and
 quadratic requests use the portable shared-WGSL solver. In Python-supervised
 browser operation, request quadratic mode with ``backend="webgpu-wgsl"``;
 constructing the independent Three.js backend with this model is rejected.

@@ -34,8 +34,6 @@ where = ["src"]
 [tool.setuptools.package-data]
 lucas_kanade_icgn = [
   "py.typed",
-  "shaders/*.comp",
-  "shaders/*.spv",
   "shaders/*.wgsl",
   "web/*.html",
   "web/*.js",

@@ -56,10 +56,10 @@ the optional dependency group:
 .venv-icgn/bin/pip install -e 'DIC/LucasKanadeICGN/python[native]'
 ```
 
-The wheel embeds the Three.js r186 runtime, raw WebGPU adapter, canonical WGSL,
-first-party subgroup GLSL/SPIR-V shaders, and the deprecated GPU-IO runtime.
-The installed runtime therefore needs neither a source checkout, shader
-compiler, nor network access.
+The wheel embeds the Three.js r186 runtime, raw WebGPU adapter, portable and
+subgroup-specialized WGSL shaders, and the deprecated GPU-IO runtime. The
+installed runtime therefore needs neither a source checkout, external shader
+compiler, Rust toolchain, nor network access.
 `repo_root=...` remains available as an explicit development override for a
 backend-specific runtime directory or for a complete `tests_gpuio` checkout.
 
@@ -122,7 +122,7 @@ exact centre pixel. Stride is an integer from 1 through the selected size.
 Independent stride is available in native ``wgpu-py`` and browser
 ``webgpu-wgsl``. Three.js/TSL, WebGL2, and GPU-IO use widths 8, 16, or 32 and
 require stride equal to size. Any native size or stride other than 16 uses the
-portable WGSL solver because the optional subgroup SPIR-V binary is specialized
+portable WGSL solver because the optional subgroup WGSL source is specialized
 for 16 x 16.
 
 Native engines can use a centred Gaussian integration window:
@@ -336,7 +336,9 @@ result schema and parameter order are identical to `ICGNWebGL`. This backend
 is experimental and must be selected explicitly. At reference preparation,
 the default `prefer_subgroups=None` policy times both available native solvers
 and retains the faster one. Use `prefer_subgroups=False` to force portable
-WGSL or `prefer_subgroups=True` to force SPIR-V subgroup reductions.
+WGSL or `prefer_subgroups=True` to force WGSL subgroup reductions. The native
+probe requests wgpu-py's `subgroup` feature and executes a vector reduction
+before the specialized solver is made available.
 
 For a sustained sequence, keep two frames bounded in flight so Python can
 retire one packed readback while the GPU processes the next target:

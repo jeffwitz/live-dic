@@ -159,7 +159,7 @@ Odd subset widths are available in native wgpu and the raw browser
 native engines; browser engines retain uniform integration. Three.js/TSL,
 WebGL2, and GPU-IO remain limited to widths 8, 16, and 32.
 
-The specialized native GLSL/SPIR-V subgroup solver requires both size and
+The specialized native WGSL subgroup solver requires both size and
 stride to be 16. Other configurations select the portable shared-WGSL solver.
 
 Choosing size and stride

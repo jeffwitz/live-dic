@@ -61,7 +61,7 @@ Backend coverage
      - Shared WGSL portable solver
      - Shared WGSL portable solver, FIR dispatches omitted
    * - Native ``ICGNWGPU``
-     - Portable or validated SPIR-V subgroup solver
+     - Portable or validated WGSL subgroup solver
      - Portable WGSL solver, FIR dispatches omitted
    * - Raw browser ``webgpu-wgsl``
      - Shared WGSL
@@ -76,7 +76,7 @@ Backend coverage
      - Supported for historical reproduction
      - Not supported
 
-The native SPIR-V subgroup binary encodes the historical coefficient sampler.
+The native specialized WGSL source encodes the historical coefficient sampler.
 Consequently ``ICGNWGPU(interpolation="linear")`` and ``"cubic"`` deliberately
 select the shared portable WGSL solver. The full-pyramid engine already uses
 that portable seeded solver at every level.

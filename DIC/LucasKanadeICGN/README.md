@@ -201,11 +201,11 @@ The native ``ICGNWGPU`` host submits vectorized WGSL kernels in-process through
 wgpu-native. A contiguous NumPy ``uint8`` frame is uploaded directly to an
 ``r8unorm`` texture and one packed state buffer is read back. At reference
 preparation it benchmarks the portable workgroup solver against an optional
-SPIR-V subgroup solver and retains the faster path for the current adapter.
+WGSL subgroup solver and retains the faster valid path for the current adapter.
 This removes PNG, Chromium, DevTools, JSON, and JavaScript-array conversions. The
-``native/`` Rust wgpu/PyO3 crate already qualifies adapter creation, shared
-shader compilation, and the same direct texture-upload boundary; full solver
-orchestration remains in wgpu-py for this milestone.
+portable and specialized shaders are compiled directly by the wgpu-native
+library shipped in the wgpu-py wheel. The project contains no PyO3 extension or
+GLSL-to-SPIR-V build chain and needs no Cargo, Maturin, `glslc`, or Vulkan SDK.
 
 For sustained native sequences, both native engines expose
 ``register_stream`` with a bounded ring of independent mutable resources. For
@@ -351,9 +351,9 @@ the axis-oriented FIR tiles, the 16-lane portable WGSL reduction, the
 hardware-width Three.js subgroup reduction, and the fused one-fragment-per-
 subset WebGL2 strategy with execution diagrams.
 
-[`Native WebGPU and PyO3`](./docs/explanation/native-backend.rst) explains the
-direct NumPy transfer path, shared WGSL layout, current measurements, and the
-remaining Rust migration work.
+[`Native WebGPU with wgpu-py`](./docs/explanation/native-backend.rst) explains
+the direct NumPy transfer path, WGSL subgroup qualification, solver selection,
+and current measurements.
 
 [`Shared kernel and adapter contract`](./docs/explanation/shared-kernel.rst)
 defines the canonical WGSL functions, buffer bindings, parameter order, status

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 import unittest
 from importlib.resources import files
 from inspect import signature
@@ -12,6 +13,7 @@ from lucas_kanade_icgn import (
     DEFAULT_FULL_PYRAMID_LEVELS,
     DEFAULT_IN_FLIGHT_FRAMES,
     DEFAULT_PYRAMID_LEVELS,
+    ICGNError,
     ICGNWGPUFullPyramid,
     RegistrationResult,
 )
@@ -36,11 +38,40 @@ from lucas_kanade_icgn.wgpu_backend import (
     _reduce_half,
     _reference_arrays,
     _transfer_pyramid_seed,
+    _validate_subgroup_probe,
     _validated_config,
 )
 
 
 class NativeReferenceTests(unittest.TestCase):
+    def test_subgroup_probe_validates_width_and_vector_reduction(self) -> None:
+        values = np.zeros((16, 4), dtype=np.float32)
+        values[0] = (16.0, 136.0, 16.0, 1496.0)
+
+        self.assertEqual(_validate_subgroup_probe(values), 16)
+
+        values[0, 3] += 1.0
+        with self.assertRaisesRegex(ICGNError, "vector reduction"):
+            _validate_subgroup_probe(values)
+
+    def test_forced_subgroups_fail_explicitly_when_feature_is_unavailable(self) -> None:
+        adapter = SimpleNamespace(
+            info={
+                "backend_type": "Vulkan",
+                "adapter_type": "IntegratedGPU",
+                "device": "featureless test adapter",
+            },
+            features=set(),
+        )
+        fake_wgpu = SimpleNamespace(
+            gpu=SimpleNamespace(enumerate_adapters_sync=lambda: [adapter]),
+        )
+        with (
+            mock.patch.dict(sys.modules, {"wgpu": fake_wgpu}),
+            self.assertRaisesRegex(ICGNError, "does not advertise.*'subgroup'"),
+        ):
+            ICGNWGPU(prefer_subgroups=True)
+
     def test_outlier_policy_is_normalized_and_validated_before_gpu_creation(self) -> None:
         self.assertEqual(normalize_outlier_policy(" Replace "), "replace")
         self.assertEqual(normalize_outlier_policy("FLAG"), "flag")
@@ -463,9 +494,8 @@ class NativeReferenceTests(unittest.TestCase):
 
     def test_shader_is_packaged_as_a_runtime_resource(self) -> None:
         shader = files("lucas_kanade_icgn").joinpath("shaders/icgn.wgsl")
-        subgroup_source = files("lucas_kanade_icgn").joinpath("shaders/icgn_subgroup.comp")
-        subgroup_binary = files("lucas_kanade_icgn").joinpath("shaders/icgn_subgroup.spv")
-        probe_binary = files("lucas_kanade_icgn").joinpath("shaders/subgroup_probe.spv")
+        subgroup_source = files("lucas_kanade_icgn").joinpath("shaders/icgn_subgroup.wgsl")
+        probe_source = files("lucas_kanade_icgn").joinpath("shaders/subgroup_probe.wgsl")
         pyramid_shader = files("lucas_kanade_icgn").joinpath("shaders/full_pyramid.wgsl")
         shader_text = shader.read_text(encoding="utf-8")
         self.assertIn("fn solve", shader_text)
@@ -485,8 +515,14 @@ class NativeReferenceTests(unittest.TestCase):
             self.assertIn(f"fn {helper}", shader_text)
         self.assertIn("workgroupUniformLoad", shader_text)
         self.assertIn("subgroupAdd", subgroup_source.read_text(encoding="utf-8"))
-        self.assertEqual(subgroup_binary.read_bytes()[:4], b"\x03\x02#\x07")
-        self.assertEqual(probe_binary.read_bytes()[:4], b"\x03\x02#\x07")
+        self.assertIn("subgroupAdd", probe_source.read_text(encoding="utf-8"))
+        for retired_name in (
+            "icgn_subgroup.comp",
+            "icgn_subgroup.spv",
+            "subgroup_probe.comp",
+            "subgroup_probe.spv",
+        ):
+            self.assertFalse(files("lucas_kanade_icgn").joinpath("shaders", retired_name).is_file())
         pyramid_text = pyramid_shader.read_text(encoding="utf-8")
         for entry_point in ("reduce_x", "reduce_y", "transfer_seed"):
             self.assertIn(f"fn {entry_point}", pyramid_text)

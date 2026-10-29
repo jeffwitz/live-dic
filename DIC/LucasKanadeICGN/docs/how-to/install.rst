@@ -140,8 +140,8 @@ Python version as the offline machine, build a local wheelhouse:
        --wheel-dir wheelhouse
 
 This downloads wheels for NumPy, Pillow, websockets, and wgpu-py and builds the
-IC-GN wheel with its HTML, JavaScript, WGSL, GLSL, and SPIR-V resources. The wgpu-py wheel
-contains its wgpu-native runtime. Copy ``wheelhouse/`` to the offline machine,
+IC-GN wheel with its HTML, JavaScript, and WGSL resources. The wgpu-py wheel
+contains its prebuilt wgpu-native runtime. Copy ``wheelhouse/`` to the offline machine,
 where Chromium is needed only for browser backends, then run:
 
 .. code-block:: console
@@ -153,22 +153,11 @@ where Chromium is needed only for browser backends, then run:
 
 No CDN or package index is contacted during subsequent registrations.
 
-Build the experimental PyO3 module for offline deployment
-----------------------------------------------------------
-
-On a connected build machine with the same operating system, architecture,
-and Python ABI as the offline target, install Rust and Maturin, then build the
-extension wheel:
-
-.. code-block:: console
-
-   $ maturin build --release \
-       --manifest-path DIC/LucasKanadeICGN/native/Cargo.toml \
-       --out wheelhouse
-
-Copy the resulting ``dic_rt_wgpu_native`` wheel with the wheelhouse and install
-it with ``pip --no-index``. The offline target does not need Cargo, the Rust
-toolchain, or source access once that wheel has been built.
+No Rust toolchain, Cargo, Maturin, ``glslc``, shader compiler, or Vulkan SDK is
+required for the DIC-RT package. Subgroup shaders are WGSL sources compiled by
+the wgpu-native library that is already part of the platform-specific wgpu-py
+wheel. As with every GPU application, an appropriate system GPU driver remains
+required.
 
 Select a browser explicitly
 ---------------------------

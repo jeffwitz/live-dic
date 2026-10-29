@@ -1,5 +1,5 @@
-Native WebGPU and PyO3 path
-============================
+Native WebGPU with wgpu-py
+==========================
 
 Why a native path exists
 ------------------------
@@ -15,7 +15,7 @@ boundaries: NumPy, a binary loopback response, a Chromium ``Uint8Array``, and
 finally a GPU resource. The binary browser path no longer encodes each target
 as PNG or carries the field through DevTools/JSON, but the inter-process copies
 remain. ``ICGNWGPU`` removes that browser transport. It uses `wgpu-py
-<https://wgpu-py.readthedocs.io/>`_ to submit the project's WGSL and SPIR-V
+<https://wgpu-py.readthedocs.io/>`_ to compile and submit the project's WGSL
 kernels directly through wgpu-native.
 
 The native data path is:
@@ -72,19 +72,32 @@ buffers use aligned ``vec4`` records. All iterations remain fused in one
 dispatch. Raw browser WebGPU loads this same source; see
 :doc:`shared-kernel` for the binding contract.
 
-An optional first-party GLSL solver performs the same reductions with subgroup
-collectives. It is compiled to SPIR-V at build time because the Naga frontend
-bundled with wgpu-py 0.32 cannot parse the WGSL subgroup extension. Both the
-GLSL source and generated SPIR-V are included in the wheel; no shader compiler
-or network access is needed at runtime. This binary is specialized for 16 x
-16 with a 16-pixel stride; other sizes or strides use the portable WGSL solver.
+An optional first-party WGSL solver performs the same reductions with subgroup
+collectives. ``wgpu-py`` 0.32 exposes the native capability as ``subgroup``.
+The backend requests that feature when the configuration and selection policy
+allow it, then compiles and executes a small WGSL qualification probe. The
+probe verifies both the reported width and a vector ``subgroupAdd`` result
+before the complete specialized solver can be constructed.
+
+The native Naga frontend accepts the subgroup built-ins and operations without
+the browser-side ``enable subgroups;`` directive. The two native-only WGSL
+files therefore omit that directive explicitly; no general source rewriting
+is performed. They are compiled by the wgpu-native library already contained
+in the wgpu-py wheel. Cargo, Maturin, ``glslc``, a Vulkan SDK, and network
+access are not needed to build, install, import, or execute DIC-RT.
+
+The specialized source is limited to affine motion, B-spline interpolation,
+uniform integration, 16 x 16 subsets, and a 16-pixel stride. Other
+configurations remain independent of subgroup support and use the portable
+WGSL solver.
 
 By default, ``set_reference`` benchmarks both valid solver pipelines on a
 representative shifted frame and retains the faster one. This tuning belongs
 to preparation, not the per-target loop. Pass ``prefer_subgroups=False`` to
 force the portable path or ``prefer_subgroups=True`` to force the subgroup
 path for qualification. On the validation Intel driver, native subgroup
-collectives were slower, so automatic selection correctly retained WGSL.
+collectives were slower, so automatic selection correctly retained the
+portable workgroup pipeline.
 ``prefer_subgroups=True`` therefore requires both ``subset_size=16`` and
 ``subset_stride=16``.
 
@@ -235,25 +248,6 @@ the time for which the host blocks when retiring that slot; work may already
 have executed while earlier results were being retired, so it is not a GPU
 kernel duration.
 
-Rust/PyO3 milestone
--------------------
-
-``native/`` contains a second host implementation built with `Rust wgpu
-<https://docs.rs/wgpu/>`_, `PyO3 <https://pyo3.rs/>`_, and Maturin. It already:
-
-* creates and retains a native adapter, device, and queue;
-* embeds and validates the portable WGSL source used by ``ICGNWGPU``;
-* borrows a contiguous NumPy ``uint8`` array without an intermediate Python
-  byte string;
-* uploads it to an ``r8unorm`` texture; and
-* reports queue-write and synchronized upload boundaries separately.
-
-The full IC-GN host orchestration still lives in ``ICGNWGPU``. The Rust module
-is deliberately a measured integration milestone, not a second incomplete
-solver. The next Rust step is to move the already-qualified allocation,
-dispatch, and packed readback sequence behind the same Python result contract,
-without forking the WGSL kernels.
-
 Measured effect
 ---------------
 
@@ -270,9 +264,29 @@ Camera acquisition and downstream consumers remain excluded.
 See :doc:`../reference/performance` for the current timing boundaries,
 reproduction commands, and browser comparison.
 
-The PyO3 upload probe does not yet demonstrate an advantage in a complete
-solver. Its value at this stage is architectural: the Rust boundary is
-working, offline-buildable, and shares the validated shader. Publish a Rust
-performance claim only after complete solver orchestration is implemented and
-rerun against the same current workload and timing boundary.
+The subgroup migration was qualified separately on the same Intel Arc 130V.
+On the 512 x 512 affine fixture with 8 warmups and 50 registrations, portable
+WGSL measured 1.475 ms median and 2.191 ms p95; subgroup WGSL measured 1.583 ms
+median and 1.995 ms p95. Both accepted 900 subsets and reported a displacement
+RMSE below ``2.7e-5`` pixel. The automatic policy retained the portable solver
+because its median was lower. These figures qualify selection on this adapter;
+they do not predict subgroup performance on another GPU.
+
+The retired SPIR-V specialization was not used as a numerical performance
+reference. On the starting commit its two-dimensional host dispatch was
+flattened with only ``gl_WorkGroupID.x`` in the shader: on a 128 x 128 check it
+accepted 0 subsets while the portable solver accepted 36. The automatic policy
+therefore rejected it, as designed. The new WGSL specialization corrected that
+indexing during the port and matched all 36 portable results, with a parameter
+RMSE of ``1.5e-7`` and a maximum absolute difference of ``8.4e-7``.
+
+The recommended full-pyramid path does not request or load subgroup support.
+A paired UHD image-to-field check with the same command, data, 3 warmups,
+12 frames, and 3 campaigns measured 18.317 ms median on the starting commit
+and 18.598 ms after the migration. The individual campaign medians ranged from
+16.533 to 18.832 ms on the starting commit and from 18.356 to 18.837 ms after
+the migration. A preceding paired run measured 17.462 and 17.469 ms. These
+overlapping results show no reproducible migration regression, but they also
+show that the machine's current power or thermal state prevents using this
+short run as a new absolute 60 FPS qualification.
 

@@ -19,6 +19,7 @@ from lucas_kanade_icgn import ICGNWGPU, ICGNWGPUFullPyramid
 from lucas_kanade_icgn.wgpu_backend import (
     FIR_RADIUS,
     FIR_RUNTIME_RADIUS,
+    _compare_solver_outputs,
     _fir_weights,
     _reduce_half,
 )
@@ -288,6 +289,70 @@ class GPURegressionTests(unittest.TestCase):
                 finally:
                     engine.close()
                     engine.device.destroy()
+
+    def test_native_wgsl_subgroup_solver_matches_portable_solver(self) -> None:
+        truth = (0.5, -0.375)
+        reference, target = _fractional_pair(256, 256, truth)
+        portable = ICGNWGPU(prefer_subgroups=False, outlier_policy="disabled")
+        specialized = None
+        try:
+            if "subgroup" not in portable.adapter.features:
+                with self.assertRaisesRegex(Exception, "subgroup"):
+                    ICGNWGPU(prefer_subgroups=True, outlier_policy="disabled")
+                return
+
+            specialized = ICGNWGPU(prefer_subgroups=True, outlier_policy="disabled")
+            portable.set_reference(reference)
+            specialized.set_reference(reference)
+            portable_result = portable.register(target)
+            specialized_result = specialized.register(target)
+
+            self.assertGreaterEqual(specialized.subgroup_width, 16)
+            self.assertEqual(specialized.solver, "subgroup")
+            self.assertTrue(specialized.solver_validation["subgroup"]["valid"])
+            portable_raw = np.concatenate(
+                (
+                    portable_result.parameters,
+                    portable_result.status[..., np.newaxis],
+                    portable_result.iterations[..., np.newaxis],
+                ),
+                axis=2,
+            )
+            specialized_raw = np.concatenate(
+                (
+                    specialized_result.parameters,
+                    specialized_result.status[..., np.newaxis],
+                    specialized_result.iterations[..., np.newaxis],
+                ),
+                axis=2,
+            )
+            diagnostics = _compare_solver_outputs(
+                portable_raw,
+                specialized_raw,
+                grid_count=portable_result.status.size,
+            )
+            self.assertTrue(diagnostics["valid"], diagnostics)
+            self.assertLess(specialized_result.rmse(truth), 0.03)
+        finally:
+            portable.close()
+            portable.device.destroy()
+            if specialized is not None:
+                specialized.close()
+                specialized.device.destroy()
+
+    def test_native_subgroup_module_is_not_loaded_for_portable_configuration(self) -> None:
+        engine = ICGNWGPU(
+            interpolation="linear",
+            prefer_subgroups=None,
+            outlier_policy="disabled",
+        )
+        try:
+            self.assertEqual(engine.subgroup_width, 0)
+            self.assertIsNone(engine._subgroup_solver)
+            self.assertEqual(engine.solver, "portable-workgroup")
+        finally:
+            engine.close()
+            engine.device.destroy()
 
     def test_tuned_full_pyramid_defaults_recover_fractional_translation(self) -> None:
         truth = (0.5, -0.375)

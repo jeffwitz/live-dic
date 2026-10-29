@@ -104,9 +104,8 @@ Runtime
 * The native backend includes portable and subgroup solvers, but subgroup
   support does not imply higher performance. Reference preparation benchmarks
   both and selects the faster valid pipeline for the current adapter.
-* The PyO3 module currently qualifies adapter creation, shared-shader
-  compilation, and direct texture upload. Full solver orchestration still
-  lives in the wgpu-py host.
+  The specialized WGSL path is limited to affine B-spline solving with uniform
+  weighting, size 16, and stride 16.
 * Current timing is soft real-time and provides no operating-system deadline
   guarantee.
 

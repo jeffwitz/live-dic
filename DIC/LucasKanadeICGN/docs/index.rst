@@ -113,7 +113,7 @@ Choose the section that matches your task:
 * :doc:`explanation/shared-kernel` for the common WGSL source and its exact
   host/buffer contract;
 * :doc:`explanation/native-backend` for the direct NumPy-to-WebGPU path and
-  the Rust/PyO3 milestone;
+  native WGSL subgroup qualification;
 * :doc:`explanation/realtime-performance` to understand what "real time" means
   for this pipeline.
 

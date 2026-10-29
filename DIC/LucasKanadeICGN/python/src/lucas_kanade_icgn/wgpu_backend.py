@@ -75,6 +75,57 @@ class _PendingRegistration:
     frame: npt.NDArray[np.uint8]
 
 
+def _validate_subgroup_probe(raw: Any, *, workgroup_size: int = 16) -> int:
+    """Validate subgroup width and vector reduction results from the WGSL probe."""
+
+    values = np.frombuffer(raw, dtype=np.float32)
+    expected_values = workgroup_size * 4
+    if values.size != expected_values:
+        raise ICGNError(
+            f"The subgroup probe returned {values.size} floats; expected {expected_values}."
+        )
+    rows = values.reshape(workgroup_size, 4)
+    populated = rows[rows[:, 1] > 0.0]
+    if populated.size == 0:
+        raise ICGNError("The subgroup probe did not report any active subgroup.")
+
+    widths = np.rint(populated[:, 0]).astype(np.int64)
+    subgroup_width = int(widths[0])
+    if subgroup_width <= 0 or np.any(widths != subgroup_width):
+        raise ICGNError("The subgroup probe reported inconsistent subgroup widths.")
+
+    expected_subgroups = (workgroup_size + subgroup_width - 1) // subgroup_width
+    if populated.shape[0] != expected_subgroups:
+        raise ICGNError(
+            "The subgroup probe reported an unexpected number of active subgroups "
+            f"({populated.shape[0]} instead of {expected_subgroups})."
+        )
+
+    for subgroup_index, row in enumerate(populated):
+        first_lane = subgroup_index * subgroup_width
+        active_lanes = min(subgroup_width, workgroup_size - first_lane)
+        lane_values = np.arange(
+            first_lane + 1,
+            first_lane + active_lanes + 1,
+            dtype=np.float32,
+        )
+        expected = np.asarray(
+            (
+                float(np.sum(lane_values, dtype=np.float32)),
+                float(active_lanes),
+                float(np.sum(np.square(lane_values), dtype=np.float32)),
+            ),
+            dtype=np.float32,
+        )
+        if not np.allclose(row[1:], expected, rtol=1e-6, atol=1e-6):
+            raise ICGNError(
+                "The subgroup vector reduction returned an unexpected result "
+                f"for subgroup {subgroup_index}: {row[1:].tolist()} instead of "
+                f"{expected.tolist()}."
+            )
+    return subgroup_width
+
+
 def _compare_solver_outputs(
     portable_raw: Any,
     candidate_raw: Any,
@@ -659,7 +710,7 @@ class ICGNWGPU:
     historical default. ``subset_size`` also supports centred odd widths 15,
     17, 31, and 33; ``subset_stride`` independently selects the field spacing.
     ``spatial_weighting="gaussian"`` applies centred Gaussian integration with
-    ``gaussian_sigma`` expressed in pixels. The subgroup SPIR-V path requires
+    ``gaussian_sigma`` expressed in pixels. The subgroup WGSL path requires
     size and stride 16 plus uniform integration.
     """
 
@@ -689,6 +740,13 @@ class ICGNWGPU:
         self.gaussian_sigma = normalize_gaussian_sigma(
             gaussian_sigma,
             subset_size=self.subset_size,
+        )
+        subgroup_configuration_supported = (
+            self.interpolation == "bspline"
+            and self.motion_model == "affine"
+            and self.spatial_weighting == "uniform"
+            and self.subset_size == DEFAULT_SUBSET_SIZE
+            and self.subset_stride == DEFAULT_SUBSET_SIZE
         )
         if prefer_subgroups is True and (
             self.subset_size != DEFAULT_SUBSET_SIZE or self.subset_stride != DEFAULT_SUBSET_SIZE
@@ -729,15 +787,17 @@ class ICGNWGPU:
             adapter = candidates[0]
         if adapter is None:
             raise ICGNError("wgpu-native could not find a compatible GPU adapter.")
+        if prefer_subgroups is True and "subgroup" not in adapter.features:
+            raise ICGNError(
+                "The subgroup solver was requested, but the adapter does not advertise "
+                "wgpu-native's required 'subgroup' feature."
+            )
 
         self._wgpu = wgpu
         self.adapter = adapter
         required_features = []
         if (
-            self.motion_model == "affine"
-            and self.spatial_weighting == "uniform"
-            and self.subset_size == DEFAULT_SUBSET_SIZE
-            and self.subset_stride == DEFAULT_SUBSET_SIZE
+            subgroup_configuration_supported
             and prefer_subgroups is not False
             and "subgroup" in adapter.features
         ):
@@ -757,9 +817,18 @@ class ICGNWGPU:
             required_features.clear()
             self.device = adapter.request_device_sync(label="DIC-RT native WebGPU")
         self.device_name = f"wgpu-native {adapter.info['backend_type']} ({adapter.info['device']})"
-        self.subgroup_width = (
-            self._measure_subgroup_width() if "subgroup" in self.device.features else 0
-        )
+        self.subgroup_probe_error = ""
+        self.subgroup_width = 0
+        if "subgroup" in self.device.features:
+            try:
+                self.subgroup_width = self._measure_subgroup_width()
+            except Exception as error:
+                self.subgroup_probe_error = f"{type(error).__name__}: {error}"
+                if prefer_subgroups is True:
+                    raise ICGNError(
+                        "The subgroup solver was requested, but its WGSL qualification "
+                        f"probe failed: {self.subgroup_probe_error}"
+                    ) from error
         self._solver_preference = prefer_subgroups
         self.solver_tuning_ms: dict[str, float] = {}
         self.solver_validation: dict[str, dict[str, bool | float | int | str]] = {}
@@ -768,18 +837,20 @@ class ICGNWGPU:
         shader = self.device.create_shader_module(code=shader_source)
         self._shader = shader
         subgroup_shader = None
-        if (
-            self.subset_size == DEFAULT_SUBSET_SIZE
-            and self.subset_stride == DEFAULT_SUBSET_SIZE
-            and self.subgroup_width >= DEFAULT_SUBSET_SIZE
-            and self.motion_model == "affine"
-            and self.spatial_weighting == "uniform"
-        ):
-            subgroup_path = files("lucas_kanade_icgn").joinpath("shaders/icgn_subgroup.spv")
-            subgroup_shader = self.device.create_shader_module(
-                label="DIC-RT subgroup compute solver",
-                code=subgroup_path.read_bytes(),
-            )
+        if subgroup_configuration_supported and self.subgroup_width >= DEFAULT_SUBSET_SIZE:
+            subgroup_path = files("lucas_kanade_icgn").joinpath("shaders/icgn_subgroup.wgsl")
+            try:
+                subgroup_shader = self.device.create_shader_module(
+                    label="DIC-RT WGSL subgroup compute solver",
+                    code=subgroup_path.read_text(encoding="utf-8"),
+                )
+            except Exception as error:
+                self.subgroup_probe_error = (
+                    "The subgroup probe passed, but the specialized WGSL module failed: "
+                    f"{type(error).__name__}: {error}"
+                )
+                if prefer_subgroups is True:
+                    raise ICGNError(self.subgroup_probe_error) from error
         self._bind_group_layout = self._create_bind_group_layout()
         pipeline_layout = self.device.create_pipeline_layout(
             bind_group_layouts=[self._bind_group_layout]
@@ -823,10 +894,18 @@ class ICGNWGPU:
         )
         self._subgroup_solver = None
         if subgroup_shader is not None:
-            self._subgroup_solver = self.device.create_compute_pipeline(
-                layout=pipeline_layout,
-                compute={"module": subgroup_shader, "entry_point": "main"},
-            )
+            try:
+                self._subgroup_solver = self.device.create_compute_pipeline(
+                    layout=pipeline_layout,
+                    compute={"module": subgroup_shader, "entry_point": "main"},
+                )
+            except Exception as error:
+                self.subgroup_probe_error = (
+                    "The subgroup probe passed, but the specialized WGSL pipeline failed: "
+                    f"{type(error).__name__}: {error}"
+                )
+                if prefer_subgroups is True:
+                    raise ICGNError(self.subgroup_probe_error) from error
         if prefer_subgroups is True and self._subgroup_solver is None:
             raise ICGNError("The subgroup solver was requested but is unavailable on this adapter.")
         if prefer_subgroups is True and self._subgroup_solver is not None:
@@ -955,55 +1034,54 @@ class ICGNWGPU:
         return pipeline
 
     def _measure_subgroup_width(self) -> int:
-        """Return the hardware subgroup width for a 16-lane workgroup."""
+        """Compile and execute the native WGSL subgroup qualification probe."""
 
         wgpu = self._wgpu
-        try:
-            probe_path = files("lucas_kanade_icgn").joinpath("shaders/subgroup_probe.spv")
-            shader = self.device.create_shader_module(
-                label="DIC-RT subgroup width compute probe",
-                code=probe_path.read_bytes(),
-            )
-            bind_group_layout = self.device.create_bind_group_layout(
-                entries=[
-                    {
-                        "binding": 0,
-                        "visibility": wgpu.ShaderStage.COMPUTE,
-                        "buffer": {"type": wgpu.BufferBindingType.storage},
-                    }
-                ]
-            )
-            pipeline_layout = self.device.create_pipeline_layout(
-                bind_group_layouts=[bind_group_layout]
-            )
-            pipeline = self.device.create_compute_pipeline(
-                layout=pipeline_layout,
-                compute={"module": shader, "entry_point": "main"},
-            )
-            output = self.device.create_buffer(
-                size=4,
-                usage=wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_SRC,
-            )
-            bind_group = self.device.create_bind_group(
-                layout=bind_group_layout,
-                entries=[
-                    {
-                        "binding": 0,
-                        "resource": {"buffer": output, "offset": 0, "size": 4},
-                    }
-                ],
-            )
-            encoder = self.device.create_command_encoder(label="DIC-RT subgroup probe")
-            compute_pass = encoder.begin_compute_pass()
-            compute_pass.set_pipeline(pipeline)
-            compute_pass.set_bind_group(0, bind_group)
-            compute_pass.dispatch_workgroups(1, 1, 1)
-            compute_pass.end()
-            self.device.queue.submit([encoder.finish()])
-            raw = self.device.queue.read_buffer(output)
-            return int(struct.unpack_from("<I", raw)[0])
-        except Exception:
-            return 0
+        probe_path = files("lucas_kanade_icgn").joinpath("shaders/subgroup_probe.wgsl")
+        shader = self.device.create_shader_module(
+            label="DIC-RT WGSL subgroup qualification probe",
+            code=probe_path.read_text(encoding="utf-8"),
+        )
+        bind_group_layout = self.device.create_bind_group_layout(
+            entries=[
+                {
+                    "binding": 0,
+                    "visibility": wgpu.ShaderStage.COMPUTE,
+                    "buffer": {"type": wgpu.BufferBindingType.storage},
+                }
+            ]
+        )
+        pipeline_layout = self.device.create_pipeline_layout(bind_group_layouts=[bind_group_layout])
+        pipeline = self.device.create_compute_pipeline(
+            layout=pipeline_layout,
+            compute={"module": shader, "entry_point": "main"},
+        )
+        output_size = 16 * 16
+        output = self.device.create_buffer(
+            size=output_size,
+            usage=(
+                wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_SRC | wgpu.BufferUsage.COPY_DST
+            ),
+        )
+        bind_group = self.device.create_bind_group(
+            layout=bind_group_layout,
+            entries=[
+                {
+                    "binding": 0,
+                    "resource": {"buffer": output, "offset": 0, "size": output_size},
+                }
+            ],
+        )
+        encoder = self.device.create_command_encoder(label="DIC-RT subgroup probe")
+        encoder.clear_buffer(output)
+        compute_pass = encoder.begin_compute_pass()
+        compute_pass.set_pipeline(pipeline)
+        compute_pass.set_bind_group(0, bind_group)
+        compute_pass.dispatch_workgroups(1, 1, 1)
+        compute_pass.end()
+        self.device.queue.submit([encoder.finish()])
+        raw = self.device.queue.read_buffer(output)
+        return _validate_subgroup_probe(raw)
 
     def _create_bind_group_layout(self, *, seeded: bool = False) -> Any:
         wgpu = self._wgpu
@@ -1706,7 +1784,7 @@ class ICGNWGPU:
     def _autotune_solver(self, reference: npt.NDArray[np.uint8]) -> None:
         """Select the fastest valid solver on a representative shifted frame."""
 
-        if self._solver_preference is not None or self._subgroup_solver is None:
+        if self._solver_preference is False or self._subgroup_solver is None:
             return
         target = np.ascontiguousarray(np.roll(reference, shift=(-1, 2), axis=(0, 1)))
         self.device.queue.write_texture(
@@ -1738,6 +1816,16 @@ class ICGNWGPU:
         }
         if "portable-workgroup" not in candidates:
             raise ICGNError("The portable solver failed its autotuning validation frame.")
+        if self._solver_preference is True:
+            if "subgroup" not in candidates:
+                diagnostics = self.solver_validation["subgroup"]
+                raise ICGNError(
+                    "The forced subgroup solver failed comparison with the portable "
+                    f"solver: {diagnostics['reason']}."
+                )
+            self.solver = "subgroup"
+            self._solver = self._subgroup_solver
+            return
         samples: dict[str, list[float]] = {name: [] for name in candidates}
         names = tuple(candidates)
         for repetition in range(3):
