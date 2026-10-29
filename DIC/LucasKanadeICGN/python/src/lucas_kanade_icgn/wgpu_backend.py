@@ -206,6 +206,20 @@ def _compare_solver_outputs(
     return diagnostics
 
 
+def _solver_execution_failure(error: Exception) -> dict[str, bool | float | int | str]:
+    """Return an autotuning diagnostic for a candidate-local execution error."""
+
+    return {
+        "valid": False,
+        "reason": f"execution failed: {type(error).__name__}: {error}",
+        "accepted_portable": 0,
+        "accepted_candidate": 0,
+        "accepted_mismatch": 0,
+        "parameter_rmse": float("inf"),
+        "parameter_max_abs": float("inf"),
+    }
+
+
 def _reduce_half(image: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
     """Apply the SYSCL five-tap reduction and retain every second sample."""
 
@@ -1797,18 +1811,33 @@ class ICGNWGPU:
             "portable-workgroup": self._portable_solver,
             "subgroup": self._subgroup_solver,
         }
-        validation_raw = {
-            name: self._execute_registration(pipeline) for name, pipeline in candidates.items()
-        }
-        portable_raw = validation_raw["portable-workgroup"]
+        portable_raw = self._execute_registration(self._portable_solver)
         self.solver_validation = {
-            name: _compare_solver_outputs(
+            "portable-workgroup": _compare_solver_outputs(
                 portable_raw,
-                raw,
+                portable_raw,
                 grid_count=self.grid_width * self.grid_height,
             )
-            for name, raw in validation_raw.items()
         }
+        try:
+            subgroup_raw = self._execute_registration(self._subgroup_solver)
+        except Exception as error:
+            diagnostics = _solver_execution_failure(error)
+            self.solver_validation["subgroup"] = diagnostics
+            self.subgroup_probe_error = str(diagnostics["reason"])
+            if self._solver_preference is True:
+                raise ICGNError(
+                    "The forced subgroup solver failed during its validation execution: "
+                    f"{diagnostics['reason']}."
+                ) from error
+            self.solver = "portable-workgroup"
+            self._solver = self._portable_solver
+            return
+        self.solver_validation["subgroup"] = _compare_solver_outputs(
+            portable_raw,
+            subgroup_raw,
+            grid_count=self.grid_width * self.grid_height,
+        )
         candidates = {
             name: pipeline
             for name, pipeline in candidates.items()
@@ -1832,7 +1861,20 @@ class ICGNWGPU:
             order = names if repetition % 2 == 0 else tuple(reversed(names))
             for name in order:
                 started = time.perf_counter()
-                self._execute_registration(candidates[name])
+                try:
+                    self._execute_registration(candidates[name])
+                except Exception as error:
+                    if name == "portable-workgroup":
+                        raise
+                    diagnostics = _solver_execution_failure(error)
+                    self.solver_validation["subgroup"] = diagnostics
+                    self.subgroup_probe_error = str(diagnostics["reason"])
+                    self.solver_tuning_ms = {
+                        "portable-workgroup": float(median(samples["portable-workgroup"]))
+                    }
+                    self.solver = "portable-workgroup"
+                    self._solver = self._portable_solver
+                    return
                 samples[name].append((time.perf_counter() - started) * 1_000.0)
         self.solver_tuning_ms = {name: float(median(timings)) for name, timings in samples.items()}
         self.solver = min(self.solver_tuning_ms, key=self.solver_tuning_ms.__getitem__)

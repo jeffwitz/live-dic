@@ -228,6 +228,7 @@ def _save_registrations(
         accepted=np.asarray([result.accepted for result in results]),
         flagged=np.asarray([result.flagged for result in results]),
         replaced=np.asarray([result.replaced for result in results]),
+        config_json=np.asarray(json.dumps(dict(results[0].config), sort_keys=True)),
         mean_translation=np.asarray(
             [result.mean_translation or (np.nan, np.nan) for result in results],
             dtype=np.float64,
@@ -251,6 +252,7 @@ def _save_benchmark(path: Path, target: Path, result: BenchmarkResult) -> None:
         accepted=np.asarray(registration.accepted),
         flagged=np.asarray(registration.flagged),
         replaced=np.asarray(registration.replaced),
+        config_json=np.asarray(json.dumps(dict(registration.config), sort_keys=True)),
         mean_translation=np.asarray(
             registration.mean_translation or (np.nan, np.nan), dtype=np.float64
         ),

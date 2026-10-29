@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import platform
+import subprocess
+import sys
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any
 
 import numpy as np
+from lucas_kanade_icgn import ICGNWGPU, ICGNWebGL, RegistrationResult
 from PIL import Image
-
-from lucas_kanade_icgn import ICGNWebGL, ICGNWGPU, RegistrationResult
 
 
 def _arguments() -> argparse.Namespace:
@@ -24,6 +28,7 @@ def _arguments() -> argparse.Namespace:
     )
     parser.add_argument("--repeats", type=int, default=30)
     parser.add_argument("--warmups", type=int, default=5)
+    parser.add_argument("--output", type=Path, help="write the complete JSON report")
     parser.add_argument(
         "--native-only",
         action="store_true",
@@ -53,6 +58,50 @@ def _load_gray(path: Path) -> np.ndarray:
         return np.ascontiguousarray(image.convert("L"), dtype=np.uint8)
 
 
+def _installed_version(distribution: str) -> str | None:
+    try:
+        return version(distribution)
+    except PackageNotFoundError:
+        return None
+
+
+def _git_commit(repository: Path) -> str | None:
+    try:
+        completed = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=repository,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        return None
+    if completed.returncode != 0:
+        return None
+    return completed.stdout.strip() or None
+
+
+def _git_dirty(repository: Path) -> bool | None:
+    try:
+        completed = subprocess.run(
+            ["git", "status", "--porcelain", "--untracked-files=no"],
+            cwd=repository,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        return None
+    if completed.returncode != 0:
+        return None
+    return bool(completed.stdout.strip())
+
+
+def _sha256(path: Path) -> str:
+    with path.open("rb") as stream:
+        return hashlib.file_digest(stream, "sha256").hexdigest()
+
+
 def _percentile(samples: list[float], percentile: float) -> float:
     return float(np.percentile(np.asarray(samples, dtype=np.float64), percentile))
 
@@ -65,17 +114,21 @@ def _result_summary(
     summary: dict[str, Any] = {
         "full_call_median_ms": _percentile(totals, 50),
         "full_call_p95_ms": _percentile(totals, 95),
+        "full_call_samples_ms": totals,
         "accepted": final.accepted,
         "replaced": final.replaced,
+        "configuration": dict(final.config),
         "mean_translation": final.mean_translation,
         "mean_iterations": final.mean_iterations,
         "truth_rmse_px": final.rmse((2.0, -1.0)),
     }
     gpu_samples = [result.timing.get("gpuMs") for result in results]
     if all(value is not None for value in gpu_samples):
-        summary["gpu_median_ms"] = _percentile(
-            [float(value) for value in gpu_samples if value is not None], 50
-        )
+        finite_gpu_samples = [
+            float(value) for value in gpu_samples if value is not None
+        ]
+        summary["gpu_median_ms"] = _percentile(finite_gpu_samples, 50)
+        summary["gpu_samples_ms"] = finite_gpu_samples
     return summary
 
 
@@ -92,9 +145,27 @@ def _agreement(left: RegistrationResult, right: RegistrationResult) -> dict[str,
 
 def main() -> int:
     args = _arguments()
+    module_root = Path(__file__).resolve().parents[1]
+    repository_root = module_root.parents[1]
     reference = _load_gray(args.reference)
     target = _load_gray(args.target)
     report: dict[str, Any] = {
+        "provenance": {
+            "git_commit": _git_commit(repository_root),
+            "git_dirty": _git_dirty(repository_root),
+            "command": [sys.executable, *sys.argv],
+            "python": platform.python_version(),
+            "platform": platform.platform(),
+            "numpy": np.__version__,
+            "wgpu": _installed_version("wgpu"),
+            "dic_rt": _installed_version("lucas-kanade-icgn-webgl"),
+        },
+        "inputs": {
+            "reference": str(args.reference.resolve()),
+            "reference_sha256": _sha256(args.reference),
+            "target": str(args.target.resolve()),
+            "target_sha256": _sha256(args.target),
+        },
         "resolution": [int(reference.shape[1]), int(reference.shape[0])],
         "repeats": args.repeats,
         "warmups": args.warmups,
@@ -117,6 +188,7 @@ def main() -> int:
                 "solver": engine.solver,
                 "subgroup_width": engine.subgroup_width or None,
                 "solver_tuning_ms": engine.solver_tuning_ms,
+                "solver_validation": engine.solver_validation,
                 "preparation_wall_ms": preparation.total_wall_ms,
                 "upload_median_ms": _percentile(
                     [result.timing["uploadWallMs"] for result in native_results], 50
@@ -169,7 +241,11 @@ def main() -> int:
             native, browser_results["gpuio"]
         )
 
-    print(json.dumps(report, indent=2, allow_nan=False))
+    serialized = json.dumps(report, indent=2, allow_nan=False)
+    if args.output is not None:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(serialized + "\n", encoding="utf-8")
+    print(serialized)
     return 0
 
 

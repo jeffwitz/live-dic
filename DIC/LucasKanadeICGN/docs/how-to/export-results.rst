@@ -19,6 +19,8 @@ Load it with NumPy:
 
 .. code-block:: python
 
+   import json
+
    import numpy as np
 
 
@@ -26,6 +28,12 @@ Load it with NumPy:
    print(archive.files)
    print(archive["parameters"].shape)    # (3, 32, 32, 6)
    print(archive["displacement"].shape)  # (3, 32, 32, 2)
+   config = json.loads(archive["config_json"].item())
+   print(config["outlierPolicy"])
+
+``config_json`` is a scalar JSON string rather than an object array, so the
+archive remains readable with NumPy's default ``allow_pickle=False``. It
+records whether the exported field was raw, flagged, replaced, or smoothed.
 
 Export from Python
 ------------------
@@ -33,6 +41,9 @@ Export from Python
 Keep the scientific fields and the validity information together:
 
 .. code-block:: python
+
+   import json
+
 
    np.savez_compressed(
        "one_result.npz",
@@ -42,6 +53,7 @@ Keep the scientific fields and the validity information together:
        iterations=result.iterations,
        accepted=result.accepted,
        flagged=result.flagged,
+       config_json=json.dumps(dict(result.config), sort_keys=True),
    )
 
 Preserve measurement metadata

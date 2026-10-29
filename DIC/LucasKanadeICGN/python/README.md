@@ -502,8 +502,10 @@ Use ``--backend three-tsl --force-three-webgl`` to exercise the WebGL2 fallback.
 
 Standard output is a compact JSON summary. `--output` writes the complete
 `parameters`, `displacement`, `status`, `iterations`, and benchmark samples to
-a compressed NumPy `.npz` archive. Run `icgn-webgl --help` for browser runtime
-options and additional solver controls.
+a compressed NumPy `.npz` archive. Its scalar `config_json` entry preserves
+the algorithm configuration and applied outlier policy without requiring
+pickled Python objects. Run `icgn-webgl --help` for browser runtime options and
+additional solver controls.
 
 ## Development checks
 

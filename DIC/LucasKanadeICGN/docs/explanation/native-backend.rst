@@ -98,6 +98,10 @@ force the portable path or ``prefer_subgroups=True`` to force the subgroup
 path for qualification. On the validation Intel driver, native subgroup
 collectives were slower, so automatic selection correctly retained the
 portable workgroup pipeline.
+If the specialized candidate raises during validation or timing, automatic
+selection records the exception in ``solver_validation`` and retains the
+portable pipeline. Forced subgroup mode raises an explicit ``ICGNError``;
+failure of the portable reference itself remains fatal.
 ``prefer_subgroups=True`` therefore requires both ``subset_size=16`` and
 ``subset_stride=16``.
 

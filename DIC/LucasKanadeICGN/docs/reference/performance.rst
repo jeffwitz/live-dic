@@ -298,8 +298,9 @@ translation-only fractional-displacement contract. They also verify complete-
 state replacement and flag-only preservation for an injected displacement
 outlier, at most 1% false positives on a healthy noisy field, preservation of
 a one-subset-wide affine-gradient band, and exact agreement of the explicit
-3 by 3 median with an independent translation/affine/quadratic oracle. All 106
-tests pass when GPU execution is enabled.
+3 by 3 median with an independent translation/affine/quadratic oracle. The
+portable suite and the opt-in GPU suite are both executed in CI; the latter
+must not convert shader, adapter, or execution failures into skipped tests.
 
 Timing boundaries
 -----------------

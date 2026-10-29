@@ -141,6 +141,23 @@ Add ``--motion-model translation`` to compare the displacement-only analytic
 solver with the default affine model. Keep the interpolation, pyramid depth,
 motion, warm-up count, and repetition count identical for an A/B comparison.
 
+Archive a backend-comparison campaign with its provenance and raw timing
+samples:
+
+.. code-block:: console
+
+   $ PYTHONPATH=DIC/LucasKanadeICGN/python/src \
+       python3 DIC/LucasKanadeICGN/benchmarks/compare_native_wgpu.py \
+       --native-only --native-solver auto \
+       --repeats 50 --warmups 8 \
+       --output campaign-native-auto.json
+
+The JSON records the Git commit and dirty-worktree flag, complete command,
+Python, NumPy, wgpu and DIC-RT versions, platform, input paths and SHA-256
+hashes, selected solver, device, numerical error, accepted count, and
+individual timing samples. Keep this file with any table derived from the
+campaign.
+
 To distinguish native sequence throughput from per-result latency, compare
 bounded pipeline depths explicitly:
 

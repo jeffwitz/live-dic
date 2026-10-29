@@ -98,8 +98,8 @@ The implementation in [`DIC/LucasKanadeICGN/`](./DIC/LucasKanadeICGN/) adds:
   one command submission;
 - a bounded full-pyramid sequence API with independent mutable GPU resources
   per in-flight NumPy frame and ordered result delivery;
-- a compiling Rust wgpu/PyO3 host milestone that shares the WGSL source and
-  measures the NumPy-to-texture boundary;
+- an optional native subgroup specialization written directly in WGSL,
+  qualified against the portable solver before automatic selection;
 - a persistent, headless Python API with no visible browser interface;
 - NumPy displacement, affine-parameter, status, and iteration fields;
 - sequence processing, benchmarking, `.npz` export, and a command-line tool;
@@ -372,7 +372,6 @@ DIC/LucasKanadeICGN/
 ├── index.html              optional interactive browser benchmark
 ├── assets/                 traceable raw-YUV validation frames
 ├── python/                 typed package, CLI, and tests
-├── native/                 experimental Rust wgpu/PyO3 host
 ├── benchmarks/             reproducible backend and UHD campaigns
 ├── docs/                   Sphinx/Diátaxis documentation
 ├── BENCHMARK.md            current measurements and reproduction protocol
@@ -414,8 +413,7 @@ Development checks and the recorded GPU campaigns include:
 
 - hardware-independent Python regression tests for API and numerical helpers;
 - Ruff linting and formatting checks;
-- offline Cargo check, rustfmt, Clippy with warnings denied, release wheel
-  build, and installed PyO3 smoke test;
+- release-wheel construction and installation from an offline wheelhouse;
 - JavaScript syntax checking;
 - wheel build and installation;
 - real GPU execution through the installed package in the recorded campaigns;
@@ -425,15 +423,13 @@ Development checks and the recorded GPU campaigns include:
 Run the local checks:
 
 ```bash
-python -m pip install -e 'DIC/LucasKanadeICGN/python[dev]'
+python3 -m pip install -e 'DIC/LucasKanadeICGN/python[native,dev]'
 ruff check DIC/LucasKanadeICGN/python
 ruff format --check DIC/LucasKanadeICGN/python
-python -m unittest discover -s DIC/LucasKanadeICGN/python/tests -v
-cargo fmt --check --manifest-path DIC/LucasKanadeICGN/native/Cargo.toml
-cargo check --release --offline \
-  --manifest-path DIC/LucasKanadeICGN/native/Cargo.toml
-cargo clippy --release --offline \
-  --manifest-path DIC/LucasKanadeICGN/native/Cargo.toml -- -D warnings
+python3 -m unittest discover -s DIC/LucasKanadeICGN/python/tests -v
+ICGN_RUN_GPU_TESTS=1 python3 -m unittest discover \
+  -s DIC/LucasKanadeICGN/python/tests \
+  -p 'test_gpu_regressions.py' -v
 node --check DIC/LucasKanadeICGN/LucasKanadeICGN.js
 node --check DIC/LucasKanadeICGN/three/LucasKanadeICGNThree.js
 node --check DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/three/LucasKanadeICGNThree.js

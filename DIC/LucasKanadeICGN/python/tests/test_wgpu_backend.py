@@ -44,6 +44,30 @@ from lucas_kanade_icgn.wgpu_backend import (
 
 
 class NativeReferenceTests(unittest.TestCase):
+    @staticmethod
+    def _autotune_stub(
+        *,
+        preference: bool | None,
+        side_effect: list[object],
+    ) -> ICGNWGPU:
+        engine = object.__new__(ICGNWGPU)
+        engine._solver_preference = preference
+        engine._portable_solver = "portable"
+        engine._subgroup_solver = "subgroup"
+        engine._solver = engine._subgroup_solver
+        engine.solver = "subgroup"
+        engine.solver_validation = {}
+        engine.solver_tuning_ms = {}
+        engine.subgroup_probe_error = ""
+        engine.width = 16
+        engine.height = 16
+        engine.grid_width = 1
+        engine.grid_height = 1
+        engine._source_texture = object()
+        engine.device = SimpleNamespace(queue=SimpleNamespace(write_texture=mock.Mock()))
+        engine._execute_registration = mock.Mock(side_effect=side_effect)
+        return engine
+
     def test_subgroup_probe_validates_width_and_vector_reduction(self) -> None:
         values = np.zeros((16, 4), dtype=np.float32)
         values[0] = (16.0, 136.0, 16.0, 1496.0)
@@ -128,6 +152,52 @@ class NativeReferenceTests(unittest.TestCase):
 
         self.assertTrue(diagnostics["valid"])
         self.assertEqual(diagnostics["reason"], "compatible with no accepted subsets")
+
+    def test_solver_autotuning_falls_back_after_candidate_validation_error(self) -> None:
+        portable = np.zeros((1, 8), dtype=np.float32)
+        portable[:, 6] = 1.0
+        engine = self._autotune_stub(
+            preference=None,
+            side_effect=[portable, RuntimeError("candidate validation failed")],
+        )
+
+        engine._autotune_solver(np.zeros((16, 16), dtype=np.uint8))
+
+        self.assertEqual(engine.solver, "portable-workgroup")
+        self.assertIs(engine._solver, engine._portable_solver)
+        self.assertFalse(engine.solver_validation["subgroup"]["valid"])
+        self.assertIn("candidate validation failed", engine.subgroup_probe_error)
+
+    def test_forced_solver_propagates_candidate_validation_error(self) -> None:
+        portable = np.zeros((1, 8), dtype=np.float32)
+        portable[:, 6] = 1.0
+        engine = self._autotune_stub(
+            preference=True,
+            side_effect=[portable, RuntimeError("forced candidate failed")],
+        )
+
+        with self.assertRaisesRegex(ICGNError, "forced subgroup solver failed"):
+            engine._autotune_solver(np.zeros((16, 16), dtype=np.uint8))
+
+    def test_solver_autotuning_falls_back_after_candidate_timing_error(self) -> None:
+        portable = np.zeros((1, 8), dtype=np.float32)
+        portable[:, 6] = 1.0
+        engine = self._autotune_stub(
+            preference=None,
+            side_effect=[
+                portable,
+                portable.copy(),
+                portable.copy(),
+                RuntimeError("candidate timing failed"),
+            ],
+        )
+
+        engine._autotune_solver(np.zeros((16, 16), dtype=np.uint8))
+
+        self.assertEqual(engine.solver, "portable-workgroup")
+        self.assertIs(engine._solver, engine._portable_solver)
+        self.assertFalse(engine.solver_validation["subgroup"]["valid"])
+        self.assertIn("candidate timing failed", engine.subgroup_probe_error)
 
     def test_full_pyramid_has_explicit_coarse_to_fine_defaults(self) -> None:
         default = signature(ICGNWGPUFullPyramid).parameters["pyramid_levels"].default

@@ -98,7 +98,8 @@ Benchmark and output options
 
 ``--output PATH``
    Write complete numeric arrays and timing samples to a compressed ``.npz``
-   archive.
+   archive. The scalar ``config_json`` entry records the algorithm
+   configuration, including the applied outlier policy.
 
 Runtime options
 ---------------
