@@ -86,8 +86,11 @@ The implementation retains the main algorithmic choices of the SYCL version:
   The default ``outlier_policy="replace"`` replaces the complete motion state
   when `tx` or `ty` is inconsistent with recentered neighbours. ``"flag"``
   preserves the raw state with status 2, and ``"disabled"`` skips the pass.
-  Coefficient-wise derivative filtering was removed because it smoothed
-  healthy noisy fields rather than demonstrating outlier robustness. See
+  ``"median"`` is a separate, explicit centred 3×3 component median applied
+  to every valid subset; it preserves the solver status and is smoothing, not
+  outlier detection. Coefficient-triggered derivative filtering was removed
+  because it smoothed healthy noisy fields rather than demonstrating outlier
+  robustness. See
   [displacement outlier detection](./docs/explanation/displacement-outliers.rst).
 
 The GPU-IO backend requires a different memory layout from C++/SYCL. Translation and the
@@ -155,11 +158,12 @@ when within-subset displacement curvature is required. See
 [`Motion models`](./docs/explanation/motion-models.rst) for the equations,
 backend coverage, and current A/B results.
 
-The spatial robustness pass now has one detection scope and three clear
-policies. It tests only recentered ``tx`` and ``ty``. ``replace`` is the
-default and replaces the complete local motion state after a trigger;
-``flag`` leaves raw coefficients untouched and sets status 2; ``disabled``
-omits the pass. See
+The spatial post-pass has one UOD detection scope and one explicit smoothing
+mode. UOD tests only recentered ``tx`` and ``ty``. ``replace`` is the default
+and replaces the complete local motion state after a trigger; ``flag`` leaves
+raw coefficients untouched and sets status 2; ``disabled`` omits the pass.
+``median`` bypasses UOD and replaces every valid state with the component-wise
+median of its centred 3×3 neighbourhood. See
 [`Displacement outlier detection`](./docs/explanation/displacement-outliers.rst).
 
 Quadratic mode is currently a correctness-first path, not the 4K60 default.

@@ -45,6 +45,7 @@ class NativeReferenceTests(unittest.TestCase):
         self.assertEqual(normalize_outlier_policy(" Replace "), "replace")
         self.assertEqual(normalize_outlier_policy("FLAG"), "flag")
         self.assertEqual(normalize_outlier_policy("disabled"), "disabled")
+        self.assertEqual(normalize_outlier_policy(" Median "), "median")
         for value in ("all", "none", "", 1, None):
             with self.subTest(value=value), self.assertRaisesRegex(ValueError, "outlier_policy"):
                 ICGNWGPU(outlier_policy=value)  # type: ignore[arg-type]

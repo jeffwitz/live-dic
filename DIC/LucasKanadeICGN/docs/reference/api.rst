@@ -58,11 +58,13 @@ affine, and deprecated GPU-IO is affine-only. See
 :doc:`../explanation/motion-models`.
 
 Every engine accepts ``outlier_policy="replace"`` (the default), ``"flag"``,
-or ``"disabled"``. Detection is always limited to recentered ``tx`` and
-``ty``. ``replace`` changes the complete active state after a trigger;
-``flag`` preserves raw coefficients and sets status 2; ``disabled`` skips the
-post-pass. See :doc:`../explanation/displacement-outliers` for the equations,
-validation contracts, and limits.
+``"disabled"``, or ``"median"``. Detection is always limited to recentered
+``tx`` and ``ty``. ``replace`` changes the complete active state after a
+trigger; ``flag`` preserves raw coefficients and sets status 2; ``disabled``
+skips the post-pass. ``median`` is not detection: it applies a centred 3 by 3
+component median to every valid state and preserves its solver status. See
+:doc:`../explanation/displacement-outliers` for the equations, validation
+contracts, and limits.
 
 Native shared-WGSL engines accept ``subset_size`` values 8, 15, 16, 17, 31,
 32, and 33. The odd widths have an exact centre pixel. They also accept

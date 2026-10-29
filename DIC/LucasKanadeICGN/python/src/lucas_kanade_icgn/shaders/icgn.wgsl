@@ -65,8 +65,8 @@ override INTERPOLATION_MODE: u32 = 0u;
 // 2: twelve-parameter quadratic warp.
 override MOTION_MODEL: u32 = 0u;
 // 0: flag displacement outliers without changing parameters; 1: replace the
-// complete active motion state. Value 2 is reserved for the host-side disabled
-// policy, which skips this entry point entirely.
+// complete active motion state; 2: host-side disabled policy, which skips this
+// entry point; 3: apply a centred 3x3 component median to every valid subset.
 override OUTLIER_POLICY: u32 = 1u;
 // Square subset width. Repository hosts expose the validated 8, 16, and 32
 // specializations while preserving 16 as the default pipeline constant.
@@ -951,9 +951,9 @@ fn retry_seeded(
     solve_from_seed(subset_index, local_id.x, true);
 }
 
-fn median_eight(values: ptr<function, array<f32, 8>>, count: u32) -> f32 {
-    for (var phase = 0u; phase < 8u; phase = phase + 1u) {
-        for (var index = 0u; index < 7u; index = index + 1u) {
+fn median_nine(values: ptr<function, array<f32, 9>>, count: u32) -> f32 {
+    for (var phase = 0u; phase < 9u; phase = phase + 1u) {
+        for (var index = 0u; index < 8u; index = index + 1u) {
             if index + 1u < count && (*values)[index] > (*values)[index + 1u] {
                 let saved = (*values)[index];
                 (*values)[index] = (*values)[index + 1u];
@@ -992,8 +992,17 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let point_y = i32(subset_index / config.grid_width);
     let grid_height = i32(config.grid_count / config.grid_width);
     if MOTION_MODEL == 2u {
-        var neighbours: array<array<f32, 12>, 8>;
+        let own_c = state.values[state_index + 2u];
+        var neighbours: array<array<f32, 12>, 9>;
         var count = 0u;
+        if OUTLIER_POLICY == 3u {
+            neighbours[0] = array<f32, 12>(
+                own_a.x, own_a.y, own_a.z, own_a.w,
+                own_b.x, own_b.y, own_b.z, own_b.w,
+                own_c.x, own_c.y, own_c.z, own_c.w,
+            );
+            count = 1u;
+        }
         for (var dy = -1; dy <= 1; dy += 1) {
             for (var dx = -1; dx <= 1; dx += 1) {
                 if dx == 0 && dy == 0 {
@@ -1035,23 +1044,24 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
                 count += 1u;
             }
         }
-        if count < 4u {
+        if OUTLIER_POLICY != 3u && count < 4u {
             return;
         }
-        let own_c = state.values[state_index + 2u];
         var filtered = array<f32, 12>(
             own_a.x, own_a.y, own_a.z, own_a.w,
             own_b.x, own_b.y, own_b.z, own_b.w,
             own_c.x, own_c.y, own_c.z, own_c.w,
         );
         var medians = filtered;
-        var values: array<f32, 8>;
+        var values: array<f32, 9>;
         var any_flagged = false;
         let component_order = array<u32, 12>(
             0u, 3u, 1u, 2u, 4u, 5u, 6u, 7u, 8u, 9u, 10u, 11u,
         );
         let detection_count = 2u;
-        let median_count = select(2u, 12u, OUTLIER_POLICY == 1u);
+        let median_count = select(
+            2u, 12u, OUTLIER_POLICY == 1u || OUTLIER_POLICY == 3u,
+        );
         for (var active_index = 0u;
              active_index < median_count;
              active_index += 1u) {
@@ -1059,7 +1069,20 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
             for (var index = 0u; index < count; index += 1u) {
                 values[index] = neighbours[index][component];
             }
-            medians[component] = median_eight(&values, count);
+            medians[component] = median_nine(&values, count);
+        }
+        if OUTLIER_POLICY == 3u {
+            filtered_state.values[state_index] = vec4<f32>(
+                medians[0], medians[1], medians[2], medians[3],
+            );
+            filtered_state.values[state_index + 1u] = vec4<f32>(
+                medians[4], medians[5], medians[6], medians[7],
+            );
+            filtered_state.values[state_index + 2u] = vec4<f32>(
+                medians[8], medians[9], medians[10], medians[11],
+            );
+            filtered_state.values[state_index + 3u] = state.values[state_index + 3u];
+            return;
         }
         for (var active_index = 0u;
              active_index < detection_count;
@@ -1068,7 +1091,7 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
             for (var index = 0u; index < count; index += 1u) {
                 values[index] = abs(neighbours[index][component] - medians[component]);
             }
-            let spread = median_eight(&values, count);
+            let spread = median_nine(&values, count);
             let score = abs(filtered[component] - medians[component]) / (spread + 0.1);
             if score > 2.0 {
                 any_flagged = true;
@@ -1097,8 +1120,14 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
         return;
     }
 
-    var neighbours: array<array<f32, 6>, 8>;
+    var neighbours: array<array<f32, 6>, 9>;
     var count = 0u;
+    if OUTLIER_POLICY == 3u {
+        neighbours[0] = array<f32, 6>(
+            own_a.x, own_a.y, own_a.z, own_a.w, own_b.x, own_b.y,
+        );
+        count = 1u;
+    }
     for (var dy = -1; dy <= 1; dy = dy + 1) {
         for (var dx = -1; dx <= 1; dx = dx + 1) {
             if dx == 0 && dy == 0 {
@@ -1132,7 +1161,7 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
             count = count + 1u;
         }
     }
-    if count < 4u {
+    if OUTLIER_POLICY != 3u && count < 4u {
         return;
     }
 
@@ -1140,25 +1169,38 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
         own_a.x, own_a.y, own_a.z, own_a.w, own_b.x, own_b.y,
     );
     var medians = filtered;
-    var values: array<f32, 8>;
+    var values: array<f32, 9>;
     var any_flagged = false;
     let component_order = array<u32, 6>(0u, 3u, 1u, 2u, 4u, 5u);
     let model_component_count = select(6u, 2u, MOTION_MODEL == 1u);
     let detection_count = 2u;
-    let median_count = select(2u, model_component_count, OUTLIER_POLICY == 1u);
+    let median_count = select(
+        2u,
+        model_component_count,
+        OUTLIER_POLICY == 1u || OUTLIER_POLICY == 3u,
+    );
     for (var active_index = 0u; active_index < median_count; active_index += 1u) {
         let component = component_order[active_index];
         for (var index = 0u; index < count; index += 1u) {
             values[index] = neighbours[index][component];
         }
-        medians[component] = median_eight(&values, count);
+        medians[component] = median_nine(&values, count);
+    }
+    if OUTLIER_POLICY == 3u {
+        filtered_state.values[state_index] = vec4<f32>(
+            medians[0], medians[1], medians[2], medians[3],
+        );
+        filtered_state.values[state_index + 1u] = vec4<f32>(
+            medians[4], medians[5], own_b.z, own_b.w,
+        );
+        return;
     }
     for (var active_index = 0u; active_index < detection_count; active_index += 1u) {
         let component = component_order[active_index];
         for (var index = 0u; index < count; index += 1u) {
             values[index] = abs(neighbours[index][component] - medians[component]);
         }
-        let spread = median_eight(&values, count);
+        let spread = median_nine(&values, count);
         let score = abs(filtered[component] - medians[component]) / (spread + 0.1);
         if score > 2.0 {
             any_flagged = true;

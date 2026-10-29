@@ -41,9 +41,11 @@ Primary backend performance measurements use the default
 `outlier_policy="replace"`. The UOD pass tests only recentered `tx` and `ty`;
 after a trigger it replaces the complete local motion state. Use `"flag"` to
 preserve raw coefficients with status 2, or `"disabled"` to omit the pass for
-raw solver studies and isolated timing. Earlier all-coefficient policies were
-removed because they modified 66--81% of a healthy noisy field and behaved as
-derivative smoothing. See the
+raw solver studies and isolated timing. The explicit `"median"` option applies
+a centred 3×3 component median to every valid subset and requires its own
+accuracy and timing row before it is used for a performance claim. Earlier
+coefficient-triggered policies were removed because they modified 66--81% of
+a healthy noisy field while presenting smoothing as outlier detection. See the
 [displacement outlier explanation](docs/explanation/displacement-outliers.rst).
 
 This is the deployable Python boundary used for performance claims. A
@@ -173,9 +175,10 @@ The opt-in GPU regressions validate partial FIR tiles, exact integer pyramid
 reduction, fresh seeded state, selective-retry neighbour preservation, and the
 translation-only fractional-displacement contract. They also verify complete-
 state replacement and flag-only preservation for an injected displacement
-outlier, at most 1% false positives on a healthy noisy field, and preservation
-of a one-subset-wide affine-gradient band. All 105 tests pass when GPU
-execution is enabled.
+outlier, at most 1% false positives on a healthy noisy field, preservation of
+a one-subset-wide affine-gradient band, and exact agreement of the explicit
+3×3 median with an independent translation/affine/quadratic oracle. All 106
+tests pass when GPU execution is enabled.
 
 ## Reproduce the current measurements
 

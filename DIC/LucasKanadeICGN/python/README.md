@@ -182,9 +182,12 @@ with ICGNWGPUFullPyramid(
 
 Use `outlier_policy="flag"` to keep raw coefficients and mark detected
 subsets with status 2. Use `outlier_policy="disabled"` to omit the post-pass
-entirely. The selected value is returned as `config["outlierPolicy"]`.
-Derivative coefficients are not tested: earlier component-wise modes were
-removed because they behaved as smoothing on healthy noisy data.
+entirely. Use `outlier_policy="median"` for an explicit centred 3×3 component
+median on every valid subset. Median smoothing preserves the original solver
+status and does not claim that a subset is an outlier. The selected value is
+returned as `config["outlierPolicy"]`. Derivative coefficients are not used
+for UOD detection: earlier coefficient-triggered modes were removed because
+they behaved as implicit smoothing on healthy noisy data.
 
 ## Persistent Python supervisor
 

@@ -58,9 +58,11 @@ Python-supervised real-time DIC toward 4K60
    to recentered ``tx`` and ``ty``. A detected wrong-basin candidate receives
    status 2 and its complete motion state is replaced by neighbour medians.
    ``"flag"`` preserves the raw state while setting status 2; ``"disabled"``
-   omits the post-pass. Earlier coefficient-wise modes were removed because
-   they modified 66--81% of a healthy noisy field and erased a localized
-   deformation band. The rule, validation contracts, and limitations are in
+   omits the post-pass. ``"median"`` is an explicit smoothing mode: it applies
+   a centred 3 by 3 component median to every valid subset without assigning
+   outlier status. Earlier coefficient-triggered modes were removed because
+   they modified 66--81% of a healthy noisy field while pretending to detect
+   outliers. The rule, validation contracts, and limitations are in
    :doc:`explanation/displacement-outliers`.
 
 This documentation describes a Python-supervised workflow for GPU-accelerated digital

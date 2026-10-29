@@ -25,7 +25,7 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--gaussian-sigma", type=float, default=12.0)
     parser.add_argument(
         "--outlier-policy",
-        choices=("replace", "flag", "disabled"),
+        choices=("replace", "flag", "disabled", "median"),
         default="replace",
     )
     args = parser.parse_args()

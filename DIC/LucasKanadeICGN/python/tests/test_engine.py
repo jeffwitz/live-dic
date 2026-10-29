@@ -437,7 +437,7 @@ class RuntimeAssetTests(unittest.TestCase):
             ICGNWebGL(backend="three-tsl", motion_model="quadratic")
 
     def test_browser_outlier_policy_is_validated_and_forwarded(self) -> None:
-        for policy in ("replace", "flag", "disabled"):
+        for policy in ("replace", "flag", "disabled", "median"):
             with self.subTest(policy=policy):
                 engine = ICGNWebGL(backend="webgpu-wgsl", outlier_policy=policy)
                 self.assertEqual(engine.outlier_policy, policy)

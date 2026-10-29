@@ -81,7 +81,7 @@ def _arguments() -> argparse.Namespace:
     )
     parser.add_argument(
         "--outlier-policy",
-        choices=("replace", "flag", "disabled"),
+        choices=("replace", "flag", "disabled", "median"),
         default="replace",
     )
     parser.add_argument(

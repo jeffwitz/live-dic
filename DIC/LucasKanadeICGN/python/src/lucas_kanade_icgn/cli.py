@@ -79,9 +79,12 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--outlier-policy",
-        choices=("replace", "flag", "disabled"),
+        choices=("replace", "flag", "disabled", "median"),
         default="replace",
-        help="replace displacement outliers, flag them without replacement, or disable UOD",
+        help=(
+            "replace displacement outliers, flag them, disable UOD, or apply a pure "
+            "3x3 field median"
+        ),
     )
     parser.add_argument(
         "--subset-size",

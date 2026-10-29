@@ -45,7 +45,7 @@ const INTERPOLATION_CONSTANTS = {
   cubic: 2,
 };
 const MOTION_MODEL_CONSTANTS = { affine: 0, translation: 1, quadratic: 2 };
-const OUTLIER_POLICY_CONSTANTS = { flag: 0, replace: 1, disabled: 2 };
+const OUTLIER_POLICY_CONSTANTS = { flag: 0, replace: 1, disabled: 2, median: 3 };
 
 const configuration = {
   subsetStride: SUBSET_STRIDE,
@@ -634,7 +634,7 @@ const configure = (options = {}, allowPyramidRebuild = false) => {
   const outlierPolicy = options.outlierPolicy === undefined
     ? configuration.outlierPolicy : String(options.outlierPolicy).toLowerCase();
   if (!(outlierPolicy in OUTLIER_POLICY_CONSTANTS)) {
-    throw new Error("outlierPolicy must be 'replace', 'flag', or 'disabled'");
+    throw new Error("outlierPolicy must be 'replace', 'flag', 'disabled', or 'median'");
   }
   if (!allowPyramidRebuild && referenceReady
       && outlierPolicy !== configuration.outlierPolicy) {

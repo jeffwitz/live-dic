@@ -78,9 +78,11 @@ The implementation in [`DIC/LucasKanadeICGN/`](./DIC/LucasKanadeICGN/) adds:
 - ZNCC validation and a deliberately narrow displacement UOD pass. The default
   `outlier_policy="replace"` detects inconsistent `tx`/`ty` values and replaces
   the complete local motion state; `"flag"` preserves raw coefficients with
-  status 2, while `"disabled"` omits the pass. Earlier coefficient-wise modes
-  were removed after they behaved as derivative smoothing on healthy noisy
-  fields; see the
+  status 2, while `"disabled"` omits the pass. The explicit `"median"` mode
+  instead applies a centred 3×3 component median to every valid subset; it is
+  a smoothing option, not an outlier detector. Earlier coefficient-triggered
+  modes were removed after they behaved as implicit derivative smoothing on
+  healthy noisy fields; see the
   [validation and rationale](DIC/LucasKanadeICGN/docs/explanation/displacement-outliers.rst);
 - configurable square subsets including centred odd widths 15, 17, 31, and
   33, plus optional centred Gaussian integration on native wgpu, and an

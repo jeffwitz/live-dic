@@ -53,11 +53,12 @@ Solver options
    by ``webgpu-wgsl``; the independent Three.js and deprecated GPU-IO browser
    backends reject it. Default: ``affine``.
 
-``--outlier-policy {replace,flag,disabled}``
+``--outlier-policy {replace,flag,disabled,median}``
    Control the displacement UOD post-pass. ``replace`` detects inconsistent
    ``tx`` or ``ty`` and replaces the complete active motion state. ``flag``
    preserves raw coefficients and sets status 2. ``disabled`` omits the pass.
-   Default: ``replace``.
+   ``median`` bypasses UOD and applies a centred 3 by 3 component median to
+   every valid subset. Default: ``replace``.
 
 ``--subset-size {8,15,16,17,31,32,33}``
    Select the square numerical subset width. Default: ``16``.

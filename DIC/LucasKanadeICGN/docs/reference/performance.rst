@@ -69,7 +69,8 @@ displacement UOD pass. No camera or H.264 stage is included.
 Primary backend performance measurements use
 ``outlier_policy="replace"``. It tests only displacement and replaces the
 complete local state after a trigger. ``flag`` and ``disabled`` are scientific
-control modes, not alternative derivative filters. See
+control modes. ``median`` is an explicit smoothing mode and is not represented
+by the default performance rows. See
 :doc:`../explanation/displacement-outliers` for the exact rule and the
 false-positive, injected-outlier, and localized-feature regressions.
 Quadratic performance remains reported separately because its state and solver
@@ -295,9 +296,10 @@ The opt-in GPU tests validate partial FIR tiles, exact integer pyramid
 reduction, fresh seeded state, selective-retry neighbour preservation, and the
 translation-only fractional-displacement contract. They also verify complete-
 state replacement and flag-only preservation for an injected displacement
-outlier, at most 1% false positives on a healthy noisy field, and preservation
-of a one-subset-wide affine-gradient band. All 105 tests pass when GPU
-execution is enabled.
+outlier, at most 1% false positives on a healthy noisy field, preservation of
+a one-subset-wide affine-gradient band, and exact agreement of the explicit
+3 by 3 median with an independent translation/affine/quadratic oracle. All 106
+tests pass when GPU execution is enabled.
 
 Timing boundaries
 -----------------

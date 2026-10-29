@@ -115,6 +115,10 @@ Status field
      - insufficient intensity norm or failed ZNCC
      - no
 
+``outlier_policy="median"`` preserves these solver statuses while replacing
+the active coefficients with a centred 3 by 3 component median. Status 2 is
+therefore never introduced merely because explicit smoothing was requested.
+
 Iteration field
 ---------------
 

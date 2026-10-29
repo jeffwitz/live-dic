@@ -635,6 +635,73 @@ class GPURegressionTests(unittest.TestCase):
         np.testing.assert_array_equal(actual[:center], state[:center])
         np.testing.assert_array_equal(actual[center + 1 :], state[center + 1 :])
 
+    def test_pure_median_filters_every_valid_subset_without_flagging(self) -> None:
+        pattern = np.array([9, 1, 8, 2, 7, 3, 6, 4, 5], dtype=np.float32)
+        for motion_model, state_width, parameter_count, status_index in (
+            ("translation", 8, 6, 6),
+            ("affine", 8, 6, 6),
+            ("quadratic", 16, 12, 12),
+        ):
+            with self.subTest(motion_model=motion_model):
+                state = np.zeros((9, state_width), dtype=np.float32)
+                active_components = (
+                    (0, 3) if motion_model == "translation" else range(parameter_count)
+                )
+                for component in active_components:
+                    state[:, component] = 0.001 * (component + 1) * pattern
+                state[:, status_index] = 1.0
+                state[:, status_index + 1] = 4.0
+
+                expected = state.copy()
+                for target_y in range(3):
+                    for target_x in range(3):
+                        samples = []
+                        for source_y in range(max(0, target_y - 1), min(3, target_y + 2)):
+                            for source_x in range(max(0, target_x - 1), min(3, target_x + 2)):
+                                values = state[3 * source_y + source_x, :parameter_count].copy()
+                                offset_x = -16.0 * (source_x - target_x)
+                                offset_y = -16.0 * (source_y - target_y)
+                                if motion_model == "quadratic":
+                                    values[0] += (
+                                        values[1] * offset_x
+                                        + values[2] * offset_y
+                                        + 0.5 * values[6] * offset_x**2
+                                        + values[7] * offset_x * offset_y
+                                        + 0.5 * values[8] * offset_y**2
+                                    )
+                                    values[1] += values[6] * offset_x + values[7] * offset_y
+                                    values[2] += values[7] * offset_x + values[8] * offset_y
+                                    values[3] += (
+                                        values[4] * offset_x
+                                        + values[5] * offset_y
+                                        + 0.5 * values[9] * offset_x**2
+                                        + values[10] * offset_x * offset_y
+                                        + 0.5 * values[11] * offset_y**2
+                                    )
+                                    values[4] += values[9] * offset_x + values[10] * offset_y
+                                    values[5] += values[10] * offset_x + values[11] * offset_y
+                                else:
+                                    values[0] += values[1] * offset_x + values[2] * offset_y
+                                    values[3] += values[4] * offset_x + values[5] * offset_y
+                                samples.append(values)
+                        target = 3 * target_y + target_x
+                        medians = np.median(np.asarray(samples), axis=0)
+                        expected[target, list(active_components)] = medians[list(active_components)]
+
+                actual = self._filter_injected_state(
+                    motion_model=motion_model,
+                    outlier_policy="median",
+                    state=state,
+                )
+
+                np.testing.assert_allclose(
+                    actual[:, :parameter_count], expected[:, :parameter_count], atol=2e-7
+                )
+                np.testing.assert_array_equal(actual[:, status_index:], state[:, status_index:])
+                self.assertFalse(
+                    np.array_equal(actual[:, :parameter_count], state[:, :parameter_count])
+                )
+
     def test_uod_has_no_false_positives_on_a_healthy_noisy_field(self) -> None:
         reference, target = _fractional_pair(256, 256, (0.3, -0.2))
         rng = np.random.default_rng(20261102)

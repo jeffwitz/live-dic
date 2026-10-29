@@ -178,6 +178,8 @@ Status contract
 ``0`` means the iteration limit was reached, and negative values mean rejected.
 Status 2 may contain a neighbour-median replacement or the raw solver state,
 depending on ``outlierPolicy``.
+The explicit ``median`` policy preserves the incoming solver status even though
+it replaces every active coefficient with a centred 3 by 3 component median.
 ``-1`` is used for invalid geometry or a singular update; ``-2`` is used for
 insufficient normalization energy or ZNCC.
 

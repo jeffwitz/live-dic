@@ -951,9 +951,9 @@ const makeSubgroupSolverKernel = () => {
     .setName(`DIC-RT ${solverLanes}-lane subgroup affine IC-GN solver`);
 };
 
-const median8Node = (values, count) => {
-  Loop(8, () => {
-    Loop(7, ({ i }) => {
+const median9Node = (values, count) => {
+  Loop(9, () => {
+    Loop(8, ({ i }) => {
       If(i.add(1).lessThan(count).and(values.element(i).greaterThan(values.element(i.add(1)))), () => {
         const temporary = float(values.element(i)).toVar();
         values.element(i).assign(values.element(i.add(1)));
@@ -969,7 +969,7 @@ const median8Node = (values, count) => {
   );
 };
 
-/** Eight-neighbour displacement UOD, matching the shared policy. */
+/** Displacement UOD or an explicit centred 3x3 component median. */
 const makeMedianKernel = () => Fn(() => {
   const subsetIndex = instanceIndex;
   const translation = translationNode.element(subsetIndex);
@@ -980,13 +980,22 @@ const makeMedianKernel = () => Fn(() => {
   filteredStatusNode.element(subsetIndex).assign(status);
   If(status.x.lessThan(0.5), () => Return());
 
-  const predictedX = array('float', 8).toVar();
-  const predictedY = array('float', 8).toVar();
-  const p1 = array('float', 8).toVar();
-  const p2 = array('float', 8).toVar();
-  const p4 = array('float', 8).toVar();
-  const p5 = array('float', 8).toVar();
-  const count = int(0).toVar();
+  const predictedX = array('float', 9).toVar();
+  const predictedY = array('float', 9).toVar();
+  const p1 = array('float', 9).toVar();
+  const p2 = array('float', 9).toVar();
+  const p4 = array('float', 9).toVar();
+  const p5 = array('float', 9).toVar();
+  const pureMedian = configuration.outlierPolicy === 'median';
+  const count = int(pureMedian ? 1 : 0).toVar();
+  if (pureMedian) {
+    predictedX.element(0).assign(translation.x);
+    predictedY.element(0).assign(translation.y);
+    p1.element(0).assign(linear.x);
+    p2.element(0).assign(linear.y);
+    p4.element(0).assign(linear.z);
+    p5.element(0).assign(linear.w);
+  }
   const pointX = int(subsetIndex.mod(uint(GRID_WIDTH)));
   const pointY = int(subsetIndex.div(uint(GRID_WIDTH)));
 
@@ -1017,24 +1026,24 @@ const makeMedianKernel = () => Fn(() => {
       });
     }
   }
-  If(count.lessThan(4), () => Return());
+  if (!pureMedian) If(count.lessThan(4), () => Return());
 
   const filteredTranslation = translation.toVar();
   const filteredLinear = linear.toVar();
   const filteredStatus = status.toVar();
   const componentMedian = (samples) => {
-    const values = array('float', 8).toVar();
-    Loop(8, ({ i }) => {
+    const values = array('float', 9).toVar();
+    Loop(9, ({ i }) => {
       values.element(i).assign(samples.element(i));
     });
-    return float(median8Node(values, count)).toVar();
+    return float(median9Node(values, count)).toVar();
   };
   const displacementOutlier = (samples, ownValue, median) => {
-    const values = array('float', 8).toVar();
-    Loop(8, ({ i }) => {
+    const values = array('float', 9).toVar();
+    Loop(9, ({ i }) => {
       values.element(i).assign(samples.element(i).sub(median).abs());
     });
-    const spread = median8Node(values, count);
+    const spread = median9Node(values, count);
     return ownValue.sub(median).abs().div(spread.add(0.1)).greaterThan(2);
   };
 
@@ -1044,28 +1053,39 @@ const makeMedianKernel = () => Fn(() => {
   let medianP2 = linear.y;
   let medianP4 = linear.z;
   let medianP5 = linear.w;
-  if (configuration.outlierPolicy === 'replace' && configuration.motionModel === 'affine') {
+  if (['replace', 'median'].includes(configuration.outlierPolicy)
+      && configuration.motionModel === 'affine') {
     medianP1 = componentMedian(p1);
     medianP2 = componentMedian(p2);
     medianP4 = componentMedian(p4);
     medianP5 = componentMedian(p5);
   }
-  const flagged = displacementOutlier(predictedX, translation.x, medianX)
-    .or(displacementOutlier(predictedY, translation.y, medianY));
-  If(flagged, () => {
-    if (configuration.outlierPolicy === 'replace') {
-      filteredTranslation.assign(vec2(medianX, medianY));
-      if (configuration.motionModel === 'affine') {
-        filteredLinear.assign(vec4(medianP1, medianP2, medianP4, medianP5));
-      }
+  if (pureMedian) {
+    filteredTranslation.assign(vec2(medianX, medianY));
+    if (configuration.motionModel === 'affine') {
+      filteredLinear.assign(vec4(medianP1, medianP2, medianP4, medianP5));
     }
-    filteredStatus.x.assign(2);
-  });
+  } else {
+    const flagged = displacementOutlier(predictedX, translation.x, medianX)
+      .or(displacementOutlier(predictedY, translation.y, medianY));
+    If(flagged, () => {
+      if (configuration.outlierPolicy === 'replace') {
+        filteredTranslation.assign(vec2(medianX, medianY));
+        if (configuration.motionModel === 'affine') {
+          filteredLinear.assign(vec4(medianP1, medianP2, medianP4, medianP5));
+        }
+      }
+      filteredStatus.x.assign(2);
+    });
+  }
 
   filteredTranslationNode.element(subsetIndex).assign(filteredTranslation);
   filteredLinearNode.element(subsetIndex).assign(filteredLinear);
   filteredStatusNode.element(subsetIndex).assign(filteredStatus);
-})().compute(GRID_COUNT, [64]).setName('DIC-RT displacement UOD');
+})().compute(GRID_COUNT, [64]).setName(
+  configuration.outlierPolicy === 'median'
+    ? 'DIC-RT centred 3x3 field median' : 'DIC-RT displacement UOD',
+);
 
 const buildKernels = () => {
   const webgpu = renderer.backend.isWebGPUBackend === true;
@@ -1368,8 +1388,8 @@ function configure(options = {}, allowInterpolationRebuild = false) {
   }
   const outlierPolicy = options.outlierPolicy === undefined
     ? configuration.outlierPolicy : String(options.outlierPolicy).toLowerCase();
-  if (!['replace', 'flag', 'disabled'].includes(outlierPolicy)) {
-    throw new Error("outlierPolicy must be 'replace', 'flag', or 'disabled'");
+  if (!['replace', 'flag', 'disabled', 'median'].includes(outlierPolicy)) {
+    throw new Error("outlierPolicy must be 'replace', 'flag', 'disabled', or 'median'");
   }
   if (!allowInterpolationRebuild && referenceReady
       && outlierPolicy !== configuration.outlierPolicy) {

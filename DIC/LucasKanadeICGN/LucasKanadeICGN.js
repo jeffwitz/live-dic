@@ -599,15 +599,15 @@ const medianReplaceProgram = new GPUProgram(composer, {
     uniform sampler2D u_linear;
     uniform sampler2D u_status;
     uniform vec2 u_grid_size;
-    uniform int u_replace_outlier;
+    uniform int u_filter_mode;
 
     layout(location = 0) out vec2 out_translation;
     layout(location = 1) out vec4 out_linear;
     layout(location = 2) out vec2 out_status;
 
-    float median8(inout float values[8], int count) {
-      for (int pass = 0; pass < 8; ++pass) {
-        for (int index = 0; index < 7; ++index) {
+    float median9(inout float values[9], int count) {
+      for (int pass = 0; pass < 9; ++pass) {
+        for (int index = 0; index < 8; ++index) {
           if (index + 1 >= count) continue;
           if (values[index] > values[index + 1]) {
             float temporary = values[index];
@@ -631,13 +631,22 @@ const medianReplaceProgram = new GPUProgram(composer, {
       out_status = status;
       if (status.x < 0.5) return;
 
-      float predictedX[8];
-      float predictedY[8];
-      float p1[8];
-      float p2[8];
-      float p4[8];
-      float p5[8];
+      float predictedX[9];
+      float predictedY[9];
+      float p1[9];
+      float p2[9];
+      float p4[9];
+      float p5[9];
       int count = 0;
+      if (u_filter_mode == 3) {
+        predictedX[0] = translation.x;
+        predictedY[0] = translation.y;
+        p1[0] = linear.x;
+        p2[0] = linear.y;
+        p4[0] = linear.z;
+        p5[0] = linear.w;
+        count = 1;
+      }
       for (int dy = -1; dy <= 1; ++dy) {
         for (int dx = -1; dx <= 1; ++dx) {
           if (dx == 0 && dy == 0) continue;
@@ -651,7 +660,7 @@ const medianReplaceProgram = new GPUProgram(composer, {
           float deltaY = -${SUBSET_SIZE}.0 * float(dy);
           predictedX[count] = nt.x + nl.x * deltaX + nl.y * deltaY;
           predictedY[count] = nt.y + nl.z * deltaX + nl.w * deltaY;
-          if (u_replace_outlier != 0) {
+          if (u_filter_mode == 1 || u_filter_mode == 3) {
             p1[count] = nl.x;
             p2[count] = nl.y;
             p4[count] = nl.z;
@@ -660,36 +669,41 @@ const medianReplaceProgram = new GPUProgram(composer, {
           count += 1;
         }
       }
-      if (count < 4) return;
+      if (u_filter_mode != 3 && count < 4) return;
 
-      float valuesX[8];
-      float valuesY[8];
-      for (int index = 0; index < 8; ++index) {
+      float valuesX[9];
+      float valuesY[9];
+      for (int index = 0; index < 9; ++index) {
         valuesX[index] = predictedX[index];
         valuesY[index] = predictedY[index];
       }
-      float medianX = median8(valuesX, count);
-      float medianY = median8(valuesY, count);
-      for (int index = 0; index < 8; ++index) {
+      float medianX = median9(valuesX, count);
+      float medianY = median9(valuesY, count);
+      for (int index = 0; index < 9; ++index) {
         valuesX[index] = abs(predictedX[index] - medianX);
         valuesY[index] = abs(predictedY[index] - medianY);
       }
-      float spreadX = median8(valuesX, count);
-      float spreadY = median8(valuesY, count);
+      float spreadX = median9(valuesX, count);
+      float spreadY = median9(valuesY, count);
       bool flaggedX = abs(translation.x - medianX) / (spreadX + 0.1) > 2.0;
       bool flaggedY = abs(translation.y - medianY) / (spreadY + 0.1) > 2.0;
       float medianP1 = linear.x;
       float medianP2 = linear.y;
       float medianP4 = linear.z;
       float medianP5 = linear.w;
-      if (u_replace_outlier != 0) {
-        medianP1 = median8(p1, count);
-        medianP2 = median8(p2, count);
-        medianP4 = median8(p4, count);
-        medianP5 = median8(p5, count);
+      if (u_filter_mode == 1 || u_filter_mode == 3) {
+        medianP1 = median9(p1, count);
+        medianP2 = median9(p2, count);
+        medianP4 = median9(p4, count);
+        medianP5 = median9(p5, count);
+      }
+      if (u_filter_mode == 3) {
+        out_translation = vec2(medianX, medianY);
+        out_linear = vec4(medianP1, medianP2, medianP4, medianP5);
+        return;
       }
       if (flaggedX || flaggedY) {
-        if (u_replace_outlier != 0) {
+        if (u_filter_mode == 1) {
           out_translation = vec2(medianX, medianY);
           out_linear = vec4(medianP1, medianP2, medianP4, medianP5);
         }
@@ -702,7 +716,7 @@ const medianReplaceProgram = new GPUProgram(composer, {
     { name: 'u_linear', value: 1, type: INT },
     { name: 'u_status', value: 2, type: INT },
     { name: 'u_grid_size', value: gridDimensions(), type: FLOAT },
-    { name: 'u_replace_outlier', value: 1, type: INT },
+    { name: 'u_filter_mode', value: 1, type: INT },
   ],
 });
 
@@ -1416,11 +1430,12 @@ const configureHeadless = (options = {}) => {
   }
   if (options.outlierPolicy !== undefined) {
     const outlierPolicy = String(options.outlierPolicy).toLowerCase();
-    if (!['replace', 'flag', 'disabled'].includes(outlierPolicy)) {
-      throw new Error("outlierPolicy must be 'replace', 'flag', or 'disabled'.");
+    if (!['replace', 'flag', 'disabled', 'median'].includes(outlierPolicy)) {
+      throw new Error("outlierPolicy must be 'replace', 'flag', 'disabled', or 'median'.");
     }
     PARAMS.tracking.outlierPolicy = outlierPolicy;
-    medianReplaceProgram.setUniform('u_replace_outlier', outlierPolicy === 'replace' ? 1 : 0);
+    const filterModes = { flag: 0, replace: 1, disabled: 2, median: 3 };
+    medianReplaceProgram.setUniform('u_filter_mode', filterModes[outlierPolicy]);
   }
   return {
     iterations: PARAMS.tracking.iterations,
