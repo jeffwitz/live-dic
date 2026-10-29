@@ -131,7 +131,7 @@ def _compare_solver_outputs(
     candidate_raw: Any,
     *,
     grid_count: int,
-) -> dict[str, bool | float | int | str]:
+) -> dict[str, bool | float | int | str | None]:
     """Check an optimized solver against the portable result used for tuning.
 
     The comparison is deliberately limited to the one-off autotuning frame. It
@@ -141,14 +141,14 @@ def _compare_solver_outputs(
     expected_values = grid_count * 8
     portable = np.frombuffer(portable_raw, dtype=np.float32)
     candidate = np.frombuffer(candidate_raw, dtype=np.float32)
-    diagnostics: dict[str, bool | float | int | str] = {
+    diagnostics: dict[str, bool | float | int | str | None] = {
         "valid": False,
         "reason": "invalid result size",
         "accepted_portable": 0,
         "accepted_candidate": 0,
         "accepted_mismatch": grid_count,
-        "parameter_rmse": float("inf"),
-        "parameter_max_abs": float("inf"),
+        "parameter_rmse": None,
+        "parameter_max_abs": None,
     }
     if portable.size != expected_values or candidate.size != expected_values:
         return diagnostics
@@ -206,7 +206,9 @@ def _compare_solver_outputs(
     return diagnostics
 
 
-def _solver_execution_failure(error: Exception) -> dict[str, bool | float | int | str]:
+def _solver_execution_failure(
+    error: Exception,
+) -> dict[str, bool | float | int | str | None]:
     """Return an autotuning diagnostic for a candidate-local execution error."""
 
     return {
@@ -215,8 +217,8 @@ def _solver_execution_failure(error: Exception) -> dict[str, bool | float | int 
         "accepted_portable": 0,
         "accepted_candidate": 0,
         "accepted_mismatch": 0,
-        "parameter_rmse": float("inf"),
-        "parameter_max_abs": float("inf"),
+        "parameter_rmse": None,
+        "parameter_max_abs": None,
     }
 
 
@@ -845,7 +847,7 @@ class ICGNWGPU:
                     ) from error
         self._solver_preference = prefer_subgroups
         self.solver_tuning_ms: dict[str, float] = {}
-        self.solver_validation: dict[str, dict[str, bool | float | int | str]] = {}
+        self.solver_validation: dict[str, dict[str, bool | float | int | str | None]] = {}
         shader_path = files("lucas_kanade_icgn").joinpath("shaders/icgn.wgsl")
         shader_source = shader_path.read_text(encoding="utf-8")
         shader = self.device.create_shader_module(code=shader_source)

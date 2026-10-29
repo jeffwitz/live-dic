@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import unittest
 from importlib.resources import files
@@ -139,6 +140,20 @@ class NativeReferenceTests(unittest.TestCase):
         self.assertFalse(diagnostics["valid"])
         self.assertEqual(diagnostics["reason"], "accepted subset masks disagree")
 
+    def test_rejected_solver_diagnostics_are_strict_json(self) -> None:
+        diagnostics = _compare_solver_outputs(
+            np.zeros(7, dtype=np.float32),
+            np.zeros(7, dtype=np.float32),
+            grid_count=1,
+        )
+
+        restored = json.loads(json.dumps(diagnostics, allow_nan=False))
+
+        self.assertFalse(restored["valid"])
+        self.assertEqual(restored["reason"], "invalid result size")
+        self.assertIsNone(restored["parameter_rmse"])
+        self.assertIsNone(restored["parameter_max_abs"])
+
     def test_solver_autotuning_accepts_matching_rejected_output(self) -> None:
         portable = np.zeros((4, 8), dtype=np.float32)
         portable[:, 6] = -2.0
@@ -167,6 +182,14 @@ class NativeReferenceTests(unittest.TestCase):
         self.assertIs(engine._solver, engine._portable_solver)
         self.assertFalse(engine.solver_validation["subgroup"]["valid"])
         self.assertIn("candidate validation failed", engine.subgroup_probe_error)
+        restored = json.loads(
+            json.dumps(
+                {"solver_validation": engine.solver_validation},
+                allow_nan=False,
+            )
+        )
+        self.assertIsNone(restored["solver_validation"]["subgroup"]["parameter_rmse"])
+        self.assertIsNone(restored["solver_validation"]["subgroup"]["parameter_max_abs"])
 
     def test_forced_solver_propagates_candidate_validation_error(self) -> None:
         portable = np.zeros((1, 8), dtype=np.float32)
