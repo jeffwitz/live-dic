@@ -22,6 +22,7 @@ from .engine import ICGNError, ImageInput, ReferenceInfo, RegistrationResult, _a
 from .interpolation import normalize_interpolation
 from .motion import MOTION_MODEL_PIPELINE_CONSTANTS, normalize_motion_model
 from .subset import DEFAULT_SUBSET_SIZE, normalize_subset_size, normalize_subset_stride
+from .weighting import normalize_gaussian_sigma, normalize_spatial_weighting
 from .wgpu_backend import (
     DEFAULT_IN_FLIGHT_FRAMES,
     ICGNWGPU,
@@ -119,8 +120,12 @@ class ICGNWGPUFullPyramid:
     prefilters, solves, seed transfers, and median filters stay on one WebGPU
     device and are encoded into one command buffer. ``linear`` and ``cubic``
     interpolation omit the per-level prefilters; ``bspline`` remains the
-    compatibility default. ``subset_size`` selects an 8, 16, or 32 pixel
-    square; ``subset_stride`` independently selects the field spacing.
+    compatibility default. ``subset_size`` supports the established 8, 16,
+    and 32 pixel widths plus centred 15, 17, 31, and 33 pixel widths;
+    ``subset_stride`` independently selects the field spacing.
+    ``spatial_weighting="gaussian"`` enables a centred weighted least-squares
+    window with a configurable ``gaussian_sigma`` in pixels. Uniform
+    integration remains the compatibility default.
     """
 
     def __init__(
@@ -134,12 +139,19 @@ class ICGNWGPUFullPyramid:
         motion_model: str = "affine",
         subset_size: int = DEFAULT_SUBSET_SIZE,
         subset_stride: int | None = None,
+        spatial_weighting: str = "uniform",
+        gaussian_sigma: float | None = None,
     ) -> None:
         self.interpolation = normalize_interpolation(interpolation)
         self.motion_model = normalize_motion_model(motion_model)
         self.subset_size = normalize_subset_size(subset_size)
         self.subset_stride = normalize_subset_stride(
             subset_stride,
+            subset_size=self.subset_size,
+        )
+        self.spatial_weighting = normalize_spatial_weighting(spatial_weighting)
+        self.gaussian_sigma = normalize_gaussian_sigma(
+            gaussian_sigma,
             subset_size=self.subset_size,
         )
         self.pyramid_levels = _level_count(pyramid_levels)
@@ -175,6 +187,8 @@ class ICGNWGPUFullPyramid:
             motion_model=self.motion_model,
             subset_size=self.subset_size,
             subset_stride=self.subset_stride,
+            spatial_weighting=self.spatial_weighting,
+            gaussian_sigma=self.gaussian_sigma,
         )
         self._root._ensure_seeded_solver()
         self._wgpu = self._root._wgpu
@@ -503,6 +517,8 @@ class ICGNWGPUFullPyramid:
                 "interpolation": self.interpolation,
                 "motionModel": self.motion_model,
                 "subsetStride": self.subset_stride,
+                "spatialWeighting": self.spatial_weighting,
+                "gaussianSigma": self.gaussian_sigma,
             },
             device=self.device_name,
             grid=(fine.grid_width, fine.grid_height),

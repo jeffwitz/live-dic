@@ -20,7 +20,11 @@ from lucas_kanade_icgn.full_pyramid_backend import (
     _DEFAULT_TOLERANCES,
     _schedule,
 )
-from lucas_kanade_icgn.subset import normalize_subset_stride, subset_grid_shape
+from lucas_kanade_icgn.subset import (
+    SUPPORTED_SUBSET_SIZES,
+    normalize_subset_stride,
+    subset_grid_shape,
+)
 from lucas_kanade_icgn.wgpu_backend import (
     FIR_RADIUS,
     FIR_RUNTIME_RADIUS,
@@ -168,7 +172,7 @@ class NativeReferenceTests(unittest.TestCase):
 
     def test_reference_layout_supports_all_subset_sizes(self) -> None:
         image = np.arange(64 * 96, dtype=np.uint8).reshape(64, 96)
-        for subset_size in (8, 16, 32):
+        for subset_size in SUPPORTED_SUBSET_SIZES:
             with self.subTest(subset_size=subset_size):
                 reference, inverse, metadata = _reference_arrays(
                     image,
@@ -181,6 +185,44 @@ class NativeReferenceTests(unittest.TestCase):
                 self.assertTrue(np.isfinite(reference).all())
                 self.assertTrue(np.isfinite(inverse).all())
                 self.assertTrue(np.isfinite(metadata).all())
+
+    def test_gaussian_reference_uses_weighted_central_integration(self) -> None:
+        image = np.random.default_rng(20261029).integers(
+            0,
+            256,
+            size=(62, 62),
+            dtype=np.uint8,
+        )
+        reference, inverse, metadata = _reference_arrays(
+            image,
+            interpolation="linear",
+            motion_model="quadratic",
+            subset_size=31,
+            spatial_weighting="gaussian",
+            gaussian_sigma=8.0,
+        )
+        coordinates = np.arange(31, dtype=np.float64) - 15.0
+        y, x = np.meshgrid(coordinates, coordinates, indexing="ij")
+        weights = np.exp(-0.5 * (x * x + y * y) / 64.0)
+        metadata_blocks = metadata.reshape(4, 28)
+        reference_pixels = reference.reshape(62, 62, 4)
+
+        self.assertEqual(inverse.size, 4 * 12 * 12)
+        np.testing.assert_allclose(metadata_blocks[:, 27], weights.sum(), rtol=2e-7)
+        self.assertAlmostEqual(
+            float(np.sum(weights * reference_pixels[:31, :31, 0], dtype=np.float64)),
+            0.0,
+            delta=2e-3,
+        )
+
+    def test_spatial_weighting_is_validated_before_gpu_creation(self) -> None:
+        for engine_type in (ICGNWGPU, ICGNWGPUFullPyramid):
+            with self.assertRaisesRegex(ValueError, "spatial_weighting"):
+                engine_type(spatial_weighting="triangle")
+            with self.assertRaisesRegex(ValueError, "gaussian_sigma"):
+                engine_type(spatial_weighting="gaussian", gaussian_sigma=0.0)
+        with self.assertRaisesRegex(ValueError, "prefer_subgroups"):
+            ICGNWGPU(spatial_weighting="gaussian", prefer_subgroups=True)
 
     def test_pyramid_level_count_is_validated_before_gpu_creation(self) -> None:
         for levels in (0, 4, 1.5, True):

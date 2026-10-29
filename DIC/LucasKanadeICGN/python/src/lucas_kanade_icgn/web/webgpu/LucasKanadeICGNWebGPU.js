@@ -15,8 +15,8 @@ import {
 
 const URL_PARAMETERS = new URLSearchParams(window.location.search);
 const SUBSET_SIZE = Number(URL_PARAMETERS.get('subsetSize') ?? 16);
-if (![8, 16, 32].includes(SUBSET_SIZE)) {
-  throw new Error('subsetSize must be 8, 16, or 32');
+if (![8, 15, 16, 17, 31, 32, 33].includes(SUBSET_SIZE)) {
+  throw new Error('subsetSize must be 8, 15, 16, 17, 31, 32, or 33');
 }
 const SUBSET_STRIDE = Number(URL_PARAMETERS.get('subsetStride') ?? SUBSET_SIZE);
 if (!Number.isInteger(SUBSET_STRIDE) || SUBSET_STRIDE < 1 || SUBSET_STRIDE > SUBSET_SIZE) {

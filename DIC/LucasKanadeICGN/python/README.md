@@ -117,11 +117,30 @@ assert info.subset_stride == 16
 assert result.parameters.shape[:2] == (134, 239)  # for a 3840 x 2160 frame
 ```
 
-The supported sizes are 8, 16, and 32; stride is an integer from 1 through the
-selected size. Independent stride is available in native ``wgpu-py`` and
-browser ``webgpu-wgsl``. Three.js/TSL, WebGL2, and GPU-IO require stride equal
-to size. Any native size or stride other than 16 uses the portable WGSL solver
-because the optional subgroup SPIR-V binary is specialized for 16 x 16.
+The shared-WGSL sizes are 8, 15, 16, 17, 31, 32, and 33; odd widths provide an
+exact centre pixel. Stride is an integer from 1 through the selected size.
+Independent stride is available in native ``wgpu-py`` and browser
+``webgpu-wgsl``. Three.js/TSL, WebGL2, and GPU-IO use widths 8, 16, or 32 and
+require stride equal to size. Any native size or stride other than 16 uses the
+portable WGSL solver because the optional subgroup SPIR-V binary is specialized
+for 16 x 16.
+
+Native engines can use a centred Gaussian integration window:
+
+```python
+with ICGNWGPUFullPyramid(
+    subset_size=31,
+    subset_stride=16,
+    spatial_weighting="gaussian",
+    gaussian_sigma=8.0,
+) as engine:
+    engine.set_reference(reference)
+    result = engine.register(target)
+```
+
+The same weights are applied to all photometric statistics, Hessian terms,
+and residual projections. Uniform integration remains the default. Gaussian
+weighting is not yet exposed by the browser hosts.
 
 The choices are `"bspline"` (historical default), `"linear"`, and `"cubic"`
 (Keys cubic convolution). The two direct modes skip target FIR prefiltering.

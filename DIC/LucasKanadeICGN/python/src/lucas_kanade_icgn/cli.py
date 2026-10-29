@@ -80,7 +80,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--subset-size",
         type=int,
-        choices=(8, 16, 32),
+        choices=(8, 15, 16, 17, 31, 32, 33),
         default=16,
         help="square subset width in pixels",
     )

@@ -59,7 +59,12 @@ def _arguments() -> argparse.Namespace:
         help="backend to run; repeat the option to run several",
     )
     parser.add_argument("--pyramid-levels", type=int, choices=(1, 2, 3), default=2)
-    parser.add_argument("--subset-size", type=int, choices=(8, 16, 32), default=16)
+    parser.add_argument(
+        "--subset-size",
+        type=int,
+        choices=(8, 15, 16, 17, 31, 32, 33),
+        default=16,
+    )
     parser.add_argument(
         "--subset-stride",
         type=int,
@@ -74,6 +79,17 @@ def _arguments() -> argparse.Namespace:
         "--motion-model",
         choices=("affine", "translation", "quadratic"),
         default="affine",
+    )
+    parser.add_argument(
+        "--spatial-weighting",
+        choices=("uniform", "gaussian"),
+        default="uniform",
+        help="native subset integration weights",
+    )
+    parser.add_argument(
+        "--gaussian-sigma",
+        type=float,
+        help="centred Gaussian sigma in pixels (default: subset width / 4)",
     )
     args = parser.parse_args()
     if args.width < 64 or args.height < 64:
@@ -92,6 +108,12 @@ def _arguments() -> argparse.Namespace:
     ):
         parser.error(
             "--pipeline-depth greater than 1 currently requires --backend native-pyramid"
+        )
+    if args.spatial_weighting != "uniform" and any(
+        backend != "native-pyramid" for backend in args.backends
+    ):
+        parser.error(
+            "Gaussian spatial weighting currently requires --backend native-pyramid"
         )
     return args
 
@@ -128,6 +150,8 @@ def _engine(
     motion_model: str,
     subset_size: int,
     subset_stride: int | None,
+    spatial_weighting: str,
+    gaussian_sigma: float | None,
 ) -> AbstractContextManager[Any]:
     if backend == "native-pyramid":
         return ICGNWGPUFullPyramid(
@@ -136,6 +160,8 @@ def _engine(
             motion_model=motion_model,
             subset_size=subset_size,
             subset_stride=subset_stride,
+            spatial_weighting=spatial_weighting,
+            gaussian_sigma=gaussian_sigma,
         )
     return ICGNWebGL(
         backend="webgpu-wgsl" if backend == "webgpu-wgsl" else "three-tsl",
@@ -297,6 +323,8 @@ def main() -> int:
             motion_model=args.motion_model,
             subset_size=args.subset_size,
             subset_stride=args.subset_stride,
+            spatial_weighting=args.spatial_weighting,
+            gaussian_sigma=args.gaussian_sigma,
         ) as engine:
             preparation = engine.set_reference(reference)
             campaigns = [
@@ -334,6 +362,12 @@ def main() -> int:
                 "subset_stride": args.subset_stride or args.subset_size,
                 "interpolation": args.interpolation,
                 "motion_model": args.motion_model,
+                "spatial_weighting": args.spatial_weighting,
+                "gaussian_sigma": (
+                    args.gaussian_sigma
+                    if args.gaussian_sigma is not None
+                    else 0.25 * args.subset_size
+                ),
                 "pipeline_depth": args.pipeline_depth,
                 "campaigns": args.campaigns,
                 "measurements": measurements,

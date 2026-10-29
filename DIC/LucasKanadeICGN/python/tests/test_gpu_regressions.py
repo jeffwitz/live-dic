@@ -309,6 +309,31 @@ class GPURegressionTests(unittest.TestCase):
             engine.close()
             engine.device.destroy()
 
+    def test_odd_gaussian_quadratic_subset_runs_the_full_pyramid(self) -> None:
+        truth = (0.5, -0.375)
+        reference, target = _fractional_pair(256, 256, truth)
+        engine = ICGNWGPUFullPyramid(
+            pyramid_levels=2,
+            subset_size=31,
+            subset_stride=16,
+            interpolation="linear",
+            motion_model="quadratic",
+            spatial_weighting="gaussian",
+            gaussian_sigma=8.0,
+        )
+        try:
+            info = engine.set_reference(reference)
+            result = engine.register(target)
+            self.assertEqual(info.grid, (15, 15))
+            self.assertEqual(result.parameters.shape, (15, 15, 12))
+            self.assertEqual(result.config["spatialWeighting"], "gaussian")
+            self.assertEqual(result.config["gaussianSigma"], 8.0)
+            self.assertGreater(result.accepted, 0)
+            self.assertLess(result.rmse(truth), 0.08)
+        finally:
+            engine.close()
+            engine.device.destroy()
+
     def test_full_pyramid_stream_preserves_order_and_synchronous_results(self) -> None:
         translations = ((0.25, -0.125), (0.5, -0.375), (-0.375, 0.25))
         pairs = [_fractional_pair(128, 128, truth) for truth in translations]

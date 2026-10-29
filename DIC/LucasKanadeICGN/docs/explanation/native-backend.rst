@@ -51,8 +51,11 @@ does not claim that host-to-device transfer has disappeared.
 Algorithm mapping
 -----------------
 
-The native backend uses selectable 8 x 8, 16 x 16, or 32 x 32 subsets and an
-independent stride from 1 through the selected size. Stride defaults to size.
+The native backend uses selectable widths 8, 15, 16, 17, 31, 32, and 33 and an
+independent stride from 1 through the selected size. Odd widths provide an
+exact centre pixel; stride defaults to size. Uniform least-squares integration
+is the default, with centred Gaussian integration and sigma available as
+engine options.
 It retains the affine parameter order, 31-value radius-15 target filter vector,
 inverse-compositional update, ZNCC
 test, and median replacement as the browser implementations. The WGSL runtime

@@ -273,6 +273,10 @@ class RuntimeAssetTests(unittest.TestCase):
 
         engine = ICGNWebGL(subset_size=32)
         self.assertEqual(engine.subset_size, 32)
+        odd = ICGNWebGL(backend="webgpu-wgsl", subset_size=31, subset_stride=16)
+        self.assertEqual(odd.subset_size, 31)
+        with self.assertRaisesRegex(ValueError, "Odd subset sizes"):
+            ICGNWebGL(backend="three-tsl", subset_size=31)
 
     def test_browser_subset_stride_is_validated_and_scoped(self) -> None:
         for subset_stride in (0, 33, True, 16.0):

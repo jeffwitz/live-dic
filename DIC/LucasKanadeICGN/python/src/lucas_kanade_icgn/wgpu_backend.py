@@ -35,6 +35,11 @@ from .subset import (
     normalize_subset_stride,
     subset_grid_shape,
 )
+from .weighting import (
+    SPATIAL_WEIGHTING_PIPELINE_CONSTANTS,
+    normalize_gaussian_sigma,
+    normalize_spatial_weighting,
+)
 
 FIR_RADIUS = 15
 #: Runtime FIR half-width after removing numerically negligible outer taps.
@@ -411,6 +416,8 @@ def _reference_arrays(
     motion_model: str = "affine",
     subset_size: int = DEFAULT_SUBSET_SIZE,
     subset_stride: int | None = None,
+    spatial_weighting: str = "uniform",
+    gaussian_sigma: float | None = None,
 ) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.float32], npt.NDArray[np.float32]]:
     """Build reference pixels, inverse Hessians, and solver metadata."""
 
@@ -426,6 +433,8 @@ def _reference_arrays(
     )
     mode = normalize_interpolation(interpolation)
     model = normalize_motion_model(motion_model)
+    weighting = normalize_spatial_weighting(spatial_weighting)
+    sigma = normalize_gaussian_sigma(gaussian_sigma, subset_size=subset_size)
     if mode == "bspline":
         intensity = _gaussian_sigma_one(image)
         gradient_source = _cubic_bspline_prefilter(intensity)
@@ -450,6 +459,22 @@ def _reference_arrays(
             + 0.5 * (padded[2:, 2:] - padded[:-2, 2:])
         ) / 6.0
 
+    local_y, local_x = np.meshgrid(
+        np.arange(subset_size, dtype=np.float64) - half_extent,
+        np.arange(subset_size, dtype=np.float64) - half_extent,
+        indexing="ij",
+    )
+    local_x = local_x.ravel()
+    local_y = local_y.ravel()
+    if weighting == "gaussian":
+        integration_weights = np.exp(
+            -0.5 * (local_x * local_x + local_y * local_y) / (sigma * sigma)
+        )
+    else:
+        integration_weights = np.ones(local_x.size, dtype=np.float64)
+    integration_weight_sum = float(integration_weights.sum(dtype=np.float64))
+    integration_weights_2d = integration_weights.reshape(subset_size, subset_size)
+
     reference = np.zeros((height, width, 4), dtype=np.float32)
     independent_stride = subset_stride != subset_size
     if independent_stride:
@@ -469,7 +494,10 @@ def _reference_arrays(
         tiled = intensity[:covered_height, :covered_width].reshape(
             grid_height, subset_size, grid_width, subset_size
         )
-        means = tiled.mean(axis=(1, 3))
+        means = (
+            np.einsum("aybx,yx->ab", tiled, integration_weights_2d, optimize=True)
+            / integration_weight_sum
+        )
         centered = intensity.copy()
         centered[:covered_height, :covered_width] -= np.repeat(
             np.repeat(means, subset_size, axis=0), subset_size, axis=1
@@ -484,18 +512,13 @@ def _reference_arrays(
     metadata_stride = 28 if model == "quadratic" else 16
     inverse = np.zeros((grid_count, inverse_stride), dtype=np.float32)
     metadata = np.zeros((grid_count, metadata_stride), dtype=np.float32)
-    local_y, local_x = np.meshgrid(
-        np.arange(subset_size, dtype=np.float64) - half_extent,
-        np.arange(subset_size, dtype=np.float64) - half_extent,
-        indexing="ij",
-    )
-    local_x = local_x.ravel()
-    local_y = local_y.ravel()
-
     for grid_y in range(grid_height):
         if independent_stride:
             raw_tiles = intensity_windows[grid_y].reshape(grid_width, -1)
-            row_means = raw_tiles.mean(axis=1)
+            row_means = (
+                np.einsum("np,p->n", raw_tiles, integration_weights, optimize=True)
+                / integration_weight_sum
+            )
             f_tiles = raw_tiles - row_means[:, None]
             gx_tiles = gradient_x_windows[grid_y].reshape(grid_width, -1)
             gy_tiles = gradient_y_windows[grid_y].reshape(grid_width, -1)
@@ -514,12 +537,18 @@ def _reference_arrays(
             gx_tiles = gx_row.transpose(1, 0, 2).reshape(grid_width, -1)
             gy_tiles = gy_row.transpose(1, 0, 2).reshape(grid_width, -1)
             row_means = np.zeros(grid_width, dtype=np.float64)
-        energy = np.einsum("np,np->n", f_tiles, f_tiles, optimize=True)
+        energy = np.einsum("np,np,p->n", f_tiles, f_tiles, integration_weights, optimize=True)
         row_offset = grid_y * grid_width
         if model == "translation":
-            hessian_xx = np.einsum("np,np->n", gx_tiles, gx_tiles, optimize=True)
-            hessian_xy = np.einsum("np,np->n", gx_tiles, gy_tiles, optimize=True)
-            hessian_yy = np.einsum("np,np->n", gy_tiles, gy_tiles, optimize=True)
+            hessian_xx = np.einsum(
+                "np,np,p->n", gx_tiles, gx_tiles, integration_weights, optimize=True
+            )
+            hessian_xy = np.einsum(
+                "np,np,p->n", gx_tiles, gy_tiles, integration_weights, optimize=True
+            )
+            hessian_yy = np.einsum(
+                "np,np,p->n", gy_tiles, gy_tiles, integration_weights, optimize=True
+            )
             determinant = hessian_xx * hessian_yy - hessian_xy * hessian_xy
             scale = np.maximum(np.abs(hessian_xx * hessian_yy), 1.0)
             valid = (
@@ -535,11 +564,15 @@ def _reference_arrays(
             row_inverse[:, 3, 0] = -hessian_xy * inverse_determinant
             row_inverse[:, 3, 3] = hessian_xx * inverse_determinant
             jt_reference = np.zeros((grid_width, 6), dtype=np.float64)
-            jt_reference[:, 0] = np.einsum("np,np->n", gx_tiles, f_tiles, optimize=True)
-            jt_reference[:, 3] = np.einsum("np,np->n", gy_tiles, f_tiles, optimize=True)
+            jt_reference[:, 0] = np.einsum(
+                "np,np,p->n", gx_tiles, f_tiles, integration_weights, optimize=True
+            )
+            jt_reference[:, 3] = np.einsum(
+                "np,np,p->n", gy_tiles, f_tiles, integration_weights, optimize=True
+            )
             sum_j = np.zeros((grid_width, 6), dtype=np.float64)
-            sum_j[:, 0] = gx_tiles.sum(axis=1)
-            sum_j[:, 3] = gy_tiles.sum(axis=1)
+            sum_j[:, 0] = np.einsum("np,p->n", gx_tiles, integration_weights, optimize=True)
+            sum_j[:, 3] = np.einsum("np,p->n", gy_tiles, integration_weights, optimize=True)
         else:
             jacobian_components = [
                 gx_tiles,
@@ -564,9 +597,13 @@ def _reference_arrays(
                     )
                 )
             jacobian = np.stack(jacobian_components, axis=2)
-            hessian = np.einsum("npi,npj->nij", jacobian, jacobian, optimize=True)
-            jt_reference = np.einsum("npi,np->ni", jacobian, f_tiles, optimize=True)
-            sum_j = jacobian.sum(axis=1)
+            hessian = np.einsum(
+                "npi,npj,p->nij", jacobian, jacobian, integration_weights, optimize=True
+            )
+            jt_reference = np.einsum(
+                "npi,np,p->ni", jacobian, f_tiles, integration_weights, optimize=True
+            )
+            sum_j = np.einsum("npi,p->ni", jacobian, integration_weights, optimize=True)
             try:
                 row_inverse = np.linalg.inv(hessian)
                 valid = np.isfinite(row_inverse).all(axis=(1, 2)) & (energy > 1e-12)
@@ -597,6 +634,10 @@ def _reference_arrays(
             sum_offset : sum_offset + component_count,
         ] = sum_j
         metadata[row_offset : row_offset + grid_width, sum_offset + component_count] = row_means
+        metadata[
+            row_offset : row_offset + grid_width,
+            sum_offset + component_count + 1,
+        ] = integration_weight_sum
 
     return (
         np.ascontiguousarray(reference.ravel()),
@@ -614,9 +655,11 @@ class ICGNWGPU:
     ``prefer_subgroups`` to ``False`` or ``True`` to force either path for
     qualification. Direct ``linear`` and Keys ``cubic`` interpolation omit
     target FIR passes and use the portable solver; ``bspline`` is the
-    historical default. ``subset_size`` selects an 8, 16, or 32 pixel square;
-    ``subset_stride`` independently selects the field spacing. The subgroup
-    SPIR-V path requires both values to be 16.
+    historical default. ``subset_size`` also supports centred odd widths 15,
+    17, 31, and 33; ``subset_stride`` independently selects the field spacing.
+    ``spatial_weighting="gaussian"`` applies centred Gaussian integration with
+    ``gaussian_sigma`` expressed in pixels. The subgroup SPIR-V path requires
+    size and stride 16 plus uniform integration.
     """
 
     def __init__(
@@ -629,6 +672,8 @@ class ICGNWGPU:
         motion_model: str = "affine",
         subset_size: int = DEFAULT_SUBSET_SIZE,
         subset_stride: int | None = None,
+        spatial_weighting: str = "uniform",
+        gaussian_sigma: float | None = None,
     ) -> None:
         self.interpolation = normalize_interpolation(interpolation)
         self.motion_model = normalize_motion_model(motion_model)
@@ -637,15 +682,23 @@ class ICGNWGPU:
             subset_stride,
             subset_size=self.subset_size,
         )
+        self.spatial_weighting = normalize_spatial_weighting(spatial_weighting)
+        self.gaussian_sigma = normalize_gaussian_sigma(
+            gaussian_sigma,
+            subset_size=self.subset_size,
+        )
         if prefer_subgroups is True and (
             self.subset_size != DEFAULT_SUBSET_SIZE or self.subset_stride != DEFAULT_SUBSET_SIZE
         ):
             raise ValueError("prefer_subgroups=True requires subset_size=16 and subset_stride=16")
         if prefer_subgroups is True and (
-            self.interpolation != "bspline" or self.motion_model != "affine"
+            self.interpolation != "bspline"
+            or self.motion_model != "affine"
+            or self.spatial_weighting != "uniform"
         ):
             raise ValueError(
-                "prefer_subgroups=True requires interpolation='bspline' and motion_model='affine'"
+                "prefer_subgroups=True requires interpolation='bspline', "
+                "motion_model='affine', and spatial_weighting='uniform'"
             )
         try:
             level_count = operator.index(pyramid_levels)
@@ -679,6 +732,7 @@ class ICGNWGPU:
         required_features = []
         if (
             self.motion_model == "affine"
+            and self.spatial_weighting == "uniform"
             and self.subset_size == DEFAULT_SUBSET_SIZE
             and self.subset_stride == DEFAULT_SUBSET_SIZE
             and prefer_subgroups is not False
@@ -716,6 +770,7 @@ class ICGNWGPU:
             and self.subset_stride == DEFAULT_SUBSET_SIZE
             and self.subgroup_width >= DEFAULT_SUBSET_SIZE
             and self.motion_model == "affine"
+            and self.spatial_weighting == "uniform"
         ):
             subgroup_path = files("lucas_kanade_icgn").joinpath("shaders/icgn_subgroup.spv")
             subgroup_shader = self.device.create_shader_module(
@@ -756,6 +811,10 @@ class ICGNWGPU:
                     "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
                     "SUBSET_SIZE": self.subset_size,
                     "SUBSET_STRIDE": self.subset_stride,
+                    "SPATIAL_WEIGHTING": SPATIAL_WEIGHTING_PIPELINE_CONSTANTS[
+                        self.spatial_weighting
+                    ],
+                    "GAUSSIAN_SIGMA": self.gaussian_sigma,
                 },
             },
         )
@@ -838,6 +897,12 @@ class ICGNWGPU:
         level.motion_model = getattr(self, "motion_model", "affine")
         level.subset_size = self.subset_size
         level.subset_stride = getattr(self, "subset_stride", self.subset_size)
+        level.spatial_weighting = getattr(self, "spatial_weighting", "uniform")
+        level.gaussian_sigma = getattr(
+            self,
+            "gaussian_sigma",
+            0.25 * self.subset_size,
+        )
         level.solver_tuning_ms = {}
         level.solver = "portable-workgroup"
         level._solver = level._portable_solver
@@ -995,6 +1060,14 @@ class ICGNWGPU:
             "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[motion_model],
             "SUBSET_SIZE": self.subset_size,
             "SUBSET_STRIDE": getattr(self, "subset_stride", self.subset_size),
+            "SPATIAL_WEIGHTING": SPATIAL_WEIGHTING_PIPELINE_CONSTANTS[
+                getattr(self, "spatial_weighting", "uniform")
+            ],
+            "GAUSSIAN_SIGMA": getattr(
+                self,
+                "gaussian_sigma",
+                0.25 * self.subset_size,
+            ),
         }
         seeded_solver = self.device.create_compute_pipeline(
             layout=layout,
@@ -1579,6 +1652,12 @@ class ICGNWGPU:
                 "interpolation": getattr(self, "interpolation", "bspline"),
                 "motionModel": getattr(self, "motion_model", "affine"),
                 "subsetStride": self.subset_stride,
+                "spatialWeighting": getattr(self, "spatial_weighting", "uniform"),
+                "gaussianSigma": getattr(
+                    self,
+                    "gaussian_sigma",
+                    0.25 * self.subset_size,
+                ),
             },
             width=self.width,
             height=self.height,
@@ -1675,6 +1754,8 @@ class ICGNWGPU:
                 motion_model=self.motion_model,
                 subset_size=self.subset_size,
                 subset_stride=self.subset_stride,
+                spatial_weighting=self.spatial_weighting,
+                gaussian_sigma=self.gaussian_sigma,
             )
             engine.set_reference(
                 reduced,
@@ -1714,6 +1795,8 @@ class ICGNWGPU:
             motion_model=self.motion_model,
             subset_size=self.subset_size,
             subset_stride=subset_stride,
+            spatial_weighting=self.spatial_weighting,
+            gaussian_sigma=self.gaussian_sigma,
         )
         reference_wall_ms = (time.perf_counter() - reference_start) * 1_000.0
 
@@ -1747,6 +1830,12 @@ class ICGNWGPU:
                 "interpolation": getattr(self, "interpolation", "bspline"),
                 "motionModel": getattr(self, "motion_model", "affine"),
                 "subsetStride": subset_stride,
+                "spatialWeighting": getattr(self, "spatial_weighting", "uniform"),
+                "gaussianSigma": getattr(
+                    self,
+                    "gaussian_sigma",
+                    0.25 * self.subset_size,
+                ),
             },
             device=self.device_name,
             grid=(self.grid_width, self.grid_height),
@@ -1822,6 +1911,12 @@ class ICGNWGPU:
                 "interpolation": getattr(self, "interpolation", "bspline"),
                 "motionModel": getattr(self, "motion_model", "affine"),
                 "subsetStride": subset_stride,
+                "spatialWeighting": getattr(self, "spatial_weighting", "uniform"),
+                "gaussianSigma": getattr(
+                    self,
+                    "gaussian_sigma",
+                    0.25 * self.subset_size,
+                ),
             },
             width=self.width,
             height=self.height,

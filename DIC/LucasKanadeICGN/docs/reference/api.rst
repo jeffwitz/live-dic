@@ -57,6 +57,13 @@ followed by six second derivatives. Native wgpu and browser
 affine, and deprecated GPU-IO is affine-only. See
 :doc:`../explanation/motion-models`.
 
+Native shared-WGSL engines accept ``subset_size`` values 8, 15, 16, 17, 31,
+32, and 33. The odd widths have an exact centre pixel. They also accept
+``spatial_weighting="gaussian"`` and an optional ``gaussian_sigma`` in pixels;
+uniform integration remains the default. See
+:doc:`../explanation/subset-size` for the complete geometry and weighting
+contract.
+
 Native single-scale and streaming engine
 ----------------------------------------
 

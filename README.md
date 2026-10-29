@@ -76,8 +76,9 @@ The implementation in [`DIC/LucasKanadeICGN/`](./DIC/LucasKanadeICGN/) adds:
   direct bilinear, or direct Keys cubic convolution;
 - reference gradients and a constant inverse Hessian prepared once;
 - ZNCC validation and spatial median replacement;
-- configurable square subsets of 8, 16, or 32 pixels and an independent
-  ``subset_stride`` for overlapping fields on the shared-WGSL backends;
+- configurable square subsets including centred odd widths 15, 17, 31, and
+  33, plus optional centred Gaussian integration on native wgpu, and an
+  independent ``subset_stride`` for overlapping shared-WGSL fields;
   stride defaults to size, with 16 x 16 retained as the qualified geometry;
 - target prefiltering and registration on Three.js/TSL WebGPU by default;
 - a fused, dynamically sized GPU-IO/WebGL2 implementation as an optional
@@ -382,9 +383,9 @@ available from [`index.html`](./index.html).
 
 - dynamic grayscale frame dimensions in all backends; GPU-IO requires width
   and height to be multiples of the selected subset size;
-- 8 x 8, 16 x 16, or 32 x 32 subsets; native and browser shared-WGSL paths
-  support an independent stride from 1 through the subset width, while
-  Three.js/TSL, WebGL2, and GPU-IO still require stride equal to size;
+- widths 8, 15, 16, 17, 31, 32, and 33 on native and raw browser WGSL, with an
+  independent stride from 1 through the subset width; Three.js/TSL, WebGL2,
+  and GPU-IO remain limited to widths 8, 16, and 32 with stride equal to size;
 - Three.js/TSL and historical GPU-IO remain single-scale; the raw WGSL browser
   backend and native full-pyramid backend default to two levels and support
   three explicitly;

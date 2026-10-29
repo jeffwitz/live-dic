@@ -70,6 +70,10 @@ override SUBSET_SIZE: i32 = 16;
 // Distance in pixels between adjacent subset centres. It equals SUBSET_SIZE
 // in the historical non-overlapping configuration.
 override SUBSET_STRIDE: i32 = 16;
+// 0: uniform least-squares integration, 1: centred Gaussian integration.
+override SPATIAL_WEIGHTING: u32 = 0u;
+// Gaussian standard deviation in subset pixels. Ignored for uniform weights.
+override GAUSSIAN_SIGMA: f32 = 4.0;
 // Keep standalone consumers safe. Repository hosts specialize this override
 // to zero for dimensions where one reflection already covers every tile load.
 override PREFILTER_CLAMP_HALO: u32 = 1u;
@@ -681,11 +685,14 @@ fn solve_subset(
             let f = reference_value.x - reference_mean;
             let gradient_x = reference_value.y;
             let gradient_y = reference_value.z;
-            let gxg = gradient_x * current;
-            let gyg = gradient_y * current;
-            sum_current = sum_current + current;
-            sum_current2 = sum_current2 + current * current;
-            sum_reference_current = sum_reference_current + f * current;
+            let integration_weight = spatial_weight(local_x, local_y);
+            let weighted_current = integration_weight * current;
+            let gxg = gradient_x * weighted_current;
+            let gyg = gradient_y * weighted_current;
+            sum_current = sum_current + weighted_current;
+            sum_current2 = sum_current2 + weighted_current * current;
+            sum_reference_current = sum_reference_current
+                + integration_weight * f * current;
             sum_j_current[0] = sum_j_current[0] + gxg;
             sum_j_current[3] = sum_j_current[3] + gyg;
             if MOTION_MODEL != 1u {
@@ -761,7 +768,7 @@ fn solve_subset(
                 let totals_c = quadratic_base_totals[2];
                 let totals_q0 = partial_a[0];
                 let totals_q1 = partial_b[0];
-                let current_mean = totals_a.x / subset_pixel_count();
+                let current_mean = totals_a.x / integration_weight_sum(subset_index);
                 let current_norm = sqrt(max(0.0, totals_a.y - totals_a.x * current_mean));
                 let reference_norm = metadata_value(subset_index, 0u);
                 shared_status.y = f32(iteration + 1u);
@@ -807,7 +814,7 @@ fn solve_subset(
             let totals_a = partial_a[0];
             let totals_b = partial_b[0];
             let totals_c = partial_c[0];
-            let current_mean = totals_a.x / subset_pixel_count();
+            let current_mean = totals_a.x / integration_weight_sum(subset_index);
             let current_norm = sqrt(max(0.0, totals_a.y - totals_a.x * current_mean));
             let reference_norm = metadata_value(subset_index, 0u);
             shared_status.y = f32(iteration + 1u);
@@ -1142,4 +1149,20 @@ fn subset_half_extent() -> f32 {
 
 fn subset_pixel_count() -> f32 {
     return f32(SUBSET_SIZE * SUBSET_SIZE);
+}
+
+fn spatial_weight(local_x: f32, local_y: f32) -> f32 {
+    if SPATIAL_WEIGHTING == 1u {
+        let inverse_variance = 1.0 / (GAUSSIAN_SIGMA * GAUSSIAN_SIGMA);
+        return exp(-0.5 * (local_x * local_x + local_y * local_y) * inverse_variance);
+    }
+    return 1.0;
+}
+
+fn integration_weight_sum(subset_index: u32) -> f32 {
+    if SPATIAL_WEIGHTING == 1u {
+        let mean_offset = select(14u, 26u, MOTION_MODEL == 2u);
+        return metadata_value(subset_index, mean_offset + 1u);
+    }
+    return subset_pixel_count();
 }

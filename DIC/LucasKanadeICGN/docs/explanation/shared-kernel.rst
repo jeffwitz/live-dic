@@ -85,12 +85,15 @@ Numerical contract
 Geometry
 ~~~~~~~~
 
-* subset width ``S``: 8, 16, or 32 pixels, default 16;
+* shared-WGSL subset width ``S``: 8, 15, 16, 17, 31, 32, or 33 pixels,
+  default 16;
 * shared-WGSL subset stride ``D``: integer from 1 through ``S``, default ``S``;
 * grid dimensions: ``1 + floor((width - S) / D)`` by
   ``1 + floor((height - S) / D)``;
 * subset centre: ``(S/2 + D gx, S/2 + D gy)``;
 * local coordinates: ``[-(S-1)/2, +(S-1)/2]`` on each axis;
+* integration weights: uniform by default, or a centred Gaussian in native
+  wgpu with an explicit sigma in pixels;
 * affine parameter order: ``[tx, du/dx, du/dy, ty, dv/dx, dv/dy]``.
 * quadratic extension: ``[d2u/dx2, d2u/dxdy, d2u/dy2, d2v/dx2,
   d2v/dxdy, d2v/dy2]``.

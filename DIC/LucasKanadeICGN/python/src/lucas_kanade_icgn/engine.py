@@ -830,6 +830,11 @@ class ICGNWebGL:
             subset_stride,
             subset_size=self.subset_size,
         )
+        if self.subset_size not in {8, 16, 32} and backend != "webgpu-wgsl":
+            raise ValueError(
+                "Odd subset sizes currently require backend='webgpu-wgsl'; "
+                "Three.js and GPU-IO support subset_size=8, 16, or 32"
+            )
         if backend == "gpuio" and self.interpolation != "bspline":
             raise ValueError("The deprecated 'gpuio' backend supports only interpolation='bspline'")
         if backend == "gpuio" and self.motion_model != "affine":
