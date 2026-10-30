@@ -6,7 +6,8 @@ The boolean mask selects complete nominal windows in reference coordinates for
 translation and affine models. Results expose ``roi_selected``,
 ``reference_valid``, ``populations`` and ``save_npz(path)``. See
 :doc:`../how-to/use-roi` for selection, pyramid, filtering and export contracts.
-``partial`` is explicitly unavailable; browser engines reject ROI requests.
+The optional ``partial`` policy and ``roi_truncation="visibility"`` are described
+in :doc:`../how-to/use-partial-roi`. Browser engines reject ROI requests.
 
 Supervision contract
 --------------------

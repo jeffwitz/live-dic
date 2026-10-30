@@ -76,6 +76,50 @@ class UHDFixtureIntegrityTests(unittest.TestCase):
 
 @unittest.skipUnless(os.environ.get("ICGN_RUN_GPU_TESTS") == "1", "set ICGN_RUN_GPU_TESTS=1")
 class UHDRegistrationRegressionTests(unittest.TestCase):
+    def test_uhd_partial_roi_complete_and_boundary_populations(self) -> None:
+        reference, target = _image("reference.png"), _image("frame_040.png")
+        y, x = np.indices(reference.shape)
+        roi = ((x - 1920) / 1600) ** 2 + ((y - 1080) / 900) ** 2 <= 1
+        roi[400:1205, 1930:1932] = False
+        state = _truth()[40]
+        ex, ey = float(state["stretch_x"]) - 1, float(state["stretch_y"]) - 1
+        for model in ("translation", "affine"):
+            for truncation in ("none", "visibility"):
+                with (
+                    self.subTest(model=model, truncation=truncation),
+                    ICGNWGPUFullPyramid(motion_model=model, outlier_policy="median") as engine,
+                ):
+                    info = engine.set_reference(
+                        reference, roi_mask=roi, roi_policy="partial", roi_truncation=truncation
+                    )
+                    current = target if model == "affine" else np.roll(reference, (-1, 2), (0, 1))
+                    result = engine.register(current)
+                    self.assertFalse(np.any(result.status == -4))
+                    self.assertTrue(np.isfinite(result.parameters).all())
+                    partial = np.zeros(result.status.shape, bool)
+                    partial.ravel()[info.roi.partial_indices] = True
+                    _, cx, cy = _interior(result, 32)
+                    truth = (
+                        np.stack((ex * (cx - 1920), ey * (cy - 1080)), axis=-1)
+                        if model == "affine"
+                        else np.broadcast_to([2.0, -1.0], result.displacement.shape)
+                    )
+                    for population in (partial, info.roi_selected & ~partial):
+                        self.assertGreater(population.sum(), 0)
+                        accepted = population & result.accepted_mask
+                        self.assertGreaterEqual(accepted.sum() / population.sum(), 0.90)
+                        distance = np.linalg.norm(
+                            result.displacement[accepted] - truth[accepted], axis=-1
+                        )
+                        self.assertLess(float(np.sqrt(np.mean(distance**2))), 0.05)
+                        self.assertLess(float(np.percentile(distance, 95)), 0.10)
+                    # Existing complete-window median gradient bound stays in
+                    # force; boundary gradients are reported independently.
+                    if model == "affine":
+                        complete = result.accepted_mask & ~partial
+                        error = result.parameters[..., (1, 2, 4, 5)][complete] - [ex, 0, 0, ey]
+                        self.assertLess(float(np.sqrt(np.mean(error**2))), 0.002)
+
     def test_uhd_roi_preserves_affine_precision_and_pure_translation(self) -> None:
         reference, target = _image("reference.png"), _image("frame_040.png")
         limits = _manifest()["regression_limits"]

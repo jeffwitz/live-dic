@@ -259,6 +259,9 @@ ROI: `engine.set_reference(reference, roi_mask=mask)`. The default `full` policy
 retains only windows whose complete nominal square is allowed, including checks
 for interior holes. See the [ROI guide](./DIC/LucasKanadeICGN/docs/how-to/use-roi.rst)
 for pyramids, filtering, streaming, and self-contained NPZ exports.
+For boundary measurements, explicitly enable `roi_policy="partial"`; the
+[partial-support guide](./DIC/LucasKanadeICGN/docs/how-to/use-partial-roi.rst)
+explains fixed connected supports and optional visibility truncation near tips.
 
 Requirements:
 

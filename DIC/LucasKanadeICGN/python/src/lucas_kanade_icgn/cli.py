@@ -217,7 +217,7 @@ def _save_registrations(
 ) -> None:
     """Save sequence outputs in one array per documented result field."""
 
-    hashes = {None if result.roi is None else result.roi.mask_hash for result in results}
+    hashes = {None if result.roi is None else id(result.roi) for result in results}
     if len(hashes) > 1:
         raise ValueError(
             "A sequence archive must use one prepared ROI; export separate references separately"

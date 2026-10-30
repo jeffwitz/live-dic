@@ -30,6 +30,7 @@ from .motion import (
     state_float_count,
 )
 from .outlier import OUTLIER_POLICY_PIPELINE_CONSTANTS, normalize_outlier_policy
+from .partial import filter_and_support_data, prepare_partial_reference
 from .roi import RoiPlan, immutable, prepare_roi, reduce_mask, seed_permissions, validate_roi
 from .subset import (
     DEFAULT_SUBSET_SIZE,
@@ -785,6 +786,9 @@ class ICGNWGPU:
 
     roi: RoiPlan | None = None
     reference_valid: np.ndarray | None = None
+    _partial_solver: Any = None
+    _partial_seeded_solver: Any = None
+    _partial_retry_solver: Any = None
 
     def __init__(
         self,
@@ -1228,6 +1232,7 @@ class ICGNWGPU:
             and self._retry_solver is not None
             and roi_mode == self._seeded_roi_mode
         ):
+            self._ensure_partial_seeded_pipelines()
             return
         self._seeded_bind_group_layout = self._create_bind_group_layout(seeded=True)
         layout = self.device.create_pipeline_layout(
@@ -1269,11 +1274,48 @@ class ICGNWGPU:
         self._seeded_solver = seeded_solver
         self._retry_solver = retry_solver
         self._seeded_roi_mode = roi_mode
+        self._ensure_partial_seeded_pipelines()
+
+    def _partial_constants(self) -> dict:
+        return {
+            "ROI_ENABLED": 1,
+            "PARTIAL_SUPPORT": 1,
+            "INTERPOLATION_MODE": INTERPOLATION_PIPELINE_CONSTANTS[self.interpolation],
+            "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
+            "SUBSET_SIZE": self.subset_size,
+            "SUBSET_STRIDE": self.subset_stride,
+            "SPATIAL_WEIGHTING": SPATIAL_WEIGHTING_PIPELINE_CONSTANTS[self.spatial_weighting],
+            "GAUSSIAN_SIGMA": self.gaussian_sigma,
+        }
+
+    def _ensure_partial_seeded_pipelines(self) -> None:
+        if self._partial_solver is None:
+            return
+        if self._partial_seeded_solver is not None and self._partial_retry_solver is not None:
+            return
+        layout = self.device.create_pipeline_layout(
+            bind_group_layouts=[self._seeded_bind_group_layout]
+        )
+        for entry, attribute in (
+            ("solve_partial_seeded", "_partial_seeded_solver"),
+            ("retry_partial_seeded", "_partial_retry_solver"),
+        ):
+            if entry not in self._roi_solver_pipelines:
+                self._roi_solver_pipelines[entry] = self.device.create_compute_pipeline(
+                    layout=layout,
+                    compute={
+                        "module": self._shader,
+                        "entry_point": entry,
+                        "constants": self._partial_constants(),
+                    },
+                )
+            setattr(self, attribute, self._roi_solver_pipelines[entry])
 
     def _select_roi_solver_pipelines(self) -> None:
         """Keep unmasked solver arithmetic intact through a pipeline constant."""
         self._portable_solver = self._base_portable_solver
         self._subgroup_solver = self._base_subgroup_solver
+        self._partial_solver = self._partial_seeded_solver = self._partial_retry_solver = None
         if self.roi is not None and self.roi.effective:
             constants = {
                 "ROI_ENABLED": 1,
@@ -1309,8 +1351,27 @@ class ICGNWGPU:
             self._subgroup_solver if self._solver_preference is True else self._portable_solver
         )
         self.solver = "subgroup" if self._solver_preference is True else "portable-workgroup"
+        if (
+            self.roi is not None
+            and self.roi.partial_indices is not None
+            and self.roi.partial_indices.size
+        ):
+            if "solve_partial" not in self._roi_solver_pipelines:
+                self._roi_solver_pipelines["solve_partial"] = self.device.create_compute_pipeline(
+                    layout=self._pipeline_layout,
+                    compute={
+                        "module": self._shader,
+                        "entry_point": "solve_partial",
+                        "constants": self._partial_constants(),
+                    },
+                )
+            self._partial_solver = self._roi_solver_pipelines["solve_partial"]
+            count = int(self.roi.partial_indices.size)
+            self._partial_dispatch = (min(count, 65535), (count + 65534) // 65535, 1)
+            # Build every partial entry point before accepting any targets.
+            self._ensure_seeded_solver()
 
-    def _storage_buffer(self, data: npt.NDArray[np.float32], *, output: bool = False) -> Any:
+    def _storage_buffer(self, data: np.ndarray, *, output: bool = False) -> Any:
         usage = self._wgpu.BufferUsage.STORAGE
         if output:
             usage |= self._wgpu.BufferUsage.COPY_SRC | self._wgpu.BufferUsage.COPY_DST
@@ -1329,7 +1390,7 @@ class ICGNWGPU:
             "reference": self._storage_buffer(reference),
             "inverse": self._storage_buffer(inverse),
             "metadata": self._storage_buffer(metadata),
-            "fir": self._storage_buffer(_fir_weights()),
+            "fir": self._storage_buffer(filter_and_support_data(_fir_weights(), self.roi)),
         }
         primary = self._create_registration_slot(shared_buffers)
         self._pipeline_slots = [primary]
@@ -1596,6 +1657,13 @@ class ICGNWGPU:
                 solver_bind_group,
             )
         )
+        if self._partial_solver is not None:
+            partial = (
+                self._partial_solver
+                if solver_bind_group is slot.bind_group
+                else self._partial_seeded_solver
+            )
+            passes.append((partial, self._partial_dispatch, solver_bind_group))
         if self.outlier_policy != "disabled":
             passes.append(
                 (
@@ -1658,6 +1726,12 @@ class ICGNWGPU:
         compute_pass.set_bind_group(0, slot.seeded_bind_group)
         compute_pass.dispatch_workgroups(self.grid_width, self.grid_height, 1)
         compute_pass.end()
+        if self._partial_solver is not None:
+            compute_pass = encoder.begin_compute_pass()
+            compute_pass.set_pipeline(self._partial_retry_solver)
+            compute_pass.set_bind_group(0, slot.seeded_bind_group)
+            compute_pass.dispatch_workgroups(*self._partial_dispatch)
+            compute_pass.end()
         if self.outlier_policy != "disabled":
             compute_pass = encoder.begin_compute_pass()
             compute_pass.set_pipeline(self._median_filter)
@@ -1729,6 +1803,10 @@ class ICGNWGPU:
                 slot.seeded_bind_group,
             )
         )
+        if self._partial_solver is not None:
+            passes.append(
+                (self._partial_seeded_solver, self._partial_dispatch, slot.seeded_bind_group)
+            )
         if self.outlier_policy != "disabled":
             passes.append(
                 (
@@ -2054,6 +2132,8 @@ class ICGNWGPU:
                 tolerance=1e-2,
                 zncc_min=zncc_min,
                 roi_mask=mask,
+                roi_policy="full" if self.roi is None else self.roi.policy,
+                roi_truncation="none" if self.roi is None else self.roi.truncation,
             )
             self._pyramid_engines.append(engine)
         levels = [self, *self._pyramid_engines]
@@ -2086,6 +2166,7 @@ class ICGNWGPU:
         zncc_min: float = 0.8,
         roi_mask: np.ndarray | None = None,
         roi_policy: str = "full",
+        roi_truncation: str = "none",
     ) -> ReferenceInfo:
         total_start = time.perf_counter()
         frame = _as_uint8_gray(image)
@@ -2102,8 +2183,10 @@ class ICGNWGPU:
                 f"Reference dimensions must each be at least {self.subset_size} pixels."
             )
         config = _validated_config(iterations, tolerance, zncc_min)
-        mask = validate_roi(roi_mask, roi_policy, frame.shape, self.motion_model)
-        roi = prepare_roi(mask, self.subset_size, subset_stride)
+        mask = validate_roi(roi_mask, roi_policy, frame.shape, self.motion_model, roi_truncation)
+        roi = prepare_roi(
+            mask, self.subset_size, subset_stride, policy=roi_policy, truncation=roi_truncation
+        )
         reference_start = time.perf_counter()
         reference, inverse, metadata = _reference_arrays(
             frame,
@@ -2115,8 +2198,27 @@ class ICGNWGPU:
             gaussian_sigma=self.gaussian_sigma,
         )
         reference_wall_ms = (time.perf_counter() - reference_start) * 1_000.0
+        if roi is not None and roi.partial_indices is not None and roi.partial_indices.size:
+            roi = prepare_partial_reference(
+                reference,
+                inverse,
+                metadata,
+                roi,
+                width=width,
+                height=height,
+                size=self.subset_size,
+                stride=subset_stride,
+                motion_model=self.motion_model,
+                weighting=self.spatial_weighting,
+                sigma=self.gaussian_sigma,
+            )
+            reference_wall_ms = (time.perf_counter() - reference_start) * 1_000.0
         metadata_rows = metadata.reshape(-1, 28 if self.motion_model == "quadratic" else 16)
-        reference_valid = immutable((metadata_rows[:, 1] > 0.5).reshape(grid_height, grid_width))
+        reference_valid = immutable(
+            ((metadata_rows[:, 1] > 0.5) | (metadata_rows[:, 1] == -4)).reshape(
+                grid_height, grid_width
+            )
+        )
         if roi is not None and roi.effective:
             metadata_rows[~roi.selected.ravel(), 1] = -3.0
             # Native-only tail: one vec4 per subset. Shared WGSL consumers
@@ -2124,6 +2226,10 @@ class ICGNWGPU:
             links = np.zeros((roi.selected.size, 4), dtype=np.float32)
             links[:, 0] = roi.neighbour_bits.ravel()
             metadata = np.concatenate((metadata, links.ravel()))
+            if roi.partial_indices is not None and roi.partial_indices.size:
+                boxes = np.zeros((roi.selected.size, 4), np.float32)
+                boxes[roi.partial_indices] = roi.support_boxes
+                metadata = np.concatenate((metadata, boxes.ravel()))
 
         # All CPU validation is complete. From this point onward a failure may
         # have replaced GPU resources, so the previous reference must no

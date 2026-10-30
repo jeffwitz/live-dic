@@ -165,6 +165,7 @@ path.
    how-to/optimize-webgpu
    how-to/run-on-cpu
    how-to/use-roi
+   how-to/use-partial-roi
 
 .. toctree::
    :hidden:

@@ -143,6 +143,9 @@ class RegistrationResult:
             "gridTotal": self.status.size,
             "roiSelected": selected,
             "roiExcluded": self.status.size - selected,
+            "roiPartial": 0
+            if self.roi is None or self.roi.partial_indices is None
+            else int(self.roi.partial_indices.size),
             "referenceAdmissible": admissible,
             "accepted": self.accepted,
             "rejectedSelected": selected - self.accepted,
@@ -1206,12 +1209,13 @@ class ICGNWebGL:
         zncc_min: float | None = None,
         roi_mask: np.ndarray | None = None,
         roi_policy: str = "full",
+        roi_truncation: str = "none",
     ) -> ReferenceInfo:
         """Upload and precompute all target-independent reference data."""
 
-        if roi_mask is not None or roi_policy != "full":
+        if roi_mask is not None or roi_policy != "full" or roi_truncation != "none":
             raise ValueError(
-                "ROI is supported only by the native wgpu engines; roi_policy='partial' is unavailable"
+                "ROI policies and truncation are supported only by the native wgpu engines"
             )
 
         total_start = time.perf_counter()
@@ -1344,6 +1348,7 @@ class ICGNWebGL:
         zncc_min: float | None = None,
         roi_mask: np.ndarray | None = None,
         roi_policy: str = "full",
+        roi_truncation: str = "none",
     ) -> RegistrationResult:
         """Prepare a reference and register one target."""
 
@@ -1351,6 +1356,7 @@ class ICGNWebGL:
             reference,
             roi_mask=roi_mask,
             roi_policy=roi_policy,
+            roi_truncation=roi_truncation,
             iterations=iterations,
             tolerance=tolerance,
             zncc_min=zncc_min,
@@ -1507,10 +1513,11 @@ def register_pair(
     zncc_min: float | None = None,
     roi_mask: np.ndarray | None = None,
     roi_policy: str = "full",
+    roi_truncation: str = "none",
 ) -> RegistrationResult:
     """Run a one-shot registration and release the headless runtime afterward."""
 
-    if roi_mask is not None or roi_policy != "full":
+    if roi_mask is not None or roi_policy != "full" or roi_truncation != "none":
         raise ValueError("ROI requires ICGNWGPU or ICGNWGPUFullPyramid")
 
     with ICGNWebGL(

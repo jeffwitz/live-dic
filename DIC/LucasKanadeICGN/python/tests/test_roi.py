@@ -41,9 +41,10 @@ class RoiGeometryTests(unittest.TestCase):
         for value in (np.ones((31, 32), bool), np.ones((32, 32, 1), bool)):
             with self.assertRaises(ValueError):
                 validate_roi(value, "full", (32, 32), "affine")
-        for policy in ("partial", "unknown", None):
+        for policy in ("unknown", None):
             with self.assertRaises(ValueError):
                 validate_roi(None, policy, (32, 32), "affine")
+        self.assertIsNone(validate_roi(None, "partial", (32, 32), "affine"))
         with self.assertRaises(ValueError):
             validate_roi(np.ones((32, 32), bool), "full", (32, 32), "quadratic")
         source = np.ones((32, 32), bool)

@@ -52,7 +52,8 @@ the native backend.
 For native translation or affine processing, pass a boolean reference-image
 mask with `engine.set_reference(reference, roi_mask=mask)`. The default `full`
 policy excludes every window touching a forbidden pixel. See the
-[ROI guide](../docs/how-to/use-roi.rst); `partial` is not implemented.
+[ROI guide](../docs/how-to/use-roi.rst) and the optional
+[partial-support guide](../docs/how-to/use-partial-roi.rst).
 
 - Python 3.11 or newer;
 - Chromium or Google Chrome with WebGL2 support; WebGPU is preferred;

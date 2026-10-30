@@ -156,8 +156,8 @@ GPU buffers
      - solver state
      - two ``vec4`` values, or four in quadratic mode
    * - 8
-     - radius-15 FIR weights
-     - 31 ``f32`` values
+     - radius-15 FIR weights and optional native partial supports
+     - ``u32`` words: 31 float bit patterns, then optional packed geometry
    * - 9
      - UOD output state
      - same layout as solver state
@@ -175,6 +175,14 @@ vectors in documented public order and a fourth
 The full 31-value FIR record preserves the common buffer contract. The current
 WGSL prefilter reads its central 25 entries; the six omitted tails have a total
 absolute weight below ``7e-8``.
+
+The first 31 words at binding 8 retain exactly the previous float bytes; only
+these words are bitcast to float by the shader. Native partial ROI preparation
+can append the partial count, dense subset indices and packed binary supports.
+There is no additional binding. Complete-window pipelines compile without
+per-pixel mask tests. Native ROI metadata appends neighbourhood permissions and,
+for partial windows, support bounding boxes after the ordinary reference records.
+See :doc:`../how-to/use-partial-roi` for this explicitly enabled variant.
 
 Status contract
 ~~~~~~~~~~~~~~~

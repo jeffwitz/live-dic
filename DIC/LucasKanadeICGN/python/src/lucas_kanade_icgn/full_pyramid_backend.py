@@ -470,6 +470,7 @@ class ICGNWGPUFullPyramid:
         zncc_min: float = 0.8,
         roi_mask: np.ndarray | None = None,
         roi_policy: str = "full",
+        roi_truncation: str = "none",
     ) -> ReferenceInfo:
         """Prepare all scale-specific references and persistent GPU storage."""
 
@@ -501,7 +502,9 @@ class ICGNWGPUFullPyramid:
             _validated_config(iterations, tolerance, new_zncc_min)
 
         reference = _as_uint8_gray(image)
-        mask = validate_roi(roi_mask, roi_policy, reference.shape, self.motion_model)
+        mask = validate_roi(
+            roi_mask, roi_policy, reference.shape, self.motion_model, roi_truncation
+        )
         references = [reference]
         masks = [mask]
         for _ in range(1, self.pyramid_levels):
@@ -528,6 +531,7 @@ class ICGNWGPUFullPyramid:
                 zncc_min=self._zncc_min,
                 roi_mask=masks[level_index],
                 roi_policy=roi_policy,
+                roi_truncation=roi_truncation,
             )
             reference_build_wall_ms += info.reference_build_wall_ms
             if level_index:

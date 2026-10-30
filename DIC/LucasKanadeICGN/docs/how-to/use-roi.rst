@@ -70,8 +70,9 @@ path. An all-true mask uses the same GPU resources, pipelines and arithmetic
 as no mask. An all-false mask is valid and returns an empty dense field without
 per-frame GPU upload, submission, solve, or readback.
 
-``partial`` is not implemented and raises ``ValueError``, including when the
-mask is absent. A ROI with the quadratic model is also rejected; quadratic
+The optional ``partial`` policy retains connected local supports at boundaries;
+see :doc:`use-partial-roi` for its separate numerical and geometric contracts.
+A ROI with the quadratic model is rejected; quadratic
 processing without a ROI is preserved. Browser engines and the browser-only
 ``register_pair`` helper explicitly reject ROI requests.
 

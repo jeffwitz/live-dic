@@ -43,7 +43,8 @@ alias Matrix6 = array<array<f32, 6>, 6>;
 @group(0) @binding(5) var<storage, read> inverse_hessian: Float4Buffer;
 @group(0) @binding(6) var<storage, read> metadata: Float4Buffer;
 @group(0) @binding(7) var<storage, read_write> state: Float4Buffer;
-@group(0) @binding(8) var<storage, read> fir_weights: FloatBuffer;
+// FIR float bits followed, only in partial mode, by integer support tables.
+@group(0) @binding(8) var<storage, read> fir_weights: UintBuffer;
 @group(0) @binding(9) var<storage, read_write> filtered_state: Float4Buffer;
 @group(0) @binding(10) var<storage, read> seed_state: Float4Buffer;
 @group(0) @binding(11) var<storage, read> active_mask: UintBuffer;
@@ -84,6 +85,7 @@ override PREFILTER_CLAMP_HALO: u32 = 1u;
 // Native full-window ROI uses static neighbour permissions appended to metadata.
 // Zero keeps browser consumers and unmasked native pipelines unchanged.
 override ROI_ENABLED: u32 = 0u;
+override PARTIAL_SUPPORT: u32 = 0u;
 
 var<workgroup> partial_a: array<vec4<f32>, 16>;
 var<workgroup> partial_b: array<vec4<f32>, 16>;
@@ -94,6 +96,8 @@ var<workgroup> shared_linear: vec4<f32>;
 var<workgroup> shared_curvature: array<f32, 6>;
 var<workgroup> shared_status: vec2<f32>;
 var<workgroup> prefilter_tile: array<f32, 496>;
+var<workgroup> partial_support_words: array<u32, 35>;
+var<workgroup> partial_subset: u32;
 
 fn mirror_coordinate(coordinate: i32, size: i32) -> i32 {
     var reflected = coordinate;
@@ -143,7 +147,7 @@ fn prefilter_x(
         let tile_index = i32(local_id.y) * PREFILTER_X_STRIDE
             + i32(local_id.x) + FIR_RADIUS + tap;
         let sample = prefilter_tile[tile_index];
-        result = result + fir_weights.values[u32(tap + FIR_WEIGHT_RADIUS)] * sample;
+        result = result + bitcast<f32>(fir_weights.values[u32(tap + FIR_WEIGHT_RADIUS)]) * sample;
     }
     temporary.values[u32(y * width + x)] = result;
 }
@@ -177,7 +181,7 @@ fn prefilter_y(
     for (var tap = -FIR_RADIUS; tap <= FIR_RADIUS; tap = tap + 1) {
         let tile_index = (i32(local_id.y) + FIR_RADIUS + tap) * PREFILTER_Y_WIDTH
             + i32(local_id.x);
-        result = result + fir_weights.values[u32(tap + FIR_WEIGHT_RADIUS)]
+        result = result + bitcast<f32>(fir_weights.values[u32(tap + FIR_WEIGHT_RADIUS)])
             * prefilter_tile[tile_index];
     }
     coefficients.values[u32(y * width + x)] = result;
@@ -579,9 +583,13 @@ fn solve_subset(
                 shared_curvature[component] = initial_curvature[component];
             }
         }
-        let valid = enabled && metadata_value(subset_index, 1u) >= 0.5;
+        var reference_valid = metadata_value(subset_index, 1u) >= 0.5;
+        if PARTIAL_SUPPORT != 0u {
+            reference_valid = metadata_value(subset_index, 1u) == -4.0;
+        }
+        let valid = enabled && reference_valid;
         var rejected_status = -1.0;
-        if ROI_ENABLED != 0u {
+        if ROI_ENABLED != 0u && PARTIAL_SUPPORT == 0u {
             rejected_status = min(-1.0, metadata_value(subset_index, 1u));
         }
         shared_status = vec2<f32>(select(rejected_status, 0.0, valid), 0.0);
@@ -597,23 +605,30 @@ fn solve_subset(
     let reference_mean = select(
         0.0,
         metadata_value(subset_index, mean_offset),
-        SUBSET_STRIDE != SUBSET_SIZE,
+        SUBSET_STRIDE != SUBSET_SIZE || PARTIAL_SUPPORT != 0u,
     );
+    var local_minimum = vec2<f32>(-half_extent);
+    var local_maximum = vec2<f32>(half_extent);
+    if PARTIAL_SUPPORT != 0u {
+        let support_box = metadata.values[config.grid_count * 5u + subset_index];
+        local_minimum = support_box.xy - vec2<f32>(half_extent);
+        local_maximum = support_box.zw - vec2<f32>(half_extent);
+    }
 
     for (var iteration = 0u; iteration < 30u; iteration = iteration + 1u) {
         if lane == 0u {
             var inside = true;
             if MOTION_MODEL == 1u {
-                let minimum = center - vec2<f32>(0.5 + half_extent) + shared_translation;
-                let maximum = center + vec2<f32>(half_extent - 0.5) + shared_translation;
+                let minimum = center - vec2<f32>(0.5) + local_minimum + shared_translation;
+                let maximum = center - vec2<f32>(0.5) + local_maximum + shared_translation;
                 inside = minimum.x >= 2.0 && minimum.y >= 2.0
                     && maximum.x <= f32(config.width) - 3.0
                     && maximum.y <= f32(config.height) - 3.0;
             } else {
                 let sample_count = select(4, 9, MOTION_MODEL == 2u);
                 for (var point = 0; point < sample_count; point += 1) {
-                    var local_x = select(-half_extent, half_extent, point == 1 || point == 3);
-                    var local_y = select(-half_extent, half_extent, point >= 2);
+                    var local_x = select(local_minimum.x, local_maximum.x, point == 1 || point == 3);
+                    var local_y = select(local_minimum.y, local_maximum.y, point >= 2);
                     if MOTION_MODEL == 2u {
                         local_x = f32(point % 3 - 1) * half_extent;
                         local_y = f32(point / 3 - 1) * half_extent;
@@ -668,6 +683,12 @@ fn solve_subset(
         // per-lane column traversal as the original specialized kernel.
         let subset_pixels = SUBSET_SIZE * SUBSET_SIZE;
         for (var pixel = i32(lane); pixel < subset_pixels; pixel = pixel + 16) {
+            if PARTIAL_SUPPORT != 0u {
+                let bit = (partial_support_words[u32(pixel) / 32u] >> (u32(pixel) % 32u)) & 1u;
+                if bit == 0u {
+                    continue;
+                }
+            }
             let column = pixel % SUBSET_SIZE;
             let row = pixel / SUBSET_SIZE;
             let local_x = f32(column) - half_extent;
@@ -958,6 +979,53 @@ fn retry_seeded(
 ) {
     let subset_index = workgroup_id.y * config.grid_width + workgroup_id.x;
     solve_from_seed(subset_index, local_id.x, true);
+}
+
+// Compact partial dispatches preserve the dense public grid. All lanes load
+// the same chosen subset and join every barrier, including the final group.
+fn load_partial_support(ordinal: u32, lane: u32) -> u32 {
+    if lane == 0u {
+        partial_subset = 0xffffffffu;
+        if ordinal < fir_weights.values[31u] {
+            partial_subset = fir_weights.values[32u + ordinal];
+        }
+    }
+    let subset_index = workgroupUniformLoad(&partial_subset);
+    if subset_index == 0xffffffffu {
+        return subset_index;
+    }
+    let words = u32((SUBSET_SIZE * SUBSET_SIZE + 31) / 32);
+    let offset = 32u + fir_weights.values[31u] + ordinal * words;
+    for (var word = lane; word < words; word += 16u) {
+        partial_support_words[word] = fir_weights.values[offset + word];
+    }
+    workgroupBarrier();
+    return subset_index;
+}
+
+@compute @workgroup_size(16)
+fn solve_partial(@builtin(workgroup_id) group: vec3<u32>,
+                 @builtin(local_invocation_id) local: vec3<u32>) {
+    let index = load_partial_support(group.y * 65535u + group.x, local.x);
+    if index == 0xffffffffu { return; }
+    solve_subset(index, local.x, vec2<f32>(0.0), vec4<f32>(0.0),
+        array<f32, 6>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0), true, false);
+}
+
+@compute @workgroup_size(16)
+fn solve_partial_seeded(@builtin(workgroup_id) group: vec3<u32>,
+                        @builtin(local_invocation_id) local: vec3<u32>) {
+    let index = load_partial_support(group.y * 65535u + group.x, local.x);
+    if index == 0xffffffffu { return; }
+    solve_from_seed(index, local.x, false);
+}
+
+@compute @workgroup_size(16)
+fn retry_partial_seeded(@builtin(workgroup_id) group: vec3<u32>,
+                        @builtin(local_invocation_id) local: vec3<u32>) {
+    let index = load_partial_support(group.y * 65535u + group.x, local.x);
+    if index == 0xffffffffu { return; }
+    solve_from_seed(index, local.x, true);
 }
 
 fn median_nine(values: ptr<function, array<f32, 9>>, count: u32) -> f32 {
@@ -1257,7 +1325,7 @@ fn spatial_weight(local_x: f32, local_y: f32) -> f32 {
 }
 
 fn integration_weight_sum(subset_index: u32) -> f32 {
-    if SPATIAL_WEIGHTING == 1u {
+    if SPATIAL_WEIGHTING == 1u || PARTIAL_SUPPORT != 0u {
         let mean_offset = select(14u, 26u, MOTION_MODEL == 2u);
         return metadata_value(subset_index, mean_offset + 1u);
     }

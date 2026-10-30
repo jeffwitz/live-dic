@@ -59,7 +59,10 @@ def _arguments() -> argparse.Namespace:
         type=Path,
         help="boolean .npy reference mask; no implicit thresholding",
     )
-    parser.add_argument("--roi-policy", default="full", help="only full is implemented")
+    parser.add_argument("--roi-policy", choices=("full", "partial"), default="full")
+    parser.add_argument(
+        "--roi-truncation", choices=("none", "visibility"), default="none"
+    )
     parser.add_argument(
         "--device-type",
         choices=("auto", "gpu", "cpu"),
@@ -133,8 +136,10 @@ def _arguments() -> argparse.Namespace:
         backend != "native-pyramid" for backend in args.backends
     ):
         parser.error("ROI requires --backend native-pyramid")
-    if args.roi_policy != "full":
-        parser.error("only --roi-policy full is implemented; partial is unavailable")
+    if args.roi_truncation != "none" and (
+        args.roi_mask is None or args.roi_policy != "partial"
+    ):
+        parser.error("--roi-truncation requires --roi-policy partial and --roi-mask")
     if args.device_type != "auto" and any(
         backend != "native-pyramid" for backend in args.backends
     ):
@@ -226,6 +231,53 @@ def _numeric_timing_medians(results: list[Any]) -> dict[str, float]:
         if len(numeric) == len(values):
             medians[key] = float(np.median(numeric))
     return medians
+
+
+def _support_quality(results: list[Any], truths: list[Any]) -> dict:
+    """Evaluate geometry populations after timing, never in the live solver."""
+    first = results[0]
+    roi = getattr(first, "roi", None)
+    selected = np.ones(first.status.shape, bool) if roi is None else roi.selected
+    partial = np.zeros(first.status.shape, bool)
+    indices = None if roi is None else getattr(roi, "partial_indices", None)
+    if indices is not None:
+        partial.ravel()[indices] = True
+    output = {}
+    for name, population in (("complete", selected & ~partial), ("partial", partial)):
+        counts, rmses, p95s, gradient_errors = [], [], [], []
+        for result, truth in zip(results, truths, strict=True):
+            mask = result.accepted_mask & population
+            counts.append(int(mask.sum()))
+            if not mask.any():
+                continue
+            if isinstance(truth, dict):
+                y, x = np.indices(result.status.shape)
+                x = x * result.subset_stride + (result.subset_size - 1) / 2
+                y = y * result.subset_stride + (result.subset_size - 1) / 2
+                expected = np.stack(
+                    (truth["ex"] * (x - 1920), truth["ey"] * (y - 1080)), axis=-1
+                )[mask]
+                gradients = [truth["ex"], 0.0, 0.0, truth["ey"]]
+            else:
+                expected, gradients = np.asarray(truth), [0.0, 0.0, 0.0, 0.0]
+            distance = np.linalg.norm(result.displacement[mask] - expected, axis=-1)
+            rmses.append(float(np.sqrt(np.mean(distance**2))))
+            p95s.append(float(np.percentile(distance, 95)))
+            if result.config.get("motionModel", "affine") == "affine":
+                error = result.parameters[..., (1, 2, 4, 5)][mask] - gradients
+                gradient_errors.append(float(np.sqrt(np.mean(error**2))))
+        count = int(population.sum())
+        output[name] = {
+            "selected": count,
+            "accepted_min": min(counts),
+            "accepted_fraction_min": min(counts) / count if count else None,
+            "displacement_rmse_max_px": max(rmses) if rmses else None,
+            "displacement_p95_max_px": max(p95s) if p95s else None,
+            "gradient_component_rmse_max": max(gradient_errors)
+            if gradient_errors
+            else None,
+        }
+    return output
 
 
 def _measure(
@@ -331,6 +383,7 @@ def _measure(
         "completion_period_samples_ms": periods.tolist(),
         "populations": getattr(results[0], "populations", None),
         "config": dict(results[0].config),
+        "support_quality": _support_quality(results, truths),
         "iterations_histogram": {
             str(int(key)): int(count)
             for key, count in zip(
@@ -462,7 +515,14 @@ def main() -> int:
         ) as engine:
             preparation = (
                 engine.set_reference(
-                    reference, roi_mask=mask, roi_policy=args.roi_policy
+                    reference,
+                    roi_mask=mask,
+                    roi_policy=args.roi_policy,
+                    **(
+                        {"roi_truncation": args.roi_truncation}
+                        if args.roi_truncation != "none"
+                        else {}
+                    ),
                 )
                 if mask is not None
                 else engine.set_reference(reference)
@@ -521,6 +581,7 @@ def main() -> int:
                 "platform": platform.platform(),
                 "roi_mask_file": None if args.roi_mask is None else str(args.roi_mask),
                 "roi_policy": args.roi_policy,
+                "roi_truncation": args.roi_truncation,
                 "resolution": [args.width, args.height],
                 "input": "pre-acquired contiguous uint8 NumPy grayscale frames",
                 "reference_preparation_included": False,

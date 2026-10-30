@@ -23,6 +23,9 @@ Both native engines accept a boolean reference ROI with
 only complete nominal windows, including checks for interior holes. The
 [ROI guide](./docs/how-to/use-roi.rst) explains conservative pyramids,
 neighbour permissions, streaming, and self-contained result exports.
+The explicit [`partial` policy](./docs/how-to/use-partial-roi.rst) adds connected
+boundary supports, numerical support diagnostics and optional visibility
+truncation near crack tips. Complete windows retain their fast solver.
 
 The Three.js and raw-WGSL browser backends serve portability, browser-native
 deployment, and numerical qualification. ``ICGNWebGL`` makes them callable
