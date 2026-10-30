@@ -46,6 +46,7 @@ override SUBSET_STRIDE: f32 = 16.0;
 override MOTION_MODEL: u32 = 0u;
 override TRACK_SEED_AVAILABILITY: bool = false;
 override REPORT_HISTORY_EXPIRY: bool = false;
+override AGGREGATE_HISTORY_COUNTS: bool = false;
 
 @group(0) @binding(0) var reduce_x_source: texture_2d<f32>;
 @group(0) @binding(1) var reduce_x_destination: texture_storage_2d<r32float, write>;
@@ -74,13 +75,13 @@ override REPORT_HISTORY_EXPIRY: bool = false;
 // Separate opt-in entry points keep these bindings out of historical pipelines.
 @group(3) @binding(6) var<storage, read_write> previous_temporal_state: Float4Buffer;
 @group(3) @binding(7) var<storage, read_write> previous_temporal_ages: UintBuffer;
+var<workgroup> prediction_group_count: atomic<u32>;
+var<workgroup> history_group_counts: array<atomic<u32>, 2>;
 
 // source_state=current accepted history; fine_history=previous accepted history;
 // coarse_history_ages holds the previous-history ages in this entry point only.
-@compute @workgroup_size(256)
-fn predict_temporal_state(@builtin(global_invocation_id) id: vec3<u32>) {
-    let index = id.x;
-    if index >= arrayLength(&fine_history_ages.values) { return; }
+fn predict_temporal_subset(index: u32) -> bool {
+    if index >= arrayLength(&fine_history_ages.values) { return false; }
     let stride = select(2u, 4u, MOTION_MODEL == 2u);
     let base = index * stride;
     let status_vector = select(1u, 3u, MOTION_MODEL == 2u);
@@ -104,7 +105,20 @@ fn predict_temporal_state(@builtin(global_invocation_id) id: vec3<u32>) {
             2.0 * metadata.xy - fine_history.values[base + 1u].xy, predict), metadata.zw);
     }
     destination_seed.values[base + status_vector] = metadata;
-    if predict { atomicAdd(&projection_counts.values[2], 1u); }
+    return predict;
+}
+
+@compute @workgroup_size(256)
+fn predict_temporal_state(@builtin(global_invocation_id) id: vec3<u32>,
+                          @builtin(local_invocation_index) lane: u32) {
+    if lane == 0u { atomicStore(&prediction_group_count, 0u); }
+    workgroupBarrier();
+    if predict_temporal_subset(id.x) { atomicAdd(&prediction_group_count, 1u); }
+    workgroupBarrier();
+    if lane == 0u {
+        let count = atomicLoad(&prediction_group_count);
+        if count > 0u { atomicAdd(&projection_counts.values[2], count); }
+    }
 }
 
 // Save measurements before the ordinary merge overwrites current history.
@@ -473,9 +487,7 @@ fn refine_temporal_seed(@builtin(global_invocation_id) global_id: vec3<u32>) {
     destination_seed.values[base + 1u] = corrected_b;
 }
 
-@compute @workgroup_size(256)
-fn update_temporal_state(@builtin(global_invocation_id) global_id: vec3<u32>) {
-    let index = global_id.x;
+fn merge_temporal_subset(index: u32) {
     if index >= temporal_config.count { return; }
     let stride = select(2u, 4u, MOTION_MODEL == 2u);
     let base = index * stride;
@@ -496,7 +508,11 @@ fn update_temporal_state(@builtin(global_invocation_id) global_id: vec3<u32>) {
         }
         temporal_ages.values[index] = 0u;
         if temporal_config.padding == 0u {
-            atomicAdd(&temporal_counts.values[1], 1u);
+            if AGGREGATE_HISTORY_COUNTS {
+                atomicAdd(&history_group_counts[0], 1u);
+            } else {
+                atomicAdd(&temporal_counts.values[1], 1u);
+            }
         }
     } else {
         let age = temporal_ages.values[index];
@@ -508,9 +524,34 @@ fn update_temporal_state(@builtin(global_invocation_id) global_id: vec3<u32>) {
                 temporal_state.values[base + status_vector][status_lane] = -1.0;
                 if REPORT_HISTORY_EXPIRY && temporal_config.padding == 0u
                     && new_age == temporal_config.max_age + 1u {
-                    atomicAdd(&temporal_counts.values[3], 1u);
+                    if AGGREGATE_HISTORY_COUNTS {
+                        atomicAdd(&history_group_counts[1], 1u);
+                    } else {
+                        atomicAdd(&temporal_counts.values[3], 1u);
+                    }
                 }
             }
         }
+    }
+}
+
+@compute @workgroup_size(256)
+fn update_temporal_state(@builtin(global_invocation_id) id: vec3<u32>) {
+    merge_temporal_subset(id.x);
+}
+
+// Counters remain exact integers, but only two lanes per group access global
+// atomics. Out-of-range lanes still join both barriers on the last tile.
+@compute @workgroup_size(256)
+fn update_temporal_state_grouped(@builtin(global_invocation_id) id: vec3<u32>,
+                                 @builtin(local_invocation_index) lane: u32) {
+    if lane < 2u { atomicStore(&history_group_counts[lane], 0u); }
+    workgroupBarrier();
+    merge_temporal_subset(id.x);
+    workgroupBarrier();
+    if lane < 2u {
+        let count = atomicLoad(&history_group_counts[lane]);
+        let destination = select(1u, 3u, lane == 1u);
+        if count > 0u { atomicAdd(&temporal_counts.values[destination], count); }
     }
 }

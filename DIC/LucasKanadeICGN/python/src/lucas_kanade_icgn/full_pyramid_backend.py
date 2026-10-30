@@ -381,6 +381,9 @@ class ICGNWGPUFullPyramid:
                 )
             else:
                 constants["REPORT_HISTORY_EXPIRY"] = self.pyramid_policy == "adaptive"
+                constants["AGGREGATE_HISTORY_COUNTS"] = self.temporal_prediction == "velocity"
+                if self.temporal_prediction == "velocity":
+                    entry = "update_temporal_state_grouped"
             pipeline = self.device.create_compute_pipeline(
                 layout=pipeline_layout,
                 compute={"module": shader, "entry_point": entry, "constants": constants},
