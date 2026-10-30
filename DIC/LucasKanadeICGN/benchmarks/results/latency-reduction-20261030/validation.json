@@ -1,0 +1,104 @@
+{
+  "final_runtime_commit": "15e6e1c",
+  "checks": [
+    {
+      "command": "rtk proxy .venv/bin/python -m unittest discover -s tests",
+      "cwd": "DIC/LucasKanadeICGN/python",
+      "tests": 191,
+      "passed": 121,
+      "skipped": 70,
+      "seconds": 1.26
+    },
+    {
+      "command": "rtk proxy env ICGN_RUN_GPU_TESTS=1 .venv/bin/python -m unittest discover -s tests",
+      "cwd": "DIC/LucasKanadeICGN/python",
+      "adapter": "Intel Graphics LNL / Vulkan Mesa 25.2.8",
+      "tests": 191,
+      "passed": 191,
+      "skipped": 0,
+      "seconds": 118.939
+    },
+    {
+      "command": "rtk proxy env ICGN_RUN_GPU_TESTS=1 VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json LIBGL_ALWAYS_SOFTWARE=1 .venv/bin/python -m unittest discover -s tests -p test_latency_options.py",
+      "cwd": "DIC/LucasKanadeICGN/python",
+      "adapter": "lavapipe software Vulkan",
+      "tests": 12,
+      "passed": 12,
+      "skipped": 0,
+      "seconds": 20.592
+    },
+    {
+      "command": "rtk proxy .venv/bin/ruff check src tests ../benchmarks",
+      "cwd": "DIC/LucasKanadeICGN/python",
+      "passed": true
+    },
+    {
+      "command": "rtk proxy .venv/bin/ruff format --check src tests ../benchmarks/benchmark_latency_reduction.py ../benchmarks/results/latency-reduction-20261030/*.py",
+      "cwd": "DIC/LucasKanadeICGN/python",
+      "passed": true,
+      "files": 34
+    },
+    {
+      "command": "rtk proxy python3 -m sphinx -W --keep-going -b html DIC/LucasKanadeICGN/docs DIC/LucasKanadeICGN/docs/_build/html",
+      "passed": true
+    }
+  ],
+  "default_parity": {
+    "baseline_commit": "583afc0",
+    "arrays_identical": 30,
+    "includes_native_uhd_frame40": true,
+    "oracle": "baseline-default.npz",
+    "command": "rtk proxy DIC/LucasKanadeICGN/python/.venv/bin/python DIC/LucasKanadeICGN/benchmarks/results/latency-reduction-20261030/verify_default_parity.py"
+  },
+  "counter_parity": "summary.json: all quality rows and integer counts equal; 18 final parameter/status/iteration array comparisons equal",
+  "browser_shared_wgsl": {
+    "backend": "webgpu-wgsl",
+    "fixture": "assets/uhd_tensile/frame_040.png",
+    "shape": [
+      2160,
+      3840
+    ],
+    "coverage": 0.9998059257342476,
+    "displacement_rmse_px": 0.024201424043536927
+  },
+  "wheel": {
+    "file": "lucas_kanade_icgn_webgl-0.1.0-py3-none-any.whl",
+    "sha256": "670732baad47a6e8ebbcef3a526d21cdf74461c764b5c749402d9c9076c8d978",
+    "built_with_external_compiler": false,
+    "installed_outside_checkout": "/tmp/live-dic-latency-install/lib/python3.12/site-packages/lucas_kanade_icgn",
+    "python": "3.12",
+    "numpy": "2.5.4",
+    "wgpu": "0.32.0",
+    "native_uhd_checks": {
+      "shape": [
+        2160,
+        3840
+      ],
+      "pyramid_levels": 2,
+      "velocity_prediction": true,
+      "fine_correction": true,
+      "divergence_patience": 3,
+      "divergence_levels": "finest",
+      "pipeline_depth": 3,
+      "full_roi_accepted": 29665,
+      "partial_roi_accepted": 30025,
+      "excluded_status": -3,
+      "black_frame_accepted": 0,
+      "black_frame_temporal_updates": 0,
+      "prediction_disabled_after_corruption": true,
+      "npz_config_and_mask_round_trip_allow_pickle_false": true
+    },
+    "runtime_hashes_match_final_campaign": true
+  },
+  "figure": {
+    "png": "quality-and-latency.png",
+    "pdf": "quality-and-latency.pdf",
+    "visual_inspection": "PNG rendered and inspected; all axes, legends and thresholds readable. Matplotlib emitted an unrelated unavailable-Axes3D warning; this figure is 2D."
+  },
+  "remote_ci": "Not run or claimed. Local commits only; nothing pushed.",
+  "scope": "Hardware timings are Intel LNL/Linux Vulkan only. Software Vulkan checks correctness. No claim for D3D12, Metal, other architectures or long-duration thermal loads.",
+  "qualification": "Both final one-slot fixed B-spline profiles pass the predeclared finite gates. Conservative k=3/min=4 preferred; adaptive and cubic prototypes fail numeric gates. A numerical-only replay also rejects adaptive/cubic-only in the final runtime.",
+  "current_rejected_policy_check": "current-rejected-policy-check.json: final runtime adaptive/cubic-only both violate RMSE bounds; no timing claim",
+  "runtime_worktree_hashes_match_final_campaign": true,
+  "all_runs_same_input_hashes_and_performance_profile": 84
+}

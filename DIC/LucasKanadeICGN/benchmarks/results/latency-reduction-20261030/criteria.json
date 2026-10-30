@@ -1,0 +1,20 @@
+{
+  "decision_before_inspecting_ablation_results": true,
+  "timing_gate": {
+    "depth": 1,
+    "all_three_run_p95_ms_lt": 16.67,
+    "pooled_p95_ms_lt": 16.67,
+    "all_three_run_throughput_fps_gte": 60
+  },
+  "fixed_population": 26924,
+  "quality_gate_every_timed_frame": {
+    "coverage_gte": 0.9,
+    "displacement_rmse_px_lt": 0.05,
+    "displacement_p95_px_lt": 0.1,
+    "median_gradient_component_rmse_lt": 0.002
+  },
+  "quality_scope": "Reuse established displacement, coverage and median-gradient bounds conservatively throughout this specific trajectory. The gradient bound is an additional campaign gate outside the previously qualified frame40; it is not a universal material-strain uncertainty claim. No bound is relaxed for a faster interpolator.",
+  "whole_grid": "Retain all accepted errors, failures and iterations; reflected/deformed boundary failures are not relabeled as accurate measurements.",
+  "early_abort": "Count would-converge-late raw status1 with an untimed no-abort solve using the identical image and retained seed; do not call it a production retry.",
+  "adaptive": "Host feedback serializes outstanding work at every requested depth. Report actual levels per frame; depth2 adaptive is effectively depth1."
+}

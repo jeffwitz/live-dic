@@ -272,6 +272,7 @@ def main():
             completion_period_samples_ms=(np.diff(completed) * 1000).tolist(),
             component_timings=[r.timing for r in fields],
             quality=quality,
+            effective_solver_config=fields[-1].config,
         )
         args.output.parent.mkdir(parents=True, exist_ok=True)
         fields[-1].save_npz(args.output.with_suffix(".npz"))

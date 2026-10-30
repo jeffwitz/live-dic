@@ -1,0 +1,24 @@
+{
+  "observed_after_timed_campaigns": true,
+  "sampling_window_seconds": 1,
+  "cpu_percent_of_one_core": {
+    "cupsd": 98.9,
+    "firefox-bin": 38.0,
+    "Xorg": 15.0
+  },
+  "power_profile": "performance",
+  "gpu_frequency_idle_sample_mhz": 1200,
+  "gpu_frequency_limits_mhz": [
+    800,
+    1850
+  ],
+  "thermal_readings_millidegrees": {
+    "TCPU": 76050,
+    "x86_pkg_temp": 72000,
+    "acpitz_zone0": 74000
+  },
+  "gpu_throttle_reasons_at_idle": "none",
+  "interpretation": "Concurrent desktop activity is a confounder. This post-run sample does not establish the CPU load or GPU clocks during each timed frame, or prove causation. No printing/browser service was stopped or reconfigured.",
+  "observed_after_collection": "counter-control",
+  "not_sampled_during": "finest-only-control"
+}
