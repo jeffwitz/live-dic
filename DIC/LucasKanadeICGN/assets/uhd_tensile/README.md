@@ -57,6 +57,20 @@ hashes, and the archived strain/stretch relations. The opt-in GPU tests:
   of interior subsets accepted;
 - additionally require median-output gradient RMSE per component < 0.002.
 
+ROI qualification also runs at native **3840 x 2160**, including fractional
+translation `(0.35,-0.2)` of this reference rendered with NumPy bilinear inverse
+sampling and uint8 rounding. The archived reference and target files are never
+overwritten. Partial 8/8 and 16/16 translation with two levels, B-spline and
+explicit median is checked on complete and partial populations independently:
+RMSE <0.05 px, p95 <0.10 px, coverage >=90%. The same qualification runs on a
+continuous analytic texture sampled directly at all UHD pixel coordinates.
+Other supported sizes, overlap and Gaussian integration are exercised at UHD;
+a full-UHD displacement-jump case checks visibility truncation near a slit tip.
+See [the fractional/crack report](../../benchmarks/results/roi-partial-20261030/uhd-fractional.md).
+
+Small geometry and CPU-oracle images remain unit tests. They do not substitute
+for native-UHD numerical or performance qualification.
+
 The raw 16/16 gradient RMSE measured about 0.0030 on the first hardware check;
 the raw derivative estimate is **not** qualified to the median-output bound.
 This is explicit smoothing qualification, not a claim of improved spatial

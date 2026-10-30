@@ -1,5 +1,10 @@
 # Partial-support ROI qualification
 
+**Current UHD fractional-motion/crack qualification:** see the
+[native-3840x2160 addendum](uhd-fractional.md). It supersedes extrapolation from
+small-image diagnostics, includes both 8/8 and 16/16 paths, and reports the
+actual Python image-to-field stream boundary.
+
 The full-only baseline is `31e7e25`; native implementation `0e1f471` adds
 explicit `roi_policy="partial"` and `roi_truncation="none"|"visibility"`.
 `full` remains the default. Source SHA256 maps identify the actual Python/WGSL
@@ -121,15 +126,11 @@ all-true/empty masks, mixed-image stream slots, installed exports and original
 UHD data. A separate matrix-based double-precision CPU IC-GN oracle compares
 partial translation and actual affine iterates with bilinear interpolation.
 GPU tests exercise cubic/B-spline paths and an admissible subgroup path as well.
-The additional 8/8 cubic translation case is checked against an independent
-double-precision Keys-kernel oracle using the same fixed 30-iteration budget
-in both solvers. This avoids treating a different last iteration at the stop
-threshold as an error in the equations. On this small smooth analytic texture its
-accepted partial-window displacement RMSE is **0.1471 px**, versus **0.0738 px**
-for the unmasked 8/8 solve. It does not meet the 0.05 px bound qualified for
-16/16 UHD subsets. Supports passing rank/contrast checks do not guarantee that
-metrological accuracy. This limitation is retained, not removed by selecting
-only favourable windows or weakening the established 16/16 criteria.
+The additional small 8/8 cubic translation case is a double-precision
+Keys-kernel unit check with the same fixed 30-iteration budget in both solvers.
+Its phase-specific error does not qualify UHD operation or other processing
+paths. The current [UHD addendum](uhd-fractional.md) reports native-resolution
+accuracy, including 8/8 B-spline/median, rather than extrapolating that unit case.
 The visibility ray oracle uses crossing events rather than the production slab
 algorithm; a displacement-jump case checks reduced cross-side mixing. See
 `validation.json` for the actual final test counts and installation evidence.

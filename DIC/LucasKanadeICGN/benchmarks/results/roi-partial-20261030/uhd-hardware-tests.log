@@ -1,0 +1,14 @@
+test_archived_truth_covers_each_selected_frame (test_uhd_fixtures.UHDFixtureIntegrityTests.test_archived_truth_covers_each_selected_frame) ... ok
+test_original_uhd_images_and_provenance_are_present_and_unchanged (test_uhd_fixtures.UHDFixtureIntegrityTests.test_original_uhd_images_and_provenance_are_present_and_unchanged) ... ok
+test_all_archived_uhd_images_recover_identity (test_uhd_fixtures.UHDRegistrationRegressionTests.test_all_archived_uhd_images_recover_identity) ... ok
+test_uhd_affine_frame_040_displacement_and_median_gradients (test_uhd_fixtures.UHDRegistrationRegressionTests.test_uhd_affine_frame_040_displacement_and_median_gradients) ... ok
+test_uhd_fractional_partial_roi_translation_8_and_16 (test_uhd_fixtures.UHDRegistrationRegressionTests.test_uhd_fractional_partial_roi_translation_8_and_16) ... ok
+test_uhd_partial_other_sizes_overlap_and_gaussian_supports (test_uhd_fixtures.UHDRegistrationRegressionTests.test_uhd_partial_other_sizes_overlap_and_gaussian_supports) ... ok
+test_uhd_partial_roi_complete_and_boundary_populations (test_uhd_fixtures.UHDRegistrationRegressionTests.test_uhd_partial_roi_complete_and_boundary_populations) ... ok
+test_uhd_roi_preserves_affine_precision_and_pure_translation (test_uhd_fixtures.UHDRegistrationRegressionTests.test_uhd_roi_preserves_affine_precision_and_pure_translation) ... ok
+test_uhd_visibility_limits_mixing_at_a_crack_tip (test_uhd_fixtures.UHDRegistrationRegressionTests.test_uhd_visibility_limits_mixing_at_a_crack_tip) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 77.876s
+
+OK

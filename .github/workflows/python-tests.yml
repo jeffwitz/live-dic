@@ -102,7 +102,7 @@ jobs:
           -p test_gpu_regressions.py
           -v
 
-      - name: Run original UHD image regressions on lavapipe
+      - name: Run native UHD image and ROI regressions on lavapipe
         env:
           ICGN_RUN_GPU_TESTS: "1"
           LIBGL_ALWAYS_SOFTWARE: "1"

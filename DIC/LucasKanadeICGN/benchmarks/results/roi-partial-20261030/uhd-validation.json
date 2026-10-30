@@ -1,0 +1,110 @@
+{
+  "starting_commit": "0e1cbbf3b9792475b8529904eb3621af6e1d35ed",
+  "tests": {
+    "uhd_intel": {
+      "discovered": 9,
+      "seconds": 77.876,
+      "skipped": 0,
+      "status": "passed",
+      "log_sha256": "66d0c5be1dd7a5c78a085f861b2968752211825822635d2adb3c34628a0c9ac7"
+    },
+    "uhd_lavapipe": {
+      "discovered": 9,
+      "seconds": 93.092,
+      "skipped": 0,
+      "status": "passed",
+      "log_sha256": "f06a43a11082201dbb494dde190c1123771b1c9335427094af62c0fba00a365b"
+    },
+    "portable_discovery": {
+      "discovered": 160,
+      "seconds": 1.106,
+      "skipped": 46,
+      "status": "passed",
+      "log_sha256": "5ef8c8715deead902d7d2825256731290ca6c2e280949c726e596a544f16e39a"
+    }
+  },
+  "adapter": {
+    "vendor": "Intel open-source Mesa driver",
+    "architecture": "",
+    "device": "Intel(R) Graphics (LNL)",
+    "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+    "stackgroup_min_size": 4,
+    "stackgroup_max_size": 128,
+    "vendor_id": 32902,
+    "device_id": 25760,
+    "adapter_type": "IntegratedGPU",
+    "backend_type": "Vulkan"
+  },
+  "wgpu_version": "0.32.0",
+  "runtime_source_hashes": {
+    "__init__.py": "8014ba4125ee1114de90e891599f09d1db1f04cc528d4811b2f4d52beb0b9bed",
+    "__main__.py": "935a1c1166b0c1ea35a82256345000bf2c73ded718d77773bc27a71ecce28f7d",
+    "cli.py": "b063b2d75a7952144b608a851b936a92cbf74cd8ba6c0667dc39837d122670a2",
+    "engine.py": "27d83051b99e053a6613f4e58c34d9a830fd39f5d403b270d33742c59daf50e8",
+    "full_pyramid_backend.py": "0f807462c8db2208d715089f753039b22b534834326e4eb935b4657195cacea7",
+    "interpolation.py": "f795f0282927c91624d13fbb9f4080115d4deb766f0f61fea24a27124d8978a9",
+    "motion.py": "e161f3b0fdfd7c3800fcae3e886a042a40479879f23949a9f8dfdde9a65bee54",
+    "outlier.py": "d0bcfd4e2ebc53e64374b0cb976debcafeb79bc94ca648fd9fe35b689968d126",
+    "partial.py": "2fc364d19db282ecdeefa97fb6a93a33322b2bf22a912a397b4985e4f8bde0f7",
+    "roi.py": "968a4ba212378e95f7bd74a74259e8a190b087cc6b42fc2d061088b34f321db3",
+    "shaders/full_pyramid.wgsl": "032645ad39423abd81308212ea0cb2deb3159f7581b45f5772bbe10491c26613",
+    "shaders/icgn.wgsl": "22cf135b0e929d1d88566e0d1b72fcb2df7b905a2bb02658c6a17de1cc5b577f",
+    "shaders/icgn_subgroup.wgsl": "3c35126b1d5e18690cfe882516dea2d112afa1b0ce9e06eefea4349b1547006e",
+    "shaders/subgroup_probe.wgsl": "6e4d149ed7f17969ede557a3062742d8da6c62cb6dd745d5510112c1489fed61",
+    "subset.py": "fcd5d06bab637cc1d352036bc3855b2bab88ca15d045fa97c15fc3eaaf12411f",
+    "weighting.py": "f25f7f3ac7bc2d0d313bffe6942b80315ca8e99c58325bda01c1a7b0e57f74a8",
+    "wgpu_backend.py": "56257203868e312f261df73eaf2aa90ea5e85d8d9e58794ee246fa150ed0f741"
+  },
+  "test_module_sha256": "53385830388ba72d4735563e54726cc2ffeee31fb79ad37c4472567905553042",
+  "fixture_helper_sha256": "86bea836b031635f77b26ddb587d9826485628c71de52e2e1115f00cfa80469e",
+  "resolution": [
+    3840,
+    2160
+  ],
+  "runtime_unchanged": true,
+  "ci": "Workflow updated to run this UHD test file; these local changes have not been executed remotely.",
+  "commands": {
+    "hardware": "ICGN_RUN_GPU_TESTS=1 PYTHONPATH=DIC/LucasKanadeICGN/python/src python -m unittest discover -s DIC/LucasKanadeICGN/python/tests -p test_uhd_fixtures.py -v",
+    "software": "ICGN_RUN_GPU_TESTS=1 VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json LIBGL_ALWAYS_SOFTWARE=1 PYTHONPATH=DIC/LucasKanadeICGN/python/src python -m unittest discover -s DIC/LucasKanadeICGN/python/tests -p test_uhd_fixtures.py -v",
+    "benchmarks": "See exact commands in uhd-fractional-speckle.json, uhd-fractional-analytic.json and uhd-crack.json",
+    "docs": "python -m sphinx -W --keep-going -b html DIC/LucasKanadeICGN/docs /tmp/live-dic-uhd-docs"
+  },
+  "checks": {
+    "ruff_check": "passed",
+    "ruff_format": "passed",
+    "strict_sphinx": "passed",
+    "strict_json_and_raw_quantiles": "42 campaigns checked",
+    "runtime_hashes": "match starting commit",
+    "qualification_script_and_fixture_hashes": "match reports"
+  },
+  "scope": {
+    "image_formation": [
+      "continuous texture sampled directly on UHD coordinates",
+      "original archived UHD speckle with NumPy bilinear fractional inverse shift, uint8 rounding and reflected borders",
+      "controlled opposite translations and slit ending inside a nominal square in a full UHD field"
+    ],
+    "fractional_translation_px": [
+      0.35,
+      -0.2
+    ],
+    "full_and_partial_populations_checked_independently": true,
+    "bounds": {
+      "accepted_fraction_min": 0.9,
+      "displacement_rmse_max_px": 0.05,
+      "displacement_p95_max_px": 0.1
+    },
+    "raw_cubic_8_qualified": false,
+    "bspline_two_level_median_8_and_16_qualified_on_tested_cases": true,
+    "other_supported_sizes": "15/7 translation B-spline uniform; 31/16 affine cubic uniform; 32/32 affine B-spline uniform; 33/16 affine B-spline Gaussian; all UHD, raw single-level on pure fractional translation",
+    "crack": "17/17 bilinear raw; translation and affine; tip error <0.05px with explicit visibility on the tested case",
+    "real_time": "Measured throughput and result age reported separately, with no universal deadline or non-regression claim."
+  },
+  "notes": [
+    "Small-image CPU/geometry tests remain unit tests and do not establish UHD qualification.",
+    "No sensor noise added in these cases.",
+    "No timing assertions added to CI.",
+    "Hardware timing campaigns completed before concurrent correctness jobs.",
+    "The portable discovery run explicitly skips opted-out GPU tests; the 9 UHD tests execute without skips on Intel and lavapipe.",
+    "Windows/macOS GPU execution not tested here."
+  ]
+}

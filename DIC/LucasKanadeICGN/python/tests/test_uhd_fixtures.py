@@ -11,8 +11,9 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image
+from uhd_partial_cases import TRANSLATION, UHD_SHAPE, boundary_mask, crack_pair, translation_pair
 
-from lucas_kanade_icgn import ICGNWGPUFullPyramid
+from lucas_kanade_icgn import ICGNWGPU, ICGNWGPUFullPyramid
 
 FIXTURES = Path(__file__).resolve().parents[2] / "assets" / "uhd_tensile"
 
@@ -76,6 +77,109 @@ class UHDFixtureIntegrityTests(unittest.TestCase):
 
 @unittest.skipUnless(os.environ.get("ICGN_RUN_GPU_TESTS") == "1", "set ICGN_RUN_GPU_TESTS=1")
 class UHDRegistrationRegressionTests(unittest.TestCase):
+    def test_uhd_partial_other_sizes_overlap_and_gaussian_supports(self) -> None:
+        reference, target = translation_pair("archived-speckle")
+        roi = boundary_mask()
+        configurations = (
+            (15, 7, "translation", "bspline", "uniform"),
+            (31, 16, "affine", "cubic", "uniform"),
+            (32, 32, "affine", "bspline", "uniform"),
+            (33, 16, "affine", "bspline", "gaussian"),
+        )
+        for size, stride, model, interpolation, weighting in configurations:
+            with (
+                self.subTest(size=size, stride=stride, model=model, weighting=weighting),
+                ICGNWGPU(
+                    motion_model=model,
+                    subset_size=size,
+                    subset_stride=stride,
+                    interpolation=interpolation,
+                    spatial_weighting=weighting,
+                    prefer_subgroups=False,
+                    outlier_policy="disabled",
+                ) as engine,
+            ):
+                info = engine.set_reference(
+                    reference, roi_mask=roi, roi_policy="partial", tolerance=0.005
+                )
+                result = engine.register(target)
+                self.assertEqual((result.height, result.width), UHD_SHAPE)
+                partial = np.zeros(result.status.shape, bool)
+                partial.ravel()[info.roi.partial_indices] = True
+                self.assertTrue(np.isfinite(result.parameters).all())
+                self.assertFalse(np.any(result.status == -4))
+                for population in (partial, info.roi_selected & ~partial):
+                    accepted = population & result.accepted_mask
+                    self.assertGreater(population.sum(), 0)
+                    self.assertGreaterEqual(accepted.sum() / population.sum(), 0.90)
+                    distance = np.linalg.norm(result.displacement[accepted] - TRANSLATION, axis=-1)
+                    self.assertLess(float(np.sqrt(np.mean(distance**2))), 0.05)
+                    self.assertLess(float(np.percentile(distance, 95)), 0.10)
+
+    def test_uhd_fractional_partial_roi_translation_8_and_16(self) -> None:
+        roi = boundary_mask()
+        for scene in ("analytic-wave", "archived-speckle"):
+            reference, target = translation_pair(scene)
+            self.assertEqual(reference.shape, UHD_SHAPE)
+            self.assertEqual(target.shape, UHD_SHAPE)
+            for size in (8, 16):
+                with (
+                    self.subTest(scene=scene, size=size),
+                    ICGNWGPUFullPyramid(
+                        motion_model="translation",
+                        subset_size=size,
+                        interpolation="bspline",
+                        outlier_policy="median",
+                    ) as engine,
+                ):
+                    info = engine.set_reference(reference, roi_mask=roi, roi_policy="partial")
+                    result = engine.register(target)
+                    self.assertTrue(np.isfinite(result.parameters).all())
+                    self.assertFalse(np.any(result.status == -4))
+                    partial = np.zeros(result.status.shape, bool)
+                    partial.ravel()[info.roi.partial_indices] = True
+                    for population in (partial, info.roi_selected & ~partial):
+                        self.assertGreater(population.sum(), 0)
+                        accepted = population & result.accepted_mask
+                        self.assertGreaterEqual(accepted.sum() / population.sum(), 0.90)
+                        distance = np.linalg.norm(
+                            result.displacement[accepted] - TRANSLATION, axis=-1
+                        )
+                        self.assertLess(float(np.sqrt(np.mean(distance**2))), 0.05)
+                        self.assertLess(float(np.percentile(distance, 95)), 0.10)
+
+    def test_uhd_visibility_limits_mixing_at_a_crack_tip(self) -> None:
+        reference, target, roi, point = crack_pair()
+        self.assertEqual(reference.shape, UHD_SHAPE)
+        self.assertEqual(target.shape, UHD_SHAPE)
+        for model in ("translation", "affine"):
+            errors = {}
+            for truncation in ("none", "visibility"):
+                with (
+                    self.subTest(model=model, truncation=truncation),
+                    ICGNWGPU(
+                        motion_model=model,
+                        subset_size=17,
+                        interpolation="linear",
+                        outlier_policy="disabled",
+                        prefer_subgroups=False,
+                    ) as engine,
+                ):
+                    info = engine.set_reference(
+                        reference,
+                        roi_mask=roi,
+                        roi_policy="partial",
+                        roi_truncation=truncation,
+                        tolerance=0.005,
+                    )
+                    result = engine.register(target)
+                    self.assertTrue(info.roi_selected[point])
+                    self.assertEqual(result.status[point], 1)
+                    self.assertTrue(np.isfinite(result.parameters).all())
+                    errors[truncation] = np.linalg.norm(result.displacement[point] - TRANSLATION)
+            self.assertGreater(errors["none"], 0.1)
+            self.assertLess(errors["visibility"], 0.05)
+
     def test_uhd_partial_roi_complete_and_boundary_populations(self) -> None:
         reference, target = _image("reference.png"), _image("frame_040.png")
         y, x = np.indices(reference.shape)

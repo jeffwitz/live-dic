@@ -1,0 +1,429 @@
+{
+  "commit": "0e1cbbf3b9792475b8529904eb3621af6e1d35ed",
+  "git_dirty": true,
+  "resolution": [
+    3840,
+    2160
+  ],
+  "command": [
+    "DIC/LucasKanadeICGN/benchmarks/results/roi-partial-20261030/run_uhd_crack.py"
+  ],
+  "python": "3.11.14 (main, Jan 27 2026, 23:58:49) [Clang 21.1.4 ]",
+  "wgpu_version": "0.32.0",
+  "scope": "One controlled crack-tip window in a full UHD field; no physical fracture model, global metrology or timing qualification claimed.",
+  "fixture_helper_sha256": "86bea836b031635f77b26ddb587d9826485628c71de52e2e1115f00cfa80469e",
+  "script_sha256": "bbecf678c66e0ee1fa6935011d494b77643ee177a06555da82352797eef20451",
+  "source_hashes": {
+    "__init__.py": "8014ba4125ee1114de90e891599f09d1db1f04cc528d4811b2f4d52beb0b9bed",
+    "__main__.py": "935a1c1166b0c1ea35a82256345000bf2c73ded718d77773bc27a71ecce28f7d",
+    "cli.py": "b063b2d75a7952144b608a851b936a92cbf74cd8ba6c0667dc39837d122670a2",
+    "engine.py": "27d83051b99e053a6613f4e58c34d9a830fd39f5d403b270d33742c59daf50e8",
+    "full_pyramid_backend.py": "0f807462c8db2208d715089f753039b22b534834326e4eb935b4657195cacea7",
+    "interpolation.py": "f795f0282927c91624d13fbb9f4080115d4deb766f0f61fea24a27124d8978a9",
+    "motion.py": "e161f3b0fdfd7c3800fcae3e886a042a40479879f23949a9f8dfdde9a65bee54",
+    "outlier.py": "d0bcfd4e2ebc53e64374b0cb976debcafeb79bc94ca648fd9fe35b689968d126",
+    "partial.py": "2fc364d19db282ecdeefa97fb6a93a33322b2bf22a912a397b4985e4f8bde0f7",
+    "roi.py": "968a4ba212378e95f7bd74a74259e8a190b087cc6b42fc2d061088b34f321db3",
+    "shaders/full_pyramid.wgsl": "032645ad39423abd81308212ea0cb2deb3159f7581b45f5772bbe10491c26613",
+    "shaders/icgn.wgsl": "22cf135b0e929d1d88566e0d1b72fcb2df7b905a2bb02658c6a17de1cc5b577f",
+    "shaders/icgn_subgroup.wgsl": "3c35126b1d5e18690cfe882516dea2d112afa1b0ce9e06eefea4349b1547006e",
+    "shaders/subgroup_probe.wgsl": "6e4d149ed7f17969ede557a3062742d8da6c62cb6dd745d5510112c1489fed61",
+    "subset.py": "fcd5d06bab637cc1d352036bc3855b2bab88ca15d045fa97c15fc3eaaf12411f",
+    "weighting.py": "f25f7f3ac7bc2d0d313bffe6942b80315ca8e99c58325bda01c1a7b0e57f74a8",
+    "wgpu_backend.py": "56257203868e312f261df73eaf2aa90ea5e85d8d9e58794ee246fa150ed0f741"
+  },
+  "cases": [
+    {
+      "motion_model": "translation",
+      "truncation": "none",
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      },
+      "config": {
+        "iterations": 30,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 1,
+        "pyramidStrategy": "single",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 17,
+        "roi": {
+          "policy": "partial",
+          "truncation": "none",
+          "partial": 304,
+          "supportConditionLimit": 100000000.0,
+          "supportContrastRmsMinimum": 1.0,
+          "supportConnectivity": 4,
+          "evenCenter": "all four central pixels required",
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "79231e6eef910aec5fe3005c306f3a405b3fae05cf050e742a119d25f8d36ab1",
+          "gridTotal": 28575,
+          "selected": 15645,
+          "excluded": 12930,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            15645
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "linear",
+        "motionModel": "translation",
+        "outlierPolicy": "disabled",
+        "subsetStride": 17,
+        "spatialWeighting": "uniform",
+        "gaussianSigma": 4.25
+      },
+      "field_shape": [
+        127,
+        225,
+        6
+      ],
+      "populations": {
+        "gridTotal": 28575,
+        "roiSelected": 15645,
+        "roiExcluded": 12930,
+        "roiPartial": 304,
+        "referenceAdmissible": 15645,
+        "accepted": 15645,
+        "rejectedSelected": 0,
+        "acceptedFractionSelected": 1.0
+      },
+      "tip_grid_index_yx": [
+        63,
+        113
+      ],
+      "tip_center_xy": [
+        1929,
+        1079
+      ],
+      "expected_tip_displacement": [
+        0.35,
+        -0.2
+      ],
+      "tip_parameters": [
+        0.029531504958868027,
+        0.0,
+        0.0,
+        0.11477047950029373,
+        0.0,
+        0.0
+      ],
+      "tip_status": 1,
+      "tip_iterations": 3,
+      "tip_support_fraction": 0.9515570998191833,
+      "tip_displacement_error_px": 0.4491998564990564,
+      "finite_complete_field": true,
+      "reference_sha256": "36adfa535bd92f90449116a05ce2f332f1053b43d3a8eac2e5febea2f476f454",
+      "target_sha256": "0584a405b4064c372fdb468d01319290961274ef0f4b909146958abf02d8067b",
+      "mask_sha256": "79231e6eef910aec5fe3005c306f3a405b3fae05cf050e742a119d25f8d36ab1"
+    },
+    {
+      "motion_model": "translation",
+      "truncation": "visibility",
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      },
+      "config": {
+        "iterations": 30,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 1,
+        "pyramidStrategy": "single",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 17,
+        "roi": {
+          "policy": "partial",
+          "truncation": "visibility",
+          "partial": 304,
+          "supportConditionLimit": 100000000.0,
+          "supportContrastRmsMinimum": 1.0,
+          "supportConnectivity": 4,
+          "evenCenter": "all four central pixels required",
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "79231e6eef910aec5fe3005c306f3a405b3fae05cf050e742a119d25f8d36ab1",
+          "gridTotal": 28575,
+          "selected": 15645,
+          "excluded": 12930,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            15645
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "linear",
+        "motionModel": "translation",
+        "outlierPolicy": "disabled",
+        "subsetStride": 17,
+        "spatialWeighting": "uniform",
+        "gaussianSigma": 4.25
+      },
+      "field_shape": [
+        127,
+        225,
+        6
+      ],
+      "populations": {
+        "gridTotal": 28575,
+        "roiSelected": 15645,
+        "roiExcluded": 12930,
+        "roiPartial": 304,
+        "referenceAdmissible": 15645,
+        "accepted": 15645,
+        "rejectedSelected": 0,
+        "acceptedFractionSelected": 1.0
+      },
+      "tip_grid_index_yx": [
+        63,
+        113
+      ],
+      "tip_center_xy": [
+        1929,
+        1079
+      ],
+      "expected_tip_displacement": [
+        0.35,
+        -0.2
+      ],
+      "tip_parameters": [
+        0.3452376127243042,
+        0.0,
+        0.0,
+        -0.21020695567131042,
+        0.0,
+        0.0
+      ],
+      "tip_status": 1,
+      "tip_iterations": 6,
+      "tip_support_fraction": 0.6539792418479919,
+      "tip_displacement_error_px": 0.011263315526069795,
+      "finite_complete_field": true,
+      "reference_sha256": "36adfa535bd92f90449116a05ce2f332f1053b43d3a8eac2e5febea2f476f454",
+      "target_sha256": "0584a405b4064c372fdb468d01319290961274ef0f4b909146958abf02d8067b",
+      "mask_sha256": "79231e6eef910aec5fe3005c306f3a405b3fae05cf050e742a119d25f8d36ab1"
+    },
+    {
+      "motion_model": "affine",
+      "truncation": "none",
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      },
+      "config": {
+        "iterations": 30,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 1,
+        "pyramidStrategy": "single",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 17,
+        "roi": {
+          "policy": "partial",
+          "truncation": "none",
+          "partial": 304,
+          "supportConditionLimit": 100000000.0,
+          "supportContrastRmsMinimum": 1.0,
+          "supportConnectivity": 4,
+          "evenCenter": "all four central pixels required",
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "79231e6eef910aec5fe3005c306f3a405b3fae05cf050e742a119d25f8d36ab1",
+          "gridTotal": 28575,
+          "selected": 15645,
+          "excluded": 12930,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            15645
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "linear",
+        "motionModel": "affine",
+        "outlierPolicy": "disabled",
+        "subsetStride": 17,
+        "spatialWeighting": "uniform",
+        "gaussianSigma": 4.25
+      },
+      "field_shape": [
+        127,
+        225,
+        6
+      ],
+      "populations": {
+        "gridTotal": 28575,
+        "roiSelected": 15645,
+        "roiExcluded": 12930,
+        "roiPartial": 304,
+        "referenceAdmissible": 15645,
+        "accepted": 15599,
+        "rejectedSelected": 46,
+        "acceptedFractionSelected": 0.9970597635027165
+      },
+      "tip_grid_index_yx": [
+        63,
+        113
+      ],
+      "tip_center_xy": [
+        1929,
+        1079
+      ],
+      "expected_tip_displacement": [
+        0.35,
+        -0.2
+      ],
+      "tip_parameters": [
+        0.03169654682278633,
+        0.05690494924783707,
+        -0.004623996093869209,
+        -0.12863299250602722,
+        -0.018756404519081116,
+        0.0053708371706306934
+      ],
+      "tip_status": 1,
+      "tip_iterations": 23,
+      "tip_support_fraction": 0.9515570998191833,
+      "tip_displacement_error_px": 0.32620597490417524,
+      "finite_complete_field": true,
+      "reference_sha256": "36adfa535bd92f90449116a05ce2f332f1053b43d3a8eac2e5febea2f476f454",
+      "target_sha256": "0584a405b4064c372fdb468d01319290961274ef0f4b909146958abf02d8067b",
+      "mask_sha256": "79231e6eef910aec5fe3005c306f3a405b3fae05cf050e742a119d25f8d36ab1"
+    },
+    {
+      "motion_model": "affine",
+      "truncation": "visibility",
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      },
+      "config": {
+        "iterations": 30,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 1,
+        "pyramidStrategy": "single",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 17,
+        "roi": {
+          "policy": "partial",
+          "truncation": "visibility",
+          "partial": 304,
+          "supportConditionLimit": 100000000.0,
+          "supportContrastRmsMinimum": 1.0,
+          "supportConnectivity": 4,
+          "evenCenter": "all four central pixels required",
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "79231e6eef910aec5fe3005c306f3a405b3fae05cf050e742a119d25f8d36ab1",
+          "gridTotal": 28575,
+          "selected": 15645,
+          "excluded": 12930,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            15645
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "linear",
+        "motionModel": "affine",
+        "outlierPolicy": "disabled",
+        "subsetStride": 17,
+        "spatialWeighting": "uniform",
+        "gaussianSigma": 4.25
+      },
+      "field_shape": [
+        127,
+        225,
+        6
+      ],
+      "populations": {
+        "gridTotal": 28575,
+        "roiSelected": 15645,
+        "roiExcluded": 12930,
+        "roiPartial": 304,
+        "referenceAdmissible": 15645,
+        "accepted": 15596,
+        "rejectedSelected": 49,
+        "acceptedFractionSelected": 0.9968680089485459
+      },
+      "tip_grid_index_yx": [
+        63,
+        113
+      ],
+      "tip_center_xy": [
+        1929,
+        1079
+      ],
+      "expected_tip_displacement": [
+        0.35,
+        -0.2
+      ],
+      "tip_parameters": [
+        0.3568935692310333,
+        -0.006005987524986267,
+        0.0031439433805644512,
+        -0.21430835127830505,
+        0.006949403788894415,
+        -0.008712691254913807
+      ],
+      "tip_status": 1,
+      "tip_iterations": 23,
+      "tip_support_fraction": 0.6539792418479919,
+      "tip_displacement_error_px": 0.015882386881272702,
+      "finite_complete_field": true,
+      "reference_sha256": "36adfa535bd92f90449116a05ce2f332f1053b43d3a8eac2e5febea2f476f454",
+      "target_sha256": "0584a405b4064c372fdb468d01319290961274ef0f4b909146958abf02d8067b",
+      "mask_sha256": "79231e6eef910aec5fe3005c306f3a405b3fae05cf050e742a119d25f8d36ab1"
+    }
+  ]
+}

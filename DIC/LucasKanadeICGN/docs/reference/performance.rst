@@ -416,3 +416,11 @@ uses pure shifts of the original UHD reference; affine uses its archived tensile
 frame 40. Hardware drift keeps temporal non-regression reception open. These
 measurements do not establish a universal zero-overhead partial mode.
 See :doc:`../how-to/use-partial-roi` for support definitions and limits.
+
+The `native-UHD fractional-motion and crack addendum
+<https://github.com/jeffwitz/live-dic/blob/main/DIC/LucasKanadeICGN/benchmarks/results/roi-partial-20261030/uhd-fractional.md>`_
+qualifies 8/8 and 16/16 on a known fractional translation using both the original
+UHD speckle and a continuous analytic UHD texture. It distinguishes raw and
+median fields, single-level cubic and two-level B-spline, and includes the
+full-UHD visibility case. Small-image oracle tests do not substitute for these
+qualification runs.

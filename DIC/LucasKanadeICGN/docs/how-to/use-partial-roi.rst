@@ -77,7 +77,7 @@ The geometry tests verify conservative corner touches and removal of a
 connected wrap-around region. Keep the option explicit when publishing results.
 It is rejected with ``full`` or without a mask.
 
-A controlled linear-interpolation regression also assigns opposite subpixel
+A native-UHD controlled linear-interpolation regression assigns opposite subpixel
 translations on the two sides of a slit. In the square containing its tip,
 visibility reduces the centre-displacement error from more than 0.1 pixel to
 less than 0.05 pixel for both models. This single constructed case demonstrates
@@ -119,11 +119,13 @@ is false, and its output is a numerical rejection, not a geometric exclusion.
 These controls do not promise the same uncertainty for every accepted shape;
 partial-boundary error must be measured separately from complete-window error.
 
-In particular, an 8/8 cubic-translation test on the smooth analytic fixture
-produces about 0.147 pixel RMSE on accepted partial supports (0.074 unmasked),
-despite agreement with an independent double-precision IC-GN calculation.
-The 0.05 pixel qualification of 16/16 UHD windows does not extend to this case.
-Use sufficient texture and support size, and qualify the intended geometry.
+Qualification is performed at native **3840 x 2160**. The separate small-image
+oracle checks are unit tests, not evidence of UHD accuracy. In particular,
+the poor result of the small 8/8 cubic mono-scale raw case must not be extended
+to the two-level B-spline/median configuration. Qualify subset sizes with the
+same interpolator, iteration schedule and postprocessing, and report complete
+and partial populations separately. See the UHD fractional-motion addendum in
+the qualification report linked below.
 
 Keep the live path resident
 ---------------------------

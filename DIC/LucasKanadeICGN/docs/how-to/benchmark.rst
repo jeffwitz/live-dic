@@ -133,6 +133,13 @@ Acquisition-to-result latency
 Use representative data
 -----------------------
 
+**Qualification uses native 3840 x 2160 inputs.** Run new numerical and
+performance cases at UHD before drawing conclusions for this project. Small
+images remain useful for fast unit tests of geometry, buffer contracts and
+independent CPU oracles; they do not qualify UHD accuracy or real-time cadence.
+Do not replace UHD inputs with resized or tiled small images. Record the
+image-formation model, ground truth and hashes with the results.
+
 Iteration count depends on displacement, texture, noise, and rejected subsets.
 Benchmark the expected motion and image quality, not only the analytical test
 pair. Report at least median and p95 latency, accepted-subset count, and mean
@@ -150,7 +157,7 @@ call from a resident NumPy image until its complete NumPy field is returned:
 
    $ PYTHONPATH=DIC/LucasKanadeICGN/python/src \
        python3 DIC/LucasKanadeICGN/benchmarks/benchmark_image_to_field.py \
-       --width 3840 --height 2160 --frames 12 --warmups 3 \
+       --fixture-set uhd-tensile --width 3840 --height 2160 --frames 12 --warmups 3 \
        --motion-model affine
 
 This persistent-engine benchmark excludes one-time reference preparation and
@@ -158,6 +165,12 @@ fixture generation. It includes every per-frame transfer, synchronization,
 readback, and Python result conversion. Its synchronous stream period is also
 the result age. Use this measurement for backend selection; use GPU timestamps
 only to diagnose kernels.
+
+For fractional translation and partial ROI at UHD, use the dedicated
+``benchmarks/qualify_uhd_partial_roi.py`` with ``--scene archived-speckle`` or
+``--scene analytic-wave``. It compares sizes with identical processing settings
+within each family and retains raw changing-frame stream samples. See the
+fractional-motion addendum linked from :doc:`../reference/performance`.
 
 From a repository checkout, reproduce the UHD campaign for either browser
 backend with:
