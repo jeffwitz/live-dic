@@ -208,8 +208,8 @@ expensive image sampling without a new Python, JavaScript, or GPU submission.
 Portable shared-WGSL workgroup reduction
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The native portable solver supports 16-, 32-, and experimental 128-lane mappings; 16 remains the
-default. Three shared ``vec4`` arrays hold the partial sums and a binary
+The native portable solver supports 16-, 32-, and experimental 128-lane
+mappings; 16 remains the default. Three shared ``vec4`` arrays hold the partial sums and a binary
 reduction tree uses workgroup barriers between its stages:
 
 .. code-block:: text

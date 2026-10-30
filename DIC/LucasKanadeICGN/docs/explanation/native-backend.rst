@@ -78,8 +78,8 @@ The portable solver assigns one workgroup to each subset. Its default
 ``solver_workgroup_size=16`` distributes the 256 pixels across 16 lanes. The
 optional ``solver_workgroup_size=32`` distributes them across 32 lanes and
 halves the per-lane pixel count. Experimental ``solver_workgroup_size=128``
-assigns two pixels per lane for a 16 by 16 subset. All widths reduce partial sums through shared
-memory. The reference, inverse-Hessian, metadata, and state buffers use
+assigns two pixels per lane for a 16 by 16 subset. All widths reduce partial
+sums through shared memory. The reference, inverse-Hessian, metadata, and state buffers use
 aligned ``vec4`` records. All iterations remain fused in one dispatch. Native
 engines accept these three widths; raw browser WebGPU uses the shader's 16-lane
 default. See :doc:`shared-kernel` for the binding contract.

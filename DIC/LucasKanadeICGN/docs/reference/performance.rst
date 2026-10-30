@@ -214,6 +214,48 @@ See the :download:`strict summary
 <https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/workgroup-width-20261030>`_.
 These finite campaigns do not establish a universal deadline.
 
+128-invocation control on Intel Lunar Lake
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The subsequent explicit 128-invocation experiment remeasured a width-16
+control with the same trajectory, settings and three alternating repeats.
+It retained B-spline, the two fixed levels and the qualified temporal profile.
+
+.. list-table:: Matched native-UHD 16 versus 128 invocation control
+   :header-rows: 1
+
+   * - Invocations / slots
+     - Sustained FPS
+     - Result age p50 / p95 / p99
+   * - 16 / 1
+     - **81.30**
+     - **12.35 / 13.85 / 14.35 ms**
+   * - 128 / 1
+     - 53.61
+     - 18.80 / 23.05 / 24.06 ms
+   * - 16 / 2
+     - 88.63
+     - 22.59 / 25.39 / 26.13 ms
+   * - 128 / 2
+     - 57.50
+     - 34.25 / 43.60 / 45.27 ms
+
+FPS is the median of three runs, and ages pool 540 timed fields per row.
+Both widths pass the unchanged interior quality gates: minimum coverage
+99.985%, maximum displacement RMSE below 0.028579 px, and strain aggregate
+RMSE below 0.001447. Mean fine iterations remain about 2.5793 for both widths.
+Whole-grid edge failures remain, with maximum frame RMSE about 3.2865 px.
+
+Width 128 loses 34.1% throughput at one slot here. It misses both the 60 FPS
+throughput goal and the 16.67 ms p95 age budget. The default stays 16;
+``solver_workgroup_size=128`` is available only as an explicit experimental
+choice. No GN equation or iteration limit was changed. See the
+:download:`strict summary
+<../../benchmarks/results/workgroup-128-20261030/summary.json>` and the
+`full 128-invocation campaign
+<https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/workgroup-128-20261030>`_
+for commands, source hashes, all repetitions and final fields.
+
 .. list-table:: Native displacement-UOD policy control
    :header-rows: 1
 
