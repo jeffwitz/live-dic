@@ -230,11 +230,17 @@ pass. Fresh ``solve_seeded`` dispatches instead write an explicit invalid state
 for a disabled subset, so a cleared buffer cannot be mistaken for a computed
 partial estimate.
 
-``full_pyramid.wgsl`` adds three orchestration entry points without duplicating
-the IC-GN equations: ``reduce_x`` and ``reduce_y`` construct reduced targets,
-while ``transfer_seed`` interpolates the coarser polynomial field, recentres
-it, and rescales its coefficients for the next finer level. Pass ordering is encoded once in the
-host command graph and all numerical solve operations remain in ``icgn.wgsl``.
+``full_pyramid.wgsl`` orchestrates the pyramid without duplicating IC-GN
+equations. The browser uses ``reduce_x`` and ``reduce_y``; native uses the
+pixel-equivalent tiled ``reduce_fused`` entry point without an intermediate
+texture. ``transfer_seed`` interpolates, recentres and rescales the coarser
+polynomial field; its ROI variant applies prepared link permissions.
+Native temporal entry points project and merge accepted history. The optional
+``refine_temporal_seed`` entry point applies the measured coarse change to
+fine history when complete age-matched stencils exist. All numerical solve
+operations remain in ``icgn.wgsl``. Native records ordered dispatches in one
+compute pass; the browser retains its separate compute passes. Both submit
+one command buffer and read back only the final field.
 
 Change policy
 -------------

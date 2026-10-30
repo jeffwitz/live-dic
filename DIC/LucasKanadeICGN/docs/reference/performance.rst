@@ -428,6 +428,86 @@ qualification runs.
 Temporal initialization: cumulative native-UHD motion
 ------------------------------------------------------------
 
+The latest matched scheduling/correction campaign is summarized below.
+The earlier measurements following it explain the original slowdown report;
+their absolute timings should not be used to compute the new code's speedup.
+
+Latest matched native-UHD control
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Three alternating process runs per variant replay the identical 200-frame
+trajectory. Twenty frames establish history and warm the actual slots; frames
+20--199 are timed. The machine is Intel LNL, Vulkan/Mesa 25.2.8, wgpu-py
+0.32.0, performance profile. All cases use affine B-spline, size/stride 16/16,
+uniform weights, median policy, two levels, temporal initialization, no ROI
+and unchanged iteration ceilings (8,16). The boundary is resident NumPy image
+to materialized NumPy field and statistics, without truth scoring.
+
+.. list-table:: Medians of three campaign statistics; p95 range retains all runs
+   :header-rows: 1
+
+   * - Variant
+     - Slots
+     - FPS
+     - Age median
+     - Age p95 range
+   * - Previous code, 93ceb37
+     - 1
+     - 71.00
+     - 14.06 ms
+     - 16.14--16.48 ms
+   * - Batched dispatches and fused reduction
+     - 1
+     - 75.05
+     - 13.48 ms
+     - 15.26--17.95 ms
+   * - Plus optional fine correction
+     - 1
+     - 76.17
+     - 13.17 ms
+     - 14.98--17.84 ms
+   * - Previous code, 93ceb37
+     - 2
+     - 77.29
+     - 25.69 ms
+     - 29.14--29.50 ms
+   * - Batched dispatches and fused reduction
+     - 2
+     - 80.94
+     - 24.55 ms
+     - 27.84--37.17 ms
+   * - Plus optional fine correction
+     - 2
+     - 82.42
+     - 24.04 ms
+     - 27.10--37.81 ms
+
+Every new-variant run exceeds 60 FPS, but the p95 latency target is not
+consistently met. Pooling all 540 ages gives p95 16.38 ms before changes,
+17.32 ms with batching/fusion, and 17.01 ms with optional correction at one
+slot. Thus the campaign supports a higher median throughput, not a
+tail-latency improvement or a hard real-time guarantee. Paired throughput
+changes vary in sign, particularly at two slots. The old code also runs
+faster than in the preceding campaign: a general regression or a gain caused
+only by changing the power profile has not been established.
+
+Batching/fusion preserve all per-frame quality statistics and final arrays
+bit for bit in this control. Fine correction reduces accepted fine iterations
+from 2.649 to 2.290, with final fixed-support coverage 99.996%, displacement
+RMSE 0.02858 px, p95 error 0.05305 px and strain-component RMSE 0.001446.
+This population contains 26,924 fixed interior positions; all-grid accepted
+error remains about 2.58 px near the deformed image boundaries. Those errors,
+rejections and nonconverged windows are retained and still cost runtime.
+
+The `complete report, commands, source hashes and raw samples
+<https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/realtime-optimization-20261030>`_
+include negative prototypes and the individual p95/p99 values. The optional
+correction is disabled by default and does not change the fixed reference,
+ROI population, iteration ceilings or the two solves per image.
+
+Earlier capture-range qualification
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 The opt-in native full pyramid projects accepted fine history onto the next
 coarsest grid, then solves every scale. A 200-frame 3840 x 2160 tensile
 sequence reaches stretch 1.1 about (1920,1080). On a fixed 26,924-position

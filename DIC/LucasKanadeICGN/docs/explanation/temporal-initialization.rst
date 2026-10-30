@@ -38,6 +38,38 @@ history never suppresses an otherwise selected destination: it starts at zero.
 All configured levels are solved, irrespective of temporal seed availability.
 This is neither selective recovery nor a second attempt after failure.
 
+Optional two-level coarse correction
+------------------------------------
+
+An absolute coarse-to-fine transfer replaces fine spatial detail with the
+interpolated coarse field. ``temporal_fine_correction=True`` instead retains
+that detail when matched accepted history is available:
+
+.. code-block:: text
+
+   previous fine history -> project -> current coarse solve
+            |                              |
+            |          current coarse field - previous coarse history
+            |                              |
+            +----------- add transported change
+                                           |
+                                      fine solve
+                                           |
+                            update fine and coarse histories
+
+All polynomial coefficients are transported using the existing recentering
+and scale conventions. The difference is an initialization correction, not an
+accumulation of output measurements. Both solves still compare against the
+unchanged reference. No velocity extrapolation or conditional retry is added.
+
+The GPU checks complete source stencils, ROI permissions, expiration and equal
+coarse/fine history ages. It retains the normal absolute seed when those
+conditions fail, including the first image. Fine and coarse histories are
+shared by all slots and merged in queue order. The extra coarse field, ages
+and link permissions are allocated at preparation, with no extra host round
+trip. This option currently requires exactly two levels; the default remains
+the absolute transfer described above.
+
 One history, multiple slots
 ------------------------------------------------------------
 

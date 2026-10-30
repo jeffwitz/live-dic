@@ -18,12 +18,17 @@ browser data-plane boundary.
 For cumulative motion, opt-in
 [`initialization="temporal"`](./DIC/LucasKanadeICGN/docs/how-to/use-temporal-initialization.rst)
 projects the last accepted fine field onto the next coarsest grid and still
-solves every pyramid level. In the 200-frame native-UHD tensile qualification
-up to 10% stretch, two levels retain 99.967% of the fixed interior support
-with 0.0284 px displacement RMSE. Their resident-NumPy-image to
-materialized-NumPy-field age is 16.62 ms median / 20.15 ms p95 with one slot:
-this hard affine sequence is **not** qualified below 16.67 ms at p95.
-See the [full campaign](./DIC/LucasKanadeICGN/benchmarks/results/temporal-init-20261030/README.md).
+solves every pyramid level. An additional opt-in
+`temporal_fine_correction=True` preserves fine history while applying the
+change measured at the coarse level. On the 200-frame native-UHD tensile
+sequence up to 10% stretch, the latest three-repeat campaign measures
+**76.17 FPS with one slot**, from resident NumPy image to materialized NumPy
+field and statistics. The median result age is 13.17 ms; per-run p95 ranges
+from 14.98 to 17.84 ms, so **a consistent p95 below 16.67 ms is still open**.
+The final fixed interior support retains 99.996% coverage and 0.0286 px
+displacement RMSE. These are medians of campaign statistics on Intel LNL,
+with affine B-spline 16/16, two levels and explicit median smoothing.
+See the [matched performance controls and limits](./DIC/LucasKanadeICGN/benchmarks/results/realtime-optimization-20261030/README.md).
 
 The browser backends remain important for WebGPU/WebGL2 portability, numerical
 cross-checks, and browser deployments. Their Python adapter is not the intended

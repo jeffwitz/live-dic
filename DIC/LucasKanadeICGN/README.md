@@ -20,13 +20,18 @@ image-to-field boundary under Python control.
 
 The opt-in [temporal mode](./docs/how-to/use-temporal-initialization.rst)
 projects accepted fine history onto the coarsest grid before solving every
-level of every image. On the 200-frame native-UHD tensile sequence up to
-10% stretch, two levels retain 99.967% of the fixed interior support with
-0.0284 px displacement RMSE. Resident NumPy image to materialized NumPy
-field age is 16.62 ms median / 20.15 ms p95 with one slot; this hard affine
-case does not meet the 16.67 ms p95 target.
-The [campaign](./benchmarks/results/temporal-init-20261030/README.md) also
-reports pure translations, one-level comparisons, two-slot ages and failures.
+level of every image. With the additional opt-in
+`temporal_fine_correction=True`, the latest native-UHD tensile campaign
+measures **76.17 FPS**, 13.17 ms median result age and 15.04 ms median
+campaign p95 with one slot. Per-run p95 ranges from 14.98 to 17.84 ms;
+**the 16.67 ms p95 target is not consistently met**. These are medians of
+three campaign statistics, from resident NumPy image to materialized NumPy
+field and statistics, using affine B-spline 16/16, two levels and explicit
+median smoothing on Intel LNL. At 10% stretch the fixed interior support
+retains 99.996% coverage with 0.0286 px displacement RMSE.
+The [matched campaign](./benchmarks/results/realtime-optimization-20261030/README.md)
+retains the old-code controls, all timing samples, whole-grid errors and
+two-slot result ages.
 
 Both native engines accept a boolean reference ROI with
 `set_reference(reference, roi_mask=mask)`. The default `full` policy retains

@@ -43,6 +43,39 @@ These are fixed-reference, Lagrangian motion parameters. They are not
 incremental displacements to accumulate. The reference image, ROI, gradients
 and Hessians stay fixed until the next ``set_reference``.
 
+Preserve fine detail with a coarse correction
+-------------------------------------------------------------
+
+For a two-level temporal pyramid, opt in with
+``temporal_fine_correction=True``. Start with one slot when result age matters:
+
+.. code-block:: python
+
+   with ICGNWGPUFullPyramid(
+       initialization="temporal",
+       temporal_fine_correction=True,
+       pyramid_levels=2,
+       motion_model="affine",
+       outlier_policy="median",
+       device_type="gpu",
+   ) as engine:
+       engine.set_reference(reference)
+       for result in engine.register_stream(ordered_frames, pipeline_depth=1):
+           consume(result.displacement, result.accepted_mask)
+
+The normal coarse solve still starts from projected fine history. Its change
+relative to the previous accepted coarse solution then corrects the previous
+fine estimate. This avoids discarding fine spatial detail when constructing
+the fine seed. It requires complete admissible coarse stencils with histories
+from the same accepted frame as the fine estimate; otherwise the existing
+absolute coarse-to-fine seed is used. Reset clears both histories.
+
+This is native-only and disabled by default. Translation, affine and quadratic
+retain their existing configuration domains; ROI is still restricted to
+translation and affine. Neither iteration ceilings nor tolerances are reduced.
+Compare timing and quality on the actual sequence: lower iteration counts do
+not guarantee a lower p95 result age on a shared or thermally limited machine.
+
 Ordering, age and reset
 ------------------------------------------------------------
 

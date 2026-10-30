@@ -220,8 +220,9 @@ then records this graph into one WebGPU command buffer:
              v
    finest optional UOD pass -> one packed readback
 
-The graph uses separate compute passes rather than one monolithic shader. Pass
-ordering provides the required device-wide dependencies while all images,
+The native graph records ordered compute dispatches in one compute pass,
+rather than one monolithic shader. Buffer clears precede that pass and packed
+readback copies follow it. Dispatch ordering provides the dependencies while all images,
 coefficients, states, and transferred seeds remain on the same GPU. This avoids
 redundant pyramid construction inside each subset and keeps the numerical
 solver in the canonical ``icgn.wgsl`` file.
@@ -236,14 +237,17 @@ Iterations and tolerances are specified from coarse to fine. For example:
        engine.set_reference(reference)
        result = engine.register(target)
 
-The target reduction uses the same separable ``[1, 4, 6, 4, 1] / 16`` filter
-and uint8 truncation as the prepared reference pyramid. A one-level full
+The native target reduction evaluates the same separable
+``[1, 4, 6, 4, 1] / 16`` filter as one tiled integer 5 x 5 kernel, with the
+same uint8 truncation as the prepared reference pyramid. It eliminates the
+horizontal intermediate texture. The shared shader retains the original
+two-pass entry points for the browser. A one-level full
 pyramid executes the same registration graph as the portable one-scale native
 backend and has been verified bit for bit.
 
 For sustained sequences, ``register_stream`` allocates a bounded ring of the
 complete mutable graph: one finest target texture, reduced targets,
-intermediate reduction textures, solver states, transferred seeds, and final
+solver states, transferred seeds, and final
 readback per slot. Reference images, inverse Hessians, metadata, FIR weights,
 and pipelines remain shared. Queue order preserves input order and the
 iterator applies backpressure when all slots are occupied.

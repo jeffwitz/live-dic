@@ -140,6 +140,15 @@ should be called while a stream is suspended. See
 :doc:`../how-to/use-temporal-initialization` and
 :doc:`../explanation/temporal-initialization` for seed policy and diagnostics.
 
+``temporal_fine_correction=False`` preserves absolute coarse-to-fine seeds.
+Setting it to ``True`` requires ``initialization="temporal"`` and exactly two
+levels. After solving the current coarse field, the fine seed becomes the
+previous accepted fine estimate plus the change between current and previous
+accepted coarse fields, transported to the fine grid. Incomplete stencils,
+expired history, or differing source ages retain the normal absolute seed.
+Both levels still run on every image. The option adds GPU-resident coarse
+history; it changes initialization, not the fixed reference or solve criteria.
+
 ``interpolation`` applies to every pyramid level. ``linear`` and ``cubic``
 omit both FIR passes at every level; ``bspline`` retains the existing graph.
 ``motion_model`` likewise applies to every level and to every transferred seed.

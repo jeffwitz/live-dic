@@ -251,18 +251,15 @@ the established
 coarse-to-fine pyramidal LK organization exposed by `NVIDIA VPI
 <https://docs.nvidia.com/vpi/algo_optflow_lk.html>`_ and `OpenCV CUDA
 <https://docs.opencv.org/4.x/d7/d05/classcv_1_1cuda_1_1SparsePyrLKOpticalFlow.html>`_.
-They do not use one monolithic megakernel. Instead, all dependent compute
-passes are recorded into one command encoder and submitted once for the
+They do not use one monolithic megakernel. Instead, dependent compute
+dispatches are recorded into one command encoder and submitted once for the
 calculation:
 
 .. code-block:: text
 
    finest uint8 target upload
              |
-             +--> horizontal 5-tap reduction --> vertical 5-tap reduction
-             |                                      |
-             |                                      +--> next target level
-             |                                              ...
+             +--> 5-tap image reduction --> next target level --> ...
              v
    per-level spline prefilters retained on the GPU
              |
@@ -278,15 +275,20 @@ calculation:
              v
    one packed finest-level readback
 
-Pass boundaries provide device-wide ordering without a host synchronization
-point. Reference pixels, gradients, inverse Hessians, metadata, target spline
+Native batches the ordered dispatches into one compute pass, with buffer
+clears before it and packed readback copies after it. The browser retains
+separate compute passes. Each compute dispatch has its own WebGPU usage scope;
+dependent dispatches do not require CPU synchronization. This is different
+from putting the whole pyramid in one kernel: workgroup barriers cannot
+synchronize separate workgroups inside a dispatch. Reference pixels,
+gradients, inverse Hessians, metadata, target spline
 coefficients, affine states, and transferred seeds are allocated once and stay
 on the same device. The two-level default uses ``(8, 16)`` maximum iterations
 from coarse to fine. Three levels use the ``(6, 8, 16)`` schedule.
 Setting one level creates only the original fine-level resources and
 dispatches; no reduction or seed transfer is encoded.
 
-The separable five-tap reduction stores its horizontal intermediate in a
+The browser's separable five-tap reduction stores its horizontal intermediate in a
 single-channel ``r32float`` texture, using four bytes per intermediate pixel.
 The input UNORM sample is first converted back to its integer gray level with
 ``round(sample * 255)``. Both convolution passes operate in units from 0 to 255,
@@ -295,8 +297,21 @@ like the CPU reference builder, and normalization is deferred until the final
 result is a multiple of ``1/256``, exactly representable in float32 in this
 range. This avoids truncating a normalized sum that has rounded just below an
 integer. The GPU regression tests compare the resulting pixels to the CPU
-reduction. Both adapters bind the intermediate as unfilterable and read it
+reduction. The browser binds the intermediate as unfilterable and reads it
 with ``textureLoad``.
+
+Native evaluates the identical filter in one ``reduce_fused`` dispatch per
+level. A 16 x 16 invocation group cooperatively loads a reflected source tile
+into shared memory, joins one barrier, then computes 256 reduced pixels.
+The required footprint is 35 x 35 pixels, stored with padding in a 36 x 36
+array of unsigned integer gray levels. The 5 x 5 product weights are integers
+from the vector ``[1, 4, 6, 4, 1]``. Their weighted sum is at most 65,280;
+integer division by 256 gives exactly the historical uint8 truncation. The
+kernel therefore removes an intermediate texture and a dispatch without
+changing reduced pixels. All lanes participate in loading and the barrier,
+including partial image-edge tiles; every reflected load is bounded before
+access. Regression tests compare constants, ramps, impulses, random textures
+and odd dimensions against the independent CPU reduction.
 
 A fresh solve writes an explicit state for every dispatched subset, including
 disabled workgroups, so an untouched zero-filled buffer cannot masquerade as

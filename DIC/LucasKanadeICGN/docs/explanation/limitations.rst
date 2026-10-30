@@ -70,6 +70,14 @@ is a possible follow-up, not part of this mode. Temporal history requires
 ordered inputs and cannot guarantee recovery after discontinuous motion or
 accepted wrong-basin solutions. See :doc:`temporal-initialization`.
 
+``temporal_fine_correction=True`` is an additional native-only, two-level
+option. It preserves fine history while applying the measured coarse change,
+using the absolute seed if complete age-matched history is unavailable. It is
+not a motion predictor or a recovery guarantee. The native-UHD performance
+campaign exceeds 60 FPS in all three measured repeats, but one repeat still
+exceeds 16.67 ms at p95 with one slot. Two slots improve throughput while
+increasing result age; neither mode establishes a hard real-time guarantee.
+
 Runtime
 -------
 
