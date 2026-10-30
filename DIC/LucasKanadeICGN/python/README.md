@@ -49,7 +49,7 @@ the native backend.
 
 ## Requirements and installation
 
-- Python 3.10 or newer;
+- Python 3.11 or newer;
 - Chromium or Google Chrome with WebGL2 support; WebGPU is preferred;
 - a compatible GPU and driver.
 
@@ -60,11 +60,10 @@ python3 -m venv .venv-icgn
 .venv-icgn/bin/pip install -e DIC/LucasKanadeICGN/python
 ```
 
-For the native WebGPU path, use Python 3.11 or newer and install
-the optional dependency group:
+The standard installation includes wgpu-py for the native WebGPU path:
 
 ```bash
-.venv-icgn/bin/pip install -e 'DIC/LucasKanadeICGN/python[native]'
+.venv-icgn/bin/pip install -e DIC/LucasKanadeICGN/python
 ```
 
 The wheel embeds the Three.js r186 runtime, raw WebGPU adapter, portable and
@@ -78,7 +77,7 @@ For a fully offline installation on another machine, prepare a wheelhouse on a
 connected machine with the same operating system and Python version:
 
 ```bash
-python3 -m pip wheel 'DIC/LucasKanadeICGN/python[native]' --wheel-dir wheelhouse
+python3 -m pip wheel DIC/LucasKanadeICGN/python --wheel-dir wheelhouse
 ```
 
 Copy `wheelhouse/` to the offline machine, where Chromium is required only for

@@ -7,16 +7,16 @@ name = "lucas-kanade-icgn-webgl"
 version = "0.1.0"
 description = "Headless Python interface for GPU IC-GN motion solvers"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
   "numpy>=1.24",
   "Pillow>=9.0",
   "websockets>=10",
+  "wgpu>=0.32,<0.33",
 ]
 
 [project.optional-dependencies]
 dev = ["ruff>=0.8"]
-native = ["wgpu>=0.32,<0.33; python_version >= '3.11'"]
 
 [project.scripts]
 icgn-webgl = "lucas_kanade_icgn.cli:main"

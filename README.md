@@ -256,24 +256,18 @@ The timing protocol, current measurements, and reproduction commands are documen
 
 Requirements:
 
-- Python 3.10 or newer;
+- Python 3.11 or newer;
 - Chromium or Google Chrome with WebGPU and WebGL2 support;
 - a compatible GPU and driver.
 
-The optional native path requires Python 3.11 or newer and does not require
-Chromium.
+The standard installation includes the native ``wgpu`` runtime and does not
+require Chromium for native processing.
 
 Install the local Python package:
 
 ```bash
 python3 -m venv .venv-icgn
 .venv-icgn/bin/pip install -e DIC/LucasKanadeICGN/python
-```
-
-Install wgpu-py and the packaged WGSL runtime with:
-
-```bash
-.venv-icgn/bin/pip install -e 'DIC/LucasKanadeICGN/python[native]'
 ```
 
 The Python package embeds GPU-IO, Three.js r186, both browser solvers, the
@@ -433,7 +427,7 @@ Development checks and the recorded GPU campaigns include:
 Run the local checks:
 
 ```bash
-python3 -m pip install -e 'DIC/LucasKanadeICGN/python[native,dev]'
+python3 -m pip install -e 'DIC/LucasKanadeICGN/python[dev]'
 ruff check DIC/LucasKanadeICGN/python
 ruff format --check DIC/LucasKanadeICGN/python
 python3 -m unittest discover -s DIC/LucasKanadeICGN/python/tests -v
@@ -454,10 +448,10 @@ hardware-backed execution and performance still require qualification on each
 target machine and architecture.
 
 The native GPU regression tests are explicit opt-in tests. On a GPU host with
-Python 3.11 or newer, install the native extra and run:
+Python 3.11 or newer, install the package and run:
 
 ```bash
-python -m pip install -e 'DIC/LucasKanadeICGN/python[native]'
+python -m pip install -e DIC/LucasKanadeICGN/python
 ICGN_RUN_GPU_TESTS=1 python -m unittest discover \
   -s DIC/LucasKanadeICGN/python/tests -p 'test_gpu_regressions.py' -v
 ```

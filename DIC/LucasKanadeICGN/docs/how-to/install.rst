@@ -6,12 +6,13 @@ System requirements
 
 The browser backends require:
 
-* Python 3.10 or newer;
+* Python 3.11 or newer;
 * Chromium or Google Chrome with WebGL2 support; WebGPU is preferred;
 * a GPU and driver accepted by Chromium.
 
-The optional native backend requires Python 3.11 or newer and a platform
-supported by ``wgpu-py``. It does not require Chromium.
+The standard package includes ``wgpu-py`` and supports native processing on
+platforms supported by that library. Native processing does not require
+Chromium.
 Both native engines accept ``device_type="cpu"`` when an installed software
 adapter is available. See :doc:`run-on-cpu` for driver requirements and
 explicit CPU/GPU selection.
@@ -23,21 +24,16 @@ or a network connection at runtime.
 Install the package
 -------------------
 
-From the repository root, install the native extra for the intended
+From the repository root, install the package for the intended
 Python-supervised NumPy pipeline:
 
 .. code-block:: console
 
    $ python3 -m venv .venv-icgn
-   $ .venv-icgn/bin/pip install -e 'DIC/LucasKanadeICGN/python[native]'
+   $ .venv-icgn/bin/pip install -e DIC/LucasKanadeICGN/python
 
 This provides ``ICGNWGPUFullPyramid``, the recommended two-level native
-backend. Install the base package without ``[native]`` only when the browser
-compatibility backends are sufficient:
-
-.. code-block:: console
-
-   $ .venv-icgn/bin/pip install -e DIC/LucasKanadeICGN/python
+backend, as well as the browser compatibility backends.
 
 Verify the command-line interface:
 
@@ -108,11 +104,11 @@ matrix, but new applications should not select it. Follow
 Install and select native WebGPU
 ---------------------------------
 
-Install the optional ``native`` dependency group:
+The standard installation already includes ``wgpu-py``:
 
 .. code-block:: console
 
-   $ .venv-icgn/bin/pip install -e 'DIC/LucasKanadeICGN/python[native]'
+   $ .venv-icgn/bin/pip install -e DIC/LucasKanadeICGN/python
 
 For the recommended native coarse-to-fine path, construct the two-level full
 pyramid explicitly:
@@ -139,7 +135,7 @@ Python version as the offline machine, build a local wheelhouse:
 
 .. code-block:: console
 
-   $ python3 -m pip wheel 'DIC/LucasKanadeICGN/python[native]' \
+   $ python3 -m pip wheel DIC/LucasKanadeICGN/python \
        --wheel-dir wheelhouse
 
 This downloads wheels for NumPy, Pillow, websockets, and wgpu-py and builds the

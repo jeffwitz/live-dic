@@ -840,8 +840,8 @@ class ICGNWGPU:
             import wgpu
         except ImportError as error:
             raise ICGNError(
-                "The native backend requires the optional 'wgpu' package. "
-                "Install lucas-kanade-icgn-webgl[native]."
+                "The native backend requires the 'wgpu' package. "
+                "Reinstall lucas-kanade-icgn-webgl with its declared dependencies."
             ) from error
 
         adapter = _select_adapter(

@@ -67,7 +67,7 @@ derivatives.
 Install the required runtime
 ----------------------------
 
-Install the project's ``[native]`` extra using :doc:`install`. A software GPU
+Install the standard package using :doc:`install`. A software GPU
 driver must also be provided by the system. The Python package does not
 download or install drivers.
 

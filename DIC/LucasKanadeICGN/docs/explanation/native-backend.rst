@@ -118,11 +118,11 @@ failure of the portable reference itself remains fatal.
 Python use: single-scale and streaming engine
 ---------------------------------------------
 
-Install the optional dependency and select the native engine explicitly:
+Install the package and select the native engine explicitly:
 
 .. code-block:: console
 
-   $ python3 -m pip install -e 'DIC/LucasKanadeICGN/python[native]'
+   $ python3 -m pip install -e DIC/LucasKanadeICGN/python
 
 .. code-block:: python
 
