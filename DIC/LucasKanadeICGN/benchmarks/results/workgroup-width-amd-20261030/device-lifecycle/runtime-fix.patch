@@ -1,0 +1,133 @@
+diff --git a/DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/full_pyramid_backend.py b/DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/full_pyramid_backend.py
+index 8e65cbf..b2d1390 100644
+--- a/DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/full_pyramid_backend.py
++++ b/DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/full_pyramid_backend.py
+@@ -39,6 +39,7 @@ from .wgpu_backend import (
+     DEFAULT_IN_FLIGHT_FRAMES,
+     ICGNWGPU,
+     _reduce_half,
++    _release_gpu_references,
+     _validated_config,
+ )
+ 
+@@ -307,6 +308,7 @@ class ICGNWGPUFullPyramid:
+             gaussian_sigma=self.gaussian_sigma,
+         )
+         self._unaborted_portable_solver = self._root._portable_solver
++        self._closed = False
+         if self.divergence_patience is not None:
+             root = self._root
+             root._solver_extra_constants = {
+@@ -1038,6 +1040,8 @@ class ICGNWGPUFullPyramid:
+     ) -> ReferenceInfo:
+         """Prepare all scale-specific references and persistent GPU storage."""
+ 
++        if self._closed:
++            raise ICGNError("This engine is closed; create a new engine before set_reference().")
+         started = time.perf_counter()
+         new_iterations = self.iterations_per_level
+         if iterations_per_level is not None:
+@@ -1545,8 +1549,16 @@ class ICGNWGPUFullPyramid:
+             yield result
+ 
+     def close(self) -> None:
++        """Release all levels and their owning device, once."""
++
++        if self._closed:
++            return
+         self._reference_ready = False
+         self._clear_level_resources()
++        self._closed = True
++        # Drop the wrapper's pipeline/device aliases before the root collects
++        # native wrappers. Shared levels never destroy the root's device.
++        _release_gpu_references(self)
+         self._root.close()
+ 
+     def __enter__(self) -> ICGNWGPUFullPyramid:
+diff --git a/DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/wgpu_backend.py b/DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/wgpu_backend.py
+index daf1abc..9528d03 100644
+--- a/DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/wgpu_backend.py
++++ b/DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/wgpu_backend.py
+@@ -8,6 +8,7 @@ JSON result conversion, and any visible user interface.
+ 
+ from __future__ import annotations
+ 
++import gc
+ import operator
+ import struct
+ import time
+@@ -54,6 +55,25 @@ DEFAULT_IN_FLIGHT_FRAMES = 2
+ DEFAULT_PYRAMID_LEVELS = 1
+ 
+ 
++def _release_gpu_references(engine: Any) -> None:
++    """Drop native wrappers, including pipelines that retain their device.
++
++    Destroying buffers or the WebGPU device alone does not release every
++    native allocation while Python still retains pipelines and bind groups.
++    Replace cache dictionaries instead of mutating caches shared by levels.
++    Keep this in a separate frame so its last loop value cannot retain a GPU
++    wrapper during the caller's cyclic garbage collection.
++    """
++
++    gpu_object = engine._wgpu.GPUObjectBase
++    for name, value in vars(engine).items():
++        if isinstance(value, gpu_object):
++            setattr(engine, name, None)
++        elif isinstance(value, dict) and any(isinstance(v, gpu_object) for v in value.values()):
++            setattr(engine, name, {})
++    engine.adapter = None
++
++
+ def _normalize_device_type(value: str) -> str:
+     """Validate device selection before importing or initializing wgpu."""
+ 
+@@ -893,6 +913,8 @@ class ICGNWGPU:
+             )
+ 
+         self._wgpu = wgpu
++        self._owns_device = True
++        self._closed = False
+         self.adapter = adapter
+         required_features = []
+         if (
+@@ -1065,6 +1087,8 @@ class ICGNWGPU:
+         """
+ 
+         level = object.__new__(ICGNWGPU)
++        level._owns_device = False
++        level._closed = False
+         for name in (
+             "_wgpu",
+             "adapter",
+@@ -2225,6 +2249,8 @@ class ICGNWGPU:
+         roi_policy: str = "full",
+         roi_truncation: str = "none",
+     ) -> ReferenceInfo:
++        if self._closed:
++            raise ICGNError("This engine is closed; create a new engine before set_reference().")
+         total_start = time.perf_counter()
+         frame = _as_uint8_gray(image)
+         height, width = frame.shape
+@@ -2649,9 +2675,21 @@ class ICGNWGPU:
+         )
+ 
+     def close(self) -> None:
++        """Release GPU resources permanently; repeated calls are harmless."""
++
++        if self._closed:
++            return
+         self._reference_ready = False
+         self._close_pyramid_engines()
+         self._destroy_runtime()
++        self._closed = True
++        if self._owns_device:
++            self.device.destroy()
++        _release_gpu_references(self)
++        if self._owns_device:
++            # wgpu's device/queue wrappers can form cycles. Do not leave their
++            # driver allocations waiting for an unrelated future GC threshold.
++            gc.collect()
+ 
+     def __enter__(self) -> ICGNWGPU:
+         return self

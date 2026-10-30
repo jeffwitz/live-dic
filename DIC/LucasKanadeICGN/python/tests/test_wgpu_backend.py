@@ -306,6 +306,7 @@ class NativeReferenceTests(unittest.TestCase):
 
     def test_invalid_full_pyramid_reference_config_preserves_state(self) -> None:
         engine = object.__new__(ICGNWGPUFullPyramid)
+        engine._closed = False
         engine.pyramid_levels = 2
         engine.iterations_per_level = (12, 30)
         engine.tolerance_per_level = (0.005, 0.001)
@@ -636,6 +637,7 @@ class NativeReferenceTests(unittest.TestCase):
 
     def test_invalid_reference_configuration_preserves_prepared_state(self) -> None:
         engine = object.__new__(ICGNWGPU)
+        engine._closed = False
         engine.subset_size = 16
         engine.height = 64
         engine.width = 64

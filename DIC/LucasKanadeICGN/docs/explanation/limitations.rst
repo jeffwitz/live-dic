@@ -1,6 +1,32 @@
 Current limitations
 ===================
 
+Hardware coverage
+-----------------
+
+The native full-pyramid solver has completed 3840 x 2160 benchmarks on AMD
+Radeon 780M, Intel Lunar Lake, Intel UHD Graphics (Tiger Lake GT1), and NVIDIA
+GeForce RTX 3080 Laptop GPUs. This provides measured evidence of portability
+across three vendors, integrated and discrete hardware, and the tested Linux
+Vulkan configurations. The :ref:`gpu-hardware-coverage` matrix separates
+successful benchmark execution, numerical checks and full-suite status.
+
+The AMD 780M campaign completed all twelve runs and passed the fixed-interior
+accuracy gates. Its initial full-suite device-loss failure was traced to
+closed engines retaining GPU pipelines and devices, exhausting the driver's
+4 GiB GTT budget. Native ``close()`` now releases those references, destroys
+the owning device and collects cyclic wrappers. Shared pyramid levels do not
+destroy their parent's device. See :ref:`gpu-hardware-coverage` for the
+reproduction, correction and subsequent validation. A passing finite test run
+does not guarantee stability under every workload or system load.
+
+Coverage does not extend to every option, browser backend, operating system,
+driver or recent GPU. NVIDIA and Tiger Lake evidence is a fixed-pair
+experiment; it does not qualify the changing temporal trajectory. Functional
+portability also does not imply 60 FPS, identical floating-point fields or a
+hard deadline on every adapter. Qualify accuracy, stability and the complete
+image-to-field timing boundary on the intended deployment configuration.
+
 Backend lifecycle
 -----------------
 

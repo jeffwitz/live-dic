@@ -1,0 +1,123 @@
+Running Sphinx v9.1.1
+loading translations [en]... done
+making output directory... done
+[autosummary] generating autosummary for: explanation/acknowledgements.rst, explanation/backend-selection.rst, explanation/displacement-outliers.rst, explanation/gpu-optimization.rst, explanation/icgn.rst, explanation/interpolation.rst, explanation/limitations.rst, explanation/motion-models.rst, explanation/native-backend.rst, explanation/pipeline.rst, ..., how-to/use-temporal-initialization.rst, index.rst, reference/api.rst, reference/command-line.rst, reference/gpu-vocabulary.rst, reference/performance.rst, reference/result-layout.rst, tutorials/first-gpu-kernel.rst, tutorials/first-registration.rst, tutorials/realtime-sequence.rst
+building [mo]: targets for 0 po files that are out of date
+writing output... 
+building [html]: targets for 36 source files that are out of date
+updating environment: [new config] 36 added, 0 changed, 0 removed
+reading sources... [  3%] explanation/acknowledgements
+reading sources... [  6%] explanation/backend-selection
+reading sources... [  8%] explanation/displacement-outliers
+reading sources... [ 11%] explanation/gpu-optimization
+reading sources... [ 14%] explanation/icgn
+reading sources... [ 17%] explanation/interpolation
+reading sources... [ 19%] explanation/limitations
+reading sources... [ 22%] explanation/motion-models
+reading sources... [ 25%] explanation/native-backend
+reading sources... [ 28%] explanation/pipeline
+reading sources... [ 31%] explanation/realtime-performance
+reading sources... [ 33%] explanation/shared-kernel
+reading sources... [ 36%] explanation/subset-size
+reading sources... [ 39%] explanation/supervision
+reading sources... [ 42%] explanation/temporal-initialization
+reading sources... [ 44%] explanation/webgpu-fundamentals
+reading sources... [ 47%] how-to/benchmark
+reading sources... [ 50%] how-to/compare-plate-hole-masks
+reading sources... [ 53%] how-to/export-results
+reading sources... [ 56%] how-to/install
+reading sources... [ 58%] how-to/migrate-from-gpuio
+reading sources... [ 61%] how-to/optimize-webgpu
+reading sources... [ 64%] how-to/process-live-frames
+reading sources... [ 67%] how-to/run-on-cpu
+reading sources... [ 69%] how-to/use-partial-roi
+reading sources... [ 72%] how-to/use-roi
+reading sources... [ 75%] how-to/use-temporal-initialization
+reading sources... [ 78%] index
+reading sources... [ 81%] reference/api
+reading sources... [ 83%] reference/command-line
+reading sources... [ 86%] reference/gpu-vocabulary
+reading sources... [ 89%] reference/performance
+reading sources... [ 92%] reference/result-layout
+reading sources... [ 94%] tutorials/first-gpu-kernel
+reading sources... [ 97%] tutorials/first-registration
+reading sources... [100%] tutorials/realtime-sequence
+
+looking for now-outdated files... none found
+pickling environment... done
+checking consistency... done
+preparing documents... done
+copying assets... 
+copying downloadable files... [ 10%] ../../../../benchmarks/results/2026-10-30-intel-arc-130v-portable.json
+copying downloadable files... [ 20%] ../../../../benchmarks/results/2026-10-30-intel-arc-130v-subgroup.json
+copying downloadable files... [ 30%] ../../../../benchmarks/results/2026-10-30-intel-arc-130v-auto.json
+copying downloadable files... [ 40%] ../../../../assets/uhd_tensile/manifest.json
+copying downloadable files... [ 50%] ../../../../benchmarks/results/plate-hole-roi-20261030/von_mises_225.pdf
+copying downloadable files... [ 60%] ../../../../benchmarks/results/workgroup-width-20261030/summary.json
+copying downloadable files... [ 70%] ../../../../benchmarks/results/latency-reduction-20261030/summary.json
+copying downloadable files... [ 80%] ../../../../benchmarks/results/temporal-init-20261030/report.json
+copying downloadable files... [ 90%] ../../../../benchmarks/results/temporal-init-20261030/metrics.csv
+copying downloadable files... [100%] examples/vector_scale.py
+
+copying static files... 
+Writing evaluated template result to /home/jeff/Code/live-dic/DIC/LucasKanadeICGN/docs/_build/html/_static/basic.css
+Writing evaluated template result to /home/jeff/Code/live-dic/DIC/LucasKanadeICGN/docs/_build/html/_static/documentation_options.js
+Writing evaluated template result to /home/jeff/Code/live-dic/DIC/LucasKanadeICGN/docs/_build/html/_static/language_data.js
+Writing evaluated template result to /home/jeff/Code/live-dic/DIC/LucasKanadeICGN/docs/_build/html/_static/js/versions.js
+copying static files: done
+copying extra files... 
+copying extra files: done
+copying assets: done
+writing output... [  3%] explanation/acknowledgements
+writing output... [  6%] explanation/backend-selection
+writing output... [  8%] explanation/displacement-outliers
+writing output... [ 11%] explanation/gpu-optimization
+writing output... [ 14%] explanation/icgn
+writing output... [ 17%] explanation/interpolation
+writing output... [ 19%] explanation/limitations
+writing output... [ 22%] explanation/motion-models
+writing output... [ 25%] explanation/native-backend
+writing output... [ 28%] explanation/pipeline
+writing output... [ 31%] explanation/realtime-performance
+writing output... [ 33%] explanation/shared-kernel
+writing output... [ 36%] explanation/subset-size
+writing output... [ 39%] explanation/supervision
+writing output... [ 42%] explanation/temporal-initialization
+writing output... [ 44%] explanation/webgpu-fundamentals
+writing output... [ 47%] how-to/benchmark
+writing output... [ 50%] how-to/compare-plate-hole-masks
+writing output... [ 53%] how-to/export-results
+writing output... [ 56%] how-to/install
+writing output... [ 58%] how-to/migrate-from-gpuio
+writing output... [ 61%] how-to/optimize-webgpu
+writing output... [ 64%] how-to/process-live-frames
+writing output... [ 67%] how-to/run-on-cpu
+writing output... [ 69%] how-to/use-partial-roi
+writing output... [ 72%] how-to/use-roi
+writing output... [ 75%] how-to/use-temporal-initialization
+writing output... [ 78%] index
+writing output... [ 81%] reference/api
+writing output... [ 83%] reference/command-line
+writing output... [ 86%] reference/gpu-vocabulary
+writing output... [ 89%] reference/performance
+writing output... [ 92%] reference/result-layout
+writing output... [ 94%] tutorials/first-gpu-kernel
+writing output... [ 97%] tutorials/first-registration
+writing output... [100%] tutorials/realtime-sequence
+
+generating indices... genindex py-modindex done
+highlighting module code... [ 33%] lucas_kanade_icgn.engine
+highlighting module code... [ 67%] lucas_kanade_icgn.full_pyramid_backend
+highlighting module code... [100%] lucas_kanade_icgn.wgpu_backend
+
+writing additional pages... search done
+copying images... [ 25%] ../benchmarks/results/plate-hole-roi-20261030/von_mises_225.png
+copying images... [ 50%] ../benchmarks/results/plate-hole-roi-20261030/boundary_bands_225.png
+copying images... [ 75%] _static/partial-supports.svg
+copying images... [100%] ../benchmarks/results/latency-reduction-20261030/quality-and-latency.png
+
+dumping search index in English (code: en)... done
+dumping object inventory... done
+build succeeded.
+
+The HTML pages are in DIC/LucasKanadeICGN/docs/_build/html.

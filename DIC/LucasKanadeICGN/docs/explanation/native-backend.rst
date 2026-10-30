@@ -58,6 +58,24 @@ resource: WebGPU does not make an arbitrary NumPy allocation into a texture.
 The optimization removes avoidable representation and process transfers; it
 does not claim that host-to-device transfer has disappeared.
 
+Device lifetime
+---------------
+
+Each public native engine owns its WebGPU device. Full-pyramid levels share
+that device and immutable pipelines. Closing a level must therefore leave the
+owner usable; closing the public owner releases all levels, pipelines and
+bind groups and destroys its device. Owner close also collects cyclic wgpu
+wrappers so native allocations do not wait for an unrelated Python garbage
+collection cycle. Close is permanent and can be called repeatedly.
+
+This matters when applications or test cleanups retain closed engine objects.
+Destroying image buffers alone leaves pipelines and device allocations alive.
+On the AMD 780M test host, the old close path accumulated about 270 MB of GTT
+usage per engine, reached the 4 GiB driver budget and caused a rejected Vulkan
+submission with device loss. The lifecycle correction releases these GPU
+references without changing the solver or its defaults. See
+:ref:`gpu-hardware-coverage` for the investigation and validation.
+
 Algorithm mapping
 -----------------
 

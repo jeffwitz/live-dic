@@ -13,6 +13,22 @@ New to GPU computing? Start with :doc:`explanation/webgpu-fundamentals`.
 It assumes Python and numerical arrays, explains the technologies and memory
 model, and leads to a runnable example, a glossary, and an optimization guide.
 
+.. important:: Demonstrated 4K execution on AMD, Intel and NVIDIA
+
+   Native full-pyramid DIC benchmarks have completed at 3840 x 2160 on AMD
+   Radeon 780M, Intel Lunar Lake, Intel UHD Graphics (Tiger Lake GT1), and
+   NVIDIA GeForce RTX 3080 Laptop GPUs. The portable WGSL solver has executed
+   through wgpu-native/Vulkan on both integrated and discrete hardware, with
+   16 and 32 invocations per workgroup.
+
+   This demonstrates portability for the tested workloads and GPU/driver
+   configurations. AMD passed the twelve-run 4K campaign's fixed-interior
+   quality gates. An initial GPU-suite device-loss failure was traced to GPU
+   resources retained after ``close()``; the lifecycle correction and its
+   validation are recorded in the coverage matrix. Coverage differs by adapter and
+   does not certify all features or every recent GPU. See
+   :ref:`gpu-hardware-coverage` for the evidence and scope.
+
 .. important:: Primary product boundary: Python supervision
 
    DIC-RT is designed to run inside a long-lived Python measurement

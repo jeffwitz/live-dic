@@ -1,0 +1,6 @@
+test_zero_default_and_first_temporal_frame_match_bitwise (test_fused_pyramid.CorrectedTemporalTests.test_zero_default_and_first_temporal_frame_match_bitwise) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 2.632s
+
+OK

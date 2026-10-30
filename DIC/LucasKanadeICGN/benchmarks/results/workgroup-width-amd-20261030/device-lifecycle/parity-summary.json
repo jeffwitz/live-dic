@@ -1,0 +1,16 @@
+[
+  {
+    "width": 16,
+    "identical_target_hashes": true,
+    "identical_configuration": true,
+    "identical_quality_all_180_timed_frames": true,
+    "bit_identical_final_parameters_status_iterations": true
+  },
+  {
+    "width": 32,
+    "identical_target_hashes": true,
+    "identical_configuration": true,
+    "identical_quality_all_180_timed_frames": true,
+    "bit_identical_final_parameters_status_iterations": true
+  }
+]

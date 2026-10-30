@@ -9,6 +9,24 @@
 
 [![Documentation](https://github.com/jeffwitz/tests_gpuio/actions/workflows/docs.yml/badge.svg)](https://github.com/jeffwitz/tests_gpuio/actions/workflows/docs.yml)
 
+## Demonstrated 4K execution on AMD, Intel and NVIDIA
+
+**Native full-pyramid DIC benchmarks have completed at 3840 × 2160 on AMD
+Radeon 780M, Intel Lunar Lake, Intel UHD Graphics (Tiger Lake GT1), and NVIDIA
+GeForce RTX 3080 Laptop GPUs.** Both integrated and discrete hardware have
+executed the portable WGSL solver through wgpu-native/Vulkan, using 16 and
+32 invocations per workgroup. This demonstrates portability across the tested
+GPU/driver configurations.
+
+See the [hardware coverage matrix](./docs/reference/performance.rst#gpu-hardware-coverage)
+for each workload and its validation scope. AMD completed all twelve 4K
+campaign runs with passing fixed-interior quality gates. Its initial GPU-suite
+device-loss failure was traced to GPU resources retained after `close()`;
+the lifecycle correction and validation are recorded in the matrix.
+The evidence covers the tested workloads and configurations, rather than
+every feature or all recent GPUs. Performance and driver stability still need
+qualification on each deployment system.
+
 ## Project purpose: a Python-supervised numerical engine
 
 DIC-RT is built to sit inside a Python measurement application. Python is the

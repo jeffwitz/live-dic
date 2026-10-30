@@ -1,0 +1,218 @@
+CREATE {'motion_model': 'translation', 'pyramid_levels': 1} {'mem_info_preempt_used': '0', 'mem_info_vram_used': '246657024', 'mem_info_vis_vram_used': '246657024', 'mem_info_gtt_used': '45064192'}
+None
+READY {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451190784', 'mem_info_vis_vram_used': '451190784', 'mem_info_gtt_used': '115621888'}
+None
+CREATE {'initialization': 'zero', 'motion_model': 'translation', 'pyramid_levels': 1} {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451190784', 'mem_info_vis_vram_used': '451190784', 'mem_info_gtt_used': '115621888'}
+None
+READY {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451473408', 'mem_info_vis_vram_used': '451473408', 'mem_info_gtt_used': '385392640'}
+None
+CREATE {'initialization': 'temporal', 'motion_model': 'translation', 'pyramid_levels': 1} {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451473408', 'mem_info_vis_vram_used': '451473408', 'mem_info_gtt_used': '385392640'}
+None
+READY {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451776512', 'mem_info_vis_vram_used': '451776512', 'mem_info_gtt_used': '655163392'}
+None
+REGISTER translation 1 zero {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451776512', 'mem_info_vis_vram_used': '451776512', 'mem_info_gtt_used': '655163392'}
+None
+REGISTER translation 1 zero {'mem_info_preempt_used': '0', 'mem_info_vram_used': '452579328', 'mem_info_vis_vram_used': '452579328', 'mem_info_gtt_used': '658128896'}
+None
+REGISTER translation 1 temporal {'mem_info_preempt_used': '0', 'mem_info_vram_used': '453378048', 'mem_info_vis_vram_used': '453378048', 'mem_info_gtt_used': '661094400'}
+None
+CLOSED {'mem_info_preempt_used': '0', 'mem_info_vram_used': '454164480', 'mem_info_vis_vram_used': '454164480', 'mem_info_gtt_used': '592650240'}
+None
+CLOSED {'mem_info_preempt_used': '0', 'mem_info_vram_used': '250716160', 'mem_info_vis_vram_used': '250716160', 'mem_info_gtt_used': '319913984'}
+None
+CLOSED {'mem_info_preempt_used': '0', 'mem_info_vram_used': '249622528', 'mem_info_vis_vram_used': '249622528', 'mem_info_gtt_used': '47177728'}
+None
+CREATE {'motion_model': 'translation', 'pyramid_levels': 2} {'mem_info_preempt_used': '0', 'mem_info_vram_used': '249622528', 'mem_info_vis_vram_used': '249622528', 'mem_info_gtt_used': '47177728'}
+None
+READY {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451256320', 'mem_info_vis_vram_used': '451256320', 'mem_info_gtt_used': '115621888'}
+None
+CREATE {'initialization': 'zero', 'motion_model': 'translation', 'pyramid_levels': 2} {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451256320', 'mem_info_vis_vram_used': '451256320', 'mem_info_gtt_used': '115621888'}
+None
+READY {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451563520', 'mem_info_vis_vram_used': '451563520', 'mem_info_gtt_used': '385392640'}
+None
+CREATE {'initialization': 'temporal', 'motion_model': 'translation', 'pyramid_levels': 2} {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451563520', 'mem_info_vis_vram_used': '451563520', 'mem_info_gtt_used': '385392640'}
+None
+READY {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451891200', 'mem_info_vis_vram_used': '451891200', 'mem_info_gtt_used': '655163392'}
+None
+REGISTER translation 2 zero {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451891200', 'mem_info_vis_vram_used': '451891200', 'mem_info_gtt_used': '655163392'}
+None
+REGISTER translation 2 zero {'mem_info_preempt_used': '0', 'mem_info_vram_used': '452681728', 'mem_info_vis_vram_used': '452681728', 'mem_info_gtt_used': '658128896'}
+None
+REGISTER translation 2 temporal {'mem_info_preempt_used': '0', 'mem_info_vram_used': '453472256', 'mem_info_vis_vram_used': '453472256', 'mem_info_gtt_used': '661094400'}
+None
+CLOSED {'mem_info_preempt_used': '0', 'mem_info_vram_used': '454217728', 'mem_info_vis_vram_used': '454217728', 'mem_info_gtt_used': '592650240'}
+None
+CLOSED {'mem_info_preempt_used': '0', 'mem_info_vram_used': '250740736', 'mem_info_vis_vram_used': '250740736', 'mem_info_gtt_used': '319913984'}
+None
+CLOSED {'mem_info_preempt_used': '0', 'mem_info_vram_used': '249622528', 'mem_info_vis_vram_used': '249622528', 'mem_info_gtt_used': '47177728'}
+None
+CREATE {'motion_model': 'translation', 'pyramid_levels': 3} {'mem_info_preempt_used': '0', 'mem_info_vram_used': '249622528', 'mem_info_vis_vram_used': '249622528', 'mem_info_gtt_used': '47177728'}
+None
+READY {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451256320', 'mem_info_vis_vram_used': '451256320', 'mem_info_gtt_used': '115621888'}
+None
+CREATE {'initialization': 'zero', 'motion_model': 'translation', 'pyramid_levels': 3} {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451256320', 'mem_info_vis_vram_used': '451256320', 'mem_info_gtt_used': '115621888'}
+None
+READY {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451563520', 'mem_info_vis_vram_used': '451563520', 'mem_info_gtt_used': '385392640'}
+None
+CREATE {'initialization': 'temporal', 'motion_model': 'translation', 'pyramid_levels': 3} {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451563520', 'mem_info_vis_vram_used': '451563520', 'mem_info_gtt_used': '385392640'}
+None
+READY {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451878912', 'mem_info_vis_vram_used': '451878912', 'mem_info_gtt_used': '655163392'}
+None
+REGISTER translation 3 zero {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451878912', 'mem_info_vis_vram_used': '451878912', 'mem_info_gtt_used': '655163392'}
+None
+REGISTER translation 3 zero {'mem_info_preempt_used': '0', 'mem_info_vram_used': '452669440', 'mem_info_vis_vram_used': '452669440', 'mem_info_gtt_used': '658128896'}
+None
+REGISTER translation 3 temporal {'mem_info_preempt_used': '0', 'mem_info_vram_used': '453459968', 'mem_info_vis_vram_used': '453459968', 'mem_info_gtt_used': '661094400'}
+None
+CLOSED {'mem_info_preempt_used': '0', 'mem_info_vram_used': '454205440', 'mem_info_vis_vram_used': '454205440', 'mem_info_gtt_used': '592650240'}
+None
+CLOSED {'mem_info_preempt_used': '0', 'mem_info_vram_used': '250728448', 'mem_info_vis_vram_used': '250728448', 'mem_info_gtt_used': '319913984'}
+None
+CLOSED {'mem_info_preempt_used': '0', 'mem_info_vram_used': '249622528', 'mem_info_vis_vram_used': '249622528', 'mem_info_gtt_used': '47177728'}
+None
+CREATE {'motion_model': 'affine', 'pyramid_levels': 1} {'mem_info_preempt_used': '0', 'mem_info_vram_used': '249622528', 'mem_info_vis_vram_used': '249622528', 'mem_info_gtt_used': '47177728'}
+None
+READY {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451227648', 'mem_info_vis_vram_used': '451227648', 'mem_info_gtt_used': '115621888'}
+None
+CREATE {'initialization': 'zero', 'motion_model': 'affine', 'pyramid_levels': 1} {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451227648', 'mem_info_vis_vram_used': '451227648', 'mem_info_gtt_used': '115621888'}
+None
+READY {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451506176', 'mem_info_vis_vram_used': '451506176', 'mem_info_gtt_used': '385392640'}
+None
+CREATE {'initialization': 'temporal', 'motion_model': 'affine', 'pyramid_levels': 1} {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451506176', 'mem_info_vis_vram_used': '451506176', 'mem_info_gtt_used': '385392640'}
+None
+READY {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451809280', 'mem_info_vis_vram_used': '451809280', 'mem_info_gtt_used': '655163392'}
+None
+REGISTER affine 1 zero {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451809280', 'mem_info_vis_vram_used': '451809280', 'mem_info_gtt_used': '655163392'}
+None
+REGISTER affine 1 zero {'mem_info_preempt_used': '0', 'mem_info_vram_used': '452599808', 'mem_info_vis_vram_used': '452599808', 'mem_info_gtt_used': '658128896'}
+None
+REGISTER affine 1 temporal {'mem_info_preempt_used': '0', 'mem_info_vram_used': '453390336', 'mem_info_vis_vram_used': '453390336', 'mem_info_gtt_used': '661094400'}
+None
+CLOSED {'mem_info_preempt_used': '0', 'mem_info_vram_used': '454164480', 'mem_info_vis_vram_used': '454164480', 'mem_info_gtt_used': '592650240'}
+None
+CLOSED {'mem_info_preempt_used': '0', 'mem_info_vram_used': '250716160', 'mem_info_vis_vram_used': '250716160', 'mem_info_gtt_used': '319913984'}
+None
+CLOSED {'mem_info_preempt_used': '0', 'mem_info_vram_used': '249622528', 'mem_info_vis_vram_used': '249622528', 'mem_info_gtt_used': '47177728'}
+None
+CREATE {'motion_model': 'affine', 'pyramid_levels': 2} {'mem_info_preempt_used': '0', 'mem_info_vram_used': '249622528', 'mem_info_vis_vram_used': '249622528', 'mem_info_gtt_used': '47177728'}
+None
+READY {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451256320', 'mem_info_vis_vram_used': '451256320', 'mem_info_gtt_used': '115621888'}
+None
+CREATE {'initialization': 'zero', 'motion_model': 'affine', 'pyramid_levels': 2} {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451256320', 'mem_info_vis_vram_used': '451256320', 'mem_info_gtt_used': '115621888'}
+None
+READY {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451563520', 'mem_info_vis_vram_used': '451563520', 'mem_info_gtt_used': '385392640'}
+None
+CREATE {'initialization': 'temporal', 'motion_model': 'affine', 'pyramid_levels': 2} {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451563520', 'mem_info_vis_vram_used': '451563520', 'mem_info_gtt_used': '385392640'}
+None
+READY {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451891200', 'mem_info_vis_vram_used': '451891200', 'mem_info_gtt_used': '655163392'}
+None
+REGISTER affine 2 zero {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451891200', 'mem_info_vis_vram_used': '451891200', 'mem_info_gtt_used': '655163392'}
+None
+REGISTER affine 2 zero {'mem_info_preempt_used': '0', 'mem_info_vram_used': '452681728', 'mem_info_vis_vram_used': '452681728', 'mem_info_gtt_used': '658128896'}
+None
+REGISTER affine 2 temporal {'mem_info_preempt_used': '0', 'mem_info_vram_used': '453472256', 'mem_info_vis_vram_used': '453472256', 'mem_info_gtt_used': '661094400'}
+None
+CLOSED {'mem_info_preempt_used': '0', 'mem_info_vram_used': '454217728', 'mem_info_vis_vram_used': '454217728', 'mem_info_gtt_used': '592650240'}
+None
+CLOSED {'mem_info_preempt_used': '0', 'mem_info_vram_used': '250740736', 'mem_info_vis_vram_used': '250740736', 'mem_info_gtt_used': '319913984'}
+None
+CLOSED {'mem_info_preempt_used': '0', 'mem_info_vram_used': '249622528', 'mem_info_vis_vram_used': '249622528', 'mem_info_gtt_used': '47177728'}
+None
+CREATE {'motion_model': 'affine', 'pyramid_levels': 3} {'mem_info_preempt_used': '0', 'mem_info_vram_used': '249622528', 'mem_info_vis_vram_used': '249622528', 'mem_info_gtt_used': '47177728'}
+None
+READY {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451256320', 'mem_info_vis_vram_used': '451256320', 'mem_info_gtt_used': '115621888'}
+None
+CREATE {'initialization': 'zero', 'motion_model': 'affine', 'pyramid_levels': 3} {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451256320', 'mem_info_vis_vram_used': '451256320', 'mem_info_gtt_used': '115621888'}
+None
+READY {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451563520', 'mem_info_vis_vram_used': '451563520', 'mem_info_gtt_used': '385392640'}
+None
+CREATE {'initialization': 'temporal', 'motion_model': 'affine', 'pyramid_levels': 3} {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451563520', 'mem_info_vis_vram_used': '451563520', 'mem_info_gtt_used': '385392640'}
+None
+READY {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451878912', 'mem_info_vis_vram_used': '451878912', 'mem_info_gtt_used': '655163392'}
+None
+REGISTER affine 3 zero {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451878912', 'mem_info_vis_vram_used': '451878912', 'mem_info_gtt_used': '655163392'}
+None
+REGISTER affine 3 zero {'mem_info_preempt_used': '0', 'mem_info_vram_used': '452669440', 'mem_info_vis_vram_used': '452669440', 'mem_info_gtt_used': '658128896'}
+None
+REGISTER affine 3 temporal {'mem_info_preempt_used': '0', 'mem_info_vram_used': '453459968', 'mem_info_vis_vram_used': '453459968', 'mem_info_gtt_used': '661094400'}
+None
+CLOSED {'mem_info_preempt_used': '0', 'mem_info_vram_used': '454205440', 'mem_info_vis_vram_used': '454205440', 'mem_info_gtt_used': '592650240'}
+None
+CLOSED {'mem_info_preempt_used': '0', 'mem_info_vram_used': '250728448', 'mem_info_vis_vram_used': '250728448', 'mem_info_gtt_used': '319913984'}
+None
+CLOSED {'mem_info_preempt_used': '0', 'mem_info_vram_used': '249622528', 'mem_info_vis_vram_used': '249622528', 'mem_info_gtt_used': '47177728'}
+None
+CREATE {'motion_model': 'quadratic', 'pyramid_levels': 1} {'mem_info_preempt_used': '0', 'mem_info_vram_used': '249622528', 'mem_info_vis_vram_used': '249622528', 'mem_info_gtt_used': '47177728'}
+None
+READY {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451227648', 'mem_info_vis_vram_used': '451227648', 'mem_info_gtt_used': '115621888'}
+None
+CREATE {'initialization': 'zero', 'motion_model': 'quadratic', 'pyramid_levels': 1} {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451227648', 'mem_info_vis_vram_used': '451227648', 'mem_info_gtt_used': '115621888'}
+None
+READY {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451506176', 'mem_info_vis_vram_used': '451506176', 'mem_info_gtt_used': '385392640'}
+None
+CREATE {'initialization': 'temporal', 'motion_model': 'quadratic', 'pyramid_levels': 1} {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451506176', 'mem_info_vis_vram_used': '451506176', 'mem_info_gtt_used': '385392640'}
+None
+READY {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451809280', 'mem_info_vis_vram_used': '451809280', 'mem_info_gtt_used': '655163392'}
+None
+REGISTER quadratic 1 zero {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451809280', 'mem_info_vis_vram_used': '451809280', 'mem_info_gtt_used': '655163392'}
+None
+REGISTER quadratic 1 zero {'mem_info_preempt_used': '0', 'mem_info_vram_used': '463302656', 'mem_info_vis_vram_used': '463302656', 'mem_info_gtt_used': '658128896'}
+None
+REGISTER quadratic 1 temporal {'mem_info_preempt_used': '0', 'mem_info_vram_used': '474816512', 'mem_info_vis_vram_used': '474816512', 'mem_info_gtt_used': '661094400'}
+None
+CLOSED {'mem_info_preempt_used': '0', 'mem_info_vram_used': '486309888', 'mem_info_vis_vram_used': '486309888', 'mem_info_gtt_used': '592650240'}
+None
+CLOSED {'mem_info_preempt_used': '0', 'mem_info_vram_used': '261431296', 'mem_info_vis_vram_used': '261431296', 'mem_info_gtt_used': '319913984'}
+None
+CLOSED {'mem_info_preempt_used': '0', 'mem_info_vram_used': '249622528', 'mem_info_vis_vram_used': '249622528', 'mem_info_gtt_used': '47177728'}
+None
+CREATE {'motion_model': 'quadratic', 'pyramid_levels': 2} {'mem_info_preempt_used': '0', 'mem_info_vram_used': '249622528', 'mem_info_vis_vram_used': '249622528', 'mem_info_gtt_used': '47177728'}
+None
+READY {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451256320', 'mem_info_vis_vram_used': '451256320', 'mem_info_gtt_used': '115621888'}
+None
+CREATE {'initialization': 'zero', 'motion_model': 'quadratic', 'pyramid_levels': 2} {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451256320', 'mem_info_vis_vram_used': '451256320', 'mem_info_gtt_used': '115621888'}
+None
+READY {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451563520', 'mem_info_vis_vram_used': '451563520', 'mem_info_gtt_used': '385392640'}
+None
+CREATE {'initialization': 'temporal', 'motion_model': 'quadratic', 'pyramid_levels': 2} {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451563520', 'mem_info_vis_vram_used': '451563520', 'mem_info_gtt_used': '385392640'}
+None
+READY {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451891200', 'mem_info_vis_vram_used': '451891200', 'mem_info_gtt_used': '655163392'}
+None
+REGISTER quadratic 2 zero {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451891200', 'mem_info_vis_vram_used': '451891200', 'mem_info_gtt_used': '655163392'}
+None
+REGISTER quadratic 2 zero {'mem_info_preempt_used': '0', 'mem_info_vram_used': '463396864', 'mem_info_vis_vram_used': '463396864', 'mem_info_gtt_used': '658128896'}
+None
+REGISTER quadratic 2 temporal {'mem_info_preempt_used': '0', 'mem_info_vram_used': '474902528', 'mem_info_vis_vram_used': '474902528', 'mem_info_gtt_used': '661094400'}
+None
+CLOSED {'mem_info_preempt_used': '0', 'mem_info_vram_used': '486363136', 'mem_info_vis_vram_used': '486363136', 'mem_info_gtt_used': '592650240'}
+None
+CLOSED {'mem_info_preempt_used': '0', 'mem_info_vram_used': '272433152', 'mem_info_vis_vram_used': '261718016', 'mem_info_gtt_used': '319913984'}
+None
+CLOSED {'mem_info_preempt_used': '0', 'mem_info_vram_used': '249622528', 'mem_info_vis_vram_used': '249622528', 'mem_info_gtt_used': '47177728'}
+None
+CREATE {'motion_model': 'quadratic', 'pyramid_levels': 3} {'mem_info_preempt_used': '0', 'mem_info_vram_used': '249622528', 'mem_info_vis_vram_used': '249622528', 'mem_info_gtt_used': '47177728'}
+None
+READY {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451256320', 'mem_info_vis_vram_used': '451256320', 'mem_info_gtt_used': '115621888'}
+None
+CREATE {'initialization': 'zero', 'motion_model': 'quadratic', 'pyramid_levels': 3} {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451256320', 'mem_info_vis_vram_used': '451256320', 'mem_info_gtt_used': '115621888'}
+None
+READY {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451563520', 'mem_info_vis_vram_used': '451563520', 'mem_info_gtt_used': '385392640'}
+None
+CREATE {'initialization': 'temporal', 'motion_model': 'quadratic', 'pyramid_levels': 3} {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451563520', 'mem_info_vis_vram_used': '451563520', 'mem_info_gtt_used': '385392640'}
+None
+READY {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451878912', 'mem_info_vis_vram_used': '451878912', 'mem_info_gtt_used': '655163392'}
+None
+REGISTER quadratic 3 zero {'mem_info_preempt_used': '0', 'mem_info_vram_used': '451878912', 'mem_info_vis_vram_used': '451878912', 'mem_info_gtt_used': '655163392'}
+None
+REGISTER quadratic 3 zero {'mem_info_preempt_used': '0', 'mem_info_vram_used': '463384576', 'mem_info_vis_vram_used': '463384576', 'mem_info_gtt_used': '658128896'}
+None
+REGISTER quadratic 3 temporal {'mem_info_preempt_used': '0', 'mem_info_vram_used': '474890240', 'mem_info_vis_vram_used': '474890240', 'mem_info_gtt_used': '661094400'}
+None
+CLOSED {'mem_info_preempt_used': '0', 'mem_info_vram_used': '486350848', 'mem_info_vis_vram_used': '486350848', 'mem_info_gtt_used': '592650240'}
+None
+CLOSED {'mem_info_preempt_used': '0', 'mem_info_vram_used': '272420864', 'mem_info_vis_vram_used': '272420864', 'mem_info_gtt_used': '319913984'}
+None
+CLOSED {'mem_info_preempt_used': '0', 'mem_info_vram_used': '249622528', 'mem_info_vis_vram_used': '249622528', 'mem_info_gtt_used': '47177728'}
+None
+DONE {'mem_info_preempt_used': '0', 'mem_info_vram_used': '249622528', 'mem_info_vis_vram_used': '249622528', 'mem_info_gtt_used': '47177728'}
+None

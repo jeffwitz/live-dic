@@ -1,11 +1,29 @@
 # Current IC-GN performance
 
-Last updated: October 29, 2026.
+Last updated: October 30, 2026.
 
 This file contains only measurements for the current kernels. Earlier campaign
 snapshots were removed because their layouts, filter costs, and subgroup
 occupancy no longer describe the implementation. Re-run the commands below
 when a kernel, driver, browser, or measurement boundary changes.
+
+## GPU coverage: AMD, Intel and NVIDIA
+
+Native 3840 × 2160 full-pyramid benchmarks have completed on AMD Radeon 780M,
+Intel Lunar Lake, Intel UHD Graphics (Tiger Lake GT1), and NVIDIA GeForce
+RTX 3080 Laptop, using the portable WGSL solver through Vulkan with both
+16 and 32 invocations per workgroup. The
+[hardware coverage matrix](docs/reference/performance.rst#gpu-hardware-coverage)
+records each workload and its numerical and regression scope. These are
+successful measurements across the tested configurations, not a universal
+compatibility or 4K60 guarantee.
+
+The [AMD campaign](benchmarks/results/workgroup-width-amd-20261030/README.md)
+completed all twelve runs with passing fixed-interior quality gates. Its
+initial full GPU regression suite aborted because closed engines retained GPU
+resources until device memory was exhausted. The lifecycle correction and
+validation are documented in the coverage matrix. The primary tables below remain the Intel Lunar Lake
+campaign; they are not measurements from all four adapters.
 
 ## Current backend policy
 

@@ -1,0 +1,24 @@
+width 16, depth 1, repeat 0
+abort, depth 1: 77.13 FPS, age 13.022/14.542/14.996 ms
+width 16, depth 2, repeat 0
+abort, depth 2: 78.24 FPS, age 25.269/29.421/30.123 ms
+width 32, depth 1, repeat 0
+abort, depth 1: 77.79 FPS, age 12.635/16.415/16.762 ms
+width 32, depth 2, repeat 0
+abort, depth 2: 83.38 FPS, age 23.940/28.604/28.907 ms
+width 32, depth 1, repeat 1
+abort, depth 1: 76.56 FPS, age 12.874/16.529/17.102 ms
+width 32, depth 2, repeat 1
+abort, depth 2: 84.04 FPS, age 23.994/28.299/28.871 ms
+width 16, depth 1, repeat 1
+abort, depth 1: 74.81 FPS, age 13.123/16.208/16.990 ms
+width 16, depth 2, repeat 1
+abort, depth 2: 80.19 FPS, age 24.966/28.493/28.893 ms
+width 16, depth 1, repeat 2
+abort, depth 1: 74.09 FPS, age 13.203/16.221/16.456 ms
+width 16, depth 2, repeat 2
+abort, depth 2: 79.70 FPS, age 24.752/28.894/29.446 ms
+width 32, depth 1, repeat 2
+abort, depth 1: 77.25 FPS, age 13.041/16.133/16.953 ms
+width 32, depth 2, repeat 2
+abort, depth 2: 84.51 FPS, age 23.607/28.877/29.356 ms

@@ -1,4 +1,4 @@
-Performance on the validation machine
+Performance and GPU hardware coverage
 =====================================
 
 This page distinguishes current qualified profiles from explicitly versioned
@@ -11,6 +11,95 @@ performance guarantees.
 
 For the 200-frame native-UHD tensile trajectory, see the
 :ref:`qualified one-slot latency profile <latency-reduction-profile>`.
+
+.. _gpu-hardware-coverage:
+
+GPU hardware coverage
+---------------------
+
+**Native 3840 x 2160 full-pyramid DIC benchmarks have completed on AMD,
+Intel and NVIDIA GPUs.** The portable WGSL solver has executed through
+wgpu-native/Vulkan on all four adapters below, covering integrated and
+discrete hardware with 16 and 32 invocations per workgroup. These observed
+runs demonstrate portability across the tested GPU/driver configurations.
+
+.. list-table:: Observed native Linux/Vulkan coverage
+   :header-rows: 1
+   :widths: 24 24 27 25
+
+   * - GPU / driver
+     - Completed workload
+     - Numerical evidence
+     - Full GPU regression suite
+   * - AMD Radeon 780M, RADV Phoenix, Mesa 25.0.7
+     - 200-frame UHD tensile trajectory; 12 runs, both widths and depths 1/2
+     - All timed frames pass the fixed-interior quality gates
+     - All 193 tests passed after the lifecycle correction below
+   * - Intel Lunar Lake, Mesa 25.2.8
+     - 200-frame UHD tensile trajectory; 12 runs, both widths and depths 1/2
+     - All timed frames pass the fixed-interior quality gates
+     - Archived campaign reports all 191 tests passed
+   * - Intel UHD Graphics, Tiger Lake GT1, Mesa 26.0.8
+     - Fixed UHD tensile pair; 30 measured calls per width after 30 warmups
+     - Same acceptance/status across widths; field difference RMSE 1.98e-5 px
+     - No full-suite pass documented for this experiment
+   * - NVIDIA GeForce RTX 3080 Laptop, driver 595.99.02
+     - Fixed UHD tensile pair; 30 measured calls per width after 30 warmups
+     - Same acceptance/status across widths; field difference RMSE 1.72e-5 px
+     - No full-suite pass documented for this experiment
+
+Evidence: :ref:`fixed-pair-workgroups` for NVIDIA and Tiger Lake,
+:ref:`intel-changing-workgroups` and the :download:`Intel campaign report
+<../../benchmarks/results/workgroup-width-20261030/README.md>` for Lunar Lake,
+and :ref:`amd-changing-workgroups` with the :download:`AMD campaign report
+<../../benchmarks/results/workgroup-width-amd-20261030/README.md>` and
+:download:`AMD summary
+<../../benchmarks/results/workgroup-width-amd-20261030/summary.json>`.
+NVIDIA and Tiger Lake field differences compare workgroup widths; they are
+not ground-truth displacement errors or a temporal-trajectory qualification.
+
+The AMD campaign's twelve benchmark processes and both untimed diagnostic
+replays completed before the full-suite failure. The latter reproduced twice,
+and the affected test
+``CorrectedTemporalTests.test_zero_default_and_first_temporal_frame_match_bitwise``
+also aborted alone. RADV reported a rejected command submission (``-28``),
+then wgpu reported ``Parent device is lost`` in ``wgpuQueueSubmit`` and the
+process exited with code 134.
+
+The lifecycle investigation reproduced a resource exhaustion problem:
+``close()`` destroyed image buffers but retained pipelines, bind groups and
+the device. The test retained closed engines through ``addCleanup`` bound
+methods. GTT usage grew by about 270 MB per engine until it approached the
+host's 4 GiB GTT budget, where the next registration was rejected. A
+controlled replay releasing the references completed the same 27-engine
+test. Destroying the device alone, while retaining its pipeline wrappers,
+was insufficient.
+
+Native owner close now destroys its device, drops GPU wrapper/cache
+references and collects cyclic wrappers; shared levels release their own
+references without destroying the owner's device. The previously failing
+test passes after the correction, and new regression tests cover retained
+closed engines and shared-device ownership. The full GPU-enabled suite then
+passed all 193 tests locally on this AMD host in 83.766 seconds. The portable
+run passed 121 tests with 72 GPU tests explicitly skipped; Ruff and the strict
+Sphinx HTML build also passed. This is a subsequent local validation of the
+working-tree correction, not a claim that the original pre-fix suite passed.
+See the :download:`lifecycle
+investigation
+<../../benchmarks/results/workgroup-width-amd-20261030/device-lifecycle/README.md>`
+for logs and final validation outcomes. The original campaign measurements
+precede this cleanup correction; their raw reports and source hashes remain
+unchanged.
+
+This coverage supports using the native implementation across these tested
+vendors. It does not certify every feature, browser backend, operating system,
+driver or recent GPU. A new deployment still needs its own accuracy,
+stability and timing checks. Workloads and revisions differ between
+campaigns, so their timings are not a controlled ranking of GPU performance.
+All timings start with a resident NumPy image and end with a materialized
+NumPy field (including statistics for the changing-frame campaigns); camera
+acquisition is excluded. Functional execution does not imply 4K60 on every
+device: the measured Tiger Lake fixed-pair call already exceeds 16.67 ms.
 
 Current backend policy
 ----------------------
@@ -119,6 +208,8 @@ campaigns after the binary transport change.
      - **39.666 / 44.002 ms**
      - **25.14 FPS**
 
+.. _fixed-pair-workgroups:
+
 Portable native workgroup-size experiment
 -----------------------------------------
 
@@ -168,6 +259,8 @@ solver remains specialized for 16 invocations. The benchmark utility accepts
 ``--workgroup-size 16`` or ``--workgroup-size 32`` for its synthetic UHD A/B
 runs.
 
+.. _intel-changing-workgroups:
+
 Changing-frame control on Intel Lunar Lake
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -213,6 +306,72 @@ See the :download:`strict summary
 `full campaign, commands, samples and final fields
 <https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/workgroup-width-20261030>`_.
 These finite campaigns do not establish a universal deadline.
+
+.. _amd-changing-workgroups:
+
+Changing-frame control on AMD Radeon 780M
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The same matched campaign ran on the Radeon 780M integrated in the Ryzen 7
+PRO 7840U, using RADV Phoenix / Mesa 25.0.7, Linux 6.17.0-29, Python 3.12.3,
+NumPy 2.5.4 and wgpu-py 0.32.0. Code commit was
+``c0c072c24c7bf52a93aaee58b4e754a954ef7d36``. All twelve runs retained the
+``performance`` power profile and identical source and input hashes within
+this campaign. These are new AMD observations, not a replay on Intel.
+
+Inputs were 200 hash-verified native 3840 x 2160 tensile images. Affine
+B-spline solving used subsets/stride 16, median postprocessing, two fixed
+levels, iteration caps (8, 16), temporal velocity prediction, fine correction
+and conservative finest-level stopping. Twenty warmups, a history reset and
+twenty chronological priming frames preceded the 180 timed frames per run.
+Widths alternated in order over three repetitions, at depths 1 and 2.
+
+.. list-table:: AMD resident-NumPy-image to materialized-field and statistics
+   :header-rows: 1
+
+   * - Invocations / in-flight images
+     - Sustained FPS
+     - Result age p50 / p95 / p99
+   * - 16 / 1
+     - 74.81
+     - 13.105 / 16.109 / 16.513 ms
+   * - 32 / 1
+     - 77.25
+     - 12.859 / 16.404 / 16.998 ms
+   * - 16 / 2
+     - 79.70
+     - 25.001 / 29.079 / 29.963 ms
+   * - 32 / 2
+     - 84.04
+     - 23.872 / 28.580 / 29.212 ms
+
+FPS is the median of three run throughputs; age percentiles pool 540 timed
+fields per row. With one image in flight, width 32 improves throughput by
+3.26%, while width 16 has a slightly lower pooled p95. Each one-image run
+exceeds 60 FPS and stays below 16.67 ms p95. Two images increase throughput
+and result age. This does not establish a universal deadline or a portable
+advantage for width 32; defaults remain unchanged.
+
+Every timed frame passes the fixed-interior gates on 26,924 positions:
+minimum coverage 99.9851%, maximum displacement RMSE below 0.028579 px,
+maximum displacement error p95 below 0.053071 px, and maximum strain
+aggregate RMSE below 0.001447. Final-field displacement-vector RMSE between
+widths is 0.00010093 px on jointly accepted interior points. Whole-grid edge
+failures remain: worst frame displacement RMSE is about 3.2865 px and
+minimum accepted coverage is 89.99%. The passing interior gates do not
+qualify those edges.
+
+The :download:`AMD report
+<../../benchmarks/results/workgroup-width-amd-20261030/README.md>` contains
+commands, configuration, provenance and validation outcomes; the
+:download:`summary
+<../../benchmarks/results/workgroup-width-amd-20261030/summary.json>` contains
+the recomputed statistics. The subsequent GPU-suite device-loss failure,
+its lifecycle cause and the correction are recorded in
+:ref:`gpu-hardware-coverage`.
+
+Primary Intel Lunar Lake UOD policy control
+-------------------------------------------
 
 .. list-table:: Native displacement-UOD policy control
    :header-rows: 1
