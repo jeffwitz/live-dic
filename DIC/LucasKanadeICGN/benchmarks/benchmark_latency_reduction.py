@@ -29,7 +29,7 @@ from temporal_cases import tensile_stretches
 
 from benchmark_temporal_init import scores
 
-VARIANTS = ("baseline", "velocity", "abort", "adaptive", "cubic")
+VARIANTS = ("baseline", "velocity", "abort", "adaptive", "cubic", "cubic-fixed")
 
 
 def options_for(variant):
@@ -43,11 +43,11 @@ def options_for(variant):
     )
     if variant != "baseline":
         options["temporal_prediction"] = "velocity"
-    if variant in ("abort", "adaptive", "cubic"):
+    if variant in ("abort", "adaptive", "cubic", "cubic-fixed"):
         options.update(divergence_patience=3, divergence_min_iterations=4)
     if variant in ("adaptive", "cubic"):
         options.update(pyramid_policy="adaptive", adaptive_acceptance=0.95)
-    if variant == "cubic":
+    if variant in ("cubic", "cubic-fixed"):
         options["interpolation"] = "cubic"
     return options
 
@@ -133,7 +133,7 @@ def audit_iterations(engine, targets):
 
 def run_campaign(args):
     for repeat in range(3):
-        variants = VARIANTS if repeat % 2 == 0 else tuple(reversed(VARIANTS))
+        variants = args.variants if repeat % 2 == 0 else tuple(reversed(args.variants))
         for variant in variants:
             for depth in (1, 2):
                 output = args.output / f"{variant}-d{depth}-r{repeat}.json"
@@ -167,6 +167,7 @@ def main():
     parser.add_argument("--diagnostics", action="store_true")
     parser.add_argument("--campaign", action="store_true")
     parser.add_argument("--baseline-source", type=Path)
+    parser.add_argument("--variants", nargs="+", choices=VARIANTS, default=VARIANTS)
     args = parser.parse_args()
     if args.campaign:
         run_campaign(args)
