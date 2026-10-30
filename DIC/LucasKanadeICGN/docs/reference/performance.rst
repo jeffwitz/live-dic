@@ -497,6 +497,17 @@ power limiting. A single cause has not been isolated. See the
 Repeated-image controls do not replace ordered-sequence quality or latency
 qualification, and the 16.62 ms sequence median is not a universal engine speed.
 
+Reapplying the system performance profile and repeating all three native-UHD
+campaigns measures 16.90 ms median / 20.36 ms p95 and 59.23 FPS for temporal
+affine/two levels/one slot. Translation/two levels/one slot measures 12.10 ms
+median / 15.05 ms p95 and 80.83 FPS. Accepted counts and final numerical errors
+match the preceding campaign. The system already reported performance before
+the command, so this is not a confirmed balanced-versus-performance comparison
+and demonstrates no affine speedup. The
+`profile log, full table and raw repeat
+<https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/temporal-init-20261030/performance-retest>`_
+retain the unchanged configuration and all timing samples.
+
 :download:`Raw report <../../benchmarks/results/temporal-init-20261030/report.json>`
 and :download:`per-frame metrics <../../benchmarks/results/temporal-init-20261030/metrics.csv>`
 include both fixed and own populations, rejected counts, all timing samples,

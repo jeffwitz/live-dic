@@ -1,0 +1,11 @@
+{
+  "observed_at_utc": "2026-10-30T14:26:02.686392+00:00",
+  "profile_before_reapply": "performance",
+  "profile_at_start": "performance",
+  "governor": "powersave",
+  "energy_performance_preference": "performance",
+  "ac_online": "1",
+  "comparison_limit": "The system already reported performance before the setting was reapplied. The earlier campaign did not log its power profile, so this is not a proven balanced-versus-performance A/B.",
+  "profile_at_end": "performance",
+  "energy_performance_preference_at_end": "performance"
+}

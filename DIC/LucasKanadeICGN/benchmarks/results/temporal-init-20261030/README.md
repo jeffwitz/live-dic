@@ -10,6 +10,12 @@ remeasures the pre-temporal code, current zero mode and current temporal mode
 on the same native-UHD frame: all remain around 12.4–13.1 ms. It also records
 long-sequence variability and observed GPU power limits.
 
+The complete [performance-profile repeat](performance-retest/README.md)
+reapplies and logs the system profile, which was already reported as performance
+before the command. The same three-campaign affine/two-level/one-slot test
+measures 16.90 ms median / 20.36 ms p95 and 59.23 FPS, with unchanged numerical
+results. No speedup or balanced-versus-performance causal claim is established.
+
 ## Reproduce
 
 From the repository root, with the package installed:
