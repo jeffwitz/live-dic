@@ -21,7 +21,7 @@ from typing import Any
 import numpy as np
 
 from .engine import ICGNError, ImageInput, ReferenceInfo, RegistrationResult, _as_uint8_gray
-from .interpolation import INTERPOLATION_PIPELINE_CONSTANTS, normalize_interpolation
+from .interpolation import normalize_interpolation
 from .motion import (
     MOTION_MODEL_PIPELINE_CONSTANTS,
     normalize_motion_model,
@@ -32,7 +32,6 @@ from .outlier import normalize_outlier_policy
 from .roi import reduce_mask, seed_permissions, validate_roi
 from .subset import DEFAULT_SUBSET_SIZE, normalize_subset_size, normalize_subset_stride
 from .weighting import (
-    SPATIAL_WEIGHTING_PIPELINE_CONSTANTS,
     normalize_gaussian_sigma,
     normalize_spatial_weighting,
 )
@@ -91,6 +90,8 @@ class _TemporalSlot:
     merge: Any
     counts: Any
     seed_config: Any
+    refinement: Any | None = None
+    coarse_merge: Any | None = None
 
 
 @dataclass(slots=True)
@@ -155,10 +156,6 @@ class ICGNWGPUFullPyramid:
     or reference replacement. ``temporal_max_age`` expires seeds after more
     than this many rejected frames; ``None`` keeps them until reset or success.
 
-    ``solver_workgroup_size=32`` is an optional portable reduction geometry.
-    It changes floating-point summation order, not the model, subset, iteration
-    limits or interpolation. Sixteen remains the compatibility default.
-
     ``device_type`` accepts ``"auto"``, ``"gpu"``, or ``"cpu"`` with the same
     initialization-time policy as :class:`ICGNWGPU`. All pyramid levels and
     streaming slots share the selected device, including CPU software
@@ -182,15 +179,15 @@ class ICGNWGPUFullPyramid:
         gaussian_sigma: float | None = None,
         initialization: str = "zero",
         temporal_max_age: int | None = None,
-        solver_workgroup_size: int = 16,
+        temporal_fine_correction: bool = False,
     ) -> None:
-        try:
-            lanes = operator.index(solver_workgroup_size)
-        except TypeError as error:
-            raise ValueError("solver_workgroup_size must be 16 or 32") from error
-        if isinstance(solver_workgroup_size, (bool, np.bool_)) or lanes not in (16, 32):
-            raise ValueError("solver_workgroup_size must be 16 or 32")
-        self.solver_workgroup_size = lanes
+        if not isinstance(temporal_fine_correction, bool):
+            raise ValueError("temporal_fine_correction must be a boolean")
+        if temporal_fine_correction and (initialization != "temporal" or pyramid_levels != 2):
+            raise ValueError(
+                "temporal_fine_correction requires temporal initialization and two levels"
+            )
+        self.temporal_fine_correction = temporal_fine_correction
         if not isinstance(initialization, str) or initialization not in ("zero", "temporal"):
             raise ValueError("initialization must be 'zero' or 'temporal'")
         if temporal_max_age is not None:
@@ -257,28 +254,6 @@ class ICGNWGPUFullPyramid:
             spatial_weighting=self.spatial_weighting,
             gaussian_sigma=self.gaussian_sigma,
         )
-        self._root._solver_lanes = lanes
-        if lanes != 16:
-            # Only the opt-in native full pyramid changes reduction geometry.
-            # The default and the standalone engine retain their old pipelines.
-            constants = {
-                "SOLVER_LANES": lanes,
-                "INTERPOLATION_MODE": INTERPOLATION_PIPELINE_CONSTANTS[self.interpolation],
-                "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
-                "SUBSET_SIZE": self.subset_size,
-                "SUBSET_STRIDE": self.subset_stride,
-                "SPATIAL_WEIGHTING": SPATIAL_WEIGHTING_PIPELINE_CONSTANTS[self.spatial_weighting],
-                "GAUSSIAN_SIGMA": self.gaussian_sigma,
-            }
-            pipeline = self._root.device.create_compute_pipeline(
-                layout=self._root._pipeline_layout,
-                compute={
-                    "module": self._root._shader,
-                    "entry_point": "solve",
-                    "constants": constants,
-                },
-            )
-            self._root._portable_solver = self._root._base_portable_solver = pipeline
         self._root._ensure_seeded_solver()
         self._wgpu = self._root._wgpu
         self.device = self._root.device
@@ -335,6 +310,7 @@ class ICGNWGPUFullPyramid:
             constants = {"MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model]}
             if group == 2:
                 constants.update(
+                    TRACK_SEED_AVAILABILITY=self.temporal_fine_correction,
                     SUBSET_SIZE=self.subset_size,
                     SUBSET_STRIDE=self.subset_stride,
                 )
@@ -344,6 +320,47 @@ class ICGNWGPUFullPyramid:
             )
             self._temporal_layouts.append(layout)
             self._temporal_pipelines.append(pipeline)
+        if self.temporal_fine_correction:
+            bindings = (0, 1, 2, 3, 4, 6, 7, 8, 9)
+            kinds = (
+                "read-only-storage",
+                "storage",
+                "storage",
+                "uniform",
+                "read-only-storage",
+                "read-only-storage",
+                "read-only-storage",
+                "uniform",
+                "read-only-storage",
+            )
+            self._refinement_layout = self.device.create_bind_group_layout(
+                entries=[
+                    {
+                        "binding": binding,
+                        "visibility": self._wgpu.ShaderStage.COMPUTE,
+                        "buffer": {"type": kind},
+                    }
+                    for binding, kind in zip(bindings, kinds, strict=True)
+                ]
+            )
+            self._refinement_pipeline = self.device.create_compute_pipeline(
+                layout=self.device.create_pipeline_layout(
+                    bind_group_layouts=[
+                        self._empty_layout,
+                        self._empty_layout,
+                        self._refinement_layout,
+                    ]
+                ),
+                compute={
+                    "module": shader,
+                    "entry_point": "refine_temporal_seed",
+                    "constants": {
+                        "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
+                        "SUBSET_SIZE": self.subset_size,
+                        "SUBSET_STRIDE": self.subset_stride,
+                    },
+                },
+            )
 
     def _prepare_temporal_state(self, mask: np.ndarray | None) -> None:
         """Allocate one history for the engine, shared across all target slots."""
@@ -383,6 +400,31 @@ class ICGNWGPUFullPyramid:
             data=permissions,
             usage=usage.STORAGE,
         )
+        if self.temporal_fine_correction and 0 not in self._roi_link_buffers:
+            self._temporal_buffers["refinement_links"] = self.device.create_buffer_with_data(
+                data=np.full(count, 31, np.uint32),
+                usage=usage.STORAGE,
+            )
+        if self.temporal_fine_correction:
+            coarse_count = coarse.grid_width * coarse.grid_height
+            self._temporal_buffers["coarse_state"] = self.device.create_buffer(
+                size=coarse_count * state_float_count(self.motion_model) * 4,
+                usage=usage.STORAGE | usage.COPY_DST,
+            )
+            self._temporal_buffers["coarse_ages"] = self.device.create_buffer(
+                size=coarse_count * 4,
+                usage=usage.STORAGE | usage.COPY_DST,
+            )
+            self._temporal_buffers["coarse_config"] = self.device.create_buffer_with_data(
+                data=struct.pack(
+                    "<4I",
+                    coarse_count,
+                    0xFFFFFFFE if self.temporal_max_age is None else self.temporal_max_age,
+                    int(self.outlier_policy == "replace"),
+                    1,
+                ),
+                usage=usage.UNIFORM,
+            )
         self.reset_temporal_state()
 
     def reset_temporal_state(self) -> None:
@@ -394,13 +436,18 @@ class ICGNWGPUFullPyramid:
         """
         if not self._temporal_buffers:
             return
-        ages = self._temporal_buffers["ages"]
-        self.device.queue.write_buffer(ages, 0, np.full(ages.size // 4, 0xFFFFFFFF, np.uint32))
-        state = np.zeros((ages.size // 4, state_float_count(self.motion_model)), np.float32)
-        state[:, parameter_count(self.motion_model)] = -1.0
-        self.device.queue.write_buffer(self._temporal_buffers["state"], 0, state)
+        for prefix in ("", "coarse_"):
+            if prefix + "ages" not in self._temporal_buffers:
+                continue
+            ages = self._temporal_buffers[prefix + "ages"]
+            self.device.queue.write_buffer(ages, 0, np.full(ages.size // 4, 0xFFFFFFFF, np.uint32))
+            state = np.zeros((ages.size // 4, state_float_count(self.motion_model)), np.float32)
+            state[:, parameter_count(self.motion_model)] = -1.0
+            self.device.queue.write_buffer(self._temporal_buffers[prefix + "state"], 0, state)
 
-    def _create_temporal_slot(self, fine_slot: Any, coarse_slot: Any) -> _TemporalSlot:
+    def _create_temporal_slot(
+        self, fine_slot: Any, coarse_slot: Any, fine_edge: _SeedEdge | None = None
+    ) -> _TemporalSlot:
         coarse = self._levels[-1]
         coarse._ensure_seed_resources(coarse_slot)
         usage = self._wgpu.BufferUsage
@@ -461,7 +508,52 @@ class ICGNWGPUFullPyramid:
             size=size + 16,
             usage=usage.MAP_READ | usage.COPY_DST,
         )
-        return _TemporalSlot(projection, merge, counts, config)
+        refinement = None
+        coarse_merge = None
+        if self.temporal_fine_correction:
+            links = (
+                self._roi_link_buffers[0]
+                if 0 in self._roi_link_buffers
+                else shared["refinement_links"]
+            )
+            refinement = self.device.create_bind_group(
+                layout=self._refinement_layout,
+                entries=[
+                    self._buffer_resource(binding, buffer)
+                    for binding, buffer in zip(
+                        (0, 1, 2, 3, 4, 6, 7, 8, 9),
+                        (
+                            shared["coarse_state"],
+                            fine_slot.buffers["seed_state"],
+                            fine_slot.buffers["active_mask"],
+                            fine_edge.config,
+                            links,
+                            shared["state"],
+                            shared["ages"],
+                            shared["config"],
+                            shared["coarse_ages"],
+                        ),
+                        strict=True,
+                    )
+                ],
+            )
+            coarse_merge = self.device.create_bind_group(
+                layout=self._temporal_layouts[1],
+                entries=[
+                    self._buffer_resource(i, buffer)
+                    for i, buffer in enumerate(
+                        (
+                            shared["coarse_state"],
+                            shared["coarse_ages"],
+                            coarse_slot.buffers["state"],
+                            coarse._output_buffer(coarse_slot),
+                            shared["coarse_config"],
+                            counts,
+                        )
+                    )
+                ],
+            )
+        return _TemporalSlot(projection, merge, counts, config, refinement, coarse_merge)
 
     def _create_orchestration_pipelines(self) -> None:
         wgpu = self._wgpu
@@ -568,6 +660,7 @@ class ICGNWGPUFullPyramid:
                     "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
                     "SUBSET_SIZE": self.subset_size,
                     "SUBSET_STRIDE": self.subset_stride,
+                    "TRACK_SEED_AVAILABILITY": self.temporal_fine_correction,
                 },
             },
         )
@@ -676,11 +769,12 @@ class ICGNWGPUFullPyramid:
 
     def _create_full_slot(self, slot_index: int) -> _FullPyramidSlot:
         level_slots = tuple(level._pipeline_slots[slot_index] for level in self._levels)
+        seed_edges = self._create_seed_edges(level_slots)
         return _FullPyramidSlot(
             level_slots=level_slots,
             reduction_edges=self._create_reduction_edges(level_slots),
-            seed_edges=self._create_seed_edges(level_slots),
-            temporal=self._create_temporal_slot(level_slots[0], level_slots[-1])
+            seed_edges=seed_edges,
+            temporal=self._create_temporal_slot(level_slots[0], level_slots[-1], seed_edges.get(0))
             if self.initialization == "temporal"
             else None,
         )
@@ -785,11 +879,6 @@ class ICGNWGPUFullPyramid:
             "pyramidStrategy": "full",
             "iterationsPerLevel": list(self.iterations_per_level),
             "tolerancePerLevel": list(self.tolerance_per_level),
-            **(
-                {"solverWorkgroupSize": self.solver_workgroup_size}
-                if self.solver_workgroup_size != 16
-                else {}
-            ),
         }
         if self.initialization == "temporal":
             self._prepare_temporal_state(mask)
@@ -798,6 +887,7 @@ class ICGNWGPUFullPyramid:
                 temporalMaxAge=self.temporal_max_age,
                 temporalSeedLevel="coarsest",
                 temporalSeedState=("filtered" if self.outlier_policy == "replace" else "raw"),
+                **({"temporalFineCorrection": True} if self.temporal_fine_correction else {}),
             )
 
         first_slot = self._create_full_slot(0)
@@ -828,11 +918,6 @@ class ICGNWGPUFullPyramid:
                 "subsetStride": self.subset_stride,
                 "spatialWeighting": self.spatial_weighting,
                 "gaussianSigma": self.gaussian_sigma,
-                **(
-                    {"solverWorkgroupSize": self.solver_workgroup_size}
-                    if self.solver_workgroup_size != 16
-                    else {}
-                ),
             },
             device=self.device_name,
             grid=(fine.grid_width, fine.grid_height),
@@ -876,6 +961,7 @@ class ICGNWGPUFullPyramid:
                         "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
                         "SUBSET_SIZE": self.subset_size,
                         "SUBSET_STRIDE": self.subset_stride,
+                        "TRACK_SEED_AVAILABILITY": self.temporal_fine_correction,
                     },
                 },
             )
@@ -948,6 +1034,14 @@ class ICGNWGPUFullPyramid:
             )
             compute_pass.set_bind_group(2, seed_edge.bind_group)
             compute_pass.dispatch_workgroups((seed_edge.destination_count + 255) // 256, 1, 1)
+            if (
+                destination_index == 0
+                and slot.temporal is not None
+                and slot.temporal.refinement is not None
+            ):
+                compute_pass.set_pipeline(self._refinement_pipeline)
+                compute_pass.set_bind_group(2, slot.temporal.refinement)
+                compute_pass.dispatch_workgroups((seed_edge.destination_count + 255) // 256, 1, 1)
             destination = self._levels[destination_index]
             destination_slot = slot.level_slots[destination_index]
             destination._encode_registration_passes(
@@ -964,6 +1058,11 @@ class ICGNWGPUFullPyramid:
             compute_pass.dispatch_workgroups(
                 (self._root.grid_width * self._root.grid_height + 255) // 256
             )
+            if slot.temporal.coarse_merge is not None:
+                compute_pass.set_bind_group(3, slot.temporal.coarse_merge)
+                compute_pass.dispatch_workgroups(
+                    (coarsest.grid_width * coarsest.grid_height + 255) // 256
+                )
             compute_pass.end()
             encoder.copy_buffer_to_buffer(
                 slot.temporal.counts,

@@ -1060,7 +1060,6 @@ class ICGNWGPU:
         ):
             setattr(level, name, getattr(self, name))
         level._solver_preference = False
-        level._solver_lanes = getattr(self, "_solver_lanes", 16)
         level.device_type = getattr(self, "device_type", "auto")
         level.execution_device_type = getattr(self, "execution_device_type", "unknown")
         level.adapter_info = dict(getattr(self, "adapter_info", {}))
@@ -1243,7 +1242,6 @@ class ICGNWGPU:
         motion_model = getattr(self, "motion_model", "affine")
         constants = {
             "ROI_ENABLED": int(roi_mode),
-            "SOLVER_LANES": getattr(self, "_solver_lanes", 16),
             "INTERPOLATION_MODE": INTERPOLATION_PIPELINE_CONSTANTS[interpolation],
             "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[motion_model],
             "SUBSET_SIZE": self.subset_size,
@@ -1281,7 +1279,6 @@ class ICGNWGPU:
     def _partial_constants(self) -> dict:
         return {
             "ROI_ENABLED": 1,
-            "SOLVER_LANES": getattr(self, "_solver_lanes", 16),
             "PARTIAL_SUPPORT": 1,
             "INTERPOLATION_MODE": INTERPOLATION_PIPELINE_CONSTANTS[self.interpolation],
             "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
@@ -1322,7 +1319,6 @@ class ICGNWGPU:
         if self.roi is not None and self.roi.effective:
             constants = {
                 "ROI_ENABLED": 1,
-                "SOLVER_LANES": getattr(self, "_solver_lanes", 16),
                 "INTERPOLATION_MODE": INTERPOLATION_PIPELINE_CONSTANTS[self.interpolation],
                 "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
                 "SUBSET_SIZE": self.subset_size,

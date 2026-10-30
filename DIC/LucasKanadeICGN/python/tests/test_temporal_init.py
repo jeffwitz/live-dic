@@ -75,8 +75,6 @@ class TemporalGpuTests(unittest.TestCase):
                     self.assert_field_equal(a, b)
                     if policy:
                         np.testing.assert_array_equal(b.status[~b.roi_selected], -3)
-                # All slots bind exactly the same persistent history.
-                self.assertEqual(len(engine._temporal_buffers), 4)
             engine.close()
 
     def test_explicit_reset_and_new_reference_clear_history(self):

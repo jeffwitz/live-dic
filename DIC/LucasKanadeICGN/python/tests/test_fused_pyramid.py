@@ -1,4 +1,4 @@
-"""Opt-in native solver geometry, with scientific checks at native UHD."""
+"""Native dispatch fusion and optional temporal correction contracts."""
 
 import os
 import unittest
@@ -11,27 +11,37 @@ from temporal_cases import FIXTURES
 from lucas_kanade_icgn import ICGNWGPUFullPyramid
 
 
-class WorkgroupArgumentsTests(unittest.TestCase):
-    def test_invalid_sizes_fail_before_device_creation(self):
-        for value in (None, True, np.bool_(True), 8, 64, 32.5, "32"):
+class CorrectionArgumentsTests(unittest.TestCase):
+    def test_invalid_correction_configuration_fails_before_device_creation(self):
+        for options in (
+            {"initialization": "zero"},
+            {"initialization": "temporal", "pyramid_levels": 1},
+            {"initialization": "temporal", "pyramid_levels": 3},
+        ):
             with (
-                self.subTest(value=value),
-                self.assertRaisesRegex(ValueError, "solver_workgroup_size"),
+                self.subTest(options=options),
+                self.assertRaisesRegex(ValueError, "temporal_fine_correction"),
             ):
-                ICGNWGPUFullPyramid(solver_workgroup_size=value)
+                ICGNWGPUFullPyramid(temporal_fine_correction=True, **options)
+        for value in (None, 0, 1, "yes"):
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, "boolean"):
+                ICGNWGPUFullPyramid(temporal_fine_correction=value)
 
 
 @unittest.skipUnless(os.environ.get("ICGN_RUN_GPU_TESTS") == "1", "GPU tests explicitly disabled")
-class WideTemporalTests(test_temporal_init.TemporalGpuTests):
-    """Apply the same ordering/reset/ROI/capture contracts to 32 lanes."""
+class CorrectedTemporalTests(test_temporal_init.TemporalGpuTests):
+    """The same reset/ordering/expiry/ROI tests also cover coarse history."""
 
     def engine(self, **kwargs):
-        return super().engine(solver_workgroup_size=32, **kwargs)
+        enabled = (
+            kwargs.get("initialization") == "temporal" and kwargs.get("pyramid_levels", 2) == 2
+        )
+        return super().engine(temporal_fine_correction=enabled, **kwargs)
 
 
 @unittest.skipUnless(os.environ.get("ICGN_RUN_GPU_TESTS") == "1", "GPU tests explicitly disabled")
-class UHDWorkgroupTests(unittest.TestCase):
-    def test_native_uhd_motion_models_and_roi_keep_scientific_accuracy(self):
+class UHDFusionTests(unittest.TestCase):
+    def test_native_uhd_models_and_roi_preserve_scientific_accuracy(self):
         with Image.open(FIXTURES / "reference.png") as image:
             reference = np.array(image)
         target = np.roll(reference, (-1, 1), axis=(0, 1))
@@ -45,12 +55,12 @@ class UHDWorkgroupTests(unittest.TestCase):
             ("quadratic", None, 16, "uniform"),
             ("affine", "partial", 17, "gaussian"),
         ):
-            for lanes in (16, 32):
+            for corrected in (False, True):
                 with (
-                    self.subTest(model=model, policy=policy, lanes=lanes),
+                    self.subTest(model=model, policy=policy, correction=corrected),
                     ICGNWGPUFullPyramid(
                         motion_model=model,
-                        solver_workgroup_size=lanes,
+                        temporal_fine_correction=corrected,
                         outlier_policy="median",
                         initialization="temporal",
                         subset_size=size,
@@ -59,8 +69,7 @@ class UHDWorkgroupTests(unittest.TestCase):
                     ) as engine,
                 ):
                     info = engine.set_reference(
-                        reference,
-                        **({"roi_mask": mask, "roi_policy": policy} if policy else {}),
+                        reference, **({"roi_mask": mask, "roi_policy": policy} if policy else {})
                     )
                     result = list(engine.register_stream([target] * 3, pipeline_depth=3))[-1]
                     y, x = np.indices(result.status.shape) * 16 + (size - 1) / 2
@@ -73,8 +82,8 @@ class UHDWorkgroupTests(unittest.TestCase):
                     self.assertLess(float(np.percentile(error, 95)), 0.10)
                     if policy:
                         np.testing.assert_array_equal(result.status[~result.roi_selected], -3)
-                    if lanes == 32:
-                        self.assertEqual(result.config["solverWorkgroupSize"], 32)
+                    if corrected:
+                        self.assertTrue(result.config["temporalFineCorrection"])
 
 
 if __name__ == "__main__":
