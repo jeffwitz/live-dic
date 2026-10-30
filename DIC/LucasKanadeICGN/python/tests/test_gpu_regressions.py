@@ -187,6 +187,52 @@ def _quadratic_pair(
     "set ICGN_RUN_GPU_TESTS=1 to execute the native GPU regressions",
 )
 class GPURegressionTests(unittest.TestCase):
+    def test_explicit_cpu_selection_runs_native_engines_and_streams(self) -> None:
+        wgpu = self.runtime._wgpu
+        cpu_available = any(
+            adapter.info["adapter_type"] == "CPU" for adapter in wgpu.gpu.enumerate_adapters_sync()
+        )
+        reference, first = _fractional_pair(256, 256, (0.5, -0.375))
+        _, second = _fractional_pair(256, 256, (-0.3, 0.2))
+        for engine_type in (ICGNWGPU, ICGNWGPUFullPyramid):
+            with self.subTest(engine=engine_type):
+                if not cpu_available:
+                    with self.assertRaisesRegex(ICGNError, "CPU software"):
+                        engine_type(device_type="cpu")
+                    continue
+                engine = engine_type(
+                    device_type="cpu",
+                    motion_model="translation",
+                    interpolation="bspline",
+                    subset_size=16,
+                    subset_stride=16,
+                    outlier_policy="median",
+                )
+                try:
+                    self.assertEqual(engine.device_type, "cpu")
+                    self.assertEqual(engine.execution_device_type, "cpu")
+                    self.assertEqual(engine.adapter_info["adapter_type"], "CPU")
+                    engine.set_reference(reference)
+                    synchronous = engine.register(first)
+                    streamed = list(engine.register_stream([first, second], pipeline_depth=2))
+                    for result, truth in zip(streamed, ((0.5, -0.375), (-0.3, 0.2)), strict=True):
+                        self.assertTrue(np.isfinite(result.parameters).all())
+                        self.assertGreater(result.accepted / result.status.size, 0.7)
+                        self.assertLess(result.rmse(truth), 0.03)
+                        self.assertEqual(result.config["deviceType"], "cpu")
+                        self.assertEqual(result.config["executionDeviceType"], "cpu")
+                    np.testing.assert_array_equal(synchronous.parameters, streamed[0].parameters)
+                    if engine_type is ICGNWGPUFullPyramid:
+                        self.assertTrue(
+                            all(
+                                level.adapter.info["adapter_type"] == "CPU"
+                                for level in engine._levels
+                            )
+                        )
+                finally:
+                    engine.close()
+                    engine.device.destroy()
+
     @classmethod
     def setUpClass(cls) -> None:
         # Use production pipeline creation and layouts, including both seeded

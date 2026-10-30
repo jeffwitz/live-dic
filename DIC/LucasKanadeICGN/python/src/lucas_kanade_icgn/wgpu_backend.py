@@ -52,6 +52,48 @@ DEFAULT_IN_FLIGHT_FRAMES = 2
 DEFAULT_PYRAMID_LEVELS = 1
 
 
+def _normalize_device_type(value: str) -> str:
+    """Validate device selection before importing or initializing wgpu."""
+
+    if not isinstance(value, str) or value.strip().lower() not in ("auto", "gpu", "cpu"):
+        raise ValueError("device_type must be 'auto', 'gpu', or 'cpu'")
+    return value.strip().lower()
+
+
+def _select_adapter(adapters: Iterable[Any], *, device_type: str, power_preference: str) -> Any:
+    """Choose an enumerated adapter without silently crossing an explicit type.
+
+    Keep the established Vulkan preference. Within the same backend rank,
+    prefer discrete hardware for performance or integrated hardware for power.
+    Automatic CPU fallback occurs only when no hardware adapter is enumerated;
+    initialization and runtime errors are deliberately not swallowed here.
+    """
+
+    adapters = list(adapters)
+    hardware = [adapter for adapter in adapters if adapter.info["adapter_type"] != "CPU"]
+    software = [adapter for adapter in adapters if adapter.info["adapter_type"] == "CPU"]
+    candidates = software if device_type == "cpu" else hardware
+    if device_type == "auto" and not candidates:
+        candidates = software
+    if not candidates:
+        if device_type == "cpu":
+            raise ICGNError(
+                "No CPU software WebGPU adapter is available. Install a compatible "
+                "software driver, for example Mesa lavapipe on Linux; wgpu does not "
+                "install it automatically."
+            )
+        kind = "hardware or CPU software" if device_type == "auto" else "hardware GPU"
+        raise ICGNError(f"No compatible {kind} WebGPU adapter is available.")
+    preferred_type = "IntegratedGPU" if power_preference == "low-power" else "DiscreteGPU"
+    return min(
+        candidates,
+        key=lambda adapter: (
+            adapter.info["backend_type"] != "Vulkan",
+            adapter.info["adapter_type"] != preferred_type,
+        ),
+    )
+
+
 @dataclass(slots=True)
 class _RegistrationSlot:
     """Per-frame resources that may be in flight independently."""
@@ -728,12 +770,20 @@ class ICGNWGPU:
     ``spatial_weighting="gaussian"`` applies centred Gaussian integration with
     ``gaussian_sigma`` expressed in pixels. The subgroup WGSL path requires
     size and stride 16 plus uniform integration.
+
+    ``device_type="auto"`` prefers hardware and uses an enumerated CPU software
+    adapter only when no hardware adapter exists. ``"gpu"`` and ``"cpu"``
+    require their respective adapter types. CPU execution runs the same WGSL
+    and requires a separately installed software driver. Selection happens at
+    construction; it does not recover a lost device during registration.
+    ``execution_device_type`` and ``adapter_info`` report the actual choice.
     """
 
     def __init__(
         self,
         *,
         power_preference: str = "high-performance",
+        device_type: str = "auto",
         prefer_subgroups: bool | None = None,
         pyramid_levels: int = DEFAULT_PYRAMID_LEVELS,
         interpolation: str = "bspline",
@@ -744,6 +794,9 @@ class ICGNWGPU:
         spatial_weighting: str = "uniform",
         gaussian_sigma: float | None = None,
     ) -> None:
+        self.device_type = _normalize_device_type(device_type)
+        if power_preference not in ("high-performance", "low-power"):
+            raise ValueError("power_preference must be 'high-performance' or 'low-power'")
         self.interpolation = normalize_interpolation(interpolation)
         self.motion_model = normalize_motion_model(motion_model)
         self.outlier_policy = normalize_outlier_policy(outlier_policy)
@@ -791,18 +844,13 @@ class ICGNWGPU:
                 "Install lucas-kanade-icgn-webgl[native]."
             ) from error
 
-        adapters = wgpu.gpu.enumerate_adapters_sync()
-        candidates = [
-            adapter
-            for adapter in adapters
-            if adapter.info["backend_type"] == "Vulkan" and adapter.info["adapter_type"] != "CPU"
-        ]
-        if not candidates:
-            adapter = wgpu.gpu.request_adapter_sync(power_preference=power_preference)
-        else:
-            adapter = candidates[0]
-        if adapter is None:
-            raise ICGNError("wgpu-native could not find a compatible GPU adapter.")
+        adapter = _select_adapter(
+            wgpu.gpu.enumerate_adapters_sync(),
+            device_type=self.device_type,
+            power_preference=power_preference,
+        )
+        self.adapter_info = dict(adapter.info)
+        self.execution_device_type = "cpu" if self.adapter_info["adapter_type"] == "CPU" else "gpu"
         if prefer_subgroups is True and "subgroup" not in adapter.features:
             raise ICGNError(
                 "The subgroup solver was requested, but the adapter does not advertise "
@@ -992,6 +1040,9 @@ class ICGNWGPU:
         ):
             setattr(level, name, getattr(self, name))
         level._solver_preference = False
+        level.device_type = getattr(self, "device_type", "auto")
+        level.execution_device_type = getattr(self, "execution_device_type", "unknown")
+        level.adapter_info = dict(getattr(self, "adapter_info", {}))
         level.interpolation = getattr(self, "interpolation", "bspline")
         level.motion_model = getattr(self, "motion_model", "affine")
         level.outlier_policy = getattr(self, "outlier_policy", "replace")
@@ -2062,6 +2113,8 @@ class ICGNWGPU:
             timing=timing,
             config={
                 **config,
+                "deviceType": getattr(self, "device_type", "auto"),
+                "executionDeviceType": getattr(self, "execution_device_type", "unknown"),
                 "interpolation": getattr(self, "interpolation", "bspline"),
                 "motionModel": getattr(self, "motion_model", "affine"),
                 "outlierPolicy": getattr(self, "outlier_policy", "replace"),

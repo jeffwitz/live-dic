@@ -127,6 +127,11 @@ class ICGNWGPUFullPyramid:
     ``spatial_weighting="gaussian"`` enables a centred weighted least-squares
     window with a configurable ``gaussian_sigma`` in pixels. Uniform
     integration remains the compatibility default.
+
+    ``device_type`` accepts ``"auto"``, ``"gpu"``, or ``"cpu"`` with the same
+    initialization-time policy as :class:`ICGNWGPU`. All pyramid levels and
+    streaming slots share the selected device, including CPU software
+    execution. ``execution_device_type`` and ``adapter_info`` report the choice.
     """
 
     def __init__(
@@ -136,6 +141,7 @@ class ICGNWGPUFullPyramid:
         iterations_per_level: tuple[int, ...] | None = None,
         tolerance_per_level: tuple[float, ...] | None = None,
         power_preference: str = "high-performance",
+        device_type: str = "auto",
         interpolation: str = "bspline",
         motion_model: str = "affine",
         outlier_policy: str = "replace",
@@ -184,6 +190,7 @@ class ICGNWGPUFullPyramid:
         # every level belongs to exactly the same wgpu device and queue.
         self._root = ICGNWGPU(
             power_preference=power_preference,
+            device_type=device_type,
             prefer_subgroups=False,
             pyramid_levels=1,
             interpolation=self.interpolation,
@@ -198,6 +205,9 @@ class ICGNWGPUFullPyramid:
         self._wgpu = self._root._wgpu
         self.device = self._root.device
         self.device_name = self._root.device_name
+        self.device_type = self._root.device_type
+        self.execution_device_type = self._root.execution_device_type
+        self.adapter_info = dict(self._root.adapter_info)
         self._levels: list[ICGNWGPU] = [self._root]
         self._reduction_edges: list[_ReductionEdge] = []
         self._seed_edges: dict[int, _SeedEdge] = {}

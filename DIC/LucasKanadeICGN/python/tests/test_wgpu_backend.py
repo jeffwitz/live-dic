@@ -38,6 +38,7 @@ from lucas_kanade_icgn.wgpu_backend import (
     _pyramid_dependency_mask,
     _reduce_half,
     _reference_arrays,
+    _select_adapter,
     _transfer_pyramid_seed,
     _validate_subgroup_probe,
     _validated_config,
@@ -45,6 +46,70 @@ from lucas_kanade_icgn.wgpu_backend import (
 
 
 class NativeReferenceTests(unittest.TestCase):
+    @staticmethod
+    def _adapter(kind: str, backend: str = "Vulkan") -> SimpleNamespace:
+        return SimpleNamespace(info={"adapter_type": kind, "backend_type": backend})
+
+    def test_explicit_device_selection_does_not_cross_device_types(self) -> None:
+        cpu = self._adapter("CPU")
+        gpu = self._adapter("IntegratedGPU")
+        for device_type, expected in (("auto", gpu), ("gpu", gpu), ("cpu", cpu)):
+            with self.subTest(device_type=device_type):
+                self.assertIs(
+                    _select_adapter(
+                        [cpu, gpu], device_type=device_type, power_preference="high-performance"
+                    ),
+                    expected,
+                )
+        for adapters, device_type in (([gpu], "cpu"), ([cpu], "gpu"), ([], "auto")):
+            with self.subTest(device_type=device_type), self.assertRaises(ICGNError):
+                _select_adapter(
+                    adapters, device_type=device_type, power_preference="high-performance"
+                )
+
+    def test_automatic_selection_uses_software_only_without_hardware(self) -> None:
+        cpu = self._adapter("CPU")
+        metal = self._adapter("IntegratedGPU", "Metal")
+        self.assertIs(
+            _select_adapter([cpu], device_type="auto", power_preference="high-performance"), cpu
+        )
+        self.assertIs(
+            _select_adapter([cpu, metal], device_type="auto", power_preference="high-performance"),
+            metal,
+        )
+
+    def test_adapter_selection_prefers_vulkan_and_honours_power_within_backend(self) -> None:
+        integrated = self._adapter("IntegratedGPU")
+        discrete = self._adapter("DiscreteGPU")
+        opengl = self._adapter("DiscreteGPU", "OpenGL")
+        for preference, expected in (("high-performance", discrete), ("low-power", integrated)):
+            with self.subTest(preference=preference):
+                self.assertIs(
+                    _select_adapter(
+                        [opengl, integrated, discrete],
+                        device_type="gpu",
+                        power_preference=preference,
+                    ),
+                    expected,
+                )
+        software_gl = self._adapter("CPU", "OpenGL")
+        software_vk = self._adapter("CPU")
+        self.assertIs(
+            _select_adapter(
+                [software_gl, software_vk], device_type="cpu", power_preference="high-performance"
+            ),
+            software_vk,
+        )
+
+    def test_invalid_device_type_is_rejected_before_gpu_initialization(self) -> None:
+        for engine_type in (ICGNWGPU, ICGNWGPUFullPyramid):
+            for value in ("cuda", "", None, 1):
+                with (
+                    self.subTest(engine=engine_type, value=value),
+                    self.assertRaisesRegex(ValueError, "device_type"),
+                ):
+                    engine_type(device_type=value)
+
     @staticmethod
     def _autotune_stub(
         *,

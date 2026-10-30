@@ -45,6 +45,12 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--warmups", type=int, default=3)
     parser.add_argument("--campaigns", type=int, default=1)
     parser.add_argument(
+        "--device-type",
+        choices=("auto", "gpu", "cpu"),
+        default="auto",
+        help="native adapter type; cpu requires an installed software WebGPU driver",
+    )
+    parser.add_argument(
         "--pipeline-depth",
         type=int,
         default=1,
@@ -107,6 +113,10 @@ def _arguments() -> argparse.Namespace:
     if args.pipeline_depth < 1:
         parser.error("--pipeline-depth must be positive")
     args.backends = tuple(args.backends or DEFAULT_BACKENDS)
+    if args.device_type != "auto" and any(
+        backend != "native-pyramid" for backend in args.backends
+    ):
+        parser.error("--device-type requires --backend native-pyramid")
     if args.pipeline_depth > 1 and any(
         backend != "native-pyramid" for backend in args.backends
     ):
@@ -157,9 +167,11 @@ def _engine(
     subset_stride: int | None,
     spatial_weighting: str,
     gaussian_sigma: float | None,
+    device_type: str = "auto",
 ) -> AbstractContextManager[Any]:
     if backend == "native-pyramid":
         return ICGNWGPUFullPyramid(
+            device_type=device_type,
             pyramid_levels=pyramid_levels,
             interpolation=interpolation,
             motion_model=motion_model,
@@ -333,6 +345,7 @@ def main() -> int:
             subset_stride=args.subset_stride,
             spatial_weighting=args.spatial_weighting,
             gaussian_sigma=args.gaussian_sigma,
+            device_type=args.device_type,
         ) as engine:
             preparation = engine.set_reference(reference)
             campaigns = [
@@ -348,6 +361,9 @@ def main() -> int:
             ]
             measurements[backend] = {
                 "device": preparation.device,
+                "execution_device_type": getattr(
+                    engine, "execution_device_type", "browser"
+                ),
                 "preparation_ms": preparation.total_wall_ms,
                 **_aggregate_campaigns(campaigns),
             }
@@ -378,6 +394,7 @@ def main() -> int:
                     else 0.25 * args.subset_size
                 ),
                 "pipeline_depth": args.pipeline_depth,
+                "device_type": args.device_type,
                 "campaigns": args.campaigns,
                 "measurements": measurements,
             },
