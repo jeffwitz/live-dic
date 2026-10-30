@@ -485,6 +485,18 @@ meets this age criterion. These cumulative-motion campaigns do not replace
 the earlier small-motion results or establish performance non-regression.
 No defaults were changed.
 
+A subsequent same-workload regression control on the original native UHD
+frame 40 measures 12.55--13.10 ms before temporal changes, 12.42--12.44 ms
+in current zero mode, and 12.53--12.74 ms with temporal initialization
+(two repetitions, same median policy and two levels, no ROI). These controls
+show no general slowdown. The longer sequence also exhibits substantial
+timing drift, including on an unchanged image; sampled controls observe GPU
+power limiting. A single cause has not been isolated. See the
+`controlled diagnostic and raw evidence
+<https://github.com/jeffwitz/live-dic/blob/main/DIC/LucasKanadeICGN/benchmarks/results/temporal-init-20261030/performance-diagnostic.md>`_.
+Repeated-image controls do not replace ordered-sequence quality or latency
+qualification, and the 16.62 ms sequence median is not a universal engine speed.
+
 :download:`Raw report <../../benchmarks/results/temporal-init-20261030/report.json>`
 and :download:`per-frame metrics <../../benchmarks/results/temporal-init-20261030/metrics.csv>`
 include both fixed and own populations, rejected counts, all timing samples,

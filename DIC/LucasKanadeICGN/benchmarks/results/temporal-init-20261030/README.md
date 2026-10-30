@@ -4,6 +4,12 @@ Every target runs the entire selected pyramid. The previous accepted fine
 field is projected onto the next target's coarsest grid; no conditional retry
 or reference update is performed. Initialization remains opt-in.
 
+The 16.62 ms tensile result is not a replacement for earlier small-motion
+timings. The subsequent [same-workload diagnostic](performance-diagnostic.md)
+remeasures the pre-temporal code, current zero mode and current temporal mode
+on the same native-UHD frame: all remain around 12.4–13.1 ms. It also records
+long-sequence variability and observed GPU power limits.
+
 ## Reproduce
 
 From the repository root, with the package installed:
