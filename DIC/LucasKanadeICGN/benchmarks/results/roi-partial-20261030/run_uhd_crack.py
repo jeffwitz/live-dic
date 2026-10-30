@@ -10,8 +10,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-import lucas_kanade_icgn
 import numpy as np
+
+import lucas_kanade_icgn
 from lucas_kanade_icgn import ICGNWGPU
 
 root = Path(__file__).resolve().parents[3]

@@ -13,8 +13,9 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from lucas_kanade_icgn import ICGNWGPU, ICGNWebGL, RegistrationResult
 from PIL import Image
+
+from lucas_kanade_icgn import ICGNWGPU, ICGNWebGL, RegistrationResult
 
 
 def _arguments() -> argparse.Namespace:

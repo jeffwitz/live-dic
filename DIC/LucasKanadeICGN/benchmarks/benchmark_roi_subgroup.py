@@ -8,8 +8,9 @@ import sys
 from importlib.metadata import version
 from pathlib import Path
 
-import lucas_kanade_icgn
 import numpy as np
+
+import lucas_kanade_icgn
 from benchmark_image_to_field import _fixtures, _measure
 from lucas_kanade_icgn import ICGNWGPU
 

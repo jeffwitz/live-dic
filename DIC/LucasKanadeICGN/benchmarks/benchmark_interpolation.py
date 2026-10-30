@@ -8,6 +8,7 @@ import time
 from typing import Any
 
 import numpy as np
+
 from lucas_kanade_icgn import ICGNWGPU, ICGNWebGL, ICGNWGPUFullPyramid
 
 

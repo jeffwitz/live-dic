@@ -9,8 +9,9 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from lucas_kanade_icgn import ICGNWGPU, ICGNWGPUFullPyramid
 from PIL import Image
+
+from lucas_kanade_icgn import ICGNWGPU, ICGNWGPUFullPyramid
 
 TRUTH = (4.0, -2.0)
 

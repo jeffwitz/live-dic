@@ -141,3 +141,13 @@ jobs:
           -s DIC/LucasKanadeICGN/python/tests
           -p test_plate_hole.py
           -v
+
+      - name: Run temporal pyramid regressions on lavapipe
+        env:
+          ICGN_RUN_GPU_TESTS: "1"
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: >-
+          python -m unittest discover
+          -s DIC/LucasKanadeICGN/python/tests
+          -p test_temporal_init.py
+          -v

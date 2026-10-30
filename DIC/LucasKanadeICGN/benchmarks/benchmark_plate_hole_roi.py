@@ -17,10 +17,11 @@ import sys
 import time
 from pathlib import Path
 
-import lucas_kanade_icgn
 import numpy as np
-from lucas_kanade_icgn import ICGNWGPUFullPyramid
 from PIL import Image
+
+import lucas_kanade_icgn
+from lucas_kanade_icgn import ICGNWGPUFullPyramid
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "python/tests"))

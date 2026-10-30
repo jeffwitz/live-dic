@@ -22,8 +22,9 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from lucas_kanade_icgn import ICGNWebGL, ICGNWGPUFullPyramid
 from PIL import Image
+
+from lucas_kanade_icgn import ICGNWebGL, ICGNWGPUFullPyramid
 
 DEFAULT_BACKENDS = ("native-pyramid", "webgpu-wgsl", "three-tsl")
 TARGET_FIXTURES = (

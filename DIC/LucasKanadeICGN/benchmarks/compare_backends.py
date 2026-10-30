@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+
 from lucas_kanade_icgn import ICGNWebGL
 
 

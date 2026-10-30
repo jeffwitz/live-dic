@@ -1,0 +1,14 @@
+# Use identical benchmark rules whether invoked from the repository or python/.
+extend = "../python/pyproject.toml"
+
+[lint.isort]
+known-first-party = ["lucas_kanade_icgn"]
+
+[lint.per-file-ignores]
+# These scripts intentionally add the checkout's independent fixture helpers
+# to sys.path before importing them. They do not ship in the runtime package.
+"benchmark_plate_hole_roi.py" = ["E402"]
+"plot_plate_hole_roi.py" = ["E402"]
+"benchmark_temporal_init.py" = ["E402"]
+"results/roi-partial-20261030/run_uhd_crack.py" = ["E402"]
+"results/temporal-init-20261030/verify_default_parity.py" = ["E402"]
