@@ -372,6 +372,17 @@ reports sequence period separately from result latency.
 
 ## Documentation
 
+Select `device_type="cpu"` on either native engine to run the same WGSL on an
+installed software adapter, or `"gpu"` to require hardware. The `"auto"`
+default prefers hardware. See [CPU execution](./docs/how-to/run-on-cpu.rst).
+
+Engineers discovering GPU programming can start with the
+[WebGPU introduction](./docs/explanation/webgpu-fundamentals.rst), then run
+the [first kernel tutorial](./docs/tutorials/first-gpu-kernel.rst).
+The [GPU vocabulary](./docs/reference/gpu-vocabulary.rst) explains the terms;
+the [optimization guide](./docs/how-to/optimize-webgpu.rst) connects them to
+efficient kernel development and numerical qualification.
+
 The Sphinx documentation follows the Diátaxis structure and focuses on using
 the Python implementation for real-time DIC. It starts at
 [`docs/index.rst`](./docs/index.rst) and includes tutorials, operational

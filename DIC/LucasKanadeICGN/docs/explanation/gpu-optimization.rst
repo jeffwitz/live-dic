@@ -1,6 +1,11 @@
 GPU tiling and grouping strategies
 ==================================
 
+If these terms are new to you, start with :doc:`webgpu-fundamentals` and
+:doc:`../tutorials/first-gpu-kernel`. This page specifies the current live-dic
+mapping. :doc:`../how-to/optimize-webgpu` explains how to choose and measure
+such strategies, and :doc:`../reference/gpu-vocabulary` defines the terms.
+
 All active backends evaluate the same selected IC-GN motion model, but WebGPU and WebGL2
 offer different synchronization models. This page distinguishes three notions
 that older descriptions sometimes conflated: the configurable *numerical subset*,
@@ -53,8 +58,9 @@ compatibility while reducing arithmetic inside each iteration.
 Common numerical tile
 ---------------------
 
-One output grid point owns one square reference subset and one six-parameter
-affine warp. With the qualified default size 16, the target value at each of the 256 pixels is
+One output grid point owns a square reference subset and a local model:
+two translation, six affine, or twelve quadratic parameters. The following
+example uses affine motion and size 16. The target value at each of the 256 pixels is
 reconstructed from a 4 x 4 neighbourhood of cubic B-spline coefficients. The
 direct ``cubic`` mode also uses 4 x 4 samples, while ``linear`` uses four. The
 reference image, gradients, inverse Hessian, ``J^T F``, and ``sum(J)`` are
@@ -232,9 +238,10 @@ portable shared WGSL. Native
 the complete portable and subgroup WGSL pipelines on a
 representative shifted frame, then retains the faster one. This matters
 because subgroup availability is a capability result, not a performance
-guarantee. On the validation Intel driver the native WGSL subgroup pipeline
-was slower, while the Three.js WGSL subgroup pipeline remained the browser's
-faster implementation.
+guarantee. The native policy uses its own preparation-time measurements;
+separate campaigns can select different winners when the medians are close.
+The Three.js optimization is independently qualified and does not establish
+the performance of the native specialization. See :doc:`native-backend`.
 
 Shared WebGPU full pyramid: ordered GPU passes
 -----------------------------------------------

@@ -76,6 +76,13 @@ contract.
 Native single-scale and streaming engine
 ----------------------------------------
 
+Both native engines accept ``device_type="auto"`` (hardware preferred, CPU
+when no hardware is enumerated), ``"gpu"`` (hardware required), and ``"cpu"``
+(software CPU adapter required). ``execution_device_type`` and ``adapter_info``
+report the actual choice. Native result configuration includes ``deviceType``
+and ``executionDeviceType``. Selection is performed at construction and does
+not handle a device loss during a sequence. See :doc:`../how-to/run-on-cpu`.
+
 .. autoclass:: lucas_kanade_icgn.ICGNWGPU
    :members: set_reference, register, register_stream, register_many, close
 

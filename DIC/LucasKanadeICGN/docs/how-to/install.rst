@@ -12,6 +12,9 @@ The browser backends require:
 
 The optional native backend requires Python 3.11 or newer and a platform
 supported by ``wgpu-py``. It does not require Chromium.
+Both native engines accept ``device_type="cpu"`` when an installed software
+adapter is available. See :doc:`run-on-cpu` for driver requirements and
+explicit CPU/GPU selection.
 
 The package embeds GPU-IO, Three.js r186, the raw WebGPU adapter, all IC-GN
 shaders, and their headless pages. It does not require a repository checkout

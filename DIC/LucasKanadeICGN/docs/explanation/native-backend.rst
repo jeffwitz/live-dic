@@ -1,8 +1,18 @@
 Native WebGPU with wgpu-py
 ==========================
 
+New to GPU programming? :doc:`webgpu-fundamentals` explains wgpu-py, WGSL,
+device resources, and synchronization before this implementation-level tour.
+The runnable :doc:`../tutorials/first-gpu-kernel` shows the API objects in use.
+
 Why a native path exists
 ------------------------
+
+The native engines can execute on hardware GPU adapters or on a software CPU
+adapter using the same WGSL. Select ``device_type="cpu"`` or ``"gpu"``
+explicitly; the default ``"auto"`` prefers enumerated hardware. See
+:doc:`../how-to/run-on-cpu` for the selection contract, diagnostics, and
+software-driver requirements.
 
 DIC-RT is intended to be supervised from Python. When acquisition produces
 NumPy arrays and downstream code consumes NumPy fields, the GPU runtime should

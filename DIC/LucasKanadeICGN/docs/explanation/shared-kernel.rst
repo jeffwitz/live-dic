@@ -1,6 +1,11 @@
 Shared numerical kernel and adapter contract
 ============================================
 
+This is an implementation reference. For the meaning of shaders, pipelines,
+bind groups, and dispatches, first read :doc:`webgpu-fundamentals` and
+:doc:`../reference/gpu-vocabulary`. To change a kernel, follow
+:doc:`../how-to/optimize-webgpu`.
+
 The portable WebGPU path follows one rule: the IC-GN equations are defined
 once, while each host owns only resource allocation, transfers,
 dispatch, and result conversion. The canonical sources are
@@ -23,7 +28,7 @@ returns complete-state neighbour medians after a ``tx`` or ``ty`` trigger;
 solver state directly.
 
 Three.js remains the default *browser entry point* because its
-subgroup-specialized TSL solver is faster on the validation GPU and it supplies
+subgroup-specialized TSL solver is optimized for browser execution and it supplies
 the automatic WebGL2 fallback. The recommended native coarse-to-fine entry
 point is instead ``ICGNWGPUFullPyramid``. Three.js shares browser reference
 preparation and the same result contract, but keeps an optimized TSL

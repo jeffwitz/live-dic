@@ -14,6 +14,17 @@ in-process and do not start Chromium.
 
 ## Intended supervision model
 
+Both native engines accept `device_type="cpu"` for an installed software
+adapter, `"gpu"` for hardware only, or `"auto"` (the default) for hardware
+when available. See the [CPU guide](../docs/how-to/run-on-cpu.rst) for setup,
+diagnostics, and measured limitations.
+
+New to GPU programming? Start with the [engineering introduction](../docs/explanation/webgpu-fundamentals.rst),
+then the [runnable kernel tutorial](../docs/tutorials/first-gpu-kernel.rst).
+The [vocabulary reference](../docs/reference/gpu-vocabulary.rst) and
+[optimization guide](../docs/how-to/optimize-webgpu.rst) explain the GPU code
+without assuming graphics-programming experience.
+
 The package is primarily a Python-supervised numerical engine. A long-running
 Python application is expected to own acquisition integration, reference
 changes, algorithm configuration, bounded queues, timing, error handling, and

@@ -343,6 +343,16 @@ the optional compressed NumPy archive.
 
 ## Documentation
 
+The native engines support `device_type="auto"`, `"gpu"`, and `"cpu"`.
+The CPU mode executes the same WGSL through an installed software driver;
+see [CPU execution and selection](./DIC/LucasKanadeICGN/docs/how-to/run-on-cpu.rst).
+
+New to GPU computing? The [engineering introduction](./DIC/LucasKanadeICGN/docs/explanation/webgpu-fundamentals.rst)
+explains WebGPU, wgpu-py, WGSL shaders, memory transfers, and synchronization
+from first principles. Continue with the [runnable GPU tutorial](./DIC/LucasKanadeICGN/docs/tutorials/first-gpu-kernel.rst),
+[GPU vocabulary](./DIC/LucasKanadeICGN/docs/reference/gpu-vocabulary.rst), and
+[kernel optimization guide](./DIC/LucasKanadeICGN/docs/how-to/optimize-webgpu.rst).
+
 The documentation focuses exclusively on real-time DIC from Python. It contains
 tutorials, operational guides, API reference, the IC-GN formulation, timing
 boundaries, limitations, and scientific provenance.

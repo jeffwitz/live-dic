@@ -9,6 +9,10 @@ Python-supervised real-time DIC toward 4K60
    on which this Python real-time DIC implementation is built. The work
    documented here is a continuation of that foundation.
 
+New to GPU computing? Start with :doc:`explanation/webgpu-fundamentals`.
+It assumes Python and numerical arrays, explains the technologies and memory
+model, and leads to a runnable example, a glossary, and an optimization guide.
+
 .. important:: Primary product boundary: Python supervision
 
    DIC-RT is designed to run inside a long-lived Python measurement
@@ -90,6 +94,11 @@ latency of the deployed acquisition-to-result path.
 
 Choose the section that matches your task:
 
+* :doc:`explanation/webgpu-fundamentals` if GPU programming is new to you;
+* :doc:`tutorials/first-gpu-kernel` to run a small WGSL calculation from Python;
+* :doc:`how-to/optimize-webgpu` to develop and measure efficient kernels;
+* :doc:`how-to/run-on-cpu` to select a software CPU adapter explicitly;
+* :doc:`reference/gpu-vocabulary` for GPU terminology and source responsibilities;
 * :doc:`tutorials/first-registration` if you are using the package for the first
   time;
 * :doc:`tutorials/realtime-sequence` to build a persistent sequence loop;
@@ -142,6 +151,7 @@ path.
 
    tutorials/first-registration
    tutorials/realtime-sequence
+   tutorials/first-gpu-kernel
 
 .. toctree::
    :hidden:
@@ -152,6 +162,8 @@ path.
    how-to/process-live-frames
    how-to/benchmark
    how-to/export-results
+   how-to/optimize-webgpu
+   how-to/run-on-cpu
 
 .. toctree::
    :hidden:
@@ -161,12 +173,14 @@ path.
    reference/result-layout
    reference/command-line
    reference/performance
+   reference/gpu-vocabulary
 
 .. toctree::
    :hidden:
    :caption: Explanation
 
    explanation/pipeline
+   explanation/webgpu-fundamentals
    explanation/backend-selection
    explanation/supervision
    explanation/icgn
