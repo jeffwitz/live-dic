@@ -166,6 +166,7 @@ path.
    how-to/run-on-cpu
    how-to/use-roi
    how-to/use-partial-roi
+   how-to/compare-plate-hole-masks
 
 .. toctree::
    :hidden:

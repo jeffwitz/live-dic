@@ -1,0 +1,9 @@
+test_native_images_are_original_and_have_analytic_loads (test_plate_hole.PlateReferenceTests.test_native_images_are_original_and_have_analytic_loads) ... ok
+test_numpy_truth_matches_original_cpp_at_boundary_and_interior_points (test_plate_hole.PlateReferenceTests.test_numpy_truth_matches_original_cpp_at_boundary_and_interior_points) ... ok
+test_strain_matches_displacement_derivatives_independently (test_plate_hole.PlateReferenceTests.test_strain_matches_displacement_derivatives_independently) ... ok
+test_full_and_partial_plate_masks_on_the_actual_uhd_pair (test_plate_hole.UHDPlateRegressionTests.test_full_and_partial_plate_masks_on_the_actual_uhd_pair) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 5.189s
+
+OK

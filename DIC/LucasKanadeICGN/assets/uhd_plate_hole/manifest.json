@@ -1,0 +1,73 @@
+{
+  "width": 3840,
+  "height": 2160,
+  "source_repository": "/home/jeff/CNRS/Code/DIC_CODEC/DIC_FROM_H264",
+  "source_commit": "77267f92920ea8984533371cc6a62fef149ff6e2",
+  "source_dirty": false,
+  "images": [
+    {
+      "frame": 0,
+      "file": "reference.png",
+      "source_file": "experiments/decoded_control_filter/airy_plate_4k/results/raw_0.png",
+      "file_sha256": "26135118b554c5996443f07abd2a89273a344154338c4c7f428ab283f85f7192",
+      "primary_MPa": 0,
+      "secondary_MPa": 0
+    },
+    {
+      "frame": 95,
+      "file": "frame_095.png",
+      "source_file": "experiments/decoded_control_filter/airy_plate_4k/results/raw_95.png",
+      "file_sha256": "af0f4c09d2e9292beb4cbbabe01c6651a2e914c1b36b569a5861a8be431d3faf",
+      "primary_MPa": 250,
+      "secondary_MPa": 0
+    },
+    {
+      "frame": 225,
+      "file": "frame_225.png",
+      "source_file": "experiments/decoded_control_filter/airy_plate_4k/results/raw_225.png",
+      "file_sha256": "abe3693810e289b8a2029833011a0d59fdf7ff1ea975eea91b12dc5e708d2897",
+      "primary_MPa": 250,
+      "secondary_MPa": 80
+    }
+  ],
+  "geometry": {
+    "center_px": [
+      1920,
+      1080
+    ],
+    "hole_radius_px": 112,
+    "pixel_mm": 0.01,
+    "young_MPa": 210000,
+    "poisson": 0.3,
+    "plane_strain": true,
+    "outer_image_edges": "observation window in an infinite medium, not traction-free specimen edges"
+  },
+  "mask": "(x-1920)^2+(y-1080)^2 >= 112^2 at integer reference pixel centres; no additional erosion",
+  "source_files": {
+    "common.hpp": {
+      "source_file": "experiments/decoded_control_filter/airy_plate_4k/common.hpp",
+      "sha256": "f202e6d7327309fb03e81233b11f50aef6e3e22e2b89cb1dfb0cf5722c54d8aa"
+    },
+    "kirsch.hpp": {
+      "source_file": "experiments/decoded_control_filter/airy_plate/kirsch.hpp",
+      "sha256": "00cd33bc572d28c4966282ae0874d185a34669f444f6385169a9c7c60fc1b5bd"
+    },
+    "shape_change.hpp": {
+      "source_file": "experiments/decoded_control_filter/airy_plate/shape_change.hpp",
+      "sha256": "3f2241ac21e08d98bb70435d4875070af64182198de61709ad17b686930fce07"
+    },
+    "generate.cpp": {
+      "source_file": "experiments/decoded_control_filter/airy_plate_4k/generate.cpp",
+      "sha256": "8b034f1da5a19c18e4eeebe2be3bf80e58cee6ccfbbabaa4ef22ec741b7e793e"
+    }
+  },
+  "original_truth_csv_sha256": "7569b03746760ff5095934548ba9bf7199e3db25309f75399ab0f912230cf566",
+  "reference_port_check": {
+    "max_displacement_difference_px": 5.26488574958961e-16,
+    "max_strain_difference": 4.336808689942018e-19,
+    "max_vm_difference": 4.336808689942018e-19,
+    "samples": 16,
+    "compiler": "g++ -O2 -std=c++17 -I/usr/include/eigen3; original common.hpp; standalone validation only, no runtime compiler required"
+  },
+  "image_formation": "Original native-UHD seeded speckle; inverse cubic image warp, uint8 rounding, advected dark hole. No resizing, tiling, codec or added sensor noise."
+}

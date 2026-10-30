@@ -1,0 +1,131 @@
+{
+  "starting_commit": "032f8b353f33dbdb52490ac73d6c2a6d943cf168",
+  "tests": {
+    "intel_plate": {
+      "discovered": 4,
+      "seconds": 5.189,
+      "skipped": 0,
+      "status": "passed",
+      "log_sha256": "31c5751a187d143970007df25a2cf4fb3eace836a88d503df0a99c029d4e4411"
+    },
+    "lavapipe_plate": {
+      "discovered": 4,
+      "seconds": 6.825,
+      "skipped": 0,
+      "status": "passed",
+      "log_sha256": "539449bf02d11c85dbeaf771b8b249f6a9134ad356f63c03492bfa28791df2fc"
+    },
+    "portable_discovery": {
+      "discovered": 164,
+      "seconds": 1.116,
+      "skipped": 47,
+      "status": "passed",
+      "log_sha256": "4763cdcb7042d1c152f0c297bfd1263c74409da06dea3c4c72c64b10a350336a"
+    }
+  },
+  "source_hashes": {
+    "__init__.py": "8014ba4125ee1114de90e891599f09d1db1f04cc528d4811b2f4d52beb0b9bed",
+    "__main__.py": "935a1c1166b0c1ea35a82256345000bf2c73ded718d77773bc27a71ecce28f7d",
+    "cli.py": "b063b2d75a7952144b608a851b936a92cbf74cd8ba6c0667dc39837d122670a2",
+    "engine.py": "27d83051b99e053a6613f4e58c34d9a830fd39f5d403b270d33742c59daf50e8",
+    "full_pyramid_backend.py": "0f807462c8db2208d715089f753039b22b534834326e4eb935b4657195cacea7",
+    "interpolation.py": "f795f0282927c91624d13fbb9f4080115d4deb766f0f61fea24a27124d8978a9",
+    "motion.py": "e161f3b0fdfd7c3800fcae3e886a042a40479879f23949a9f8dfdde9a65bee54",
+    "outlier.py": "d0bcfd4e2ebc53e64374b0cb976debcafeb79bc94ca648fd9fe35b689968d126",
+    "partial.py": "2fc364d19db282ecdeefa97fb6a93a33322b2bf22a912a397b4985e4f8bde0f7",
+    "roi.py": "968a4ba212378e95f7bd74a74259e8a190b087cc6b42fc2d061088b34f321db3",
+    "shaders/full_pyramid.wgsl": "032645ad39423abd81308212ea0cb2deb3159f7581b45f5772bbe10491c26613",
+    "shaders/icgn.wgsl": "22cf135b0e929d1d88566e0d1b72fcb2df7b905a2bb02658c6a17de1cc5b577f",
+    "shaders/icgn_subgroup.wgsl": "3c35126b1d5e18690cfe882516dea2d112afa1b0ce9e06eefea4349b1547006e",
+    "shaders/subgroup_probe.wgsl": "6e4d149ed7f17969ede557a3062742d8da6c62cb6dd745d5510112c1489fed61",
+    "subset.py": "fcd5d06bab637cc1d352036bc3855b2bab88ca15d045fa97c15fc3eaaf12411f",
+    "weighting.py": "f25f7f3ac7bc2d0d313bffe6942b80315ca8e99c58325bda01c1a7b0e57f74a8",
+    "wgpu_backend.py": "56257203868e312f261df73eaf2aa90ea5e85d8d9e58794ee246fa150ed0f741"
+  },
+  "benchmark_sha256": "cc266146af8259d0cf8f58d874cf74fa9fa9b97cf451f2536ec9d70c2a292c43",
+  "truth_helper_sha256": "7e33e2bda4fc08d169fbe9a0d7b21159a1c7d3b844aaf70e1a640670a5ee3b07",
+  "plot_script_sha256": "b6cd180bb27fb765f92e7ce5bcb265cb58eb151a0029cfc804d526a40607ce0c",
+  "test_module_sha256": "9b6e794cde523145e63dd15656db3ac4aab2e0a97a37ab597476624439329c4d",
+  "adapter": {
+    "vendor": "Intel open-source Mesa driver",
+    "architecture": "",
+    "device": "Intel(R) Graphics (LNL)",
+    "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+    "stackgroup_min_size": 4,
+    "stackgroup_max_size": 128,
+    "vendor_id": 32902,
+    "device_id": 25760,
+    "adapter_type": "IntegratedGPU",
+    "backend_type": "Vulkan"
+  },
+  "figure_sha256": {
+    "boundary_bands_095.png": "46bcf962e5ff859295308d546e40a552c31ce3c83d937a463328ed717a4c4867",
+    "boundary_bands_225.png": "8503d727914d73cd40f5f2a5ea42cd86b3ef12bcd5fcb5b971d8f8322f656be0",
+    "von_mises_095.png": "5a24cdf00d803a588c84ae8d86b3250078ca10da5a1bc38f6d39a43b6e30a29b",
+    "von_mises_225.png": "2bdb6cf4f73a388859cf8836424e81b4b539daa7b8e395140754d2fd9721aef7",
+    "von_mises_errors_095.png": "733fcf53a6e989568fd7fd5793ecffd0e72348315684177f2f33f373616d423c",
+    "von_mises_errors_225.png": "0cb0446a55a18a6d230e4d8feb07bbbe4515387abf54ca17bec7377beb1d8cd5"
+  },
+  "resolution": [
+    3840,
+    2160
+  ],
+  "ci": "Workflow updated; remote CI not executed for these local changes.",
+  "validation": {
+    "numpy_reference": "Matches original source C++ at 16 archived points (both loads): max displacement difference 5.26488574958961e-16 px, max strain/VM difference 4.336808689942018e-19.",
+    "independent_physics": "Finite differences of the complex displacement agree with stress-derived strain on boundary-near and interior sample points.",
+    "data": "Three unchanged native-UHD PNGs copied from the source revision; file/provenance hashes checked offline.",
+    "numerical_assertion_scope": "UHD test: finite/excluded statuses, partial acceptance, fixed far-field coverage >=90% and displacement RMSE <0.05px. This does not qualify the added boundary strains.",
+    "raw_archives": "16 NPZ fields finite and readable with allow_pickle=False; configs JSON strict.",
+    "timing": "24 raw campaign quantiles verified; hardware adapter explicitly selected; changing three-frame inputs; depth 2; VM scoring/plotting excluded.",
+    "ruff_check": "passed",
+    "ruff_format": "passed",
+    "strict_sphinx": "passed",
+    "figures": "PNG renders inspected: raw/median VM for both load cases, signed error and boundary curves for frame 225; common limits and clipping annotations checked."
+  },
+  "methods": {
+    "motion_model": "affine",
+    "subset_size": 16,
+    "subset_stride": 16,
+    "interpolation": "bspline",
+    "pyramid_levels": 2,
+    "iterations_per_level": [
+      8,
+      16
+    ],
+    "filters": [
+      "disabled",
+      "median"
+    ],
+    "masks": [
+      "none",
+      "full",
+      "partial",
+      "visibility"
+    ],
+    "equivalent_strain": "(2/3)*sqrt(exx^2-exx*eyy+eyy^2+3*exy^2), ezz=0; direct affine derivatives"
+  },
+  "benchmark_environment": {
+    "python": "3.11.14",
+    "numpy": "2.4.6",
+    "wgpu": "0.32.0",
+    "Pillow": "13.0.0"
+  },
+  "plot_environment": {
+    "python": "3.12",
+    "matplotlib": "3.11.2",
+    "numpy": "2.5.4",
+    "backend": "Agg",
+    "runtime_dependency_changed": false
+  },
+  "notes": [
+    "The measurement's git_dirty field observes tracked files only. The new benchmark/truth helper were untracked at run time and are identified by their recorded hashes; runtime Python/WGSL matches the starting commit.",
+    "Added partial points are accepted but show large strain errors; no near-boundary strain-precision claim.",
+    "Own-support and fixed common-support metrics are both archived; missing/full-excluded points are not filled for plots.",
+    "The historical SYSCL strain reconstruction used a 5x5 displacement-regression operator and is not an apples-to-apples gradient comparator.",
+    "No material constants, analytical field or load enter DIC.",
+    "Only the original-source cross-check used a local C++ compiler; normal tests/analysis/installation do not compile code. No native binary added.",
+    "Native Python/WGSL package sources were not changed; Matplotlib is an optional plotting tool.",
+    "No Windows/macOS GPU execution was tested here."
+  ]
+}

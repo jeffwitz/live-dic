@@ -127,6 +127,10 @@ same interpolator, iteration schedule and postprocessing, and report complete
 and partial populations separately. See the UHD fractional-motion addendum in
 the qualification report linked below.
 
+For a native-UHD traction-free hole with analytical strain truth, see
+:doc:`compare-plate-hole-masks`. Its added partial points demonstrate why
+near-boundary strain must be qualified independently of correlation acceptance.
+
 Keep the live path resident
 ---------------------------
 

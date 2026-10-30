@@ -1,0 +1,86 @@
+{
+  "resolution": [
+    3840,
+    2160
+  ],
+  "coordinates": "reference, y down",
+  "view": "centre +/-320 px; computation remains full UHD",
+  "vm_scale_ue": [
+    0,
+    2355.7738177689657
+  ],
+  "signed_error_scale_ue": [
+    -2355.7738177689657,
+    2355.7738177689657
+  ],
+  "frames": {
+    "95": {
+      "disabled/none": {
+        "field_colour_clipped_percent": 2.4271844660194173,
+        "error_colour_clipped_percent": 1.5256588072122053
+      },
+      "disabled/full": {
+        "field_colour_clipped_percent": 1.056338028169014,
+        "error_colour_clipped_percent": 0.28169014084507044
+      },
+      "disabled/partial": {
+        "field_colour_clipped_percent": 2.4238227146814406,
+        "error_colour_clipped_percent": 1.3850415512465373
+      },
+      "disabled/visibility": {
+        "field_colour_clipped_percent": 2.4238227146814406,
+        "error_colour_clipped_percent": 1.3157894736842104
+      },
+      "median/none": {
+        "field_colour_clipped_percent": 0.34674063800277394,
+        "error_colour_clipped_percent": 0.06934812760055478
+      },
+      "median/full": {
+        "field_colour_clipped_percent": 0.14084507042253522,
+        "error_colour_clipped_percent": 0.0
+      },
+      "median/partial": {
+        "field_colour_clipped_percent": 0.2770083102493075,
+        "error_colour_clipped_percent": 0.0
+      },
+      "median/visibility": {
+        "field_colour_clipped_percent": 0.20775623268698062,
+        "error_colour_clipped_percent": 0.0
+      }
+    },
+    "225": {
+      "disabled/none": {
+        "field_colour_clipped_percent": 2.2869022869022873,
+        "error_colour_clipped_percent": 1.4553014553014554
+      },
+      "disabled/full": {
+        "field_colour_clipped_percent": 0.8450704225352111,
+        "error_colour_clipped_percent": 0.14084507042253522
+      },
+      "disabled/partial": {
+        "field_colour_clipped_percent": 2.285318559556787,
+        "error_colour_clipped_percent": 1.4542936288088644
+      },
+      "disabled/visibility": {
+        "field_colour_clipped_percent": 2.285318559556787,
+        "error_colour_clipped_percent": 1.4542936288088644
+      },
+      "median/none": {
+        "field_colour_clipped_percent": 0.2772002772002772,
+        "error_colour_clipped_percent": 0.0693000693000693
+      },
+      "median/full": {
+        "field_colour_clipped_percent": 0.0,
+        "error_colour_clipped_percent": 0.0
+      },
+      "median/partial": {
+        "field_colour_clipped_percent": 0.3462603878116343,
+        "error_colour_clipped_percent": 0.13850415512465375
+      },
+      "median/visibility": {
+        "field_colour_clipped_percent": 0.2770083102493075,
+        "error_colour_clipped_percent": 0.13850415512465375
+      }
+    }
+  }
+}
