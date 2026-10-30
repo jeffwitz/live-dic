@@ -158,7 +158,7 @@ class NativeTimingTests(unittest.TestCase):
         root = _engine(clock)
         slot = _RegistrationSlot(
             None,
-            {"filtered_state": object()},
+            {"state": object(), "filtered_state": object()},
             object(),
             _Readback(clock),
         )
@@ -166,6 +166,8 @@ class NativeTimingTests(unittest.TestCase):
         root._portable_solver = object()
         root._encode_registration_passes = lambda *args, **kwargs: clock.advance(4.0)
         encoder = SimpleNamespace(
+            clear_buffer=lambda *args: None,
+            begin_compute_pass=lambda: SimpleNamespace(end=lambda: None),
             copy_buffer_to_buffer=lambda *args: clock.advance(1.0),
             finish=lambda: object(),
         )
@@ -180,7 +182,7 @@ class NativeTimingTests(unittest.TestCase):
         engine.pyramid_levels = 1
         engine._wgpu = root._wgpu
         engine.device = device
-        engine._encode_reductions = lambda command_encoder, edges: None
+        engine._encode_reductions = lambda command_encoder, edges, **kwargs: None
         engine._full_slots = [_FullPyramidSlot((slot,), [], {})]
 
         with mock.patch("lucas_kanade_icgn.full_pyramid_backend.time.perf_counter", clock):

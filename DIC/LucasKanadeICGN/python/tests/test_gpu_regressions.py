@@ -244,7 +244,7 @@ class GPURegressionTests(unittest.TestCase):
         cls.runtime.close()
         cls.runtime.device.destroy()
 
-    def _gpu_reduce(self, image: np.ndarray) -> np.ndarray:
+    def _gpu_reduce(self, image: np.ndarray, *, fused: bool = True) -> np.ndarray:
         device, wgpu = self.runtime.device, self.runtime._wgpu
         height, width = image.shape
         reduced_height, reduced_width = height // 2, width // 2
@@ -284,15 +284,18 @@ class GPURegressionTests(unittest.TestCase):
             vertical = device.create_bind_group(
                 layout=self.runtime._reduce_y_layout,
                 entries=[
-                    {"binding": 0, "resource": intermediate.create_view()},
+                    {"binding": 0, "resource": (source if fused else intermediate).create_view()},
                     {"binding": 1, "resource": destination.create_view()},
                 ],
             )
             encoder = device.create_command_encoder(label="GPU reduction regression")
-            for pipeline, group, bind_group, dispatch_height in (
+            passes = (
                 (self.runtime._reduce_x_pipeline, 0, horizontal, height),
                 (self.runtime._reduce_y_pipeline, 1, vertical, reduced_height),
-            ):
+            )
+            if fused:
+                passes = ((self.runtime._reduce_fused_pipeline, 1, vertical, reduced_height),)
+            for pipeline, group, bind_group, dispatch_height in passes:
                 compute_pass = encoder.begin_compute_pass()
                 compute_pass.set_pipeline(pipeline)
                 compute_pass.set_bind_group(group, bind_group)
