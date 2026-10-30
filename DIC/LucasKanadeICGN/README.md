@@ -21,17 +21,17 @@ image-to-field boundary under Python control.
 The opt-in [temporal mode](./docs/how-to/use-temporal-initialization.rst)
 projects accepted fine history onto the coarsest grid before solving every
 level of every image. With the additional opt-in
-`temporal_fine_correction=True`, the latest native-UHD tensile campaign
-measures **76.17 FPS**, 13.17 ms median result age and 15.04 ms median
-campaign p95 with one slot. Per-run p95 ranges from 14.98 to 17.84 ms;
-**the 16.67 ms p95 target is not consistently met**. These are medians of
-three campaign statistics, from resident NumPy image to materialized NumPy
-field and statistics, using affine B-spline 16/16, two levels and explicit
-median smoothing on Intel LNL. At 10% stretch the fixed interior support
-retains 99.996% coverage with 0.0286 px displacement RMSE.
-The [matched campaign](./benchmarks/results/realtime-optimization-20261030/README.md)
-retains the old-code controls, all timing samples, whole-grid errors and
-two-slot result ages.
+`temporal_fine_correction=True`, velocity prediction and conservative finest-level
+stopping, the final native-UHD tensile profile measures **77.77 FPS**,
+12.76 ms median result age and **15.07–15.38 ms p95 across three runs** with
+one slot. These are resident NumPy image to materialized NumPy field and
+statistics, using affine B-spline 16/16, two fixed levels and explicit median
+smoothing on Intel LNL. Worst fixed-interior displacement RMSE is 0.0286 px
+with at least 99.985% coverage. Defaults remain unchanged.
+The [complete latency campaign](./benchmarks/results/latency-reduction-20261030/README.md)
+provides the exact opt-in configuration, per-run and pooled quantiles,
+whole-grid boundary failures and rejected prototypes. It passes a finite
+qualification, not a hard deadline for arbitrary system loads.
 
 Both native engines accept a boolean reference ROI with
 `set_reference(reference, roi_mask=mask)`. The default `full` policy retains

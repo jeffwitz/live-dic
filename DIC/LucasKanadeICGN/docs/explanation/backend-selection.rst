@@ -61,11 +61,15 @@ backend.
 Two different native pyramid strategies
 ---------------------------------------
 
-``ICGNWGPUFullPyramid`` executes every configured level for every frame.  It
+With its default fixed policy, ``ICGNWGPUFullPyramid`` executes every configured
+level for every frame. It
 uploads the finest target once, constructs reduced targets on the GPU,
 prefilters and solves from coarse to fine, transfers motion-model seeds on the GPU,
 and reads back only the final fine field.  Two levels with the ``(8, 16)``
 coarse-to-fine iteration ceilings are the current native recommendation.
+The optional native adaptive policy can omit the coarse solve, but fails
+the current tensile accuracy check and is not that recommendation. See
+:doc:`temporal-initialization` for latency experiments and their limits.
 
 ``ICGNWGPU(pyramid_levels=2 or 3)`` is older selective recovery.  It first
 runs the fine single-scale solve, detects failures on the host, constructs

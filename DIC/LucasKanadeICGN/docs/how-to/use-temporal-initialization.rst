@@ -25,17 +25,17 @@ Omit ``roi_mask`` when no ROI is needed. Translation, affine and quadratic
 models retain their existing domains; ROI remains limited to translation and
 affine. ``full`` and ``partial`` ROI supports are both respected.
 
-Every frame runs every configured scale
+Fixed policy runs every configured scale
 ------------------------------------------------------------
 
 The previous accepted fine-resolution motion is projected onto the coarsest
 grid. The coarsest solve then runs, followed by the normal coarse-to-fine
-solves. Temporal initialization never skips a pyramid level and does not add
+solves. The default fixed policy never skips a pyramid level and does not add
 a conditional retry. With one level, projection and solving use the fine grid.
 If no admissible history exists, a subset starts from zero. A first temporal
 frame therefore has the same numerical result as zero initialization.
 
-A thin ROI with no selected coarse windows still has no coarse seed route,
+In fixed mode, a thin ROI with no selected coarse windows still has no coarse seed route,
 even if fine history exists. Temporal initialization does not bypass the ROI
 or supply a second direct fine-level seed in that case.
 
@@ -76,8 +76,42 @@ translation and affine. Neither iteration ceilings nor tolerances are reduced.
 Compare timing and quality on the actual sequence: lower iteration counts do
 not guarantee a lower p95 result age on a shared or thermally limited machine.
 
-Try latency policies individually
-----------------------------------
+Use the qualified fixed B-spline latency profile
+------------------------------------------------
+
+For the native-UHD affine tensile case, the final conservative profile passes
+the declared p95 and analytic-error gates in three runs. Keep one image in
+flight for low result age:
+
+.. code-block:: python
+
+   with ICGNWGPUFullPyramid(
+       initialization="temporal",
+       temporal_prediction="velocity",
+       temporal_fine_correction=True,
+       divergence_patience=3,
+       divergence_min_iterations=4,
+       pyramid_policy="fixed",
+       pyramid_levels=2,
+       interpolation="bspline",
+       motion_model="affine",
+       subset_size=16,
+       subset_stride=16,
+       outlier_policy="median",
+       device_type="gpu",
+   ) as engine:
+       engine.set_reference(reference)
+       for result in engine.register_stream(ordered_frames, pipeline_depth=1):
+           consume(result)
+
+This is an opt-in, machine-specific qualification, not a changed default or a
+guarantee for arbitrary motion/noise/system load. The same-seed audit finds no
+lost late convergence on the fixed interior support for this conservative
+setting. See :ref:`latency-reduction-profile` for timings, populations, rejected
+alternatives and the remaining boundary errors.
+
+Try experimental latency policies individually
+------------------------------------------------
 
 Keep the iteration ceilings, tolerances, support and spatial policy fixed
 while comparing these opt-in controls:
@@ -98,16 +132,26 @@ while comparing these opt-in controls:
        device_type="gpu",
    )
 
-This example enables experiments, not a new default configuration. Prediction
+This example enables experiments, not a new default configuration. The
+initial native-UHD campaign found that the acceptance-only adaptive policy can return
+accepted but inaccurate fields. Do not use it as a qualified replacement for
+the fixed pyramid on that trajectory. A numerical-only replay of the final
+runtime still fails the adaptive accuracy gates. The qualified profile keeps
+two fixed levels. Prediction
 uses two consecutive accepted raw estimates and falls back after a rejection
 or reset. In ``replace`` mode it also uses raw history, so it does not feed
 the spatially corrected output back into a predictor. Accepted wrong-basin
 solutions can still contaminate that history.
 
 Stagnation stopping saves iterations on some difficult windows but may also
-reject late convergence. Inspect coverage and errors, not only FPS. Status 0
-means either the normal iteration ceiling or early stopping; the configuration
+reject late convergence. Inspect coverage and errors, not only FPS. Raw status 0
+means either the normal iteration ceiling or early stopping; spatial policies
+retain their existing semantics. The configuration
 records which policy was enabled.
+It applies only to the finest solve. Coarse levels keep their complete
+configured iteration budgets so that the heuristic cannot prematurely cut
+the initialization supplied to finer windows. Earlier all-level prototypes
+are retained in the report as negative controls.
 
 Adaptive mode chooses one or two solved levels from the preceding result.
 All reference levels, pipelines, target slots and seed permissions are prepared

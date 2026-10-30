@@ -7,7 +7,7 @@ Often the change between successive images is much smaller. The native full
 pyramid can use its last accepted motion field as an initial estimate while
 continuing to measure every image against the original reference.
 
-The graph for every target is:
+With the default fixed pyramid policy, the graph for every target is:
 
 .. code-block:: text
 
@@ -35,7 +35,7 @@ reverse direction is subsequently used in the normal finer-level transfers.
 Only accepted historical states contribute. ROI source/destination selection
 and conservative cross-level link permissions are prepared once. A missing
 history never suppresses an otherwise selected destination: it starts at zero.
-All configured levels are solved, irrespective of temporal seed availability.
+All configured levels are solved in fixed mode, irrespective of temporal seed availability.
 This is neither selective recovery nor a second attempt after failure.
 
 Optional two-level coarse correction
@@ -130,6 +130,12 @@ heuristic, not a proof of divergence: a stalled window can later converge.
 The benchmark's untimed audit reruns the same image from the exact retained
 seed with stopping disabled and counts that loss. Its extra readbacks and
 solves are diagnostic only and never occur in the live engine.
+Stopping is restricted to the finest level. The initial all-level experiment
+showed why this distinction matters: a premature coarse stop can change the
+basin reached by several fine windows. Coarse fields are now verified bit for
+bit against the no-abort solve on the same target. The velocity path also
+aggregates prediction/update counters in workgroup memory before adding them
+to the global counters; this changes integer bookkeeping, not GN arithmetic.
 
 Adaptive mode uses the accepted-update and expiry counts already returned
 with the field. Both levels run after reset or a poor preceding result;

@@ -1,13 +1,16 @@
 Performance on the validation machine
 =====================================
 
-This page contains only measurements for the current kernels. Earlier campaign
-snapshots were removed because their filter layout, subgroup occupancy, or
-execution graph no longer describes the implementation. Re-run the documented
+This page distinguishes current qualified profiles from explicitly versioned
+prototype controls. Failed latency experiments are retained with their source
+snapshots, not presented as current fast configurations. Re-run the documented
 commands whenever a kernel, driver, browser, or timing boundary changes.
 
 The results are machine-specific regression references, not portable
 performance guarantees.
+
+For the 200-frame native-UHD tensile trajectory, see the
+:ref:`qualified one-slot latency profile <latency-reduction-profile>`.
 
 Current backend policy
 ----------------------
@@ -425,14 +428,106 @@ median fields, single-level cubic and two-level B-spline, and includes the
 full-UHD visibility case. Small-image oracle tests do not substitute for these
 qualification runs.
 
+.. _latency-reduction-profile:
+
+Qualified one-slot latency profile
+-----------------------------------
+
+The final ``latency-reduction-20261030`` control uses affine B-spline,
+uniform 16/16 subsets, explicit median, a fixed reference, two fixed levels,
+temporal initialization, velocity prediction, fine correction and
+``divergence_patience=3, divergence_min_iterations=4``. Stagnation stopping
+applies only at the finest level: both levels run on every image and coarse
+caps/tolerances remain intact. No ROI or stride reduction is used.
+
+Boundary: resident uint8 NumPy image to materialized NumPy field and statistics.
+Twenty targets warm the actual slots, history is reset, twenty targets restore
+history, then frames 20--199 are timed. Three alternating process runs use
+Intel LNL / Vulkan Mesa 25.2.8, wgpu-py 0.32.0, performance profile. The following
+central values are medians of campaign statistics; the p95 column retains
+the full range across the three runs.
+
+.. list-table:: Final B-spline profiles; all caps remain (8,16)
+   :header-rows: 1
+
+   * - Finest stopping
+     - Slots
+     - FPS
+     - Age median
+     - Per-run p95 range
+     - Pooled p95
+   * - Conservative: k=3, minimum 4
+     - 1
+     - 77.77
+     - 12.76 ms
+     - 15.07--15.38 ms
+     - 15.26 ms
+   * - Conservative: k=3, minimum 4
+     - 2
+     - 84.75
+     - 23.62 ms
+     - 27.04--27.12 ms
+     - 27.11 ms
+   * - Aggressive: k=1, minimum 2
+     - 1
+     - 81.05
+     - 12.10 ms
+     - 14.10--14.60 ms
+     - 14.28 ms
+
+Both one-slot profiles pass the predeclared finite timing and quality gates.
+Prefer the conservative profile. Its worst fixed-support displacement RMSE is
+0.028578 px, p95 error 0.053065 px, gradient-component RMSE 0.001446, and
+coverage 99.9851%. An untimed same-seed no-abort audit finds 46 lost late
+status-1 events outside the fixed support, **zero inside it**. The aggressive
+profile loses 2,011 potential late convergences inside that support and its
+worst coverage drops to 99.8477%.
+
+These are 26,924 fixed interior positions, not a claim that all accepted
+points are accurate. Whole-grid boundary/reflection failures remain: the
+conservative final-frame own-population displacement RMSE is about 2.58 px.
+All windows and their runtime costs are retained.
+
+The initial acceptance-only adaptive prototype maintained high acceptance but
+failed analytic errors; fixed and interpolation-only cubic controls also
+failed numerical gates. Neither replaces the B-spline recommendation. Early
+all-level stopping was restricted to the finest level after examining its
+effect on coarse seeds. A numerical-only replay of the final runtime still
+rejects adaptive mode (0.874 px worst displacement RMSE) and cubic alone
+(0.328 px). No new timing claim is made for those failed replays.
+All earlier failures and their exact source snapshots remain in
+the report, with per-run and pooled p95/p99, whole-grid errors and fine/coarse
+iteration means over all windows.
+
+.. figure:: ../../benchmarks/results/latency-reduction-20261030/quality-and-latency.png
+   :alt: Coverage, displacement and gradient errors, and every one-slot p95 sample
+
+   High acceptance does not certify accuracy. The final fixed B-spline profiles
+   satisfy both kinds of gate; the faster prototypes cannot be recommended on
+   timing alone. Different stages retain their own source snapshots.
+
+The isolated counter-aggregation control preserves quality, counters and final
+arrays bit for bit but does not demonstrate a reproducible one-slot speedup.
+System activity was not fully isolated: a post-counter-run sample found a
+busy printing service, not measured per frame or during the final control.
+This is a possible confounder, not a proven cause. The finite final campaign
+passes p95 <16.67 ms; it does not establish a universal hard deadline or a
+long-duration thermal guarantee. Defaults are unchanged.
+
+See :doc:`../how-to/use-temporal-initialization` for the opt-in call and
+:download:`the complete summary <../../benchmarks/results/latency-reduction-20261030/summary.json>`.
+The `campaign report and raw measurements
+<https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/latency-reduction-20261030>`_
+contain reproduction commands and all negative controls.
+
 Temporal initialization: cumulative native-UHD motion
 ------------------------------------------------------------
 
-The latest matched scheduling/correction campaign is summarized below.
+The earlier matched scheduling/correction campaign is summarized below.
 The earlier measurements following it explain the original slowdown report;
 their absolute timings should not be used to compute the new code's speedup.
 
-Latest matched native-UHD control
+Earlier scheduling control
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Three alternating process runs per variant replay the identical 200-frame

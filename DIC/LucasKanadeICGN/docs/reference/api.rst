@@ -131,7 +131,8 @@ three levels are opt-in for a larger expected displacement range.
 
 ``initialization="zero"`` preserves historical initialization.
 ``initialization="temporal"`` projects the previous accepted fine field onto
-the coarsest grid, then solves every level for every image. It also works with
+the coarsest grid, then solves every level for every image under the default
+fixed policy. It also works with
 one level. ``temporal_max_age`` is ``None`` or a nonnegative integer up to
 4294967294, counting consecutive rejected submitted frames. Both registration
 APIs share history and require chronological inputs. ``reset_temporal_state``
@@ -158,11 +159,15 @@ Additional native latency experiments are disabled by default:
   condition is restored. With velocity, history is raw even under ``replace``;
   filtered output and predictions are never stored as measurements.
 * ``divergence_patience=None|int``: ``None`` disables stagnation stopping.
-  An integer from 1 to 30 aborts a nonconverged window after that many
+  An integer from 1 to 30 aborts a nonconverged finest-level window after that many
   consecutive nondecreasing corner-update norms. Counting starts at
   ``divergence_min_iterations`` (default 4, also 1--30). Convergence on the
-  current iteration takes priority. An abort exports finite parameters with
-  status 0; it can discard a window that would converge later.
+  current iteration takes priority. An abort leaves finite parameters and raw
+  status 0; the chosen spatial policy then applies as usual. It can discard
+  a window that would converge later.
+  Coarser levels always retain their full configured solve: premature coarse
+  stopping can corrupt the seeds supplied to many fine windows. With one
+  level, that sole level is the finest level.
 * ``pyramid_policy="fixed"|"adaptive"``: adaptive requires temporal mode
   and a two-level prepared pyramid. After reset it solves both levels. A
   previous accepted-update fraction at least ``adaptive_acceptance``

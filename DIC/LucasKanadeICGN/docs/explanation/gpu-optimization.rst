@@ -246,6 +246,10 @@ the performance of the native specialization. See :doc:`native-backend`.
 Shared WebGPU full pyramid: ordered GPU passes
 -----------------------------------------------
 
+The fixed pyramid described here remains the recommendation. The optional
+native adaptive policy is a separate latency experiment; it does not change
+the default graph and fails the current tensile accuracy check.
+
 The native ``ICGNWGPUFullPyramid`` and raw browser ``webgpu-wgsl`` paths follow
 the established
 coarse-to-fine pyramidal LK organization exposed by `NVIDIA VPI
@@ -321,6 +325,34 @@ the UOD pass can therefore still use their accepted neighbours. Seed
 interpolation ignores unavailable coarse subsets. If none of the four coarse
 neighbours provides an estimate, the finer subset is still executed from a
 zero motion-model seed instead of being suppressed.
+
+Keep temporal counters local to a workgroup
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The opt-in velocity path uses diagnostics kernels with 256 invocations per
+workgroup, one per subset. This differs from the 16-lane IC-GN workgroup that
+cooperatively processes the pixels of one subset. Prediction and history
+update need integer counts, not a new floating-point reduction.
+
+Incrementing one global counter for every accepted subset creates many writes
+to the same address. The velocity path first counts in workgroup memory, then
+one lane adds that group's total to global memory. For 32,400 fine subsets,
+this reduces global increments to at most 127 per counter. It preserves exact
+integer counts and does not change the order of the GN floating-point sums.
+
+.. code-block:: text
+
+   initialize local counter -> barrier
+   each valid invocation copies/predicts its subset and increments local count
+   barrier -> one lane adds the local total to the global counter
+
+Unused invocations in the last group skip data accesses but still join both
+barriers. The per-subset helper can return early; the compute entry point must
+continue to the final barrier. Counts share the existing packed readback, so
+there is no extra CPU/GPU synchronization. Fewer global operations do not
+guarantee a faster kernel on every device: the isolated control preserves all
+arrays and counts but shows substantial timing variation. The complete final
+profile is qualified separately in :ref:`latency-reduction-profile`.
 
 Iteration limits are ceilings rather than fixed costs: each subset exits as
 soon as its corner-change and ZNCC criteria converge. The qualified defaults

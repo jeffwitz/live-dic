@@ -92,7 +92,7 @@ nine samples.  Boundary stencils use the valid samples that exist.
 Recentring preserves the meaning of a spatial polynomial: neighbour
 translations and first derivatives are transported to the current centre
 before their component medians are calculated.  The operation is applied at
-every pyramid level and the filtered coarse state seeds the next finer level.
+every executed pyramid level and the filtered coarse state seeds the next finer level.
 It leaves accepted/rejected status and iteration count unchanged; in
 particular, status 2 remains reserved for UOD detections from ``replace`` or
 ``flag``.

@@ -201,7 +201,8 @@ Select three levels explicitly when a larger displacement capture range is
 required.
 
 Reference preparation builds and retains the reference pixels, gradients,
-inverse Hessians, and metadata for every scale. For each target, the backend
+inverse Hessians, and metadata for every scale. With the default fixed policy,
+for each target the backend
 then records this graph into one WebGPU command buffer:
 
 .. code-block:: text
@@ -226,6 +227,13 @@ readback copies follow it. Dispatch ordering provides the dependencies while all
 coefficients, states, and transferred seeds remain on the same GPU. This avoids
 redundant pyramid construction inside each subset and keeps the numerical
 solver in the canonical ``icgn.wgsl`` file.
+
+Native temporal prediction and finest-level stagnation stopping are opt-in
+controls described in :doc:`temporal-initialization`. They add no intermediate
+readback. The qualified low-age profile retains both scales and complete
+coarse solves; its stopping rule applies only at the finest level. The
+acceptance-only adaptive experiment is a separate, currently unqualified
+policy. See :ref:`latency-reduction-profile` for numerical and timing gates.
 
 Iterations and tolerances are specified from coarse to fine. For example:
 

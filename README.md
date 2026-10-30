@@ -21,14 +21,17 @@ projects the last accepted fine field onto the next coarsest grid and still
 solves every pyramid level. An additional opt-in
 `temporal_fine_correction=True` preserves fine history while applying the
 change measured at the coarse level. On the 200-frame native-UHD tensile
-sequence up to 10% stretch, the latest three-repeat campaign measures
-**76.17 FPS with one slot**, from resident NumPy image to materialized NumPy
-field and statistics. The median result age is 13.17 ms; per-run p95 ranges
-from 14.98 to 17.84 ms, so **a consistent p95 below 16.67 ms is still open**.
-The final fixed interior support retains 99.996% coverage and 0.0286 px
-displacement RMSE. These are medians of campaign statistics on Intel LNL,
-with affine B-spline 16/16, two levels and explicit median smoothing.
-See the [matched performance controls and limits](./DIC/LucasKanadeICGN/benchmarks/results/realtime-optimization-20261030/README.md).
+sequence up to 10% stretch, the final opt-in profile additionally uses
+`temporal_prediction="velocity"` and conservative stopping at the finest level
+(`divergence_patience=3`, `divergence_min_iterations=4`). With affine B-spline
+16/16, two **fixed** levels and explicit median smoothing, it measures
+**77.77 FPS**, 12.76 ms median age and **15.07–15.38 ms p95 across three runs**
+with one slot, from resident NumPy image to materialized NumPy field and
+statistics on Intel LNL. Worst fixed-interior displacement RMSE is 0.0286 px,
+with at least 99.985% coverage. Defaults are unchanged.
+The [complete latency qualification](./DIC/LucasKanadeICGN/benchmarks/results/latency-reduction-20261030/README.md)
+retains the faster prototypes that failed accuracy, whole-grid boundary errors
+and system-load limits. This finite result is not a universal hard deadline.
 
 The browser backends remain important for WebGPU/WebGL2 portability, numerical
 cross-checks, and browser deployments. Their Python adapter is not the intended

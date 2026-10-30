@@ -62,7 +62,7 @@ remain single-scale.
 
 ``ICGNWGPUFullPyramid(initialization="temporal")`` projects the last accepted
 fine field onto the coarsest grid, then solves every configured level on every
-image. It is opt-in and also supports a single level. Other backends do not
+image under the default fixed policy. It is opt-in and also supports a single level. Other backends do not
 provide temporal initialization. Native full-pyramid constant-velocity
 prediction is opt-in; no backend provides other extrapolated initialization,
 Aitken acceleration, predictive tolerance, or automatic retry from the last
@@ -74,9 +74,12 @@ accepted wrong-basin solutions. See :doc:`temporal-initialization`.
 option. It preserves fine history while applying the measured coarse change,
 using the absolute seed if complete age-matched history is unavailable. It is
 not a motion predictor or a recovery guarantee. The native-UHD performance
-campaign exceeds 60 FPS in all three measured repeats, but one repeat still
+fine-correction-only campaign exceeds 60 FPS in all three measured repeats, but one repeat still
 exceeds 16.67 ms at p95 with one slot. Two slots improve throughput while
 increasing result age; neither mode establishes a hard real-time guarantee.
+The newer fixed B-spline profile with finest-only conservative stopping passes
+the three-run p95 gate; see :ref:`latency-reduction-profile`. That finite result
+does not remove system-load, hardware or thermal qualification limits.
 
 Native latency controls are experiments with explicit tradeoffs. Velocity
 assumes consecutive equal-time steps, stores raw measurements even under
@@ -88,6 +91,12 @@ mode. Default ``pyramid_policy="fixed"`` still solves every configured level.
 The latency campaign qualifies the affine native-UHD tensile case; it does not
 establish universal accuracy or hard real-time deadlines for other motions,
 hardware, noise levels, discontinuities or long-duration thermal loads.
+The initial acceptance-only adaptive prototype fails the analytic displacement and
+gradient criteria on the native-UHD tensile trajectory despite keeping a high
+accepted fraction. It remains experimental and is not recommended for this
+measurement. A numerical-only replay after restricting stopping to the finest
+level still reaches 0.874 px displacement RMSE and fails the gate. Cubic interpolation must also be evaluated independently of that
+failure; the report includes fixed-pyramid and interpolation-only controls.
 
 Runtime
 -------
