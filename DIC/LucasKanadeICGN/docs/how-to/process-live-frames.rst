@@ -77,9 +77,12 @@ overflow policy from the experiment requirements:
 * stop with an explicit error when dropping either data or latency would make
   the measurement invalid.
 
-The registration currently compares every target with a fixed reference, so
-dropping a target does not corrupt a temporal solver state. It does change the
-physical sampling times and must therefore be recorded.
+Registration compares every target with a fixed reference. With default zero
+initialization, targets have no motion-history dependency. With optional
+``ICGNWGPUFullPyramid(initialization="temporal")``, skipping frames increases
+the motion change from the last processed image and can exceed the local
+capture range. Keep processed targets chronological; record physical sampling
+times and dropped frames. See :doc:`use-temporal-initialization`.
 
 Refresh the reference deliberately
 ----------------------------------

@@ -15,6 +15,16 @@ parameter fields. For resident NumPy streams, the recommended production path
 is therefore `ICGNWGPUFullPyramid()`: it keeps WebGPU in-process and avoids a
 browser data-plane boundary.
 
+For cumulative motion, opt-in
+[`initialization="temporal"`](./DIC/LucasKanadeICGN/docs/how-to/use-temporal-initialization.rst)
+projects the last accepted fine field onto the next coarsest grid and still
+solves every pyramid level. In the 200-frame native-UHD tensile qualification
+up to 10% stretch, two levels retain 99.967% of the fixed interior support
+with 0.0284 px displacement RMSE. Their resident-NumPy-image to
+materialized-NumPy-field age is 16.62 ms median / 20.15 ms p95 with one slot:
+this hard affine sequence is **not** qualified below 16.67 ms at p95.
+See the [full campaign](./DIC/LucasKanadeICGN/benchmarks/results/temporal-init-20261030/README.md).
+
 The browser backends remain important for WebGPU/WebGL2 portability, numerical
 cross-checks, and browser deployments. Their Python adapter is not the intended
 4K60 data plane. Even with the new binary transport, every UHD target crosses
@@ -404,7 +414,8 @@ available from [`index.html`](./index.html).
 - Three.js/TSL and historical GPU-IO remain single-scale; the raw WGSL browser
   backend and native full-pyramid backend default to two levels and support
   three explicitly;
-- no temporal or extrapolated initialization;
+- opt-in temporal coarse-grid initialization in the native full pyramid;
+  no extrapolated initialization or constant-velocity prediction;
 - no Aitken acceleration or predictive-tolerance guard;
 - no camera, trigger, synchronization, or codec ownership;
 - binary loopback transfer between NumPy and the separate Chromium process;

@@ -120,7 +120,7 @@ Full-pyramid native engine
 --------------------------
 
 .. autoclass:: lucas_kanade_icgn.ICGNWGPUFullPyramid
-   :members: set_reference, register, register_stream, close
+   :members: set_reference, register, register_stream, reset_temporal_state, close
 
 This is the recommended native coarse-to-fine backend. It runs every configured
 scale for every target. Pyramid
@@ -128,6 +128,17 @@ reduction, polynomial seed transfer, and all IC-GN solves remain GPU-resident in
 command submission. Per-level iteration and tolerance tuples are ordered from
 coarse to fine. Two levels are the default and recommended native configuration;
 three levels are opt-in for a larger expected displacement range.
+
+``initialization="zero"`` preserves historical initialization.
+``initialization="temporal"`` projects the previous accepted fine field onto
+the coarsest grid, then solves every level for every image. It also works with
+one level. ``temporal_max_age`` is ``None`` or a nonnegative integer up to
+4294967294, counting consecutive rejected submitted frames. Both registration
+APIs share history and require chronological inputs. ``reset_temporal_state``
+clears history; replacing the reference also clears it. Neither operation
+should be called while a stream is suspended. See
+:doc:`../how-to/use-temporal-initialization` and
+:doc:`../explanation/temporal-initialization` for seed policy and diagnostics.
 
 ``interpolation`` applies to every pyramid level. ``linear`` and ``cubic``
 omit both FIR passes at every level; ``bspline`` retains the existing graph.

@@ -60,10 +60,15 @@ native pyramid. The raw ``webgpu-wgsl`` browser backend runs the same
 full-pyramid WGSL graph and defaults to two levels. Three.js/TSL and GPU-IO
 remain single-scale.
 
-No backend currently provides
-temporal initialization, extrapolated initial guesses, Aitken acceleration,
-predictive tolerance, or retry from the last accepted state. These features
-matter for larger, noisier, or faster motion.
+``ICGNWGPUFullPyramid(initialization="temporal")`` projects the last accepted
+fine field onto the coarsest grid, then solves every configured level on every
+image. It is opt-in and also supports a single level. Other backends do not
+provide temporal initialization. No backend provides constant-velocity or
+other extrapolated initialization, Aitken acceleration, predictive tolerance,
+or automatic retry from the last accepted state. Constant-velocity prediction
+is a possible follow-up, not part of this mode. Temporal history requires
+ordered inputs and cannot guarantee recovery after discontinuous motion or
+accepted wrong-basin solutions. See :doc:`temporal-initialization`.
 
 Runtime
 -------

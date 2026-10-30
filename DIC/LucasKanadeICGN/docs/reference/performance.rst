@@ -424,3 +424,70 @@ UHD speckle and a continuous analytic UHD texture. It distinguishes raw and
 median fields, single-level cubic and two-level B-spline, and includes the
 full-UHD visibility case. Small-image oracle tests do not substitute for these
 qualification runs.
+
+Temporal initialization: cumulative native-UHD motion
+------------------------------------------------------------
+
+The opt-in native full pyramid projects accepted fine history onto the next
+coarsest grid, then solves every scale. A 200-frame 3840 x 2160 tensile
+sequence reaches stretch 1.1 about (1920,1080). On a fixed 26,924-position
+interior support, the final temporal/two-level result retains 99.967% coverage,
+0.02838 px displacement RMSE and 0.001431 strain-component RMSE. Zero/two
+levels retains only 1.645%, with 63.37 px error among accepted estimates.
+Median smoothing is explicit; these gradient errors do not qualify raw fields.
+A black frame produces zero updates and recovers on the next normal frame.
+
+The following numbers are medians of three campaign statistics, on Intel
+Graphics LNL, Vulkan/Mesa 25.2.8, wgpu-py 0.32.0. Boundary: resident uint8 NumPy
+image to materialized NumPy field and statistics. Rendering, acquisition and
+truth scoring are excluded. B-spline, uniform weights, size/stride 16/16,
+explicit median policy and unchanged iteration ceilings are used throughout.
+
+.. list-table:: Temporal initialization, one streaming slot
+   :header-rows: 1
+   :widths: 30 10 15 15 15 15
+
+   * - Motion
+     - Levels
+     - FPS
+     - Age median
+     - Age p95
+     - Age p99
+   * - Tensile affine
+     - 1
+     - 66.99
+     - 15.13 ms
+     - 19.70 ms
+     - 22.12 ms
+   * - Tensile affine
+     - 2
+     - 59.92
+     - 16.62 ms
+     - 20.15 ms
+     - 21.65 ms
+   * - Pure translation
+     - 1
+     - 86.67
+     - 11.37 ms
+     - 14.14 ms
+     - 14.60 ms
+   * - Pure translation
+     - 2
+     - 86.76
+     - 11.37 ms
+     - 13.77 ms
+     - 14.13 ms
+
+Affine does not meet age p95 <16.67 ms. Translation/one level/one slot does
+in all three campaigns (11.01--14.81 ms); translation/two levels/one slot
+does not consistently do so (12.48--17.12 ms). No two-slot configuration
+meets this age criterion. These cumulative-motion campaigns do not replace
+the earlier small-motion results or establish performance non-regression.
+No defaults were changed.
+
+:download:`Raw report <../../benchmarks/results/temporal-init-20261030/report.json>`
+and :download:`per-frame metrics <../../benchmarks/results/temporal-init-20261030/metrics.csv>`
+include both fixed and own populations, rejected counts, all timing samples,
+preparation times, hardware and input hashes. The campaign README in the same
+directory provides the command, the complete two-slot table, image-formation
+error convention and limitations. See :doc:`../how-to/use-temporal-initialization`.

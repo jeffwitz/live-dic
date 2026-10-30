@@ -166,6 +166,7 @@ path.
    how-to/run-on-cpu
    how-to/use-roi
    how-to/use-partial-roi
+   how-to/use-temporal-initialization
    how-to/compare-plate-hole-masks
 
 .. toctree::
@@ -194,6 +195,7 @@ path.
    explanation/gpu-optimization
    explanation/shared-kernel
    explanation/native-backend
+   explanation/temporal-initialization
    explanation/realtime-performance
    explanation/limitations
    explanation/acknowledgements

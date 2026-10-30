@@ -18,6 +18,16 @@ consumes NumPy fields. The recommended resident-NumPy path is
 ``ICGNWGPUFullPyramid`` because it runs WebGPU in-process and keeps the complete
 image-to-field boundary under Python control.
 
+The opt-in [temporal mode](./docs/how-to/use-temporal-initialization.rst)
+projects accepted fine history onto the coarsest grid before solving every
+level of every image. On the 200-frame native-UHD tensile sequence up to
+10% stretch, two levels retain 99.967% of the fixed interior support with
+0.0284 px displacement RMSE. Resident NumPy image to materialized NumPy
+field age is 16.62 ms median / 20.15 ms p95 with one slot; this hard affine
+case does not meet the 16.67 ms p95 target.
+The [campaign](./benchmarks/results/temporal-init-20261030/README.md) also
+reports pure translations, one-level comparisons, two-slot ages and failures.
+
 Both native engines accept a boolean reference ROI with
 `set_reference(reference, roi_mask=mask)`. The default `full` policy retains
 only complete nominal windows, including checks for interior holes. The
@@ -231,8 +241,12 @@ above 29 ms. Slot depth is unrelated to image-pyramid depth.
 The remaining differences are platform constraints: the browser backends use
 single precision and do not expose the same register controls or queue model as
 SYCL/Level Zero. This version does not implement Aitken acceleration,
-predictive tolerance, temporal/extrapolated initialization, or the H.264
-pipeline. The low-latency ``ICGNWGPU`` engine retains optional selective image
+predictive tolerance, extrapolated initialization, or the H.264
+pipeline. The full pyramid supports opt-in
+[temporal initialization](./docs/how-to/use-temporal-initialization.rst):
+the previous accepted fine field seeds the next coarsest solve, and every
+configured level is still solved for every image. The low-latency
+``ICGNWGPU`` engine retains optional selective image
 recovery for compatibility: ``pyramid_levels=1`` is that class's unchanged
 single-scale default, while ``pyramid_levels=2`` retries only failed fine
 subsets from half-resolution seeds and preserves every previously accepted
