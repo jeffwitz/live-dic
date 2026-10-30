@@ -208,25 +208,28 @@ expensive image sampling without a new Python, JavaScript, or GPU submission.
 Portable shared-WGSL workgroup reduction
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The canonical portable solver always uses the 16-lane mapping. Three shared
-``vec4`` arrays hold the partial sums and a fixed reduction tree uses
-workgroup barriers between its four stages:
+The native portable solver supports 16- and 32-lane mappings; 16 remains the
+default. Three shared ``vec4`` arrays hold the partial sums and a binary
+reduction tree uses workgroup barriers between its stages:
 
 .. code-block:: text
 
    16 values  -> 8 pairs -> 4 pairs -> 2 pairs -> 1 sum
       offset      8          4          2          1
 
-   [0]+[8]   [0]+[4]    [0]+[2]    [0]+[1]    [0]
-   [1]+[9]   [1]+[5]    [1]+[3]       ...       |
-      ...       ...         ...                   v
-                                               lane 0
+   32 values  -> 16 pairs -> 8 -> 4 -> 2 -> 1 sum
+      offset       16        8    4    2
+
+Use ``solver_workgroup_size=32`` to split each subset's pixel samples across
+twice as many invocations. The browser shared-WGSL host keeps the default
+16-invocation pipeline unless it supplies another pipeline override.
 
 The canonical WGSL uses ``workgroupUniformLoad`` to make the shared status a
 provably uniform loop condition. A converged subset can therefore leave the
 iteration loop early while every barrier that is reached remains in uniform
 control flow. This path does not depend on a particular subgroup width and is
-executed unchanged by raw browser WebGPU and wgpu-py.
+executed by raw browser WebGPU with 16 invocations and by native wgpu-py with
+the selected 16- or 32-invocation mapping.
 
 Three.js selects the subgroup path only when the width probe permits it and the
 production-pipeline validation agrees. ``EngineInfo.subgroup_probe_width``,
@@ -330,7 +333,8 @@ Keep temporal counters local to a workgroup
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The opt-in velocity path uses diagnostics kernels with 256 invocations per
-workgroup, one per subset. This differs from the 16-lane IC-GN workgroup that
+workgroup, one per subset. This differs from the configurable IC-GN workgroup
+(16 lanes by default, optionally 32) that
 cooperatively processes the pixels of one subset. Prediction and history
 update need integer counts, not a new floating-point reduction.
 

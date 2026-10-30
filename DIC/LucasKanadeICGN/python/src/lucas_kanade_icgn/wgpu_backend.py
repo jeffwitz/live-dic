@@ -62,6 +62,18 @@ def _normalize_device_type(value: str) -> str:
     return value.strip().lower()
 
 
+def _normalize_solver_workgroup_size(value: int) -> int:
+    """Validate the portable solver's supported invocation counts."""
+
+    try:
+        size = operator.index(value)
+    except TypeError as error:
+        raise ValueError("solver_workgroup_size must be 16 or 32") from error
+    if isinstance(value, bool) or size not in (16, 32):
+        raise ValueError("solver_workgroup_size must be 16 or 32")
+    return size
+
+
 def _select_adapter(adapters: Iterable[Any], *, device_type: str, power_preference: str) -> Any:
     """Choose an enumerated adapter without silently crossing an explicit type.
 
@@ -774,7 +786,10 @@ class ICGNWGPU:
     17, 31, and 33; ``subset_stride`` independently selects the field spacing.
     ``spatial_weighting="gaussian"`` applies centred Gaussian integration with
     ``gaussian_sigma`` expressed in pixels. The subgroup WGSL path requires
-    size and stride 16 plus uniform integration.
+    size and stride 16 plus uniform integration. The portable solver accepts
+    ``solver_workgroup_size=16`` or ``32``. A 32-invocation portable solve
+    forces the portable path because the subgroup specialization is fixed at
+    16 invocations.
 
     ``device_type="auto"`` prefers hardware and uses an enumerated CPU software
     adapter only when no hardware adapter exists. ``"gpu"`` and ``"cpu"``
@@ -796,6 +811,7 @@ class ICGNWGPU:
         power_preference: str = "high-performance",
         device_type: str = "auto",
         prefer_subgroups: bool | None = None,
+        solver_workgroup_size: int = 16,
         pyramid_levels: int = DEFAULT_PYRAMID_LEVELS,
         interpolation: str = "bspline",
         motion_model: str = "affine",
@@ -821,6 +837,14 @@ class ICGNWGPU:
             gaussian_sigma,
             subset_size=self.subset_size,
         )
+        self.solver_workgroup_size = _normalize_solver_workgroup_size(solver_workgroup_size)
+        if self.solver_workgroup_size == 32:
+            if prefer_subgroups is True:
+                raise ValueError(
+                    "solver_workgroup_size=32 uses the portable solver and cannot be combined "
+                    "with prefer_subgroups=True"
+                )
+            prefer_subgroups = False
         subgroup_configuration_supported = (
             self.interpolation == "bspline"
             and self.motion_model == "affine"
@@ -958,6 +982,7 @@ class ICGNWGPU:
                 "constants": {
                     "INTERPOLATION_MODE": INTERPOLATION_PIPELINE_CONSTANTS[self.interpolation],
                     "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
+                    "SOLVER_WORKGROUP_SIZE": getattr(self, "solver_workgroup_size", 16),
                     "SUBSET_SIZE": self.subset_size,
                     "SUBSET_STRIDE": self.subset_stride,
                     "SPATIAL_WEIGHTING": SPATIAL_WEIGHTING_PIPELINE_CONSTANTS[
@@ -1069,6 +1094,7 @@ class ICGNWGPU:
         level.outlier_policy = getattr(self, "outlier_policy", "replace")
         level.subset_size = self.subset_size
         level.subset_stride = getattr(self, "subset_stride", self.subset_size)
+        level.solver_workgroup_size = getattr(self, "solver_workgroup_size", 16)
         level.spatial_weighting = getattr(self, "spatial_weighting", "uniform")
         level.gaussian_sigma = getattr(
             self,
@@ -1227,6 +1253,7 @@ class ICGNWGPU:
     def _solver_constants(self) -> dict:
         """Constants shared by portable fresh, seeded and partial solvers."""
         return {
+            "SOLVER_WORKGROUP_SIZE": getattr(self, "solver_workgroup_size", 16),
             "INTERPOLATION_MODE": INTERPOLATION_PIPELINE_CONSTANTS[
                 getattr(self, "interpolation", "bspline")
             ],
@@ -1263,6 +1290,7 @@ class ICGNWGPU:
             "ROI_ENABLED": int(roi_mode),
             "INTERPOLATION_MODE": INTERPOLATION_PIPELINE_CONSTANTS[interpolation],
             "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[motion_model],
+            "SOLVER_WORKGROUP_SIZE": getattr(self, "solver_workgroup_size", 16),
             "SUBSET_SIZE": self.subset_size,
             "SUBSET_STRIDE": getattr(self, "subset_stride", self.subset_size),
             "SPATIAL_WEIGHTING": SPATIAL_WEIGHTING_PIPELINE_CONSTANTS[
@@ -1302,6 +1330,7 @@ class ICGNWGPU:
             "PARTIAL_SUPPORT": 1,
             "INTERPOLATION_MODE": INTERPOLATION_PIPELINE_CONSTANTS[self.interpolation],
             "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
+            "SOLVER_WORKGROUP_SIZE": getattr(self, "solver_workgroup_size", 16),
             "SUBSET_SIZE": self.subset_size,
             "SUBSET_STRIDE": self.subset_stride,
             "SPATIAL_WEIGHTING": SPATIAL_WEIGHTING_PIPELINE_CONSTANTS[self.spatial_weighting],
@@ -1342,6 +1371,7 @@ class ICGNWGPU:
                 "ROI_ENABLED": 1,
                 "INTERPOLATION_MODE": INTERPOLATION_PIPELINE_CONSTANTS[self.interpolation],
                 "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
+                "SOLVER_WORKGROUP_SIZE": getattr(self, "solver_workgroup_size", 16),
                 "SUBSET_SIZE": self.subset_size,
                 "SUBSET_STRIDE": self.subset_stride,
                 "SPATIAL_WEIGHTING": SPATIAL_WEIGHTING_PIPELINE_CONSTANTS[self.spatial_weighting],
@@ -2005,6 +2035,7 @@ class ICGNWGPU:
                 "outlierPolicy": getattr(self, "outlier_policy", "replace"),
                 "subsetStride": self.subset_stride,
                 "spatialWeighting": getattr(self, "spatial_weighting", "uniform"),
+                "solverWorkgroupSize": getattr(self, "solver_workgroup_size", 16),
                 "gaussianSigma": getattr(
                     self,
                     "gaussian_sigma",
@@ -2142,6 +2173,7 @@ class ICGNWGPU:
             engine = ICGNWGPU(
                 device_type=self.device_type,
                 prefer_subgroups=False,
+                solver_workgroup_size=self.solver_workgroup_size,
                 pyramid_levels=1,
                 interpolation=self.interpolation,
                 motion_model=self.motion_model,
@@ -2320,6 +2352,7 @@ class ICGNWGPU:
                 "outlierPolicy": getattr(self, "outlier_policy", "replace"),
                 "subsetStride": subset_stride,
                 "spatialWeighting": getattr(self, "spatial_weighting", "uniform"),
+                "solverWorkgroupSize": getattr(self, "solver_workgroup_size", 16),
                 "gaussianSigma": getattr(
                     self,
                     "gaussian_sigma",
@@ -2427,6 +2460,7 @@ class ICGNWGPU:
                 "outlierPolicy": getattr(self, "outlier_policy", "replace"),
                 "subsetStride": subset_stride,
                 "spatialWeighting": getattr(self, "spatial_weighting", "uniform"),
+                "solverWorkgroupSize": getattr(self, "solver_workgroup_size", 16),
                 "gaussianSigma": getattr(
                     self,
                     "gaussian_sigma",

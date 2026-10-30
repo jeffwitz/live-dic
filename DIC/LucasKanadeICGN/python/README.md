@@ -366,6 +366,16 @@ with ICGNWGPU(prefer_subgroups=False) as engine:
         consume(result)
 ```
 
+Both native engines also accept ``solver_workgroup_size=32`` to distribute
+each subset across 32 portable WGSL invocations. The default remains 16. A
+32-invocation request forces the portable solver and cannot be combined with
+``prefer_subgroups=True``; that separate shader is specialized for 16
+invocations. The selected size is available as
+``engine.solver_workgroup_size`` and in ``ReferenceInfo.config`` as
+``solverWorkgroupSize``. See the :doc:`native performance comparison
+<../docs/reference/performance>` for UHD results on the RTX 3080 Laptop and
+Intel UHD adapters.
+
 The sequence APIs keep at most two images in flight by default. This is an
 execution pipeline, not an image pyramid. Results are yielded in input order.
 The default improves throughput but adds approximately one processed frame of latency.

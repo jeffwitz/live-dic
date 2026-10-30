@@ -101,9 +101,10 @@ to 30 IC-GN iterations inside
 one compute dispatch and fills the measured subgroup when available (32 lanes
 on the validation GPU); its portable fallback uses 16 lanes. GPU-IO fuses the
 same iteration loop into one fragment per subset and scans the selected square
-serially. Raw browser WebGPU and native wgpu-py load the same WGSL solver, with
-one 16-lane workgroup per subset and the same fused iteration structure. In
-every case, converged or rejected subsets stop expensive target sampling. A
+serially. Raw browser WebGPU and native wgpu-py load the same WGSL solver and
+fused iteration structure. Native callers can select 16 or 32 portable lanes;
+the browser host uses 16. In every case, converged or rejected subsets stop
+expensive target sampling. A
 final GPU pass detects spatial outliers and can replace them with neighbor
 medians. :doc:`gpu-optimization` describes the GPU mappings,
 :doc:`shared-kernel` defines the common numerical contract, and

@@ -103,9 +103,9 @@ conflated:
   the centre-to-centre stride to create an overlapping field;
 * the shared-WGSL FIR uses 32 x 8 horizontal and 8 x 32 vertical output
   tiles, each executed by 256 threads;
-* the portable IC-GN solver uses one 16-lane workgroup per subset, while the
-  specialized Three.js path fills the measured hardware subgroup (32 lanes on
-  the validation GPU).
+* the portable native IC-GN solver uses one configurable 16- or 32-lane
+  workgroup per subset (16 by default), while the specialized Three.js path
+  fills the measured hardware subgroup (32 lanes on the validation GPU).
 
 The full-pyramid reduction passes use 16 x 16 dispatch groups, and polynomial seed
 transfer and displacement UOD use 256-thread one-dimensional groups. These

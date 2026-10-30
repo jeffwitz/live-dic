@@ -100,10 +100,13 @@ fn divergence_status(change: f32, count: u32, status: f32,
     *previous = change;
     return select(status, 3.0, *stalled >= DIVERGENCE_PATIENCE);
 }
+// Number of invocations sharing one subset solve. The portable kernels support
+// 16 or 32 so the solver can match or fill the hardware subgroup width.
+override SOLVER_WORKGROUP_SIZE: u32 = 16u;
 
-var<workgroup> partial_a: array<vec4<f32>, 16>;
-var<workgroup> partial_b: array<vec4<f32>, 16>;
-var<workgroup> partial_c: array<vec4<f32>, 16>;
+var<workgroup> partial_a: array<vec4<f32>, SOLVER_WORKGROUP_SIZE>;
+var<workgroup> partial_b: array<vec4<f32>, SOLVER_WORKGROUP_SIZE>;
+var<workgroup> partial_c: array<vec4<f32>, SOLVER_WORKGROUP_SIZE>;
 var<workgroup> quadratic_base_totals: array<vec4<f32>, 3>;
 var<workgroup> shared_translation: vec2<f32>;
 var<workgroup> shared_linear: vec4<f32>;
@@ -695,10 +698,13 @@ fn solve_subset(
                 sum_j_quadratic[component] = 0.0;
             }
         }
-        // Sixteen lanes cover every square size. For 16x16 this is the same
-        // per-lane column traversal as the original specialized kernel.
+        // Distribute the flattened subset pixels across the selected number of lanes.
         let subset_pixels = SUBSET_SIZE * SUBSET_SIZE;
-        for (var pixel = i32(lane); pixel < subset_pixels; pixel = pixel + 16) {
+        for (
+            var pixel = i32(lane);
+            pixel < subset_pixels;
+            pixel = pixel + i32(SOLVER_WORKGROUP_SIZE)
+        ) {
             if PARTIAL_SUPPORT != 0u {
                 let bit = (partial_support_words[u32(pixel) / 32u] >> (u32(pixel) % 32u)) & 1u;
                 if bit == 0u {
@@ -769,7 +775,7 @@ fn solve_subset(
         partial_c[lane] = vec4<f32>(sum_j_current[5], 0.0, 0.0, 0.0);
         workgroupBarrier();
 
-        var stride = 8u;
+        var stride = SOLVER_WORKGROUP_SIZE / 2u;
         loop {
             if lane < stride {
                 partial_a[lane] = partial_a[lane] + partial_a[lane + stride];
@@ -800,7 +806,7 @@ fn solve_subset(
                 sum_j_quadratic[4], sum_j_quadratic[5], 0.0, 0.0,
             );
             workgroupBarrier();
-            var quadratic_stride = 8u;
+            var quadratic_stride = SOLVER_WORKGROUP_SIZE / 2u;
             loop {
                 if lane < quadratic_stride {
                     partial_a[lane] += partial_a[lane + quadratic_stride];
@@ -942,7 +948,7 @@ fn solve_subset(
     }
 }
 
-@compute @workgroup_size(16)
+@compute @workgroup_size(SOLVER_WORKGROUP_SIZE)
 fn solve(
     @builtin(workgroup_id) workgroup_id: vec3<u32>,
     @builtin(local_invocation_id) local_id: vec3<u32>,
@@ -983,7 +989,7 @@ fn solve_from_seed(
     );
 }
 
-@compute @workgroup_size(16)
+@compute @workgroup_size(SOLVER_WORKGROUP_SIZE)
 fn solve_seeded(
     @builtin(workgroup_id) workgroup_id: vec3<u32>,
     @builtin(local_invocation_id) local_id: vec3<u32>,
@@ -992,7 +998,7 @@ fn solve_seeded(
     solve_from_seed(subset_index, local_id.x, false);
 }
 
-@compute @workgroup_size(16)
+@compute @workgroup_size(SOLVER_WORKGROUP_SIZE)
 fn retry_seeded(
     @builtin(workgroup_id) workgroup_id: vec3<u32>,
     @builtin(local_invocation_id) local_id: vec3<u32>,
@@ -1016,14 +1022,14 @@ fn load_partial_support(ordinal: u32, lane: u32) -> u32 {
     }
     let words = u32((SUBSET_SIZE * SUBSET_SIZE + 31) / 32);
     let offset = 32u + fir_weights.values[31u] + ordinal * words;
-    for (var word = lane; word < words; word += 16u) {
+    for (var word = lane; word < words; word += SOLVER_WORKGROUP_SIZE) {
         partial_support_words[word] = fir_weights.values[offset + word];
     }
     workgroupBarrier();
     return subset_index;
 }
 
-@compute @workgroup_size(16)
+@compute @workgroup_size(SOLVER_WORKGROUP_SIZE)
 fn solve_partial(@builtin(workgroup_id) group: vec3<u32>,
                  @builtin(local_invocation_id) local: vec3<u32>) {
     let index = load_partial_support(group.y * 65535u + group.x, local.x);
@@ -1032,7 +1038,7 @@ fn solve_partial(@builtin(workgroup_id) group: vec3<u32>,
         array<f32, 6>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0), true, false);
 }
 
-@compute @workgroup_size(16)
+@compute @workgroup_size(SOLVER_WORKGROUP_SIZE)
 fn solve_partial_seeded(@builtin(workgroup_id) group: vec3<u32>,
                         @builtin(local_invocation_id) local: vec3<u32>) {
     let index = load_partial_support(group.y * 65535u + group.x, local.x);
@@ -1040,7 +1046,7 @@ fn solve_partial_seeded(@builtin(workgroup_id) group: vec3<u32>,
     solve_from_seed(index, local.x, false);
 }
 
-@compute @workgroup_size(16)
+@compute @workgroup_size(SOLVER_WORKGROUP_SIZE)
 fn retry_partial_seeded(@builtin(workgroup_id) group: vec3<u32>,
                         @builtin(local_invocation_id) local: vec3<u32>) {
     let index = load_partial_support(group.y * 65535u + group.x, local.x);

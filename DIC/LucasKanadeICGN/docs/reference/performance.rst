@@ -119,6 +119,55 @@ campaigns after the binary transport change.
      - **39.666 / 44.002 ms**
      - **25.14 FPS**
 
+Portable native workgroup-size experiment
+-----------------------------------------
+
+The portable native solver can run with 16 or 32 invocations per subset.
+Sixteen remains the default. This experiment compared both values on the
+current RTX 3080 Laptop PC and its integrated Intel UHD Graphics adapter. It
+uses the same two-level affine full-pyramid engine and a fixed native-UHD
+tensile pair (``reference.png`` to ``frame_040.png``), decoded once into
+contiguous NumPy arrays. The reference was prepared once; after 30 warm-ups,
+each table cell summarizes 30 calls on the same target. Times include the
+complete resident-NumPy-image to materialized-field call.
+
+.. list-table:: Native UHD workgroup-size measurements on this PC
+   :header-rows: 1
+
+   * - Vulkan adapter
+     - 16 invocations, median / p95
+     - 32 invocations, median / p95
+     - Median change
+   * - NVIDIA GeForce RTX 3080 Laptop GPU, driver 595.99.02
+     - 11.31 / 12.53 ms
+     - **9.66 / 9.89 ms**
+     - **14.6% faster**
+   * - Intel UHD Graphics (Tiger Lake GT1), Mesa 26.0.8
+     - 55.41 / 59.03 ms
+     - **46.97 / 50.44 ms**
+     - **15.2% faster**
+
+Both widths accepted exactly 31,650 of 32,400 subsets and produced identical
+status maps on both adapters. The displacement-field RMSE between widths was
+``1.72e-5`` px on the RTX and ``1.98e-5`` px on the Intel UHD. Floating-point
+reduction order changed the iteration count for 42 RTX subsets and 55 Intel
+subsets, without changing acceptance status.
+
+The PC has an Intel Core i7-11800H, Ubuntu 26.04.1, and Linux 7.0.0-38. The
+measurements used Python 3.12.14, NumPy 2.5.4, and wgpu-py 0.32.0. NVIDIA
+sample times fell during the 30-call measurement, so the p95 retains the
+slower early samples; this is a machine-specific experiment, not a fixed-clock
+or cross-device guarantee. It is also a fixed-pair experiment, not the
+changing-frame campaign above.
+
+Select the width in Python with
+``ICGNWGPUFullPyramid(solver_workgroup_size=32)`` or
+``ICGNWGPU(solver_workgroup_size=32)``. The native default remains 16, and a
+32-invocation request selects the portable solver; the separate subgroup
+solver remains specialized for 16 invocations. The benchmark utility accepts
+``--workgroup-size 16`` or ``--workgroup-size 32`` for its synthetic UHD A/B
+runs.
+
 .. list-table:: Native displacement-UOD policy control
    :header-rows: 1
 
@@ -290,7 +339,8 @@ Kernel configuration represented by the results
 * Three.js FIR: a 16 x 16 output tile and all 31 coefficients;
 * Three.js solver: the measured 32-lane hardware subgroup, eight subset pixels
   per lane on the validation GPU;
-* portable shared-WGSL solver: one 16-lane workgroup per subset;
+* portable shared-WGSL solver: one 16- or 32-lane workgroup per subset in the
+  native engine (16 by default); browser WGSL uses 16 lanes;
 * full pyramid: GPU-resident five-tap reduction, per-level FIR coefficients,
   affine seed transfer, seeded solves, final UOD pass, and one packed
   readback.
