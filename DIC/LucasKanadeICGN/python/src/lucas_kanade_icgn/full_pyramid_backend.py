@@ -21,7 +21,7 @@ from typing import Any
 import numpy as np
 
 from .engine import ICGNError, ImageInput, ReferenceInfo, RegistrationResult, _as_uint8_gray
-from .interpolation import normalize_interpolation
+from .interpolation import INTERPOLATION_PIPELINE_CONSTANTS, normalize_interpolation
 from .motion import (
     MOTION_MODEL_PIPELINE_CONSTANTS,
     normalize_motion_model,
@@ -31,7 +31,11 @@ from .motion import (
 from .outlier import normalize_outlier_policy
 from .roi import reduce_mask, seed_permissions, validate_roi
 from .subset import DEFAULT_SUBSET_SIZE, normalize_subset_size, normalize_subset_stride
-from .weighting import normalize_gaussian_sigma, normalize_spatial_weighting
+from .weighting import (
+    SPATIAL_WEIGHTING_PIPELINE_CONSTANTS,
+    normalize_gaussian_sigma,
+    normalize_spatial_weighting,
+)
 from .wgpu_backend import (
     DEFAULT_IN_FLIGHT_FRAMES,
     ICGNWGPU,
@@ -57,10 +61,7 @@ class _ReductionEdge:
 
     destination_width: int
     destination_height: int
-    source_height: int
-    intermediate: Any
-    horizontal_bind_group: Any
-    vertical_bind_group: Any
+    bind_group: Any
 
 
 @dataclass(slots=True)
@@ -154,6 +155,10 @@ class ICGNWGPUFullPyramid:
     or reference replacement. ``temporal_max_age`` expires seeds after more
     than this many rejected frames; ``None`` keeps them until reset or success.
 
+    ``solver_workgroup_size=32`` is an optional portable reduction geometry.
+    It changes floating-point summation order, not the model, subset, iteration
+    limits or interpolation. Sixteen remains the compatibility default.
+
     ``device_type`` accepts ``"auto"``, ``"gpu"``, or ``"cpu"`` with the same
     initialization-time policy as :class:`ICGNWGPU`. All pyramid levels and
     streaming slots share the selected device, including CPU software
@@ -177,7 +182,15 @@ class ICGNWGPUFullPyramid:
         gaussian_sigma: float | None = None,
         initialization: str = "zero",
         temporal_max_age: int | None = None,
+        solver_workgroup_size: int = 16,
     ) -> None:
+        try:
+            lanes = operator.index(solver_workgroup_size)
+        except TypeError as error:
+            raise ValueError("solver_workgroup_size must be 16 or 32") from error
+        if isinstance(solver_workgroup_size, (bool, np.bool_)) or lanes not in (16, 32):
+            raise ValueError("solver_workgroup_size must be 16 or 32")
+        self.solver_workgroup_size = lanes
         if not isinstance(initialization, str) or initialization not in ("zero", "temporal"):
             raise ValueError("initialization must be 'zero' or 'temporal'")
         if temporal_max_age is not None:
@@ -228,8 +241,8 @@ class ICGNWGPUFullPyramid:
         ):
             _validated_config(iterations, tolerance, 0.8)
 
-        # The seeded solver currently uses the portable 16-lane workgroup
-        # kernel at every level.  Sharing one root engine also guarantees that
+        # Every level uses the portable workgroup kernel. Sharing one root
+        # engine also guarantees that
         # every level belongs to exactly the same wgpu device and queue.
         self._root = ICGNWGPU(
             power_preference=power_preference,
@@ -244,6 +257,28 @@ class ICGNWGPUFullPyramid:
             spatial_weighting=self.spatial_weighting,
             gaussian_sigma=self.gaussian_sigma,
         )
+        self._root._solver_lanes = lanes
+        if lanes != 16:
+            # Only the opt-in native full pyramid changes reduction geometry.
+            # The default and the standalone engine retain their old pipelines.
+            constants = {
+                "SOLVER_LANES": lanes,
+                "INTERPOLATION_MODE": INTERPOLATION_PIPELINE_CONSTANTS[self.interpolation],
+                "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
+                "SUBSET_SIZE": self.subset_size,
+                "SUBSET_STRIDE": self.subset_stride,
+                "SPATIAL_WEIGHTING": SPATIAL_WEIGHTING_PIPELINE_CONSTANTS[self.spatial_weighting],
+                "GAUSSIAN_SIGMA": self.gaussian_sigma,
+            }
+            pipeline = self._root.device.create_compute_pipeline(
+                layout=self._root._pipeline_layout,
+                compute={
+                    "module": self._root._shader,
+                    "entry_point": "solve",
+                    "constants": constants,
+                },
+            )
+            self._root._portable_solver = self._root._base_portable_solver = pipeline
         self._root._ensure_seeded_solver()
         self._wgpu = self._root._wgpu
         self.device = self._root.device
@@ -520,6 +555,10 @@ class ICGNWGPUFullPyramid:
             layout=reduce_y_pipeline_layout,
             compute={"module": shader, "entry_point": "reduce_y"},
         )
+        self._reduce_fused_pipeline = self.device.create_compute_pipeline(
+            layout=reduce_y_pipeline_layout,
+            compute={"module": shader, "entry_point": "reduce_fused"},
+        )
         self._seed_pipeline = self.device.create_compute_pipeline(
             layout=seed_pipeline_layout,
             compute={
@@ -551,8 +590,6 @@ class ICGNWGPUFullPyramid:
             if slot.temporal is not None:
                 slot.temporal.counts.destroy()
                 slot.temporal.seed_config.destroy()
-            for edge in slot.reduction_edges:
-                edge.intermediate.destroy()
             for edge in slot.seed_edges.values():
                 edge.config.destroy()
         self._full_slots.clear()
@@ -563,34 +600,17 @@ class ICGNWGPUFullPyramid:
         self._levels = [self._root]
 
     def _create_reduction_edges(self, level_slots: tuple[Any, ...]) -> list[_ReductionEdge]:
-        wgpu = self._wgpu
         edges: list[_ReductionEdge] = []
-        for source, destination, source_slot, destination_slot in zip(
-            self._levels[:-1],
+        for destination, source_slot, destination_slot in zip(
             self._levels[1:],
             level_slots[:-1],
             level_slots[1:],
             strict=True,
         ):
-            intermediate = self.device.create_texture(
-                size=(destination.width, source.height, 1),
-                usage=wgpu.TextureUsage.STORAGE_BINDING | wgpu.TextureUsage.TEXTURE_BINDING,
-                dimension=wgpu.TextureDimension.d2,
-                format=wgpu.TextureFormat.r32float,
-                mip_level_count=1,
-                sample_count=1,
-            )
-            horizontal = self.device.create_bind_group(
-                layout=self._reduce_x_layout,
-                entries=[
-                    {"binding": 0, "resource": source_slot.source_texture.create_view()},
-                    {"binding": 1, "resource": intermediate.create_view()},
-                ],
-            )
-            vertical = self.device.create_bind_group(
+            bind_group = self.device.create_bind_group(
                 layout=self._reduce_y_layout,
                 entries=[
-                    {"binding": 0, "resource": intermediate.create_view()},
+                    {"binding": 0, "resource": source_slot.source_texture.create_view()},
                     {"binding": 1, "resource": destination_slot.source_texture.create_view()},
                 ],
             )
@@ -598,10 +618,7 @@ class ICGNWGPUFullPyramid:
                 _ReductionEdge(
                     destination_width=destination.width,
                     destination_height=destination.height,
-                    source_height=source.height,
-                    intermediate=intermediate,
-                    horizontal_bind_group=horizontal,
-                    vertical_bind_group=vertical,
+                    bind_group=bind_group,
                 )
             )
         return edges
@@ -768,6 +785,11 @@ class ICGNWGPUFullPyramid:
             "pyramidStrategy": "full",
             "iterationsPerLevel": list(self.iterations_per_level),
             "tolerancePerLevel": list(self.tolerance_per_level),
+            **(
+                {"solverWorkgroupSize": self.solver_workgroup_size}
+                if self.solver_workgroup_size != 16
+                else {}
+            ),
         }
         if self.initialization == "temporal":
             self._prepare_temporal_state(mask)
@@ -806,6 +828,11 @@ class ICGNWGPUFullPyramid:
                 "subsetStride": self.subset_stride,
                 "spatialWeighting": self.spatial_weighting,
                 "gaussianSigma": self.gaussian_sigma,
+                **(
+                    {"solverWorkgroupSize": self.solver_workgroup_size}
+                    if self.solver_workgroup_size != 16
+                    else {}
+                ),
             },
             device=self.device_name,
             grid=(fine.grid_width, fine.grid_height),
@@ -866,43 +893,43 @@ class ICGNWGPUFullPyramid:
                 data=flags, usage=self._wgpu.BufferUsage.STORAGE
             )
 
-    def _encode_reductions(self, encoder: Any, edges: list[_ReductionEdge]) -> None:
+    def _encode_reductions(
+        self, encoder: Any, edges: list[_ReductionEdge], *, compute_pass: Any | None = None
+    ) -> None:
         for edge in edges:
-            compute_pass = encoder.begin_compute_pass()
-            compute_pass.set_pipeline(self._reduce_x_pipeline)
-            compute_pass.set_bind_group(0, edge.horizontal_bind_group)
-            compute_pass.dispatch_workgroups(
-                (edge.destination_width + 15) // 16,
-                (edge.source_height + 15) // 16,
-                1,
-            )
-            compute_pass.end()
-            compute_pass = encoder.begin_compute_pass()
-            compute_pass.set_pipeline(self._reduce_y_pipeline)
-            compute_pass.set_bind_group(1, edge.vertical_bind_group)
-            compute_pass.dispatch_workgroups(
+            current_pass = encoder.begin_compute_pass() if compute_pass is None else compute_pass
+            current_pass.set_pipeline(self._reduce_fused_pipeline)
+            current_pass.set_bind_group(1, edge.bind_group)
+            current_pass.dispatch_workgroups(
                 (edge.destination_width + 15) // 16,
                 (edge.destination_height + 15) // 16,
                 1,
             )
-            compute_pass.end()
+            if compute_pass is None:
+                current_pass.end()
 
     def _encode_slot(self, slot: _FullPyramidSlot) -> tuple[Any, float]:
         encode_started = time.perf_counter()
         encoder = self.device.create_command_encoder(label="DIC-RT full pyramid registration")
-        self._encode_reductions(encoder, slot.reduction_edges)
+        # Clears precede the shared compute pass. Dispatches remain ordered and
+        # WebGPU tracks their resource hazards, including image writes/reads.
+        for level, level_slot in zip(self._levels, slot.level_slots, strict=True):
+            encoder.clear_buffer(level_slot.buffers["state"])
+            if level.outlier_policy != "disabled":
+                encoder.clear_buffer(level_slot.buffers["filtered_state"])
+        if slot.temporal is not None:
+            encoder.clear_buffer(slot.temporal.counts)
+        compute_pass = encoder.begin_compute_pass()
+        self._encode_reductions(encoder, slot.reduction_edges, compute_pass=compute_pass)
         coarsest_index = self.pyramid_levels - 1
         coarsest = self._levels[coarsest_index]
         coarsest_slot = slot.level_slots[coarsest_index]
         if slot.temporal is not None:
-            encoder.clear_buffer(slot.temporal.counts)
-            compute_pass = encoder.begin_compute_pass()
             compute_pass.set_pipeline(self._temporal_pipelines[0])
             compute_pass.set_bind_group(2, slot.temporal.projection)
             compute_pass.dispatch_workgroups(
                 (coarsest.grid_width * coarsest.grid_height + 255) // 256
             )
-            compute_pass.end()
         coarsest._encode_registration_passes(
             encoder,
             coarsest_slot,
@@ -910,10 +937,10 @@ class ICGNWGPUFullPyramid:
             solver_bind_group=coarsest_slot.bind_group
             if slot.temporal is None
             else coarsest_slot.seeded_bind_group,
+            compute_pass=compute_pass,
         )
         for destination_index in range(coarsest_index - 1, -1, -1):
             seed_edge = slot.seed_edges[destination_index]
-            compute_pass = encoder.begin_compute_pass()
             compute_pass.set_pipeline(
                 self._roi_seed_pipeline
                 if destination_index in self._roi_link_buffers
@@ -921,7 +948,6 @@ class ICGNWGPUFullPyramid:
             )
             compute_pass.set_bind_group(2, seed_edge.bind_group)
             compute_pass.dispatch_workgroups((seed_edge.destination_count + 255) // 256, 1, 1)
-            compute_pass.end()
             destination = self._levels[destination_index]
             destination_slot = slot.level_slots[destination_index]
             destination._encode_registration_passes(
@@ -929,10 +955,10 @@ class ICGNWGPUFullPyramid:
                 destination_slot,
                 destination._seeded_solver,
                 solver_bind_group=destination_slot.seeded_bind_group,
+                compute_pass=compute_pass,
             )
         fine_slot = slot.level_slots[0]
         if slot.temporal is not None:
-            compute_pass = encoder.begin_compute_pass()
             compute_pass.set_pipeline(self._temporal_pipelines[1])
             compute_pass.set_bind_group(3, slot.temporal.merge)
             compute_pass.dispatch_workgroups(
@@ -946,6 +972,8 @@ class ICGNWGPUFullPyramid:
                 self._root._output_buffer(fine_slot).size,
                 16,
             )
+        else:
+            compute_pass.end()
         encoder.copy_buffer_to_buffer(
             self._root._output_buffer(fine_slot),
             0,

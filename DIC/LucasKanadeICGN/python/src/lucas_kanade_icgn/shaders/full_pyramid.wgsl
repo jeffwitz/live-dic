@@ -124,6 +124,42 @@ fn reduce_y(@builtin(global_invocation_id) global_id: vec3<u32>) {
     );
 }
 
+var<workgroup> reduction_pixels: array<u32, 1296>;
+
+// Exact five-tap separable reduction, evaluated as one integer 5x5 sum.
+// A 16x16 output tile shares its reflected 36x36 byte-valued footprint.
+// Integer sums stay below 65281, so truncation matches both original passes.
+@compute @workgroup_size(16, 16)
+fn reduce_fused(
+    @builtin(workgroup_id) group: vec3<u32>,
+    @builtin(local_invocation_id) local: vec3<u32>,
+    @builtin(local_invocation_index) lane: u32,
+) {
+    let source_size = vec2<i32>(textureDimensions(reduce_y_source));
+    let origin = vec2<i32>(group.xy) * 32 - vec2<i32>(2);
+    for (var index = lane; index < 1296u; index += 256u) {
+        let pixel = origin + vec2<i32>(i32(index % 36u), i32(index / 36u));
+        let sample = clamp(vec2<i32>(
+            mirror_coordinate(pixel.x, source_size.x),
+            mirror_coordinate(pixel.y, source_size.y),
+        ), vec2<i32>(0), source_size - vec2<i32>(1));
+        reduction_pixels[index] = u32(round(textureLoad(reduce_y_source, sample, 0).x * 255.0));
+    }
+    workgroupBarrier();
+    let destination = group.xy * 16u + local.xy;
+    if any(destination >= textureDimensions(reduce_y_destination)) { return; }
+    let taps = array<u32, 5>(1u, 4u, 6u, 4u, 1u);
+    var value = 0u;
+    for (var y = 0u; y < 5u; y += 1u) {
+        for (var x = 0u; x < 5u; x += 1u) {
+            let index = (2u * local.y + y) * 36u + 2u * local.x + x;
+            value += taps[y] * taps[x] * reduction_pixels[index];
+        }
+    }
+    textureStore(reduce_y_destination, vec2<i32>(destination),
+        vec4<f32>(f32(value / 256u) / 255.0, 0.0, 0.0, 1.0));
+}
+
 fn accumulate_seed(
     source_index: u32,
     weight: f32,
