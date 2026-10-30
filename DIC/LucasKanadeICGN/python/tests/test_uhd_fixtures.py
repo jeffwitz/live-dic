@@ -76,6 +76,42 @@ class UHDFixtureIntegrityTests(unittest.TestCase):
 
 @unittest.skipUnless(os.environ.get("ICGN_RUN_GPU_TESTS") == "1", "set ICGN_RUN_GPU_TESTS=1")
 class UHDRegistrationRegressionTests(unittest.TestCase):
+    def test_uhd_roi_preserves_affine_precision_and_pure_translation(self) -> None:
+        reference, target = _image("reference.png"), _image("frame_040.png")
+        limits = _manifest()["regression_limits"]
+        state = _truth()[40]
+        ex, ey = float(state["stretch_x"]) - 1, float(state["stretch_y"]) - 1
+        roi = np.zeros(reference.shape, bool)
+        roi[160:2000, 160:3680] = True
+        roi[880:1200, 1800:2040] = False
+        for model in ("affine", "translation"):
+            for policy in ("disabled", "median"):
+                with (
+                    self.subTest(model=model, policy=policy),
+                    ICGNWGPUFullPyramid(motion_model=model, outlier_policy=policy) as engine,
+                ):
+                    info = engine.set_reference(reference, roi_mask=roi)
+                    current = target if model == "affine" else np.roll(reference, (-1, 2), (0, 1))
+                    result = engine.register(current)
+                    interior, x, y = _interior(result, limits["interior_margin_px"])
+                    population = interior & info.roi_selected
+                    accepted = population & result.accepted_mask
+                    self.assertGreaterEqual(accepted.sum() / population.sum(), 0.90)
+                    self.assertTrue(np.all(result.status[~info.roi_selected] == -3))
+                    truth = (
+                        np.stack((ex * (x - 1920), ey * (y - 1080)), axis=-1)
+                        if model == "affine"
+                        else np.broadcast_to([2.0, -1.0], result.displacement.shape)
+                    )
+                    distance = np.linalg.norm(
+                        result.displacement[accepted] - truth[accepted], axis=-1
+                    )
+                    self.assertLess(float(np.sqrt(np.mean(distance**2))), 0.05)
+                    self.assertLess(float(np.percentile(distance, 95)), 0.10)
+                    if model == "affine" and policy == "median":
+                        error = result.parameters[..., (1, 2, 4, 5)][accepted] - [ex, 0, 0, ey]
+                        self.assertLess(float(np.sqrt(np.mean(error**2))), 0.002)
+
     def test_all_archived_uhd_images_recover_identity(self) -> None:
         limits = _manifest()["regression_limits"]
         with ICGNWGPUFullPyramid(

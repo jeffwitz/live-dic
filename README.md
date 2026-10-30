@@ -254,6 +254,12 @@ The timing protocol, current measurements, and reproduction commands are documen
 
 ## Installation
 
+Native translation and affine measurements support a reference-image boolean
+ROI: `engine.set_reference(reference, roi_mask=mask)`. The default `full` policy
+retains only windows whose complete nominal square is allowed, including checks
+for interior holes. See the [ROI guide](./DIC/LucasKanadeICGN/docs/how-to/use-roi.rst)
+for pyramids, filtering, streaming, and self-contained NPZ exports.
+
 Requirements:
 
 - Python 3.11 or newer;

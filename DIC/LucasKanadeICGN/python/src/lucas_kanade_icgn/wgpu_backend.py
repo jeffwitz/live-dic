@@ -30,6 +30,7 @@ from .motion import (
     state_float_count,
 )
 from .outlier import OUTLIER_POLICY_PIPELINE_CONSTANTS, normalize_outlier_policy
+from .roi import RoiPlan, immutable, prepare_roi, reduce_mask, seed_permissions, validate_roi
 from .subset import (
     DEFAULT_SUBSET_SIZE,
     normalize_subset_size,
@@ -293,6 +294,7 @@ def _transfer_pyramid_seed(
     requested: npt.NDArray[np.bool_],
     subset_size: int = DEFAULT_SUBSET_SIZE,
     subset_stride: int | None = None,
+    permissions: np.ndarray | None = None,
 ) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.uint32]]:
     """Interpolate coarse warps onto requested finer subset centres."""
 
@@ -342,6 +344,8 @@ def _transfer_pyramid_seed(
         source_x = lower_x + (corner & 1)
         source_y = lower_y + (corner >> 1)
         valid = (result.status[source_y, source_x] >= -0.5) & source_available[source_y, source_x]
+        if permissions is not None:
+            valid &= (permissions[destination_y, destination_x] & (1 << corner)) != 0
         weight_x = fraction_x if corner & 1 else 1.0 - fraction_x
         weight_y = fraction_y if corner & 2 else 1.0 - fraction_y
         weight = weight_x * weight_y * valid
@@ -779,6 +783,9 @@ class ICGNWGPU:
     ``execution_device_type`` and ``adapter_info`` report the actual choice.
     """
 
+    roi: RoiPlan | None = None
+    reference_valid: np.ndarray | None = None
+
     def __init__(
         self,
         *,
@@ -995,6 +1002,15 @@ class ICGNWGPU:
         self._seeded_solver: Any = None
         self._retry_solver: Any = None
         self._reference_ready = False
+        self.roi = None
+        self.reference_valid = None
+        self._roi_seed_permissions = None
+        self._default_median_filter = self._median_filter
+        self._base_portable_solver = self._portable_solver
+        self._base_subgroup_solver = self._subgroup_solver
+        self._subgroup_shader = subgroup_shader
+        self._roi_solver_pipelines: dict[str, Any] = {}
+        self._seeded_roi_mode = False
         self._source_texture_format = wgpu.TextureFormat.r8unorm
         self._source_texture_extra_usage = 0
         self._buffers: dict[str, Any] = {}
@@ -1061,6 +1077,15 @@ class ICGNWGPU:
         level._seeded_solver = self._seeded_solver
         level._retry_solver = self._retry_solver
         level._reference_ready = False
+        level.roi = None
+        level.reference_valid = None
+        level._roi_seed_permissions = None
+        level._default_median_filter = getattr(self, "_default_median_filter", self._median_filter)
+        level._base_portable_solver = getattr(self, "_base_portable_solver", self._portable_solver)
+        level._base_subgroup_solver = getattr(self, "_base_subgroup_solver", self._subgroup_solver)
+        level._subgroup_shader = getattr(self, "_subgroup_shader", None)
+        level._roi_solver_pipelines = getattr(self, "_roi_solver_pipelines", {})
+        level._seeded_roi_mode = getattr(self, "_seeded_roi_mode", False)
         level._source_texture_format = (
             self._wgpu.TextureFormat.rgba8unorm
             if gpu_writable_source
@@ -1197,7 +1222,12 @@ class ICGNWGPU:
     def _ensure_seeded_solver(self) -> None:
         """Create fresh seeded and preserving retry pipelines on one layout."""
 
-        if self._seeded_solver is not None and self._retry_solver is not None:
+        roi_mode = self.roi is not None and self.roi.effective
+        if (
+            self._seeded_solver is not None
+            and self._retry_solver is not None
+            and roi_mode == self._seeded_roi_mode
+        ):
             return
         self._seeded_bind_group_layout = self._create_bind_group_layout(seeded=True)
         layout = self.device.create_pipeline_layout(
@@ -1206,6 +1236,7 @@ class ICGNWGPU:
         interpolation = getattr(self, "interpolation", "bspline")
         motion_model = getattr(self, "motion_model", "affine")
         constants = {
+            "ROI_ENABLED": int(roi_mode),
             "INTERPOLATION_MODE": INTERPOLATION_PIPELINE_CONSTANTS[interpolation],
             "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[motion_model],
             "SUBSET_SIZE": self.subset_size,
@@ -1237,6 +1268,47 @@ class ICGNWGPU:
         )
         self._seeded_solver = seeded_solver
         self._retry_solver = retry_solver
+        self._seeded_roi_mode = roi_mode
+
+    def _select_roi_solver_pipelines(self) -> None:
+        """Keep unmasked solver arithmetic intact through a pipeline constant."""
+        self._portable_solver = self._base_portable_solver
+        self._subgroup_solver = self._base_subgroup_solver
+        if self.roi is not None and self.roi.effective:
+            constants = {
+                "ROI_ENABLED": 1,
+                "INTERPOLATION_MODE": INTERPOLATION_PIPELINE_CONSTANTS[self.interpolation],
+                "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
+                "SUBSET_SIZE": self.subset_size,
+                "SUBSET_STRIDE": self.subset_stride,
+                "SPATIAL_WEIGHTING": SPATIAL_WEIGHTING_PIPELINE_CONSTANTS[self.spatial_weighting],
+                "GAUSSIAN_SIGMA": self.gaussian_sigma,
+            }
+            if "portable" not in self._roi_solver_pipelines:
+                self._roi_solver_pipelines["portable"] = self.device.create_compute_pipeline(
+                    layout=self._pipeline_layout,
+                    compute={
+                        "module": self._shader,
+                        "entry_point": "solve",
+                        "constants": constants,
+                    },
+                )
+            self._portable_solver = self._roi_solver_pipelines["portable"]
+            if self._base_subgroup_solver is not None:
+                if "subgroup" not in self._roi_solver_pipelines:
+                    self._roi_solver_pipelines["subgroup"] = self.device.create_compute_pipeline(
+                        layout=self._pipeline_layout,
+                        compute={
+                            "module": self._subgroup_shader,
+                            "entry_point": "main",
+                            "constants": {"ROI_ENABLED": 1},
+                        },
+                    )
+                self._subgroup_solver = self._roi_solver_pipelines["subgroup"]
+        self._solver = (
+            self._subgroup_solver if self._solver_preference is True else self._portable_solver
+        )
+        self.solver = "subgroup" if self._solver_preference is True else "portable-workgroup"
 
     def _storage_buffer(self, data: npt.NDArray[np.float32], *, output: bool = False) -> Any:
         usage = self._wgpu.BufferUsage.STORAGE
@@ -1562,6 +1634,8 @@ class ICGNWGPU:
     ) -> RegistrationResult:
         """Retry selected subsets from transferred seeds, then apply optional UOD."""
 
+        if self.roi is not None:
+            active = active * self.roi.selected
         if not np.any(active):
             return previous
         started = time.perf_counter()
@@ -1611,6 +1685,8 @@ class ICGNWGPU:
     ) -> RegistrationResult:
         """Prefilter one coarse frame and solve only its active dependency mask."""
 
+        if self.roi is not None:
+            active = active * self.roi.selected
         slot = self._pipeline_slots[0]
         self._ensure_seed_resources(slot)
         total_started = time.perf_counter()
@@ -1649,7 +1725,7 @@ class ICGNWGPU:
         passes.append(
             (
                 self._seeded_solver,
-                (self.grid_width * self.grid_height, 1, 1),
+                (self.grid_width, self.grid_height, 1),
                 slot.seeded_bind_group,
             )
         )
@@ -1698,6 +1774,8 @@ class ICGNWGPU:
         if self.grid_width > 2 and self.grid_height > 2:
             recoverable[1:-1, 1:-1] = True
         failed = (fine_result.status < 0.5) & recoverable
+        if self.roi is not None:
+            failed &= self.roi.selected
         failed_count = int(np.count_nonzero(failed))
         if not self._pyramid_engines or failed_count == 0:
             return fine_result
@@ -1722,6 +1800,8 @@ class ICGNWGPU:
                 subset_stride=self.subset_stride,
             )
             requested_by_level.append(requested)
+            if engine.roi is not None:
+                requested &= engine.roi.selected
             destination_scale = level_scale
 
         transferred_result: RegistrationResult | None = None
@@ -1753,6 +1833,7 @@ class ICGNWGPU:
                     requested=level_requested,
                     subset_size=self.subset_size,
                     subset_stride=self.subset_stride,
+                    permissions=engine._roi_seed_permissions,
                 )
             level_result = engine._register_seeded_frame(
                 reduced_targets[level_index],
@@ -1774,6 +1855,7 @@ class ICGNWGPU:
             requested=failed,
             subset_size=self.subset_size,
             subset_stride=self.subset_stride,
+            permissions=self._roi_seed_permissions,
         )
         recovered = self._retry_seeded(slot, seeds, active, fine_result)
         recovered_count = int(np.count_nonzero(failed & (recovered.status >= 0.5)))
@@ -1811,8 +1893,10 @@ class ICGNWGPU:
             mean_translation=mean_translation,
             mean_iterations=mean_iterations,
             timing=timing,
+            roi=self.roi,
+            reference_valid=self.reference_valid,
             config={
-                **self._config,
+                **recovered.config,
                 "interpolation": getattr(self, "interpolation", "bspline"),
                 "motionModel": getattr(self, "motion_model", "affine"),
                 "outlierPolicy": getattr(self, "outlier_policy", "replace"),
@@ -1948,9 +2032,12 @@ class ICGNWGPU:
 
         self._close_pyramid_engines()
         reduced = reference
+        mask = None if self.roi is None else self.roi.mask
         for _ in range(1, self.pyramid_levels):
             reduced = _reduce_half(reduced)
+            mask = None if mask is None else reduce_mask(mask)
             engine = ICGNWGPU(
+                device_type=self.device_type,
                 prefer_subgroups=False,
                 pyramid_levels=1,
                 interpolation=self.interpolation,
@@ -1966,8 +2053,29 @@ class ICGNWGPU:
                 iterations=12,
                 tolerance=1e-2,
                 zncc_min=zncc_min,
+                roi_mask=mask,
             )
             self._pyramid_engines.append(engine)
+        levels = [self, *self._pyramid_engines]
+        self._roi_level_counts = [
+            int(level.roi.selected.sum())
+            if level.roi is not None
+            else level.grid_width * level.grid_height
+            for level in levels
+        ]
+        if self.roi is not None and self.roi.effective:
+            for index, (destination, source) in enumerate(
+                zip(levels[:-1], levels[1:], strict=True)
+            ):
+                destination._roi_seed_permissions = seed_permissions(
+                    source.roi,
+                    destination.roi,
+                    source_scale=1 << (index + 1),
+                    destination_scale=1 << index,
+                    size=self.subset_size,
+                    stride=self.subset_stride,
+                    reference_mask=self.roi.mask,
+                )
 
     def set_reference(
         self,
@@ -1976,6 +2084,8 @@ class ICGNWGPU:
         iterations: int = 30,
         tolerance: float = 1e-3,
         zncc_min: float = 0.8,
+        roi_mask: np.ndarray | None = None,
+        roi_policy: str = "full",
     ) -> ReferenceInfo:
         total_start = time.perf_counter()
         frame = _as_uint8_gray(image)
@@ -1992,6 +2102,8 @@ class ICGNWGPU:
                 f"Reference dimensions must each be at least {self.subset_size} pixels."
             )
         config = _validated_config(iterations, tolerance, zncc_min)
+        mask = validate_roi(roi_mask, roi_policy, frame.shape, self.motion_model)
+        roi = prepare_roi(mask, self.subset_size, subset_stride)
         reference_start = time.perf_counter()
         reference, inverse, metadata = _reference_arrays(
             frame,
@@ -2003,6 +2115,15 @@ class ICGNWGPU:
             gaussian_sigma=self.gaussian_sigma,
         )
         reference_wall_ms = (time.perf_counter() - reference_start) * 1_000.0
+        metadata_rows = metadata.reshape(-1, 28 if self.motion_model == "quadratic" else 16)
+        reference_valid = immutable((metadata_rows[:, 1] > 0.5).reshape(grid_height, grid_width))
+        if roi is not None and roi.effective:
+            metadata_rows[~roi.selected.ravel(), 1] = -3.0
+            # Native-only tail: one vec4 per subset. Shared WGSL consumers
+            # leave ROI_ENABLED=0 and retain the historical buffer layout.
+            links = np.zeros((roi.selected.size, 4), dtype=np.float32)
+            links[:, 0] = roi.neighbour_bits.ravel()
+            metadata = np.concatenate((metadata, links.ravel()))
 
         # All CPU validation is complete. From this point onward a failure may
         # have replaced GPU resources, so the previous reference must no
@@ -2014,10 +2135,37 @@ class ICGNWGPU:
         self.grid_width = grid_width
         self.grid_height = grid_height
         self._config = config
+        self.roi = roi
+        self.reference_valid = reference_valid
+        self._pyramid_config = {
+            "pyramidLevels": self.pyramid_levels,
+            "pyramidStrategy": "selective" if self.pyramid_levels > 1 else "single",
+        }
+        self._roi_seed_permissions = None
         runtime_start = time.perf_counter()
+        self._select_roi_solver_pipelines()
+        self._median_filter = self._default_median_filter
+        if roi is not None and roi.effective and self.outlier_policy != "disabled":
+            self._median_filter = self.device.create_compute_pipeline(
+                layout=self._pipeline_layout,
+                compute={
+                    "module": self._shader,
+                    "entry_point": "median_filter",
+                    "constants": {
+                        "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
+                        "OUTLIER_POLICY": OUTLIER_POLICY_PIPELINE_CONSTANTS[self.outlier_policy],
+                        "SUBSET_SIZE": self.subset_size,
+                        "SUBSET_STRIDE": subset_stride,
+                        "ROI_ENABLED": 1,
+                    },
+                },
+            )
         self._allocate_runtime(reference, inverse, metadata)
         self._update_config()
-        if self.interpolation == "bspline":
+        admissible = reference_valid if roi is None else reference_valid & roi.selected
+        # A geometric selection without texture is a valid empty measurement,
+        # not evidence that either solver failed its numerical qualification.
+        if self.interpolation == "bspline" and admissible.any():
             self._autotune_solver(frame)
         self._prepare_pyramid(frame, zncc_min=zncc_min)
         runtime_wall_ms = (time.perf_counter() - runtime_start) * 1_000.0
@@ -2031,6 +2179,11 @@ class ICGNWGPU:
             total_wall_ms=total_wall_ms,
             config={
                 **self._config,
+                **(
+                    {"roi": {**roi.summary(), "selectedPerLevel": self._roi_level_counts}}
+                    if roi is not None
+                    else {}
+                ),
                 "interpolation": getattr(self, "interpolation", "bspline"),
                 "motionModel": getattr(self, "motion_model", "affine"),
                 "outlierPolicy": getattr(self, "outlier_policy", "replace"),
@@ -2048,7 +2201,21 @@ class ICGNWGPU:
             height=self.height,
             subset_size=self.subset_size,
             subset_stride=subset_stride,
+            roi=roi,
+            reference_valid=reference_valid,
         )
+
+    def _empty_roi_result(self, started: float, config: dict) -> RegistrationResult:
+        """Produce a finite dense empty field without upload, solve or readback."""
+        packed = np.zeros(
+            (self.grid_height, self.grid_width, state_float_count(self.motion_model)),
+            dtype=np.float32,
+        )
+        packed[..., parameter_count(self.motion_model)] = -3.0
+        result = self._result_from_raw(packed, timing={"queueSubmissions": 0.0}, config=config)
+        elapsed = (time.perf_counter() - started) * 1000
+        result.timing = {**result.timing, "totalWallMs": elapsed, "resultAgeWallMs": elapsed}
+        return result
 
     def _prepare_target(self, target: ImageInput) -> npt.NDArray[np.uint8]:
         frame = _as_uint8_gray(target)
@@ -2113,6 +2280,15 @@ class ICGNWGPU:
             timing=timing,
             config={
                 **config,
+                **getattr(self, "_pyramid_config", {}),
+                "width": self.width,
+                "height": self.height,
+                "subsetSize": self.subset_size,
+                **(
+                    {"roi": {**self.roi.summary(), "selectedPerLevel": self._roi_level_counts}}
+                    if getattr(self, "roi", None) is not None
+                    else {}
+                ),
                 "deviceType": getattr(self, "device_type", "auto"),
                 "executionDeviceType": getattr(self, "execution_device_type", "unknown"),
                 "interpolation": getattr(self, "interpolation", "bspline"),
@@ -2130,6 +2306,8 @@ class ICGNWGPU:
             height=self.height,
             subset_size=self.subset_size,
             subset_stride=subset_stride,
+            roi=getattr(self, "roi", None),
+            reference_valid=getattr(self, "reference_valid", None),
         )
 
     def register(
@@ -2145,6 +2323,8 @@ class ICGNWGPU:
         total_start = time.perf_counter()
         frame = self._prepare_target(target)
         self._config = self._resolve_config(iterations, tolerance, zncc_min)
+        if self.roi is not None and self.roi.empty:
+            return self._empty_roi_result(total_start, self._config)
         self._update_config()
 
         upload_wall_ms = self._upload_frame(self._pipeline_slots[0], frame)
@@ -2250,6 +2430,12 @@ class ICGNWGPU:
         if isinstance(pipeline_depth, bool) or depth < 1:
             raise ValueError("pipeline_depth must be a positive integer")
         self._config = self._resolve_config(iterations, tolerance, zncc_min)
+        if self.roi is not None and self.roi.empty:
+            for target in targets:
+                started = time.perf_counter()
+                self._prepare_target(target)
+                yield self._empty_roi_result(started, self._config)
+            return
         slots = self._ensure_pipeline_slots(depth)
         for slot in slots:
             self._update_slot_config(slot, self._config)

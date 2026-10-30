@@ -164,6 +164,7 @@ path.
    how-to/export-results
    how-to/optimize-webgpu
    how-to/run-on-cpu
+   how-to/use-roi
 
 .. toctree::
    :hidden:

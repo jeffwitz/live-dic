@@ -34,6 +34,7 @@ from PIL import Image
 from .interpolation import normalize_interpolation
 from .motion import AFFINE_PARAMETER_ORDER, normalize_motion_model, parameter_order
 from .outlier import normalize_outlier_policy
+from .roi import RoiPlan
 from .subset import DEFAULT_SUBSET_SIZE, normalize_subset_size, normalize_subset_stride
 
 MIN_FRAME_DIMENSION: Final = 16
@@ -80,13 +81,19 @@ class ReferenceInfo:
     reference_build_wall_ms: float
     encoding_wall_ms: float
     total_wall_ms: float
-    config: Mapping[str, float | int | str]
+    config: Mapping[str, Any]
     device: str
     grid: tuple[int, int]
     width: int
     height: int
     subset_size: int
     subset_stride: int
+    roi: RoiPlan | None = None
+    reference_valid: np.ndarray | None = None
+
+    @property
+    def roi_selected(self) -> np.ndarray | None:
+        return None if self.roi is None else self.roi.selected
 
 
 @dataclass(slots=True)
@@ -110,11 +117,37 @@ class RegistrationResult:
     mean_translation: tuple[float, float] | None
     mean_iterations: float | None
     timing: Mapping[str, float]
-    config: Mapping[str, float | int | str]
+    config: Mapping[str, Any]
     width: int = 512
     height: int = 512
     subset_size: int = 16
     subset_stride: int = 16
+    roi: RoiPlan | None = None
+    reference_valid: np.ndarray | None = None
+
+    @property
+    def roi_selected(self) -> np.ndarray | None:
+        """Static geometric selection; None means the whole historical grid."""
+        return None if self.roi is None else self.roi.selected
+
+    @property
+    def populations(self) -> dict[str, int | float | None]:
+        selected = self.status.size if self.roi is None else self.roi.selected_count
+        admissible = None
+        if self.reference_valid is not None:
+            valid = self.reference_valid
+            if self.roi is not None:
+                valid = valid & self.roi.selected
+            admissible = int(np.count_nonzero(valid))
+        return {
+            "gridTotal": self.status.size,
+            "roiSelected": selected,
+            "roiExcluded": self.status.size - selected,
+            "referenceAdmissible": admissible,
+            "accepted": self.accepted,
+            "rejectedSelected": selected - self.accepted,
+            "acceptedFractionSelected": self.accepted / selected if selected else None,
+        }
 
     @property
     def displacement(self) -> np.ndarray:
@@ -126,7 +159,23 @@ class RegistrationResult:
     def accepted_mask(self) -> np.ndarray:
         """Return a mask selecting accepted and UOD-flagged subsets."""
 
-        return self.status > 0.5
+        mask = self.status > 0.5
+        return mask if self.roi is None else mask & self.roi.selected
+
+    def save_npz(self, path: str | os.PathLike[str]) -> None:
+        """Export one self-contained field, including its static reference ROI."""
+        np.savez_compressed(
+            path,
+            parameters=self.parameters,
+            displacement=self.displacement,
+            status=self.status,
+            iterations=self.iterations,
+            parameter_order=np.asarray(self.parameter_order),
+            config_json=np.asarray(json.dumps(dict(self.config), sort_keys=True, allow_nan=False)),
+            populations_json=np.asarray(json.dumps(self.populations, allow_nan=False)),
+            **({} if self.roi is None else self.roi.archive_fields()),
+            **({} if self.reference_valid is None else {"reference_valid": self.reference_valid}),
+        )
 
     @property
     def flagged(self) -> int:
@@ -160,7 +209,7 @@ class RegistrationResult:
 
         return parameter_order(str(self.config.get("motionModel", "affine")))
 
-    def rmse(self, truth: Sequence[float]) -> float:
+    def rmse(self, truth: Sequence[float]) -> float | None:
         """Compute vector RMSE against a constant ``(dx, dy)`` translation."""
 
         expected = np.asarray(truth, dtype=np.float64)
@@ -168,7 +217,7 @@ class RegistrationResult:
             raise ValueError("truth must contain exactly two values: (dx, dy)")
         mask = self.accepted_mask
         if not np.any(mask):
-            return float("nan")
+            return None
         error = self.displacement[mask].astype(np.float64) - expected
         return float(np.sqrt(np.mean(np.sum(error * error, axis=1))))
 
@@ -1155,8 +1204,15 @@ class ICGNWebGL:
         iterations: int | None = None,
         tolerance: float | None = None,
         zncc_min: float | None = None,
+        roi_mask: np.ndarray | None = None,
+        roi_policy: str = "full",
     ) -> ReferenceInfo:
         """Upload and precompute all target-independent reference data."""
+
+        if roi_mask is not None or roi_policy != "full":
+            raise ValueError(
+                "ROI is supported only by the native wgpu engines; roi_policy='partial' is unavailable"
+            )
 
         total_start = time.perf_counter()
         encoding_start = time.perf_counter()
@@ -1286,11 +1342,15 @@ class ICGNWebGL:
         iterations: int | None = None,
         tolerance: float | None = None,
         zncc_min: float | None = None,
+        roi_mask: np.ndarray | None = None,
+        roi_policy: str = "full",
     ) -> RegistrationResult:
         """Prepare a reference and register one target."""
 
         self.set_reference(
             reference,
+            roi_mask=roi_mask,
+            roi_policy=roi_policy,
             iterations=iterations,
             tolerance=tolerance,
             zncc_min=zncc_min,
@@ -1445,8 +1505,13 @@ def register_pair(
     iterations: int | None = None,
     tolerance: float | None = None,
     zncc_min: float | None = None,
+    roi_mask: np.ndarray | None = None,
+    roi_policy: str = "full",
 ) -> RegistrationResult:
     """Run a one-shot registration and release the headless runtime afterward."""
+
+    if roi_mask is not None or roi_policy != "full":
+        raise ValueError("ROI requires ICGNWGPU or ICGNWGPUFullPyramid")
 
     with ICGNWebGL(
         repo_root=repo_root,

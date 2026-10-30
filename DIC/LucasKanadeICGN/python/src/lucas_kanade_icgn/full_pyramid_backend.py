@@ -18,10 +18,13 @@ from dataclasses import dataclass
 from importlib.resources import files
 from typing import Any
 
+import numpy as np
+
 from .engine import ICGNError, ImageInput, ReferenceInfo, RegistrationResult, _as_uint8_gray
 from .interpolation import normalize_interpolation
 from .motion import MOTION_MODEL_PIPELINE_CONSTANTS, normalize_motion_model
 from .outlier import normalize_outlier_policy
+from .roi import reduce_mask, seed_permissions, validate_roi
 from .subset import DEFAULT_SUBSET_SIZE, normalize_subset_size, normalize_subset_stride
 from .weighting import normalize_gaussian_sigma, normalize_spatial_weighting
 from .wgpu_backend import (
@@ -213,6 +216,8 @@ class ICGNWGPUFullPyramid:
         self._seed_edges: dict[int, _SeedEdge] = {}
         self._full_slots: list[_FullPyramidSlot] = []
         self._reference_ready = False
+        self._roi_link_buffers: dict[int, Any] = {}
+        self._roi_seed_pipeline = None
         self._zncc_min = 0.8
         self._create_orchestration_pipelines()
 
@@ -329,6 +334,9 @@ class ICGNWGPUFullPyramid:
         }
 
     def _clear_level_resources(self) -> None:
+        for buffer in self._roi_link_buffers.values():
+            buffer.destroy()
+        self._roi_link_buffers.clear()
         for slot in self._full_slots:
             for edge in slot.reduction_edges:
                 edge.intermediate.destroy()
@@ -414,12 +422,19 @@ class ICGNWGPUFullPyramid:
                 usage=wgpu.BufferUsage.UNIFORM,
             )
             bind_group = self.device.create_bind_group(
-                layout=self._seed_layout,
+                layout=self._roi_seed_layout
+                if destination_index in self._roi_link_buffers
+                else self._seed_layout,
                 entries=[
                     self._buffer_resource(0, source._output_buffer(source_slot)),
                     self._buffer_resource(1, destination_slot.buffers["seed_state"]),
                     self._buffer_resource(2, destination_slot.buffers["active_mask"]),
                     self._buffer_resource(3, config),
+                    *(
+                        [self._buffer_resource(4, self._roi_link_buffers[destination_index])]
+                        if destination_index in self._roi_link_buffers
+                        else []
+                    ),
                 ],
             )
             edges[destination_index] = _SeedEdge(
@@ -453,6 +468,8 @@ class ICGNWGPUFullPyramid:
         iterations_per_level: tuple[int, ...] | None = None,
         tolerance_per_level: tuple[float, ...] | None = None,
         zncc_min: float = 0.8,
+        roi_mask: np.ndarray | None = None,
+        roi_policy: str = "full",
     ) -> ReferenceInfo:
         """Prepare all scale-specific references and persistent GPU storage."""
 
@@ -484,9 +501,12 @@ class ICGNWGPUFullPyramid:
             _validated_config(iterations, tolerance, new_zncc_min)
 
         reference = _as_uint8_gray(image)
+        mask = validate_roi(roi_mask, roi_policy, reference.shape, self.motion_model)
         references = [reference]
+        masks = [mask]
         for _ in range(1, self.pyramid_levels):
             references.append(_reduce_half(references[-1]))
+            masks.append(None if masks[-1] is None else reduce_mask(masks[-1]))
 
         self.iterations_per_level = new_iterations
         self.tolerance_per_level = new_tolerances
@@ -506,10 +526,29 @@ class ICGNWGPUFullPyramid:
                 iterations=self.iterations_per_level[schedule_index],
                 tolerance=self.tolerance_per_level[schedule_index],
                 zncc_min=self._zncc_min,
+                roi_mask=masks[level_index],
+                roi_policy=roi_policy,
             )
             reference_build_wall_ms += info.reference_build_wall_ms
             if level_index:
                 self._levels.append(engine)
+
+        if mask is not None and not mask.all() and self.pyramid_levels > 1:
+            self._prepare_roi_links(mask)
+        self.roi = self._root.roi
+        self.reference_valid = self._root.reference_valid
+        self._root._roi_level_counts = [
+            int(level.roi.selected.sum())
+            if level.roi is not None
+            else level.grid_width * level.grid_height
+            for level in self._levels
+        ]
+        self._root._pyramid_config = {
+            "pyramidLevels": self.pyramid_levels,
+            "pyramidStrategy": "full",
+            "iterationsPerLevel": list(self.iterations_per_level),
+            "tolerancePerLevel": list(self.tolerance_per_level),
+        }
 
         first_slot = self._create_full_slot(0)
         self._full_slots = [first_slot]
@@ -528,6 +567,11 @@ class ICGNWGPUFullPyramid:
             total_wall_ms=total_wall_ms,
             config={
                 **fine._config,
+                **(
+                    {"roi": {**fine.roi.summary(), "selectedPerLevel": fine._roi_level_counts}}
+                    if fine.roi is not None
+                    else {}
+                ),
                 "interpolation": self.interpolation,
                 "motionModel": self.motion_model,
                 "outlierPolicy": self.outlier_policy,
@@ -541,7 +585,58 @@ class ICGNWGPUFullPyramid:
             height=fine.height,
             subset_size=self.subset_size,
             subset_stride=self.subset_stride,
+            roi=fine.roi,
+            reference_valid=fine.reference_valid,
         )
+
+    def _prepare_roi_links(self, mask: np.ndarray) -> None:
+        """Build immutable transfer resources once, shared by all stream slots."""
+        if self._roi_seed_pipeline is None:
+            shader = self.device.create_shader_module(
+                code=files("lucas_kanade_icgn")
+                .joinpath("shaders/full_pyramid.wgsl")
+                .read_text(encoding="utf-8")
+            )
+            # Preserve the portable layout when ROI is absent/all true.
+            entries = [
+                {
+                    "binding": binding,
+                    "visibility": self._wgpu.ShaderStage.COMPUTE,
+                    "buffer": {"type": kind},
+                }
+                for binding, kind in enumerate(
+                    ("read-only-storage", "storage", "storage", "uniform", "read-only-storage")
+                )
+            ]
+            self._roi_seed_layout = self.device.create_bind_group_layout(entries=entries)
+            layout = self.device.create_pipeline_layout(
+                bind_group_layouts=[self._empty_layout, self._empty_layout, self._roi_seed_layout]
+            )
+            self._roi_seed_pipeline = self.device.create_compute_pipeline(
+                layout=layout,
+                compute={
+                    "module": shader,
+                    "entry_point": "transfer_seed_roi",
+                    "constants": {
+                        "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
+                        "SUBSET_SIZE": self.subset_size,
+                        "SUBSET_STRIDE": self.subset_stride,
+                    },
+                },
+            )
+        for index in range(self.pyramid_levels - 1):
+            flags = seed_permissions(
+                self._levels[index + 1].roi,
+                self._levels[index].roi,
+                source_scale=1 << (index + 1),
+                destination_scale=1 << index,
+                size=self.subset_size,
+                stride=self.subset_stride,
+                reference_mask=mask,
+            )
+            self._roi_link_buffers[index] = self.device.create_buffer_with_data(
+                data=flags, usage=self._wgpu.BufferUsage.STORAGE
+            )
 
     def _encode_reductions(self, encoder: Any, edges: list[_ReductionEdge]) -> None:
         for edge in edges:
@@ -580,7 +675,11 @@ class ICGNWGPUFullPyramid:
         for destination_index in range(coarsest_index - 1, -1, -1):
             seed_edge = slot.seed_edges[destination_index]
             compute_pass = encoder.begin_compute_pass()
-            compute_pass.set_pipeline(self._seed_pipeline)
+            compute_pass.set_pipeline(
+                self._roi_seed_pipeline
+                if destination_index in self._roi_link_buffers
+                else self._seed_pipeline
+            )
             compute_pass.set_bind_group(2, seed_edge.bind_group)
             compute_pass.dispatch_workgroups((seed_edge.destination_count + 255) // 256, 1, 1)
             compute_pass.end()
@@ -674,6 +773,8 @@ class ICGNWGPUFullPyramid:
         accepted_at = time.perf_counter()
         preparation_started = time.perf_counter()
         frame = self._root._prepare_target(target)
+        if self._root.roi is not None and self._root.roi.empty:
+            return self._root._empty_roi_result(accepted_at, self._root._config)
         input_preparation_wall_ms = (time.perf_counter() - preparation_started) * 1_000.0
         pending = self._submit_slot(
             self._full_slots[0],
@@ -706,6 +807,12 @@ class ICGNWGPUFullPyramid:
         if isinstance(pipeline_depth, bool) or depth < 1:
             raise ValueError("pipeline_depth must be a positive integer")
 
+        if self._root.roi is not None and self._root.roi.empty:
+            for target in targets:
+                started = time.perf_counter()
+                self._root._prepare_target(target)
+                yield self._root._empty_roi_result(started, self._root._config)
+            return
         slots = self._ensure_full_slots(depth)
         available = deque(slots)
         pending: deque[_PendingFullPyramidRegistration] = deque()

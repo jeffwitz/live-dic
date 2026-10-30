@@ -11,7 +11,11 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.metadata
 import json
+import platform
+import subprocess
+import sys
 import time
 from contextlib import AbstractContextManager
 from pathlib import Path
@@ -41,9 +45,21 @@ def _arguments() -> argparse.Namespace:
     )
     parser.add_argument("--width", type=int, default=3840)
     parser.add_argument("--height", type=int, default=2160)
+    parser.add_argument(
+        "--fixture-set",
+        choices=("timing", "uhd-tensile"),
+        default="timing",
+        help="timing translations or original UHD reference/frame_040 affine truth",
+    )
     parser.add_argument("--frames", type=int, default=12)
     parser.add_argument("--warmups", type=int, default=3)
     parser.add_argument("--campaigns", type=int, default=1)
+    parser.add_argument(
+        "--roi-mask",
+        type=Path,
+        help="boolean .npy reference mask; no implicit thresholding",
+    )
+    parser.add_argument("--roi-policy", default="full", help="only full is implemented")
     parser.add_argument(
         "--device-type",
         choices=("auto", "gpu", "cpu"),
@@ -113,6 +129,12 @@ def _arguments() -> argparse.Namespace:
     if args.pipeline_depth < 1:
         parser.error("--pipeline-depth must be positive")
     args.backends = tuple(args.backends or DEFAULT_BACKENDS)
+    if args.roi_mask is not None and any(
+        backend != "native-pyramid" for backend in args.backends
+    ):
+        parser.error("ROI requires --backend native-pyramid")
+    if args.roi_policy != "full":
+        parser.error("only --roi-policy full is implemented; partial is unavailable")
     if args.device_type != "auto" and any(
         backend != "native-pyramid" for backend in args.backends
     ):
@@ -215,8 +237,15 @@ def _measure(
     pipeline_depth: int,
     use_stream: bool,
 ) -> dict[str, Any]:
-    for index in range(warmups):
-        engine.register(targets[index % len(targets)][0])
+    if use_stream:
+        for _ in engine.register_stream(
+            (targets[index % len(targets)][0] for index in range(warmups)),
+            pipeline_depth=pipeline_depth,
+        ):
+            pass
+    else:
+        for index in range(warmups):
+            engine.register(targets[index % len(targets)][0])
 
     samples = []
     completion_times = []
@@ -244,7 +273,11 @@ def _measure(
             strict=True,
         ):
             completed = time.perf_counter()
-            samples.append(float(result.timing["resultAgeWallMs"]))
+            samples.append(
+                float(
+                    result.timing.get("resultAgeWallMs", result.timing["totalWallMs"])
+                )
+            )
             completion_times.append(completed)
             results.append(result)
             truths.append(truth)
@@ -261,8 +294,30 @@ def _measure(
         raise RuntimeError("a result field contains a non-finite parameter")
 
     periods = np.diff(np.asarray(completion_times, dtype=np.float64)) * 1_000.0
-    rmses = [result.rmse(truth) for result, truth in zip(results, truths, strict=True)]
+    rmses = []
+    for result, truth in zip(results, truths, strict=True):
+        if isinstance(truth, dict):
+            y, x = np.indices(result.status.shape)
+            x = x * result.subset_stride + (result.subset_size - 1) / 2
+            y = y * result.subset_stride + (result.subset_size - 1) / 2
+            expected = np.stack(
+                (truth["ex"] * (x - 1920), truth["ey"] * (y - 1080)), axis=-1
+            )
+            error = (
+                result.displacement[result.accepted_mask]
+                - expected[result.accepted_mask]
+            )
+            rmses.append(
+                float(np.sqrt(np.mean(np.sum(error**2, axis=-1))))
+                if error.size
+                else None
+            )
+        else:
+            rmses.append(result.rmse(truth))
     accepted = [result.accepted for result in results]
+    finite_rmses = [
+        value for value in rmses if value is not None and np.isfinite(value)
+    ]
     return {
         "boundary": "resident uint8 NumPy image to materialized NumPy parameter field",
         "execution": execution,
@@ -271,6 +326,23 @@ def _measure(
         "warmups": warmups,
         "latency_median_ms": float(np.median(samples)),
         "latency_p95_ms": float(np.percentile(samples, 95)),
+        "latency_p99_ms": float(np.percentile(samples, 99)),
+        "latency_samples_ms": samples,
+        "completion_period_samples_ms": periods.tolist(),
+        "populations": getattr(results[0], "populations", None),
+        "config": dict(results[0].config),
+        "iterations_histogram": {
+            str(int(key)): int(count)
+            for key, count in zip(
+                *np.unique(
+                    np.concatenate(
+                        [result.iterations[result.accepted_mask] for result in results]
+                    ),
+                    return_counts=True,
+                ),
+                strict=True,
+            )
+        },
         "stream_period_ms": stream_wall_ms / frames,
         "throughput_fps": frames * 1_000.0 / stream_wall_ms,
         "completion_period_median_ms": (
@@ -280,8 +352,8 @@ def _measure(
         "field_bytes": int(results[0].parameters.nbytes),
         "accepted_min": min(accepted),
         "accepted_max": max(accepted),
-        "rmse_median_px": float(np.median(rmses)),
-        "rmse_max_px": float(np.max(rmses)),
+        "rmse_median_px": float(np.median(finite_rmses)) if finite_rmses else None,
+        "rmse_max_px": float(np.max(finite_rmses)) if finite_rmses else None,
         "component_timing_medians_ms": _numeric_timing_medians(results),
     }
 
@@ -295,16 +367,24 @@ def _aggregate_campaigns(campaigns: list[dict[str, Any]]) -> dict[str, Any]:
     median_keys = (
         "latency_median_ms",
         "latency_p95_ms",
+        "latency_p99_ms",
         "stream_period_ms",
         "throughput_fps",
         "completion_period_median_ms",
         "rmse_median_px",
     )
     for key in median_keys:
-        result[key] = float(np.median([campaign[key] for campaign in campaigns]))
+        values = [campaign[key] for campaign in campaigns if campaign[key] is not None]
+        result[key] = float(np.median(values)) if values else None
     result["accepted_min"] = min(campaign["accepted_min"] for campaign in campaigns)
     result["accepted_max"] = max(campaign["accepted_max"] for campaign in campaigns)
-    result["rmse_max_px"] = max(campaign["rmse_max_px"] for campaign in campaigns)
+    errors = [
+        campaign["rmse_max_px"]
+        for campaign in campaigns
+        if campaign["rmse_max_px"] is not None
+    ]
+    result["rmse_max_px"] = max(errors) if errors else None
+    result["raw_campaigns"] = campaigns
     component_keys = campaigns[0]["component_timing_medians_ms"]
     result["component_timing_medians_ms"] = {
         key: float(
@@ -332,7 +412,40 @@ def _aggregate_campaigns(campaigns: list[dict[str, Any]]) -> dict[str, Any]:
 
 def main() -> int:
     args = _arguments()
-    reference, targets = _fixtures(args.assets, args.width, args.height)
+    fixture_names = [filename for filename, _ in TARGET_FIXTURES]
+    if args.fixture_set == "timing":
+        reference, targets = _fixtures(args.assets, args.width, args.height)
+    else:
+        import csv
+
+        if (args.width, args.height) != (3840, 2160):
+            raise ValueError(
+                "Original UHD tensile images require 3840x2160; no resizing is applied"
+            )
+        assets = args.assets / "uhd_tensile"
+        with (assets / "machine_truth.csv").open(
+            newline="", encoding="utf-8"
+        ) as stream:
+            state = next(
+                row for row in csv.DictReader(stream) if int(row["frame"]) == 40
+            )
+        with Image.open(assets / "reference.png") as image:
+            reference = np.array(image, dtype=np.uint8)
+        with Image.open(assets / "frame_040.png") as image:
+            target = np.array(image, dtype=np.uint8)
+        targets = [
+            (reference, (0.0, 0.0), hashlib.sha256(reference).hexdigest()),
+            (
+                target,
+                {
+                    "ex": float(state["stretch_x"]) - 1,
+                    "ey": float(state["stretch_y"]) - 1,
+                },
+                hashlib.sha256(target).hexdigest(),
+            ),
+        ]
+        fixture_names = ["reference.png", "frame_040.png"]
+    mask = None if args.roi_mask is None else np.load(args.roi_mask, allow_pickle=False)
     measurements = {}
     for backend in args.backends:
         with _engine(
@@ -347,7 +460,13 @@ def main() -> int:
             gaussian_sigma=args.gaussian_sigma,
             device_type=args.device_type,
         ) as engine:
-            preparation = engine.set_reference(reference)
+            preparation = (
+                engine.set_reference(
+                    reference, roi_mask=mask, roi_policy=args.roi_policy
+                )
+                if mask is not None
+                else engine.set_reference(reference)
+            )
             campaigns = [
                 _measure(
                     engine,
@@ -361,6 +480,7 @@ def main() -> int:
             ]
             measurements[backend] = {
                 "device": preparation.device,
+                "adapter_info": dict(getattr(engine, "adapter_info", {})),
                 "execution_device_type": getattr(
                     engine, "execution_device_type", "browser"
                 ),
@@ -368,19 +488,50 @@ def main() -> int:
                 **_aggregate_campaigns(campaigns),
             }
 
+    import lucas_kanade_icgn
+
+    source_dir = Path(lucas_kanade_icgn.__file__).parent
+    revision = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=source_dir, text=True
+    ).strip()
+    dirty = bool(
+        subprocess.check_output(
+            ["git", "status", "--porcelain", "--untracked-files=no"],
+            cwd=source_dir,
+            text=True,
+        ).strip()
+    )
     print(
         json.dumps(
             {
+                "commit": revision,
+                "source_hashes": {
+                    str(path.relative_to(source_dir)): hashlib.sha256(
+                        path.read_bytes()
+                    ).hexdigest()
+                    for path in sorted(
+                        [*source_dir.glob("*.py"), *source_dir.glob("shaders/*.wgsl")]
+                    )
+                },
+                "wgpu_version": importlib.metadata.version("wgpu"),
+                "reference_hash": hashlib.sha256(reference).hexdigest(),
+                "git_dirty": dirty,
+                "command": sys.argv,
+                "python": sys.version,
+                "platform": platform.platform(),
+                "roi_mask_file": None if args.roi_mask is None else str(args.roi_mask),
+                "roi_policy": args.roi_policy,
                 "resolution": [args.width, args.height],
                 "input": "pre-acquired contiguous uint8 NumPy grayscale frames",
                 "reference_preparation_included": False,
                 "camera_or_decoder_included": False,
                 "fixture_hashes": {
                     filename: digest
-                    for (filename, _), (_, _, digest) in zip(
-                        TARGET_FIXTURES, targets, strict=True
+                    for filename, (_, _, digest) in zip(
+                        fixture_names, targets, strict=True
                     )
                 },
+                "fixture_set": args.fixture_set,
                 "pyramid_levels": args.pyramid_levels,
                 "subset_size": args.subset_size,
                 "subset_stride": args.subset_stride or args.subset_size,

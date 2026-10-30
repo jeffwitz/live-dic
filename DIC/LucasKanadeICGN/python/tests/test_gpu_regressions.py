@@ -1,6 +1,6 @@
 """Opt-in regressions that execute the packaged WGSL on a real wgpu adapter.
 
-Run with ICGN_RUN_GPU_TESTS=1 and the package's ``native`` extra installed.
+Run with ICGN_RUN_GPU_TESTS=1 and the standard package installed.
 Once requested, missing wgpu, an unavailable adapter, or shader compilation
 errors are failures, never skips. These tests enforce exact reduction and
 state-preservation contracts; they do not qualify DIC accuracy or throughput.

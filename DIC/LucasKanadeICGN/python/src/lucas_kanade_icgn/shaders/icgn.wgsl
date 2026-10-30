@@ -81,6 +81,9 @@ override GAUSSIAN_SIGMA: f32 = 4.0;
 // Keep standalone consumers safe. Repository hosts specialize this override
 // to zero for dimensions where one reflection already covers every tile load.
 override PREFILTER_CLAMP_HALO: u32 = 1u;
+// Native full-window ROI uses static neighbour permissions appended to metadata.
+// Zero keeps browser consumers and unmasked native pipelines unchanged.
+override ROI_ENABLED: u32 = 0u;
 
 var<workgroup> partial_a: array<vec4<f32>, 16>;
 var<workgroup> partial_b: array<vec4<f32>, 16>;
@@ -577,7 +580,11 @@ fn solve_subset(
             }
         }
         let valid = enabled && metadata_value(subset_index, 1u) >= 0.5;
-        shared_status = vec2<f32>(select(-1.0, 0.0, valid), 0.0);
+        var rejected_status = -1.0;
+        if ROI_ENABLED != 0u {
+            rejected_status = min(-1.0, metadata_value(subset_index, 1u));
+        }
+        shared_status = vec2<f32>(select(rejected_status, 0.0, valid), 0.0);
     }
     workgroupBarrier();
 
@@ -633,7 +640,9 @@ fn solve_subset(
                 }
             }
             if !inside {
-                shared_status.x = -1.0;
+                if ROI_ENABLED == 0u || shared_status.x > -2.5 {
+                    shared_status.x = -1.0;
+                }
             }
         }
         workgroupBarrier();
@@ -1140,6 +1149,13 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
                 continue;
             }
             let neighbor_index = u32(neighbor_y) * config.grid_width + u32(neighbor_x);
+            if ROI_ENABLED != 0u {
+                let permissions = u32(metadata.values[config.grid_count * 4u + subset_index].x);
+                let bit = u32((dy + 1) * 3 + dx + 1);
+                if (permissions & (1u << bit)) == 0u {
+                    continue;
+                }
+            }
             let neighbor_state_index = neighbor_index * stride;
             let neighbor_a = state.values[neighbor_state_index];
             let neighbor_b = state.values[neighbor_state_index + 1u];

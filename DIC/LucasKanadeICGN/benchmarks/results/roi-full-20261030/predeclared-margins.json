@@ -1,0 +1,15 @@
+{
+  "rule": "observed relative span of three baseline campaigns; candidate evaluated after this file was written; noise-overlapping differences are inconclusive",
+  "margins": {
+    "translation": {
+      "stream_period_ms": 0.0659338430642904,
+      "latency_p95_ms": 0.07250314284069725,
+      "latency_p99_ms": 0.09460098344813517
+    },
+    "affine": {
+      "stream_period_ms": 0.04938626853140282,
+      "latency_p95_ms": 0.06154212968017303,
+      "latency_p99_ms": 0.30921754973072657
+    }
+  }
+}

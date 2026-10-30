@@ -37,6 +37,8 @@ override MOTION_MODEL: u32 = 0u;
 @group(2) @binding(1) var<storage, read_write> destination_seed: Float4Buffer;
 @group(2) @binding(2) var<storage, read_write> destination_active: UintBuffer;
 @group(2) @binding(3) var<uniform> seed_config: SeedConfig;
+// Only the native ROI entry point requires this static link table.
+@group(2) @binding(4) var<storage, read> roi_seed_links: UintBuffer;
 
 fn mirror_coordinate(coordinate: i32, size: i32) -> i32 {
     if coordinate < 0 {
@@ -162,9 +164,7 @@ fn accumulate_seed(
     *weight_sum += weighted;
 }
 
-@compute @workgroup_size(256)
-fn transfer_seed(@builtin(global_invocation_id) global_id: vec3<u32>) {
-    let destination_index = global_id.x;
+fn transfer_subset_seed(destination_index: u32, permissions: u32) {
     if destination_index >= seed_config.destination_grid_count {
         return;
     }
@@ -184,8 +184,8 @@ fn transfer_seed(@builtin(global_invocation_id) global_id: vec3<u32>) {
         source_coordinate - vec2<f32>(0.5 * SUBSET_SIZE)
     ) / SUBSET_STRIDE;
     let maximum_lower = vec2<i32>(
-        i32(seed_config.source_grid_width) - 2,
-        i32(seed_config.source_grid_height) - 2,
+        max(0, i32(seed_config.source_grid_width) - 2),
+        max(0, i32(seed_config.source_grid_height) - 2),
     );
     let lower = clamp(vec2<i32>(floor(source_grid_coordinate)), vec2<i32>(0), maximum_lower);
     let fraction = clamp(source_grid_coordinate - vec2<f32>(lower), vec2<f32>(0.0), vec2<f32>(1.0));
@@ -195,8 +195,15 @@ fn transfer_seed(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var accumulated_c = vec4<f32>(0.0);
     var weight_sum = 0.0;
     for (var corner = 0; corner < 4; corner = corner + 1) {
+        if (permissions & (1u << u32(corner))) == 0u {
+            continue;
+        }
         let offset = vec2<i32>(corner & 1, corner >> 1);
         let source_grid = lower + offset;
+        if source_grid.x >= i32(seed_config.source_grid_width)
+            || source_grid.y >= i32(seed_config.source_grid_height) {
+            continue;
+        }
         let source_index = u32(source_grid.y) * seed_config.source_grid_width
             + u32(source_grid.x);
         let weight_x = select(1.0 - fraction.x, fraction.x, offset.x == 1);
@@ -233,5 +240,18 @@ fn transfer_seed(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
     // A missing coarse estimate is not a reason to suppress a potentially
     // valid finer subset. Run it from the zero seed instead.
-    destination_active.values[destination_index] = 1u;
+    destination_active.values[destination_index] = (permissions >> 4u) & 1u;
+}
+
+@compute @workgroup_size(256)
+fn transfer_seed(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    transfer_subset_seed(global_id.x, 31u);
+}
+
+@compute @workgroup_size(256)
+fn transfer_seed_roi(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    if global_id.x >= seed_config.destination_grid_count {
+        return;
+    }
+    transfer_subset_seed(global_id.x, roi_seed_links.values[global_id.x]);
 }

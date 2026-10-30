@@ -92,6 +92,12 @@ Status field
 
 ``RegistrationResult.status`` has shape ``(grid_height, grid_width)``.
 
+Native ROI results additionally use ``-3`` for geometrically excluded windows.
+This is not a failed solve. ``roi_selected`` and ``reference_valid`` distinguish
+the static geometric and numerical reference masks; ``populations`` labels the
+denominators used for success rates. Undefined RMSE is ``None``. See
+:doc:`../how-to/use-roi` for finite dense fields and self-contained NPZ exports.
+
 .. list-table:: Status values
    :header-rows: 1
 

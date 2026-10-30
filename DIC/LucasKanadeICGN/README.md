@@ -18,6 +18,12 @@ consumes NumPy fields. The recommended resident-NumPy path is
 ``ICGNWGPUFullPyramid`` because it runs WebGPU in-process and keeps the complete
 image-to-field boundary under Python control.
 
+Both native engines accept a boolean reference ROI with
+`set_reference(reference, roi_mask=mask)`. The default `full` policy retains
+only complete nominal windows, including checks for interior holes. The
+[ROI guide](./docs/how-to/use-roi.rst) explains conservative pyramids,
+neighbour permissions, streaming, and self-contained result exports.
+
 The Three.js and raw-WGSL browser backends serve portability, browser-native
 deployment, and numerical qualification. ``ICGNWebGL`` makes them callable
 from Python, but it necessarily copies each target into Chromium and returns

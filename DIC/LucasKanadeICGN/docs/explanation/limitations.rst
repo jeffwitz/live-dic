@@ -71,7 +71,7 @@ Runtime
 * Browser backends require Chromium as their WebGL2 or WebGPU execution
   environment. Chromium is a system dependency and is not distributed in the
   Python wheel.
-* Chromium is not required by ``ICGNWGPU``, but that optional backend requires
+* Chromium is not required by ``ICGNWGPU``, but that native backend requires
   Python 3.11 or newer and a wgpu-native-supported graphics driver.
 * One engine instance is not thread-safe.
 * Native sequence pipelining improves throughput by keeping bounded work in

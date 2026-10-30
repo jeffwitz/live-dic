@@ -35,6 +35,8 @@ const SUBSET_SIZE: i32 = 16;
 const SUBSET_PIXELS: f32 = 256.0;
 const SUBSET_HALF_EXTENT: f32 = 7.5;
 
+override ROI_ENABLED: u32 = 0u;
+
 fn metadata_value(subset_index: u32, component: u32) -> f32 {
     return metadata.values[subset_index * 4u + component / 4u][component % 4u];
 }
@@ -86,7 +88,11 @@ fn main(
 
     var current_translation = vec2<f32>(0.0);
     var current_linear = vec4<f32>(0.0);
-    var current_status = select(-1.0, 0.0, metadata_value(subset_index, 1u) >= 0.5);
+    var rejected_status = -1.0;
+    if ROI_ENABLED != 0u {
+        rejected_status = min(-1.0, metadata_value(subset_index, 1u));
+    }
+    var current_status = select(rejected_status, 0.0, metadata_value(subset_index, 1u) >= 0.5);
     var current_iterations = 0.0;
     let grid_x = i32(subset_index % config.grid_width);
     let grid_y = i32(subset_index / config.grid_width);

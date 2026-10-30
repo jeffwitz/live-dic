@@ -187,6 +187,7 @@ def _registration_summary(
         "mean_iterations": _finite_or_none(result.mean_iterations),
         "timing_ms": dict(result.timing),
         "config": dict(result.config),
+        "populations": result.populations,
     }
     if truth is not None:
         summary["truth"] = [float(truth[0]), float(truth[1])]
@@ -216,10 +217,21 @@ def _save_registrations(
 ) -> None:
     """Save sequence outputs in one array per documented result field."""
 
+    hashes = {None if result.roi is None else result.roi.mask_hash for result in results}
+    if len(hashes) > 1:
+        raise ValueError(
+            "A sequence archive must use one prepared ROI; export separate references separately"
+        )
     path.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(
         path,
         targets=np.asarray([str(target) for target in targets]),
+        **({} if results[0].roi is None else results[0].roi.archive_fields()),
+        **(
+            {}
+            if results[0].reference_valid is None
+            else {"reference_valid": results[0].reference_valid}
+        ),
         parameter_order=np.asarray(results[0].parameter_order),
         parameters=np.stack([result.parameters for result in results]),
         displacement=np.stack([result.displacement for result in results]),
@@ -228,7 +240,9 @@ def _save_registrations(
         accepted=np.asarray([result.accepted for result in results]),
         flagged=np.asarray([result.flagged for result in results]),
         replaced=np.asarray([result.replaced for result in results]),
-        config_json=np.asarray(json.dumps(dict(results[0].config), sort_keys=True)),
+        config_json=np.asarray(
+            json.dumps(dict(results[0].config), sort_keys=True, allow_nan=False)
+        ),
         mean_translation=np.asarray(
             [result.mean_translation or (np.nan, np.nan) for result in results],
             dtype=np.float64,
@@ -244,6 +258,12 @@ def _save_benchmark(path: Path, target: Path, result: BenchmarkResult) -> None:
     np.savez_compressed(
         path,
         target=np.asarray(str(target)),
+        **({} if registration.roi is None else registration.roi.archive_fields()),
+        **(
+            {}
+            if registration.reference_valid is None
+            else {"reference_valid": registration.reference_valid}
+        ),
         parameter_order=np.asarray(registration.parameter_order),
         parameters=registration.parameters,
         displacement=registration.displacement,
@@ -252,7 +272,9 @@ def _save_benchmark(path: Path, target: Path, result: BenchmarkResult) -> None:
         accepted=np.asarray(registration.accepted),
         flagged=np.asarray(registration.flagged),
         replaced=np.asarray(registration.replaced),
-        config_json=np.asarray(json.dumps(dict(registration.config), sort_keys=True)),
+        config_json=np.asarray(
+            json.dumps(dict(registration.config), sort_keys=True, allow_nan=False)
+        ),
         mean_translation=np.asarray(
             registration.mean_translation or (np.nan, np.nan), dtype=np.float64
         ),

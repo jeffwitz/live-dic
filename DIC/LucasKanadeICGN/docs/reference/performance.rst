@@ -391,3 +391,15 @@ one controlled dataset. They do not include camera acquisition, frame-arrival
 jitter, a codec, downstream processing, or operating-system deadline
 guarantees. Median and p95, accepted subsets, RMSE, queue depth, and result
 latency must be reported together when qualifying a deployment.
+
+Full-window ROI qualification
+-----------------------------
+
+The native ``full`` ROI implementation has a separate
+`qualification report with raw stream campaigns
+<https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/roi-full-20261030>`_.
+It measures translation and affine execution, the original UHD tensile images,
+all-true/absent masks, compact/fragmented regions and the optional subgroup path.
+The observed hardware drift prevents a conclusive real-time non-regression
+decision within the predeclared margins. These ROI campaigns do not replace
+the established unmasked measurements above. See :doc:`../how-to/use-roi`.

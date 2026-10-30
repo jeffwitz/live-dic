@@ -1,0 +1,94 @@
+{
+  "starting_commit": "4a435841eeda09a5611ef1f93573dd5370ac10e7",
+  "candidate_git_dirty": true,
+  "ci": "not executed for the uncommitted ROI changes",
+  "validation": {
+    "baseline_hardware": {
+      "tests": 125,
+      "seconds": 11.179,
+      "result": "passed",
+      "skips": 0
+    },
+    "candidate_hardware": {
+      "tests": 142,
+      "seconds": 20.324,
+      "result": "passed",
+      "skips": 0
+    },
+    "candidate_lavapipe": {
+      "tests": 142,
+      "seconds": 29.779,
+      "result": "passed",
+      "skips": 0
+    },
+    "final_roi_hardware": {
+      "tests": 16,
+      "seconds": 2.708,
+      "result": "passed",
+      "skips": 0
+    },
+    "final_roi_lavapipe": {
+      "tests": 16,
+      "seconds": 7.222,
+      "result": "passed",
+      "skips": 0
+    }
+  },
+  "installed_wheel": {
+    "module": "/tmp/live-dic-roi-install/lib/python3.12/site-packages/lucas_kanade_icgn/wgpu_backend.py",
+    "source_matches_checkout": true,
+    "adapter": {
+      "vendor": "Intel open-source Mesa driver",
+      "architecture": "",
+      "device": "Intel(R) Graphics (LNL)",
+      "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+      "stackgroup_min_size": 4,
+      "stackgroup_max_size": 128,
+      "vendor_id": 32902,
+      "device_id": 25760,
+      "adapter_type": "IntegratedGPU",
+      "backend_type": "Vulkan"
+    },
+    "populations": {
+      "gridTotal": 64,
+      "roiSelected": 35,
+      "roiExcluded": 29,
+      "referenceAdmissible": 35,
+      "accepted": 35,
+      "rejectedSelected": 0,
+      "acceptedFractionSelected": 1.0
+    },
+    "rmse_px": 1.9449036172377248e-07,
+    "npz_allow_pickle": false
+  },
+  "wheel": {
+    "name": "lucas_kanade_icgn_webgl-0.1.0-py3-none-any.whl",
+    "sha256": "38c14f2942ac6d5df503c4fa0dc6ae7a44e8b9fce4a7e38623c58c0024755f22",
+    "fresh_environment": "Python 3.12; pip installed declared dependencies; execution cwd /tmp; PYTHONPATH unset"
+  },
+  "final_source_sha256": {
+    "__init__.py": "8014ba4125ee1114de90e891599f09d1db1f04cc528d4811b2f4d52beb0b9bed",
+    "__main__.py": "935a1c1166b0c1ea35a82256345000bf2c73ded718d77773bc27a71ecce28f7d",
+    "cli.py": "7a77f3933993de0e7e9cdc0afc801d17d733560aa2dd9171397ffb75e2f55b63",
+    "engine.py": "3e75aaecd216fcac9cc2a6d37d948b0d0503b01362e077aad05a383c164ef334",
+    "full_pyramid_backend.py": "80f507f1a856abd667568c26ad2f2962945b6647577b1329d44af0e61231af27",
+    "interpolation.py": "f795f0282927c91624d13fbb9f4080115d4deb766f0f61fea24a27124d8978a9",
+    "motion.py": "e161f3b0fdfd7c3800fcae3e886a042a40479879f23949a9f8dfdde9a65bee54",
+    "outlier.py": "d0bcfd4e2ebc53e64374b0cb976debcafeb79bc94ca648fd9fe35b689968d126",
+    "roi.py": "4ab4ad9f1ed66decbb1d28abf7c8c73ad60662458e697f929f1e480011ed12b0",
+    "shaders/full_pyramid.wgsl": "032645ad39423abd81308212ea0cb2deb3159f7581b45f5772bbe10491c26613",
+    "shaders/icgn.wgsl": "1a6d32e146a4a0591f372c8c8195c05ab6afa1e36f5b8edfa26a700d8e5fc679",
+    "shaders/icgn_subgroup.wgsl": "3c35126b1d5e18690cfe882516dea2d112afa1b0ce9e06eefea4349b1547006e",
+    "shaders/subgroup_probe.wgsl": "6e4d149ed7f17969ede557a3062742d8da6c62cb6dd745d5510112c1489fed61",
+    "subset.py": "fcd5d06bab637cc1d352036bc3855b2bab88ca15d045fa97c15fc3eaaf12411f",
+    "weighting.py": "f25f7f3ac7bc2d0d313bffe6942b80315ca8e99c58325bda01c1a7b0e57f74a8",
+    "wgpu_backend.py": "464dea8a1a55d6061d28b084d3ffcce442a74f774804710f984d455e89b1dec3"
+  },
+  "notes": [
+    "Subgroup execution qualified on Intel hardware; lavapipe covers the unsupported-specialization/portable branches.",
+    "The final preparation-only guard skips autotuning when no selected reference is numerically admissible; live GPU shaders and measured textured-case execution are unchanged.",
+    "Windows and macOS GPU execution were not tested here.",
+    "Hardware timing reception remains open because repeated reference campaigns drift.",
+    "The immutable-mask snapshot is reused between FullPyramid and its levels; after this preparation-only refinement the 16 ROI cases pass on Intel and lavapipe and the rebuilt wheel matches the checkout."
+  ]
+}
