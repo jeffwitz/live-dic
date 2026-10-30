@@ -168,6 +168,52 @@ solver remains specialized for 16 invocations. The benchmark utility accepts
 ``--workgroup-size 16`` or ``--workgroup-size 32`` for its synthetic UHD A/B
 runs.
 
+Changing-frame control on Intel Lunar Lake
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A separate matched campaign on the Intel Graphics LNL / Mesa 25.2.8 machine
+compared widths on the 200-frame native-UHD tensile trajectory. It used affine
+16/16, B-spline, median postprocessing, two fixed levels, temporal velocity
+prediction, fine correction, and finest-only conservative stopping. Only
+``solver_workgroup_size`` changed. Three alternating runs measured 180 fields
+each after warmup and chronological priming. The boundary includes the resident
+NumPy image through the materialized NumPy field and statistics.
+
+.. list-table:: Matched changing-frame campaign, performance power profile
+   :header-rows: 1
+
+   * - Invocations / slots
+     - Sustained FPS
+     - Result age p50 / p95 / p99
+   * - 16 / 1
+     - **82.26**
+     - **12.13 / 13.82 / 14.86 ms**
+   * - 32 / 1
+     - 69.74
+     - 14.65 / 18.66 / 19.73 ms
+   * - 16 / 2
+     - 88.62
+     - 22.60 / 25.44 / 26.04 ms
+   * - 32 / 2
+     - 74.61
+     - 27.15 / 35.57 / 36.26 ms
+
+FPS is the median of three runs; age quantiles pool 540 samples per row.
+Both widths pass the existing fixed-interior quality gates: minimum coverage
+99.985%, maximum displacement RMSE about 0.02858 px, and strain aggregate RMSE
+below 0.001447. Mean fine/coarse iteration counts are essentially unchanged.
+Whole-grid edge failures remain, including a maximum frame RMSE of 3.2865 px;
+the interior qualification does not cover those points.
+
+Width 32 loses 15.2% throughput at one slot on this machine and exceeds the
+16.67 ms p95 age budget. Keep width 16 here. The different fixed-pair results
+above do not imply a portable benefit from width 32. No default changed.
+See the :download:`strict summary
+<../../benchmarks/results/workgroup-width-20261030/summary.json>` and the
+`full campaign, commands, samples and final fields
+<https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/workgroup-width-20261030>`_.
+These finite campaigns do not establish a universal deadline.
+
 .. list-table:: Native displacement-UOD policy control
    :header-rows: 1
 
