@@ -162,6 +162,8 @@ def run_campaign(args):
                 ]
                 if repeat == 0 and depth == 1:
                     command.append("--diagnostics")
+                if args.solver_workgroup_size is not None:
+                    command.extend(("--solver-workgroup-size", str(args.solver_workgroup_size)))
                 environment = os.environ.copy()
                 if variant == "baseline" and args.baseline_source is not None:
                     environment["PYTHONPATH"] = str(args.baseline_source)
@@ -179,6 +181,7 @@ def main():
     parser.add_argument("--campaign", action="store_true")
     parser.add_argument("--baseline-source", type=Path)
     parser.add_argument("--variants", nargs="+", choices=VARIANTS, default=VARIANTS)
+    parser.add_argument("--solver-workgroup-size", type=int, choices=(16, 32))
     args = parser.parse_args()
     if args.campaign:
         run_campaign(args)
@@ -199,10 +202,13 @@ def main():
     def git(*command):
         return subprocess.check_output(["git", "-C", str(source), *command], text=True).strip()
 
+    options = options_for(args.variant)
+    if args.solver_workgroup_size is not None:
+        options["solver_workgroup_size"] = args.solver_workgroup_size
     report = dict(
         variant=args.variant,
         requested_depth=args.pipeline_depth,
-        options=options_for(args.variant),
+        options=options,
         boundary="resident uint8 NumPy image -> materialized NumPy field and statistics",
         command=[sys.executable, *sys.argv],
         source=str(source),
