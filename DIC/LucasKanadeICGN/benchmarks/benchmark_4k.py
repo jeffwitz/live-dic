@@ -14,10 +14,8 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+from lucas_kanade_icgn import ICGNWGPU, ICGNWebGL
 from PIL import Image
-
-from lucas_kanade_icgn import ICGNWebGL, ICGNWGPU
-
 
 UHD_WIDTH = 3840
 UHD_HEIGHT = 2160

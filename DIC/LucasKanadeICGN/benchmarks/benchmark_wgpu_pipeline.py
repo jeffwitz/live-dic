@@ -9,9 +9,8 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from PIL import Image
-
 from lucas_kanade_icgn import ICGNWGPU, RegistrationResult
+from PIL import Image
 
 UHD_WIDTH = 3840
 UHD_HEIGHT = 2160
