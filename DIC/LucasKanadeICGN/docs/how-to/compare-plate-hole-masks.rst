@@ -72,6 +72,14 @@ Compare coverage and error together: removing difficult boundary points can
 lower an own-support RMSE without improving any retained measurement. The
 nominal ROI does not guarantee isolation of image preprocessing from the hole.
 
+For this tested affine 16/16, B-spline, two-level pipeline, **keep ``full`` as
+the default ROI policy**. Partial adds coverage without qualifying the new
+boundary strains, and visibility does not solve that limitation on this hole.
+Use partial explicitly when its additional boundary measurements have been
+qualified for the intended use. Median is useful for these smooth strain maps
+but remains an explicit smoothing choice; retain access to raw output for
+measurements where localized structure matters.
+
 .. figure:: ../../benchmarks/results/plate-hole-roi-20261030/boundary_bands_225.png
    :alt: Error and coverage by distance from the hole for four mask variants.
 

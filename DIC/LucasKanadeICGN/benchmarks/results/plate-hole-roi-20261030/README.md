@@ -10,6 +10,22 @@ variants are compared: no ROI, full squares, partial connected supports, and
 partial supports with the explicit visibility heuristic. All images are
 included in [the offline fixture](../../../assets/uhd_plate_hole/README.md).
 
+## Recommended default for the tested configuration
+
+**Keep `roi_policy="full"` as the default** for affine 16/16, B-spline and two
+levels. Partial and visibility give almost the same error on the common support,
+while the 24 additional boundary points have insufficient strain accuracy on
+these cases. Their extra coverage is not a sufficient reason to make partial
+the default. Visibility does not resolve this limitation on the circular hole.
+
+Retain partial as an explicit option when additional boundary displacement
+measurements are useful and their accuracy has been qualified for the intended
+scene. For smooth strain maps, explicit median output is useful here; it remains
+a smoothing choice, and raw output must stay available. These two smooth load
+cases do not establish median's preservation of localized deformation features.
+The experiment selects a mask policy within the tested pipeline; it does not
+prove that its subset size or interpolator is optimal among all configurations.
+
 ## Matplotlib figures
 
 All fields are computed at native UHD. Only the **view** is zoomed to +/-320 px
