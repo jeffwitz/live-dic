@@ -29,7 +29,16 @@ from temporal_cases import tensile_stretches
 
 from benchmark_temporal_init import scores
 
-VARIANTS = ("baseline", "velocity", "abort", "adaptive", "cubic", "cubic-fixed")
+VARIANTS = (
+    "baseline",
+    "velocity",
+    "abort",
+    "adaptive",
+    "cubic",
+    "cubic-fixed",
+    "abort-fast",
+    "cubic-only",
+)
 
 
 def options_for(variant):
@@ -41,13 +50,15 @@ def options_for(variant):
         outlier_policy="median",
         device_type="gpu",
     )
-    if variant != "baseline":
+    if variant not in ("baseline", "cubic-only"):
         options["temporal_prediction"] = "velocity"
-    if variant in ("abort", "adaptive", "cubic", "cubic-fixed"):
+    if variant in ("abort", "adaptive", "cubic", "cubic-fixed", "abort-fast"):
         options.update(divergence_patience=3, divergence_min_iterations=4)
+    if variant == "abort-fast":
+        options.update(divergence_patience=1, divergence_min_iterations=2)
     if variant in ("adaptive", "cubic"):
         options.update(pyramid_policy="adaptive", adaptive_acceptance=0.95)
-    if variant in ("cubic", "cubic-fixed"):
+    if variant in ("cubic", "cubic-fixed", "cubic-only"):
         options["interpolation"] = "cubic"
     return options
 
