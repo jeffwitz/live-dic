@@ -1,0 +1,99 @@
+{
+  "runtime_commit": "43fbb17",
+  "checks": [
+    {
+      "command": "rtk proxy env ICGN_RUN_GPU_TESTS=1 .venv/bin/python -m unittest discover -s tests",
+      "cwd": "DIC/LucasKanadeICGN/python",
+      "adapter": "Intel Graphics LNL / Vulkan Mesa 25.2.8",
+      "tests": 179,
+      "passed": 179,
+      "skipped": 0,
+      "seconds": 100.185
+    },
+    {
+      "command": "rtk proxy .venv/bin/python -m unittest discover -s tests",
+      "cwd": "DIC/LucasKanadeICGN/python",
+      "tests": 179,
+      "passed": 119,
+      "skipped": 60,
+      "seconds": 1.179
+    },
+    {
+      "command": "rtk proxy env ICGN_RUN_GPU_TESTS=1 VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json LIBGL_ALWAYS_SOFTWARE=1 .venv/bin/python -m unittest discover -s tests -p test_gpu_regressions.py",
+      "cwd": "DIC/LucasKanadeICGN/python",
+      "adapter": "lavapipe software Vulkan",
+      "tests": 21,
+      "passed": 21,
+      "skipped": 0,
+      "seconds": 6.631
+    },
+    {
+      "command": "rtk proxy env ICGN_RUN_GPU_TESTS=1 VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json LIBGL_ALWAYS_SOFTWARE=1 .venv/bin/python -m unittest discover -s tests -p test_fused_pyramid.py",
+      "cwd": "DIC/LucasKanadeICGN/python",
+      "adapter": "lavapipe software Vulkan",
+      "tests": 8,
+      "passed": 8,
+      "skipped": 0,
+      "seconds": 52.586
+    },
+    {
+      "command": "rtk proxy .venv/bin/ruff check src tests ../benchmarks",
+      "cwd": "DIC/LucasKanadeICGN/python",
+      "passed": true
+    },
+    {
+      "command": "rtk proxy .venv/bin/ruff format --check src tests ../benchmarks/benchmark_realtime_optimization.py",
+      "cwd": "DIC/LucasKanadeICGN/python",
+      "passed": true,
+      "files": 28
+    },
+    {
+      "command": "rtk proxy python3 -m sphinx -W --keep-going -b html DIC/LucasKanadeICGN/docs DIC/LucasKanadeICGN/docs/_build/html",
+      "passed": true
+    }
+  ],
+  "browser_shared_wgsl": {
+    "backend": "webgpu-wgsl",
+    "fixture": "assets/uhd_tensile/frame_040.png",
+    "shape": [
+      2160,
+      3840
+    ],
+    "pyramid_levels": 2,
+    "outlier_policy": "median",
+    "coverage": 0.9998059257342476,
+    "displacement_rmse_px": 0.024201424043536927
+  },
+  "wheel": {
+    "build_command": "rtk proxy python3 -m pip wheel --no-deps --no-build-isolation ./DIC/LucasKanadeICGN/python -w /tmp/live-dic-rt-wheel",
+    "filename": "lucas_kanade_icgn_webgl-0.1.0-py3-none-any.whl",
+    "sha256": "02852516991e37be29972a8b9b675e537b78f03d0682334e087fa1575bbbf1b5",
+    "installed_outside_checkout": "/tmp/live-dic-rt-install/lib/python3.12/site-packages/lucas_kanade_icgn",
+    "python": "3.12",
+    "numpy": "2.5.4",
+    "wgpu": "0.32.0",
+    "uhd_checks": {
+      "shape": [
+        2160,
+        3840
+      ],
+      "temporal_fine_correction": true,
+      "pipeline_depth": 3,
+      "roi_full_accepted": 29665,
+      "roi_partial_accepted": 30025,
+      "excluded_status": -3,
+      "npz_allow_pickle": false,
+      "roi_mask_and_config_round_trip": true
+    },
+    "installation_note": "The current package has wgpu as a default dependency; the removed [native] extra produced a pip warning and was not required. No Rust or external shader compiler was invoked."
+  },
+  "uhd_corruption": "uhd-corruption.json",
+  "formatting_note": "A broader optional format check over all historical benchmarks reports 19 pre-existing unformatted files. The baseline worktree reports the same 19 files; they were not reformatted in this change.",
+  "remote_ci": "Not run or claimed; commits are local and not pushed.",
+  "limitations": [
+    "Hardware qualification is limited to Intel LNL on Linux Vulkan.",
+    "Three repeats of 180 timed frames per configuration are not a long-duration thermal soak.",
+    "p95 result age is not consistently below 16.67 ms; pooled tails are worse than baseline.",
+    "All-grid accepted boundary errors persist; only the documented fixed interior population meets the displacement criteria."
+  ]
+}
