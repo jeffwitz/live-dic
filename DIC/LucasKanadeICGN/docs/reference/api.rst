@@ -149,6 +149,37 @@ expired history, or differing source ages retain the normal absolute seed.
 Both levels still run on every image. The option adds GPU-resident coarse
 history; it changes initialization, not the fixed reference or solve criteria.
 
+Additional native latency experiments are disabled by default:
+
+* ``temporal_prediction="none"|"velocity"``: velocity requires temporal
+  initialization and projects ``2 * last - previous`` accepted raw motion
+  states. Two consecutive successful measurements are required. Reset,
+  rejection or expired history retains the ordinary temporal seed until that
+  condition is restored. With velocity, history is raw even under ``replace``;
+  filtered output and predictions are never stored as measurements.
+* ``divergence_patience=None|int``: ``None`` disables stagnation stopping.
+  An integer from 1 to 30 aborts a nonconverged window after that many
+  consecutive nondecreasing corner-update norms. Counting starts at
+  ``divergence_min_iterations`` (default 4, also 1--30). Convergence on the
+  current iteration takes priority. An abort exports finite parameters with
+  status 0; it can discard a window that would converge later.
+* ``pyramid_policy="fixed"|"adaptive"``: adaptive requires temporal mode
+  and a two-level prepared pyramid. After reset it solves both levels. A
+  previous accepted-update fraction at least ``adaptive_acceptance``
+  (default 0.95, finite in (0,1]) allows a fine-only solve. A drop or newly
+  expired history requests both levels. The denominator is the number of
+  numerically admissible reference windows, including those whose current
+  target may fail near image boundaries. ``timing["pyramidLevels"]`` and
+  ``config["pyramidLevelsUsed"]`` report the actual choice.
+
+Adaptive host feedback deliberately permits only one outstanding image,
+even when ``pipeline_depth`` is 2 or 3. This reuses the existing final readback
+without an extra GPU round trip and makes the decisions and fields identical
+across requested depths. It sacrifices pipelining throughput; a depth-2
+adaptive run is not a two-image-in-flight run. Fixed mode keeps its existing
+concurrency. Prediction adds ``velocityPredictedSubsets``; adaptive mode adds
+``temporalExpiredSubsets`` to timing diagnostics (counts, not durations).
+
 ``interpolation`` applies to every pyramid level. ``linear`` and ``cubic``
 omit both FIR passes at every level; ``bspline`` retains the existing graph.
 ``motion_model`` likewise applies to every level and to every transferred seed.

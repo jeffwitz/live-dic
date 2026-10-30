@@ -90,8 +90,8 @@ CPU field transfer.
 Scientific scope
 ----------------
 
-No reference update, displacement accumulation, velocity prediction or extra
-mechanical model is introduced. Raw seeds avoid feeding repeated explicit
+No reference update, displacement accumulation or extra mechanical model is
+introduced. The default temporal mode does not predict velocity. Raw seeds avoid feeding repeated explicit
 median smoothing back into the optimizer. UOD ``replace`` is an exception:
 its corrected state replaces a suspect solution in history as well as output.
 Neither policy turns convergence into a statistical uncertainty guarantee.
@@ -109,3 +109,34 @@ projection and a merge pass, not a CPU/GPU round trip. Zero initialization
 does not allocate these resources or dispatch these passes. Fewer iterations
 may offset their cost, but latency improvement must be measured on the
 actual sequence. See :doc:`../how-to/use-temporal-initialization`.
+
+Velocity, stagnation and adaptive-scale experiments
+---------------------------------------------------
+
+``temporal_prediction="velocity"`` extrapolates each motion coefficient as
+``2 * last - previous`` before projecting to the coarsest grid. Both histories
+contain accepted raw solver states. Prediction is written to separate GPU
+scratch storage, never merged as a measurement. Current and previous ages
+must indicate consecutive successes: a rejected image breaks equal frame
+spacing and disables prediction until two consecutive successes exist again.
+Reset removes both histories. The additional kernels run in the existing
+ordered command buffer and share the final diagnostic readback. This is a
+unit-frame predictor, not a timestamp-aware motion model.
+
+The optional stagnation rule compares successive maximum corner-update norms
+after a minimum iteration count. A strict decrease resets the counter;
+otherwise it increments. Convergence still takes precedence. The rule is a
+heuristic, not a proof of divergence: a stalled window can later converge.
+The benchmark's untimed audit reruns the same image from the exact retained
+seed with stopping disabled and counts that loss. Its extra readbacks and
+solves are diagnostic only and never occur in the live engine.
+
+Adaptive mode uses the accepted-update and expiry counts already returned
+with the field. Both levels run after reset or a poor preceding result;
+otherwise the fine solver receives temporal history directly. No reference,
+Hessian or support is recomputed. The host must observe the preceding result
+to make the same choice for the next target. The implementation therefore
+serializes adaptive submissions at every requested slot depth. This provides
+identical decisions and fields across depths 1/2/3 without adding a readback,
+at the cost of concurrency. A future delayed or GPU-resident decision policy
+would require its own reproducibility contract.

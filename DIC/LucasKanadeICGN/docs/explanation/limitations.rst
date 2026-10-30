@@ -63,10 +63,10 @@ remain single-scale.
 ``ICGNWGPUFullPyramid(initialization="temporal")`` projects the last accepted
 fine field onto the coarsest grid, then solves every configured level on every
 image. It is opt-in and also supports a single level. Other backends do not
-provide temporal initialization. No backend provides constant-velocity or
-other extrapolated initialization, Aitken acceleration, predictive tolerance,
-or automatic retry from the last accepted state. Constant-velocity prediction
-is a possible follow-up, not part of this mode. Temporal history requires
+provide temporal initialization. Native full-pyramid constant-velocity
+prediction is opt-in; no backend provides other extrapolated initialization,
+Aitken acceleration, predictive tolerance, or automatic retry from the last
+accepted state. Temporal history requires
 ordered inputs and cannot guarantee recovery after discontinuous motion or
 accepted wrong-basin solutions. See :doc:`temporal-initialization`.
 
@@ -77,6 +77,17 @@ not a motion predictor or a recovery guarantee. The native-UHD performance
 campaign exceeds 60 FPS in all three measured repeats, but one repeat still
 exceeds 16.67 ms at p95 with one slot. Two slots improve throughput while
 increasing result age; neither mode establishes a hard real-time guarantee.
+
+Native latency controls are experiments with explicit tradeoffs. Velocity
+assumes consecutive equal-time steps, stores raw measurements even under
+``replace``, and can amplify estimation noise or accepted wrong solutions.
+Stagnation stopping can reject late convergence and reports status 0. Adaptive
+mode prepares two levels but can solve only the fine level; it serializes host
+feedback, so requesting two or three slots does not overlap images in that
+mode. Default ``pyramid_policy="fixed"`` still solves every configured level.
+The latency campaign qualifies the affine native-UHD tensile case; it does not
+establish universal accuracy or hard real-time deadlines for other motions,
+hardware, noise levels, discontinuities or long-duration thermal loads.
 
 Runtime
 -------

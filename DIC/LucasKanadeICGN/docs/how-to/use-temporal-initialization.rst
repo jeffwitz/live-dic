@@ -76,6 +76,57 @@ translation and affine. Neither iteration ceilings nor tolerances are reduced.
 Compare timing and quality on the actual sequence: lower iteration counts do
 not guarantee a lower p95 result age on a shared or thermally limited machine.
 
+Try latency policies individually
+----------------------------------
+
+Keep the iteration ceilings, tolerances, support and spatial policy fixed
+while comparing these opt-in controls:
+
+.. code-block:: python
+
+   engine = ICGNWGPUFullPyramid(
+       initialization="temporal",
+       temporal_prediction="velocity",  # default: "none"
+       temporal_fine_correction=True,
+       divergence_patience=3,            # default: None
+       divergence_min_iterations=4,
+       pyramid_policy="adaptive",       # default: "fixed"
+       adaptive_acceptance=0.95,
+       interpolation="bspline",         # compare "cubic" separately
+       motion_model="affine",
+       outlier_policy="median",
+       device_type="gpu",
+   )
+
+This example enables experiments, not a new default configuration. Prediction
+uses two consecutive accepted raw estimates and falls back after a rejection
+or reset. In ``replace`` mode it also uses raw history, so it does not feed
+the spatially corrected output back into a predictor. Accepted wrong-basin
+solutions can still contaminate that history.
+
+Stagnation stopping saves iterations on some difficult windows but may also
+reject late convergence. Inspect coverage and errors, not only FPS. Status 0
+means either the normal iteration ceiling or early stopping; the configuration
+records which policy was enabled.
+
+Adaptive mode chooses one or two solved levels from the preceding result.
+All reference levels, pipelines, target slots and seed permissions are prepared
+before streaming. There is no per-image compilation, allocation, reference
+rebuild, intermediate readback or retry. The fine level retains its configured
+iteration ceiling even when it runs alone. Reset, a low accepted-update
+fraction or newly expired history requests two levels.
+
+For deterministic host feedback, adaptive mode retires each result before
+submitting the next image, regardless of requested ``pipeline_depth``. Fixed
+mode retains the usual ring of independent slots. Read
+``result.timing["pyramidLevels"]`` to record the actual level count, and keep
+result age separate from throughput when comparing modes.
+
+``interpolation="cubic"`` avoids B-spline prefiltering; it changes the sampling
+model and must be qualified against the analytic truth. The latency campaign
+compares displacement, strain and coverage for both interpolators. It is not
+acceptable to infer equal measurement quality from a shorter runtime alone.
+
 Ordering, age and reset
 ------------------------------------------------------------
 
