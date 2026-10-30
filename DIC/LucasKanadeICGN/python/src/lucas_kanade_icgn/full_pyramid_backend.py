@@ -303,6 +303,7 @@ class ICGNWGPUFullPyramid:
             spatial_weighting=self.spatial_weighting,
             gaussian_sigma=self.gaussian_sigma,
         )
+        self._unaborted_portable_solver = self._root._portable_solver
         if self.divergence_patience is not None:
             root = self._root
             root._solver_extra_constants = {
@@ -1083,6 +1084,16 @@ class ICGNWGPUFullPyramid:
                 else self._root._new_shared_level(gpu_writable_source=True)
             )
             schedule_index = self.pyramid_levels - 1 - level_index
+            if level_index and self.divergence_patience is not None:
+                # A premature coarse stop can poison every finer seed. Keep
+                # the full coarse solve and apply the heuristic only at fine
+                # resolution. References, caps and tolerances are unchanged.
+                engine._solver_extra_constants = {}
+                engine._portable_solver = self._unaborted_portable_solver
+                engine._base_portable_solver = engine._portable_solver
+                engine._solver = engine._portable_solver
+                engine._seeded_solver = engine._retry_solver = None
+                engine._roi_solver_pipelines = {}
             info = engine.set_reference(
                 level_reference,
                 iterations=self.iterations_per_level[schedule_index],
@@ -1123,6 +1134,7 @@ class ICGNWGPUFullPyramid:
             self._root._pyramid_config.update(
                 divergencePatience=self.divergence_patience,
                 divergenceMinIterations=self.divergence_min_iterations,
+                divergenceLevels="finest",
             )
         if self.initialization == "temporal":
             self._prepare_temporal_state(mask)

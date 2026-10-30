@@ -65,6 +65,25 @@ class VelocityTemporalTests(test_temporal_init.TemporalGpuTests):
 
 @unittest.skipUnless(os.environ.get("ICGN_RUN_GPU_TESTS") == "1", "GPU tests explicitly disabled")
 class AbortAndAdaptiveTests(unittest.TestCase):
+    def test_finest_abort_does_not_change_the_coarse_seed_field(self):
+        reference, target = _fractional_pair(256, 256, (8.3, -3.7))
+        coarse_fields = []
+        for patience in (None, 1):
+            with ICGNWGPUFullPyramid(
+                outlier_policy="disabled",
+                divergence_patience=patience,
+                divergence_min_iterations=2,
+            ) as engine:
+                engine.set_reference(reference)
+                engine.register(target)
+                coarse = engine._levels[-1]
+                coarse_fields.append(
+                    bytes(
+                        engine.device.queue.read_buffer(coarse._pipeline_slots[0].buffers["state"])
+                    )
+                )
+        self.assertEqual(*coarse_fields)
+
     def test_abort_preserves_early_convergence_and_disabled_path(self):
         reference, target = _fractional_pair(256, 256, (4.3, -2.4))
         fields = []
