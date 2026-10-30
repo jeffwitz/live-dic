@@ -1,0 +1,10 @@
+{
+  "base_commit": "c0c072c24c7bf52a93aaee58b4e754a954ef7d36",
+  "working_tree_fix": true,
+  "source_sha256": {
+    "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/wgpu_backend.py": "cdd2f1a7e848b99d54ce3735c2e2b4ded710722b3b4664c4c856e330b5db6d3c",
+    "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/full_pyramid_backend.py": "af5e97758a92008bfbbe6f334af9e323ffeee7a1a96af3d3043f6c83ad793697",
+    "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/shaders/icgn.wgsl": "4380c637bca72ee047bdfc692a8304abc1845dc48dc24097bb02569e09ba012c",
+    "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/shaders/full_pyramid.wgsl": "d00ef999c5dbc23013928e95ea6ca498a52fbb63850056c05bdbd3c963dc0401"
+  }
+}

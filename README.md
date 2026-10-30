@@ -6,6 +6,26 @@
 > project. His GPU-IO experiments, repository structure, and WebGL groundwork
 > are the foundation on which the work presented here is built.
 
+## Demonstrated 4K execution on AMD, Intel and NVIDIA
+
+**The native WebGPU full-pyramid solver has completed 3840 × 2160 DIC
+benchmarks on GPUs from all three vendors:** AMD Radeon 780M, Intel Lunar
+Lake, Intel UHD Graphics (Tiger Lake GT1), and NVIDIA GeForce RTX 3080 Laptop.
+The portable WGSL solver runs through wgpu-native/Vulkan on both integrated
+and discrete hardware, with 16 and 32 invocations per workgroup exercised.
+This is measured evidence of portability across these tested GPU/driver
+configurations.
+
+The [hardware coverage matrix](./DIC/LucasKanadeICGN/docs/reference/performance.rst#gpu-hardware-coverage)
+distinguishes fixed-pair benchmarks from changing-frame accuracy campaigns.
+On the Radeon 780M, all twelve 4K campaign runs completed and passed the
+fixed-interior quality gates. The initial GPU-suite device-loss failure was
+traced to GPU resources retained after `close()`; the lifecycle correction
+and its validation are documented in the coverage matrix.
+These results establish successful execution of the tested workloads across
+vendors; they do not certify every feature, driver, operating system or recent
+GPU, or promise 4K60 on each device.
+
 ## Product boundary: Python-supervised DIC
 
 DIC-RT is designed to be supervised by a Python application. Python owns the

@@ -39,6 +39,7 @@ from .wgpu_backend import (
     DEFAULT_IN_FLIGHT_FRAMES,
     ICGNWGPU,
     _reduce_half,
+    _release_gpu_references,
     _validated_config,
 )
 
@@ -307,6 +308,7 @@ class ICGNWGPUFullPyramid:
             gaussian_sigma=self.gaussian_sigma,
         )
         self._unaborted_portable_solver = self._root._portable_solver
+        self._closed = False
         if self.divergence_patience is not None:
             root = self._root
             root._solver_extra_constants = {
@@ -1038,6 +1040,8 @@ class ICGNWGPUFullPyramid:
     ) -> ReferenceInfo:
         """Prepare all scale-specific references and persistent GPU storage."""
 
+        if self._closed:
+            raise ICGNError("This engine is closed; create a new engine before set_reference().")
         started = time.perf_counter()
         new_iterations = self.iterations_per_level
         if iterations_per_level is not None:
@@ -1545,8 +1549,16 @@ class ICGNWGPUFullPyramid:
             yield result
 
     def close(self) -> None:
+        """Release all levels and their owning device, once."""
+
+        if self._closed:
+            return
         self._reference_ready = False
         self._clear_level_resources()
+        self._closed = True
+        # Drop the wrapper's pipeline/device aliases before the root collects
+        # native wrappers. Shared levels never destroy the root's device.
+        _release_gpu_references(self)
         self._root.close()
 
     def __enter__(self) -> ICGNWGPUFullPyramid:

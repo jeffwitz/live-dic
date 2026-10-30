@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 import struct
 import unittest
+import weakref
 from typing import Any
 
 import numpy as np
@@ -220,7 +221,6 @@ class GPURegressionTests(unittest.TestCase):
                             fields.append(result)
                         finally:
                             engine.close()
-                            engine.device.destroy()
                 # Reuse the established comparison thresholds, without requiring
                 # bitwise equality after changing the floating-point reduction tree.
                 raw = []
@@ -239,6 +239,39 @@ class GPURegressionTests(unittest.TestCase):
                     raw[0], raw[1], grid_count=fields[0].status.size
                 )
                 self.assertTrue(comparison["valid"], comparison)
+
+    def test_closed_engines_release_devices_even_when_engines_are_retained(self) -> None:
+        reference, target = _fractional_pair(128, 128, (0.3, -0.2))
+        retained = []
+        for engine_type in (ICGNWGPU, ICGNWGPUFullPyramid):
+            for _ in range(3):
+                engine = engine_type(device_type="gpu")
+                self.addCleanup(engine.close)
+                retained.append(engine)
+                device = weakref.ref(engine.device)
+                engine.set_reference(reference)
+                field = engine.register(target)
+                self.assertGreater(field.accepted, 0)
+                engine.close()
+                engine.close()
+                self.assertIsNone(device(), "A closed engine still retains its GPU device")
+                with self.assertRaisesRegex(ICGNError, "closed"):
+                    engine.set_reference(reference)
+
+    def test_closing_shared_level_keeps_owning_device_usable(self) -> None:
+        reference, target = _fractional_pair(128, 128, (0.3, -0.2))
+        with ICGNWGPU(device_type="gpu", prefer_subgroups=False) as engine:
+            engine.set_reference(reference)
+            before = engine.register(target)
+            shared = engine._new_shared_level()
+            self.addCleanup(shared.close)
+            shared.set_reference(reference)
+            shared.close()
+            shared.close()
+            after = engine.register(target)
+            np.testing.assert_array_equal(before.parameters, after.parameters)
+            np.testing.assert_array_equal(before.status, after.status)
+            np.testing.assert_array_equal(before.iterations, after.iterations)
 
     def test_explicit_cpu_selection_runs_native_engines_and_streams(self) -> None:
         wgpu = self.runtime._wgpu
@@ -284,7 +317,6 @@ class GPURegressionTests(unittest.TestCase):
                         )
                 finally:
                     engine.close()
-                    engine.device.destroy()
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -295,7 +327,6 @@ class GPURegressionTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls) -> None:
         cls.runtime.close()
-        cls.runtime.device.destroy()
 
     def _gpu_reduce(self, image: np.ndarray, *, fused: bool = True) -> np.ndarray:
         device, wgpu = self.runtime.device, self.runtime._wgpu
@@ -390,7 +421,6 @@ class GPURegressionTests(unittest.TestCase):
                     self.assertLess(result.rmse(truth), threshold)
                 finally:
                     engine.close()
-                    engine.device.destroy()
 
     def test_native_wgsl_subgroup_solver_matches_portable_solver(self) -> None:
         truth = (0.5, -0.375)
@@ -450,13 +480,10 @@ class GPURegressionTests(unittest.TestCase):
             self.assertLess(specialized_result.rmse(truth), 0.03)
         finally:
             portable.close()
-            portable.device.destroy()
             if automatic is not None:
                 automatic.close()
-                automatic.device.destroy()
             if specialized is not None:
                 specialized.close()
-                specialized.device.destroy()
 
     def test_native_subgroup_module_is_not_loaded_for_portable_configuration(self) -> None:
         engine = ICGNWGPU(
@@ -470,7 +497,6 @@ class GPURegressionTests(unittest.TestCase):
             self.assertEqual(engine.solver, "portable-workgroup")
         finally:
             engine.close()
-            engine.device.destroy()
 
     def test_tuned_full_pyramid_defaults_recover_fractional_translation(self) -> None:
         truth = (0.5, -0.375)
@@ -488,7 +514,6 @@ class GPURegressionTests(unittest.TestCase):
                     self.assertLess(result.rmse(truth), threshold)
                 finally:
                     engine.close()
-                    engine.device.destroy()
 
     def test_configurable_subset_sizes_run_the_full_pyramid(self) -> None:
         truth = (0.5, -0.375)
@@ -511,7 +536,6 @@ class GPURegressionTests(unittest.TestCase):
                     self.assertLess(result.rmse(truth), 0.08)
                 finally:
                     engine.close()
-                    engine.device.destroy()
 
     def test_overlapping_subset_stride_runs_the_full_pyramid(self) -> None:
         truth = (0.5, -0.375)
@@ -532,7 +556,6 @@ class GPURegressionTests(unittest.TestCase):
             self.assertLess(result.rmse(truth), 0.08)
         finally:
             engine.close()
-            engine.device.destroy()
 
     def test_odd_gaussian_quadratic_subset_runs_the_full_pyramid(self) -> None:
         truth = (0.5, -0.375)
@@ -557,7 +580,6 @@ class GPURegressionTests(unittest.TestCase):
             self.assertLess(result.rmse(truth), 0.08)
         finally:
             engine.close()
-            engine.device.destroy()
 
     def test_full_pyramid_stream_preserves_order_and_synchronous_results(self) -> None:
         translations = ((0.25, -0.125), (0.5, -0.375), (-0.375, 0.25))
@@ -585,7 +607,6 @@ class GPURegressionTests(unittest.TestCase):
                 self.assertGreaterEqual(actual.timing["completionWaitWallMs"], 0.0)
         finally:
             engine.close()
-            engine.device.destroy()
 
     def test_translation_model_recovers_fractional_shift_without_strain(self) -> None:
         truth = (0.5, -0.375)
@@ -604,7 +625,6 @@ class GPURegressionTests(unittest.TestCase):
             np.testing.assert_array_equal(result.parameters[..., (1, 2, 4, 5)], 0.0)
         finally:
             engine.close()
-            engine.device.destroy()
 
     def test_quadratic_model_recovers_second_order_displacement(self) -> None:
         truth = np.asarray(
@@ -670,7 +690,6 @@ class GPURegressionTests(unittest.TestCase):
             self.assertLess(curvature_rmse, 2e-4)
         finally:
             engine.close()
-            engine.device.destroy()
 
     def test_three_level_pyramid_prefilter_handles_small_halo_levels(self) -> None:
         truth = (0.5, -0.375)
@@ -683,7 +702,6 @@ class GPURegressionTests(unittest.TestCase):
             self.assertTrue(np.isfinite(result.parameters).all())
         finally:
             engine.close()
-            engine.device.destroy()
 
     def test_reduction_matches_cpu_and_integer_oracle(self) -> None:
         # Every uint8 value appears in a flat band wide enough to contain
@@ -769,7 +787,6 @@ class GPURegressionTests(unittest.TestCase):
             ).reshape(state.shape)
         finally:
             engine.close()
-            engine.device.destroy()
 
     def test_displacement_outlier_can_replace_the_complete_state(self) -> None:
         for motion_model, state_width, status_index in (
@@ -909,7 +926,6 @@ class GPURegressionTests(unittest.TestCase):
                     self.assertLessEqual(false_positive_rate, 0.01)
                 finally:
                     engine.close()
-                    engine.device.destroy()
 
     def test_uod_preserves_a_localized_affine_band(self) -> None:
         reference, target, (band_left, band_right) = _localized_affine_band_pair(512, 512)
@@ -925,7 +941,6 @@ class GPURegressionTests(unittest.TestCase):
                 results[outlier_policy] = engine.register(target)
             finally:
                 engine.close()
-                engine.device.destroy()
 
         raw = results["disabled"]
         filtered = results["replace"]

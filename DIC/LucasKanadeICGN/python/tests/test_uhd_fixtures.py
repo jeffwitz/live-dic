@@ -291,7 +291,6 @@ class UHDRegistrationRegressionTests(unittest.TestCase):
                         np.testing.assert_array_equal(result.parameters[..., (1, 2, 4, 5)], 0)
             finally:
                 engine.close()
-                engine.device.destroy()
 
     def test_uhd_affine_frame_040_displacement_and_median_gradients(self) -> None:
         limits = _manifest()["regression_limits"]
@@ -340,4 +339,3 @@ class UHDRegistrationRegressionTests(unittest.TestCase):
                         )
                 finally:
                     engine.close()
-                    engine.device.destroy()

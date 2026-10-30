@@ -1,0 +1,10 @@
+test_zero_default_and_first_temporal_frame_match_bitwise (test_fused_pyramid.CorrectedTemporalTests.test_zero_default_and_first_temporal_frame_match_bitwise) ... radv/amdgpu: The CS has been rejected, see dmesg for more information (-28).
+
+thread '<unnamed>' (11326) panicked at src/lib.rs:605:5:
+Error in wgpuQueueSubmit: Validation Error
+
+Caused by:
+  Parent device is lost
+
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+fatal runtime error: failed to initiate panic, error 5, aborting

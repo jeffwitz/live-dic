@@ -209,6 +209,18 @@ complete accepted-image to materialized-field age.
 See :doc:`../explanation/backend-selection` for a single table distinguishing
 the defaults of all public engines.
 
+Native engine lifetime
+----------------------
+
+Use ``ICGNWGPU`` and ``ICGNWGPUFullPyramid`` as context managers or call
+``close()`` explicitly. Closing is permanent and idempotent: it releases
+reference/target storage, pipeline and bind-group references, and the owning
+WebGPU device, even while the Python engine object remains referenced.
+``set_reference()`` on a closed engine raises ``ICGNError``; create a new
+engine for further work. An internal shared pyramid level releases its own
+resources without destroying the parent's device. Cyclic native wrappers are
+collected at owner close, outside steady-state registration timing.
+
 One-shot registration
 ---------------------
 

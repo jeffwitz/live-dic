@@ -286,7 +286,6 @@ def main() -> None:
                 }
             finally:
                 engine.close()
-                engine.device.destroy()
     print(json.dumps(report, indent=2))
 
 

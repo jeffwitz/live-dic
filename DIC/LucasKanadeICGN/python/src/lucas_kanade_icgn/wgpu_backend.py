@@ -8,6 +8,7 @@ JSON result conversion, and any visible user interface.
 
 from __future__ import annotations
 
+import gc
 import operator
 import struct
 import time
@@ -52,6 +53,25 @@ MAX_ITERATIONS = 30
 DEFAULT_IN_FLIGHT_FRAMES = 2
 #: Default total number of image scales; one keeps the original fast path.
 DEFAULT_PYRAMID_LEVELS = 1
+
+
+def _release_gpu_references(engine: Any) -> None:
+    """Drop native wrappers, including pipelines that retain their device.
+
+    Destroying buffers or the WebGPU device alone does not release every
+    native allocation while Python still retains pipelines and bind groups.
+    Replace cache dictionaries instead of mutating caches shared by levels.
+    Keep this in a separate frame so its last loop value cannot retain a GPU
+    wrapper during the caller's cyclic garbage collection.
+    """
+
+    gpu_object = engine._wgpu.GPUObjectBase
+    for name, value in vars(engine).items():
+        if isinstance(value, gpu_object):
+            setattr(engine, name, None)
+        elif isinstance(value, dict) and any(isinstance(v, gpu_object) for v in value.values()):
+            setattr(engine, name, {})
+    engine.adapter = None
 
 
 def _normalize_device_type(value: str) -> str:
@@ -894,6 +914,8 @@ class ICGNWGPU:
             )
 
         self._wgpu = wgpu
+        self._owns_device = True
+        self._closed = False
         self.adapter = adapter
         required_features = []
         if (
@@ -1066,6 +1088,8 @@ class ICGNWGPU:
         """
 
         level = object.__new__(ICGNWGPU)
+        level._owns_device = False
+        level._closed = False
         for name in (
             "_wgpu",
             "adapter",
@@ -2226,6 +2250,8 @@ class ICGNWGPU:
         roi_policy: str = "full",
         roi_truncation: str = "none",
     ) -> ReferenceInfo:
+        if self._closed:
+            raise ICGNError("This engine is closed; create a new engine before set_reference().")
         total_start = time.perf_counter()
         frame = _as_uint8_gray(image)
         height, width = frame.shape
@@ -2650,9 +2676,21 @@ class ICGNWGPU:
         )
 
     def close(self) -> None:
+        """Release GPU resources permanently; repeated calls are harmless."""
+
+        if self._closed:
+            return
         self._reference_ready = False
         self._close_pyramid_engines()
         self._destroy_runtime()
+        self._closed = True
+        if self._owns_device:
+            self.device.destroy()
+        _release_gpu_references(self)
+        if self._owns_device:
+            # wgpu's device/queue wrappers can form cycles. Do not leave their
+            # driver allocations waiting for an unrelated future GC threshold.
+            gc.collect()
 
     def __enter__(self) -> ICGNWGPU:
         return self
