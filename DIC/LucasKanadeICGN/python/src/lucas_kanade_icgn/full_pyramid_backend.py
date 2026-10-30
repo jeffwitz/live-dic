@@ -22,7 +22,12 @@ import numpy as np
 
 from .engine import ICGNError, ImageInput, ReferenceInfo, RegistrationResult, _as_uint8_gray
 from .interpolation import normalize_interpolation
-from .motion import MOTION_MODEL_PIPELINE_CONSTANTS, normalize_motion_model
+from .motion import (
+    MOTION_MODEL_PIPELINE_CONSTANTS,
+    normalize_motion_model,
+    parameter_count,
+    state_float_count,
+)
 from .outlier import normalize_outlier_policy
 from .roi import reduce_mask, seed_permissions, validate_roi
 from .subset import DEFAULT_SUBSET_SIZE, normalize_subset_size, normalize_subset_stride
@@ -74,6 +79,17 @@ class _FullPyramidSlot:
     level_slots: tuple[Any, ...]
     reduction_edges: list[_ReductionEdge]
     seed_edges: dict[int, _SeedEdge]
+    temporal: _TemporalSlot | None = None
+
+
+@dataclass(slots=True)
+class _TemporalSlot:
+    """Per-submission projection bindings and packed diagnostic counters."""
+
+    projection: Any
+    merge: Any
+    counts: Any
+    seed_config: Any
 
 
 @dataclass(slots=True)
@@ -131,6 +147,13 @@ class ICGNWGPUFullPyramid:
     window with a configurable ``gaussian_sigma`` in pixels. Uniform
     integration remains the compatibility default.
 
+    ``initialization="temporal"`` projects the last accepted fine field onto
+    the coarsest grid before resolving every level for every target. Both
+    registration methods share this fixed-reference history: callers must
+    supply targets chronologically and finish consuming a stream before reset
+    or reference replacement. ``temporal_max_age`` expires seeds after more
+    than this many rejected frames; ``None`` keeps them until reset or success.
+
     ``device_type`` accepts ``"auto"``, ``"gpu"``, or ``"cpu"`` with the same
     initialization-time policy as :class:`ICGNWGPU`. All pyramid levels and
     streaming slots share the selected device, including CPU software
@@ -152,7 +175,24 @@ class ICGNWGPUFullPyramid:
         subset_stride: int | None = None,
         spatial_weighting: str = "uniform",
         gaussian_sigma: float | None = None,
+        initialization: str = "zero",
+        temporal_max_age: int | None = None,
     ) -> None:
+        if not isinstance(initialization, str) or initialization not in ("zero", "temporal"):
+            raise ValueError("initialization must be 'zero' or 'temporal'")
+        if temporal_max_age is not None:
+            try:
+                age = operator.index(temporal_max_age)
+            except TypeError as error:
+                raise ValueError(
+                    "temporal_max_age must be a nonnegative integer or None"
+                ) from error
+            if isinstance(temporal_max_age, bool) or not 0 <= age <= 0xFFFFFFFE:
+                raise ValueError("temporal_max_age must be between 0 and 4294967294 or None")
+            temporal_max_age = age
+        self.initialization = initialization
+        self.temporal_max_age = temporal_max_age
+        self._temporal_buffers: dict[str, Any] = {}
         self.interpolation = normalize_interpolation(interpolation)
         self.motion_model = normalize_motion_model(motion_model)
         self.outlier_policy = normalize_outlier_policy(outlier_policy)
@@ -220,6 +260,173 @@ class ICGNWGPUFullPyramid:
         self._roi_seed_pipeline = None
         self._zncc_min = 0.8
         self._create_orchestration_pipelines()
+        if self.initialization == "temporal":
+            self._create_temporal_pipelines()
+
+    def _create_temporal_pipelines(self) -> None:
+        """Compile opt-in orchestration only; the IC-GN equations are unchanged."""
+        shader = self.device.create_shader_module(
+            code=files("lucas_kanade_icgn").joinpath("shaders/full_pyramid.wgsl").read_text()
+        )
+        layouts = (
+            (
+                "read-only-storage",
+                "storage",
+                "storage",
+                "uniform",
+                "read-only-storage",
+                "storage",
+            ),
+            ("storage", "storage", "read-only-storage", "read-only-storage", "uniform", "storage"),
+        )
+        self._temporal_layouts = []
+        self._temporal_pipelines = []
+        for group, (kinds, entry) in enumerate(
+            zip(layouts, ("project_temporal_seed", "update_temporal_state"), strict=True), start=2
+        ):
+            layout = self.device.create_bind_group_layout(
+                entries=[
+                    {
+                        "binding": binding,
+                        "visibility": self._wgpu.ShaderStage.COMPUTE,
+                        "buffer": {"type": kind},
+                    }
+                    for binding, kind in enumerate(kinds)
+                ]
+            )
+            pipeline_layout = self.device.create_pipeline_layout(
+                bind_group_layouts=[self._empty_layout] * group + [layout]
+            )
+            constants = {"MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model]}
+            if group == 2:
+                constants.update(
+                    SUBSET_SIZE=self.subset_size,
+                    SUBSET_STRIDE=self.subset_stride,
+                )
+            pipeline = self.device.create_compute_pipeline(
+                layout=pipeline_layout,
+                compute={"module": shader, "entry_point": entry, "constants": constants},
+            )
+            self._temporal_layouts.append(layout)
+            self._temporal_pipelines.append(pipeline)
+
+    def _prepare_temporal_state(self, mask: np.ndarray | None) -> None:
+        """Allocate one history for the engine, shared across all target slots."""
+        root, coarse = self._root, self._levels[-1]
+        count = root.grid_width * root.grid_height
+        usage = self._wgpu.BufferUsage
+        self._temporal_buffers["state"] = self.device.create_buffer(
+            size=root._pipeline_slots[0].buffers["state"].size,
+            usage=usage.STORAGE | usage.COPY_DST,
+        )
+        self._temporal_buffers["ages"] = self.device.create_buffer(
+            size=count * 4,
+            usage=usage.STORAGE | usage.COPY_DST,
+        )
+        self._temporal_buffers["config"] = self.device.create_buffer_with_data(
+            data=struct.pack(
+                "<4I",
+                count,
+                0xFFFFFFFE if self.temporal_max_age is None else self.temporal_max_age,
+                int(self.outlier_policy == "replace"),
+                0,
+            ),
+            usage=usage.UNIFORM,
+        )
+        permissions = np.full(coarse.grid_width * coarse.grid_height, 31, dtype=np.uint32)
+        if mask is not None and not mask.all():
+            permissions = seed_permissions(
+                root.roi,
+                coarse.roi,
+                source_scale=1,
+                destination_scale=1 << (self.pyramid_levels - 1),
+                size=self.subset_size,
+                stride=self.subset_stride,
+                reference_mask=mask,
+            )
+        self._temporal_buffers["links"] = self.device.create_buffer_with_data(
+            data=permissions,
+            usage=usage.STORAGE,
+        )
+        self.reset_temporal_state()
+
+    def reset_temporal_state(self) -> None:
+        """Forget history, in queue order. Finish consuming a stream before reset.
+
+        Both registration APIs share this history and require chronological
+        targets. The reference and all pyramid preparations stay unchanged.
+        This is a no-op before reference preparation or in zero mode.
+        """
+        if not self._temporal_buffers:
+            return
+        ages = self._temporal_buffers["ages"]
+        self.device.queue.write_buffer(ages, 0, np.full(ages.size // 4, 0xFFFFFFFF, np.uint32))
+        state = np.zeros((ages.size // 4, state_float_count(self.motion_model)), np.float32)
+        state[:, parameter_count(self.motion_model)] = -1.0
+        self.device.queue.write_buffer(self._temporal_buffers["state"], 0, state)
+
+    def _create_temporal_slot(self, fine_slot: Any, coarse_slot: Any) -> _TemporalSlot:
+        coarse = self._levels[-1]
+        coarse._ensure_seed_resources(coarse_slot)
+        usage = self._wgpu.BufferUsage
+        config = self.device.create_buffer_with_data(
+            data=struct.pack(
+                "<4I4f",
+                self._root.grid_width,
+                self._root.grid_height,
+                coarse.grid_width,
+                coarse.grid_width * coarse.grid_height,
+                1.0,
+                float(1 << (self.pyramid_levels - 1)),
+                0.0,
+                0.0,
+            ),
+            usage=usage.UNIFORM,
+        )
+        counts = self.device.create_buffer(
+            size=16, usage=usage.STORAGE | usage.COPY_SRC | usage.COPY_DST
+        )
+        shared = self._temporal_buffers
+        projection = self.device.create_bind_group(
+            layout=self._temporal_layouts[0],
+            entries=[
+                self._buffer_resource(i, buffer)
+                for i, buffer in enumerate(
+                    (
+                        shared["state"],
+                        coarse_slot.buffers["seed_state"],
+                        coarse_slot.buffers["active_mask"],
+                        config,
+                        shared["links"],
+                        counts,
+                    )
+                )
+            ],
+        )
+        merge = self.device.create_bind_group(
+            layout=self._temporal_layouts[1],
+            entries=[
+                self._buffer_resource(i, buffer)
+                for i, buffer in enumerate(
+                    (
+                        shared["state"],
+                        shared["ages"],
+                        fine_slot.buffers["state"],
+                        self._root._output_buffer(fine_slot),
+                        shared["config"],
+                        counts,
+                    )
+                )
+            ],
+        )
+        # Append four counters to the existing mapped result, retaining one map.
+        size = fine_slot.readback.size
+        fine_slot.readback.destroy()
+        fine_slot.readback = self.device.create_buffer(
+            size=size + 16,
+            usage=usage.MAP_READ | usage.COPY_DST,
+        )
+        return _TemporalSlot(projection, merge, counts, config)
 
     def _create_orchestration_pipelines(self) -> None:
         wgpu = self._wgpu
@@ -334,10 +541,16 @@ class ICGNWGPUFullPyramid:
         }
 
     def _clear_level_resources(self) -> None:
+        for buffer in self._temporal_buffers.values():
+            buffer.destroy()
+        self._temporal_buffers.clear()
         for buffer in self._roi_link_buffers.values():
             buffer.destroy()
         self._roi_link_buffers.clear()
         for slot in self._full_slots:
+            if slot.temporal is not None:
+                slot.temporal.counts.destroy()
+                slot.temporal.seed_config.destroy()
             for edge in slot.reduction_edges:
                 edge.intermediate.destroy()
             for edge in slot.seed_edges.values():
@@ -450,6 +663,9 @@ class ICGNWGPUFullPyramid:
             level_slots=level_slots,
             reduction_edges=self._create_reduction_edges(level_slots),
             seed_edges=self._create_seed_edges(level_slots),
+            temporal=self._create_temporal_slot(level_slots[0], level_slots[-1])
+            if self.initialization == "temporal"
+            else None,
         )
 
     def _ensure_full_slots(self, depth: int) -> list[_FullPyramidSlot]:
@@ -553,6 +769,14 @@ class ICGNWGPUFullPyramid:
             "iterationsPerLevel": list(self.iterations_per_level),
             "tolerancePerLevel": list(self.tolerance_per_level),
         }
+        if self.initialization == "temporal":
+            self._prepare_temporal_state(mask)
+            self._root._pyramid_config.update(
+                initialization="temporal",
+                temporalMaxAge=self.temporal_max_age,
+                temporalSeedLevel="coarsest",
+                temporalSeedState=("filtered" if self.outlier_policy == "replace" else "raw"),
+            )
 
         first_slot = self._create_full_slot(0)
         self._full_slots = [first_slot]
@@ -670,11 +894,22 @@ class ICGNWGPUFullPyramid:
         coarsest_index = self.pyramid_levels - 1
         coarsest = self._levels[coarsest_index]
         coarsest_slot = slot.level_slots[coarsest_index]
+        if slot.temporal is not None:
+            encoder.clear_buffer(slot.temporal.counts)
+            compute_pass = encoder.begin_compute_pass()
+            compute_pass.set_pipeline(self._temporal_pipelines[0])
+            compute_pass.set_bind_group(2, slot.temporal.projection)
+            compute_pass.dispatch_workgroups(
+                (coarsest.grid_width * coarsest.grid_height + 255) // 256
+            )
+            compute_pass.end()
         coarsest._encode_registration_passes(
             encoder,
             coarsest_slot,
-            coarsest._portable_solver,
-            solver_bind_group=coarsest_slot.bind_group,
+            coarsest._portable_solver if slot.temporal is None else coarsest._seeded_solver,
+            solver_bind_group=coarsest_slot.bind_group
+            if slot.temporal is None
+            else coarsest_slot.seeded_bind_group,
         )
         for destination_index in range(coarsest_index - 1, -1, -1):
             seed_edge = slot.seed_edges[destination_index]
@@ -696,12 +931,27 @@ class ICGNWGPUFullPyramid:
                 solver_bind_group=destination_slot.seeded_bind_group,
             )
         fine_slot = slot.level_slots[0]
+        if slot.temporal is not None:
+            compute_pass = encoder.begin_compute_pass()
+            compute_pass.set_pipeline(self._temporal_pipelines[1])
+            compute_pass.set_bind_group(3, slot.temporal.merge)
+            compute_pass.dispatch_workgroups(
+                (self._root.grid_width * self._root.grid_height + 255) // 256
+            )
+            compute_pass.end()
+            encoder.copy_buffer_to_buffer(
+                slot.temporal.counts,
+                0,
+                fine_slot.readback,
+                self._root._output_buffer(fine_slot).size,
+                16,
+            )
         encoder.copy_buffer_to_buffer(
             self._root._output_buffer(fine_slot),
             0,
             fine_slot.readback,
             0,
-            fine_slot.readback.size,
+            fine_slot.readback.size if slot.temporal is None else fine_slot.readback.size - 16,
         )
         command = encoder.finish()
         encoding_wall_ms = (time.perf_counter() - encode_started) * 1_000.0
@@ -737,6 +987,14 @@ class ICGNWGPUFullPyramid:
         copy_started = time.perf_counter()
         raw = fine_slot.readback.read_mapped(copy=True)
         fine_slot.readback.unmap()
+        temporal_timing = {}
+        if pending.slot.temporal is not None:
+            counts = np.frombuffer(raw, dtype=np.uint32, count=4, offset=len(raw) - 16)
+            temporal_timing = {
+                "temporallySeededCoarseSubsets": float(counts[0]),
+                "temporalAcceptedUpdates": float(counts[1]),
+            }
+            raw = memoryview(raw)[:-16]
         readback_copy_wall_ms = (time.perf_counter() - copy_started) * 1_000.0
         pipeline_latency_wall_ms = (time.perf_counter() - pending.accepted_at) * 1_000.0
         result_started = time.perf_counter()
@@ -756,6 +1014,7 @@ class ICGNWGPUFullPyramid:
                 "pipelineLatencyWallMs": pipeline_latency_wall_ms,
                 "pyramidLevels": float(self.pyramid_levels),
                 "queueSubmissions": 1.0,
+                **temporal_timing,
             },
             config=self._root._config,
         )

@@ -11,6 +11,17 @@ struct UintBuffer {
     values: array<u32>,
 }
 
+struct AtomicBuffer {
+    values: array<atomic<u32>>,
+}
+
+struct TemporalConfig {
+    count: u32,
+    max_age: u32,
+    use_filtered: u32,
+    padding: u32,
+}
+
 struct SeedConfig {
     source_grid_width: u32,
     source_grid_height: u32,
@@ -39,6 +50,14 @@ override MOTION_MODEL: u32 = 0u;
 @group(2) @binding(3) var<uniform> seed_config: SeedConfig;
 // Only the native ROI entry point requires this static link table.
 @group(2) @binding(4) var<storage, read> roi_seed_links: UintBuffer;
+@group(2) @binding(5) var<storage, read_write> projection_counts: AtomicBuffer;
+
+@group(3) @binding(0) var<storage, read_write> temporal_state: Float4Buffer;
+@group(3) @binding(1) var<storage, read_write> temporal_ages: UintBuffer;
+@group(3) @binding(2) var<storage, read> raw_state: Float4Buffer;
+@group(3) @binding(3) var<storage, read> output_state: Float4Buffer;
+@group(3) @binding(4) var<uniform> temporal_config: TemporalConfig;
+@group(3) @binding(5) var<storage, read_write> temporal_counts: AtomicBuffer;
 
 fn mirror_coordinate(coordinate: i32, size: i32) -> i32 {
     if coordinate < 0 {
@@ -164,9 +183,9 @@ fn accumulate_seed(
     *weight_sum += weighted;
 }
 
-fn transfer_subset_seed(destination_index: u32, permissions: u32) {
+fn transfer_subset_seed(destination_index: u32, permissions: u32) -> bool {
     if destination_index >= seed_config.destination_grid_count {
-        return;
+        return false;
     }
     let destination_x = destination_index % seed_config.destination_grid_width;
     let destination_y = destination_index / seed_config.destination_grid_width;
@@ -241,6 +260,7 @@ fn transfer_subset_seed(destination_index: u32, permissions: u32) {
     // A missing coarse estimate is not a reason to suppress a potentially
     // valid finer subset. Run it from the zero seed instead.
     destination_active.values[destination_index] = (permissions >> 4u) & 1u;
+    return has_seed && (permissions & 16u) != 0u;
 }
 
 @compute @workgroup_size(256)
@@ -254,4 +274,50 @@ fn transfer_seed_roi(@builtin(global_invocation_id) global_id: vec3<u32>) {
         return;
     }
     transfer_subset_seed(global_id.x, roi_seed_links.values[global_id.x]);
+}
+
+// Project the last accepted fine-grid field onto the *coarsest* grid. Every
+// target still traverses every pyramid level; this is not a selective retry.
+@compute @workgroup_size(256)
+fn project_temporal_seed(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    if global_id.x >= seed_config.destination_grid_count { return; }
+    if transfer_subset_seed(global_id.x, roi_seed_links.values[global_id.x]) {
+        atomicAdd(&projection_counts.values[0], 1u);
+    }
+}
+
+@compute @workgroup_size(256)
+fn update_temporal_state(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    let index = global_id.x;
+    if index >= temporal_config.count { return; }
+    let stride = select(2u, 4u, MOTION_MODEL == 2u);
+    let base = index * stride;
+    let status_offset = select(6u, 12u, MOTION_MODEL == 2u);
+    let status_vector = status_offset / 4u;
+    let status_lane = status_offset % 4u;
+    let raw_status = raw_state.values[base + status_vector][status_lane];
+    let final_status = output_state.values[base + status_vector][status_lane];
+    let raw_accepted = raw_status == 1.0 || raw_status == 2.0;
+    let final_accepted = final_status == 1.0 || final_status == 2.0;
+    if final_accepted && (temporal_config.use_filtered != 0u || raw_accepted) {
+        for (var word = 0u; word < stride; word += 1u) {
+            var value = raw_state.values[base + word];
+            if temporal_config.use_filtered != 0u {
+                value = output_state.values[base + word];
+            }
+            temporal_state.values[base + word] = value;
+        }
+        temporal_ages.values[index] = 0u;
+        atomicAdd(&temporal_counts.values[1], 1u);
+    } else {
+        let age = temporal_ages.values[index];
+        // UINT_MAX is the never-set sentinel; valid ages saturate below it.
+        if age != 0xffffffffu {
+            let new_age = min(age, 0xfffffffdu) + 1u;
+            temporal_ages.values[index] = new_age;
+            if new_age > temporal_config.max_age {
+                temporal_state.values[base + status_vector][status_lane] = -1.0;
+            }
+        }
+    }
 }
