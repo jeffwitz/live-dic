@@ -1,0 +1,92 @@
+{
+  "material": {
+    "E_MPa": 210000.0,
+    "nu": 0.3,
+    "yield_MPa": 235.0,
+    "Ludwik_K_MPa": 450.0,
+    "Ludwik_n": 0.25,
+    "area0_mm2": 50.0
+  },
+  "dimensions": [
+    3840,
+    2160
+  ],
+  "frames": 200,
+  "seed": 20261012,
+  "master_yuv420_sha256": "6f2a6be8b4ff8cbbb7f2618b7fc5a92ab892d8136f9ce080e0ee3b115dc06ae0",
+  "bitstream_sha256": "6ecc362715a4e5f1cf6358c467d6c94a4ce1d56045e59a5d18e82209ecab4e59",
+  "bitstream_bytes": 78087488,
+  "command": [
+    "ffmpeg",
+    "-y",
+    "-hide_banner",
+    "-loglevel",
+    "error",
+    "-f",
+    "rawvideo",
+    "-pixel_format",
+    "yuv420p",
+    "-video_size",
+    "3840x2160",
+    "-framerate",
+    "30",
+    "-i",
+    "pipe:0",
+    "-frames:v",
+    "200",
+    "-an",
+    "-c:v",
+    "libx264",
+    "-preset",
+    "medium",
+    "-pix_fmt",
+    "yuv420p",
+    "-qp",
+    "24",
+    "-g",
+    "240",
+    "-bf",
+    "0",
+    "-x264-params",
+    "ref=1:scenecut=0:open-gop=0:rc-lookahead=0:mbtree=0:repeat-headers=1",
+    "-f",
+    "h264",
+    "/home/jeff/CNRS/Code/DIC_CODEC/DIC_FROM_H264/experiments/tensile_extensometer_4k/inputs/tensile.h264"
+  ],
+  "ffmpeg": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
+  "opencv": "4.13.0",
+  "numpy": "2.4.4",
+  "probe": {
+    "width": 3840,
+    "height": 2160,
+    "has_b_frames": 0,
+    "pix_fmt": "yuv420p",
+    "refs": 1
+  },
+  "first_last_truth": [
+    {
+      "frame": 0,
+      "time_s": 0.0,
+      "engineering_axial": 0.0,
+      "true_axial": 0.0,
+      "plastic_true": 0.0,
+      "stress_true_MPa": 0.0,
+      "stretch_x": 1.0,
+      "stretch_y": 1.0,
+      "engineering_transverse": 0.0,
+      "machine_force_N": 0.0
+    },
+    {
+      "frame": 199,
+      "time_s": 6.633333333333334,
+      "engineering_axial": 0.1,
+      "true_axial": 0.09531017980432487,
+      "plastic_true": 0.09300775549617211,
+      "stress_true_MPa": 483.50910471207754,
+      "stretch_x": 1.1,
+      "stretch_y": 0.9539017454387002,
+      "engineering_transverse": -0.04609825456129979,
+      "machine_force_N": 21997.936685183766
+    }
+  ]
+}

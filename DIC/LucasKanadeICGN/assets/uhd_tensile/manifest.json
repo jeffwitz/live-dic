@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "description": "Original native-UHD virtual tensile-test PNGs, copied byte for byte; no tiling, resizing, or codec decoding.",
+  "width": 3840,
+  "height": 2160,
+  "mode": "L",
+  "source_repository": "/home/jeff/CNRS/Code/DIC_CODEC/DIC_FROM_H264",
+  "source_revision_at_import": "77267f92920ea8984533371cc6a62fef149ff6e2",
+  "source_directory": "experiments/tensile_extensometer_4k",
+  "seed": 20261012,
+  "coordinate_convention": "Zero-based pixel centres at integer coordinates; generator stretch centre is (1920, 1080).",
+  "forward_map": "x_target = 1920 + stretch_x * (x_reference - 1920); y_target = 1080 + stretch_y * (y_reference - 1080)",
+  "rendering": "OpenCV INTER_LINEAR inverse remapping of the archived speckle image with BORDER_REFLECT_101; uint8 PNGs saved before encoding. No additional sensor noise in this dataset.",
+  "truth_file": "machine_truth.csv",
+  "images": [
+    {
+      "file": "reference.png",
+      "source_file": "inputs/anchor_preview.png",
+      "frame": 0,
+      "sha256": "7cadf6032d7c5ac2de74ae542573a3b38069dc8c1c075ef9576641601996aeec"
+    },
+    {
+      "file": "frame_040.png",
+      "source_file": "inputs/frame_040_preview.png",
+      "frame": 40,
+      "sha256": "7477178b00acb669b34aeb2084b895076cf74475f472bc25f3af2696b2719e30"
+    },
+    {
+      "file": "frame_100.png",
+      "source_file": "inputs/frame_100_preview.png",
+      "frame": 100,
+      "sha256": "ad09928a04c3a8cff6d0085f5166cda5cd8f3aabc347b521db7ec4d064d1e712"
+    },
+    {
+      "file": "frame_199.png",
+      "source_file": "inputs/frame_199_preview.png",
+      "frame": 199,
+      "sha256": "8a3c61b6575b8a3b1808c2fb961edd03823f1c23f0f571d14949a3e58aa3e3ad"
+    }
+  ],
+  "provenance_files": {
+    "machine_truth.csv": "42975895cb8f6eea7200b2c2fd94c84c893e6029befd505f1fb461559cede814",
+    "provenance/source_manifest.json": "cda184dd675955701f12a43d4600627efb040fb68cb6574348a39ec7fc9800a2",
+    "provenance/generate.py": "f5558da9fd711bb0a640418c305a0d2b922f559f8bb975d7046cecd1a1f04073"
+  },
+  "regression_limits": {
+    "interior_margin_px": 32,
+    "identity_minimum_accepted_fraction": 0.95,
+    "identity_displacement_rmse_px": 0.005,
+    "affine_frame_040_minimum_accepted_fraction": 0.90,
+    "affine_frame_040_displacement_rmse_px": 0.05,
+    "affine_frame_040_displacement_p95_px": 0.10,
+    "affine_frame_040_median_gradient_rmse_per_component": 0.002
+  }
+}

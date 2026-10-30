@@ -7,10 +7,12 @@ on:
     paths:
       - ".github/workflows/python-tests.yml"
       - "DIC/LucasKanadeICGN/python/**"
+      - "DIC/LucasKanadeICGN/assets/**"
   pull_request:
     paths:
       - ".github/workflows/python-tests.yml"
       - "DIC/LucasKanadeICGN/python/**"
+      - "DIC/LucasKanadeICGN/assets/**"
   workflow_dispatch:
 
 permissions:
@@ -100,4 +102,14 @@ jobs:
           python -m unittest discover
           -s DIC/LucasKanadeICGN/python/tests
           -p test_gpu_regressions.py
+          -v
+
+      - name: Run original UHD image regressions on lavapipe
+        env:
+          ICGN_RUN_GPU_TESTS: "1"
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: >-
+          python -m unittest discover
+          -s DIC/LucasKanadeICGN/python/tests
+          -p test_uhd_fixtures.py
           -v

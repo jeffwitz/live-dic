@@ -1,6 +1,46 @@
 Benchmark the DIC pipeline
 ==========================
 
+Original UHD images for numerical regression
+---------------------------------------------
+
+The repository includes four original 3840 x 2160 virtual tensile-test PNGs
+under ``DIC/LucasKanadeICGN/assets/uhd_tensile``. They were copied byte for
+byte from the source experiment in ``DIC_FROM_H264``. They are native UHD
+images, not tiled 512 x 512 textures. Their source generator, SHA256 hashes,
+rendering conventions, and complete 200-state machine truth are archived
+beside them. Tests run offline without that other repository or a video decoder.
+
+The source generator stretches about pixel coordinate ``(1920, 1080)``. Its
+targets use bilinear inverse remapping and uint8 quantization. These images
+therefore have a known affine geometric truth with discrete rendering error;
+they must not be described as exact continuous-texture samples.
+
+Run the fixture checks and full-resolution numerical regressions with:
+
+.. code-block:: console
+
+   $ ICGN_RUN_GPU_TESTS=1 PYTHONPATH=DIC/LucasKanadeICGN/python/src \
+       python3 -m unittest discover -s DIC/LucasKanadeICGN/python/tests \
+       -p test_uhd_fixtures.py -v
+
+Every image is checked for identity recovery. The reference-to-frame-40
+case checks affine displacement with raw and median policies, and gradients
+with the explicit median policy. The raw gradient estimate is not qualified
+to the same bound. Coverage and error are checked separately, excluding a
+32-pixel border. Later frames 100 and 199 remain available as large-deformation
+inputs, but their identity tests do not qualify zero-seed recovery of the
+complete deformation. No timing threshold is imposed by these correctness
+tests. The Linux software Vulkan CI job executes them on lavapipe.
+
+These inputs are separate from the tiled fixtures in the performance commands
+below and the on-demand continuous analytical generators. See the fixture
+README for all bounds and :download:`the archived manifest
+<../../assets/uhd_tensile/manifest.json>` for provenance.
+
+Measure processing time
+-----------------------
+
 For the Python-supervised product boundary, the primary measurement is the
 complete call from a resident NumPy image to a materialized NumPy field. Time
 ``engine.register(frame)`` or use ``benchmark_image_to_field.py``. The
