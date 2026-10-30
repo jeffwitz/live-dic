@@ -17,6 +17,8 @@ records SHA256 hashes, source revision at import, selected frames, coordinate
 conventions, rendering, and numerical bounds. `machine_truth.csv` retains all
 200 states. `provenance/source_manifest.json` and `provenance/generate.py`
 are unchanged copies of the original experiment, not executed by tests.
+The local `.gitattributes` disables line-ending conversion for the archived
+inputs, including the original CRLF CSV, so clones preserve their byte hashes.
 
 ## Analytic ground truth
 

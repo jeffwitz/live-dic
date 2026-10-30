@@ -1,0 +1,4 @@
+# Preserve the exact archived bytes on every platform: SHA256 is a data contract.
+/*.png -text
+/machine_truth.csv -text
+/provenance/* -text
