@@ -1,0 +1,30 @@
+{
+  "starting_commit": "67e264f0f028c7cd60382270f55a3562b3d68d9c",
+  "computational_commit": "150ca9df1157b5176604038a8caf86077c2f0caf",
+  "local_validation_only": true,
+  "ci_observed": false,
+  "portable_tests": {"discovered": 171, "passed": 118, "gpu_skipped": 53},
+  "intel_opt_in_suite": {"discovered": 171, "passed": 171, "skipped": 0, "duration_seconds": 81.883},
+  "lavapipe_temporal_tests": {"discovered": 7, "passed": 7, "skipped": 0, "duration_seconds": 21.702},
+  "legacy_default_parity": {"matching_arrays": 30, "includes_native_uhd_frame_40": true, "details": "default-parity.json"},
+  "ruff_check": {"command": ".venv/bin/ruff check src tests ../benchmarks", "working_directory": "DIC/LucasKanadeICGN/python", "passed": true},
+  "ruff_format_check": {"files": 26, "passed": true},
+  "sphinx": {"command": "python3 -m sphinx -W --keep-going -b html DIC/LucasKanadeICGN/docs DIC/LucasKanadeICGN/docs/_build/html", "warnings": 0, "passed": true},
+  "raw_browser_wgsl": {"fixture": "native UHD frame_040.png", "levels": 2, "coverage": 0.9998059257342476, "displacement_rmse_px": 0.024201424043536927, "temporal_mode": false},
+  "wheel": {
+    "filename": "lucas_kanade_icgn_webgl-0.1.0-py3-none-any.whl",
+    "sha256": "678a77a52d9ae83e038699585a601b81dbbee5d161f29bc5198b4d77cc090b20",
+    "fresh_environment": "/tmp/live-dic-temporal-install",
+    "working_directory": "/tmp",
+    "python": "3.12",
+    "numpy": "2.5.4",
+    "wgpu": "0.32.0",
+    "native_uhd_temporal_stream_depth": 3,
+    "roi_policies": ["full", "partial"],
+    "accepted_full": 29665,
+    "accepted_partial": 30025,
+    "npz_without_pickle": true,
+    "roi_and_temporal_configuration_preserved": true,
+    "external_compilers_required": false
+  }
+}
