@@ -47,9 +47,9 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--height", type=int, default=2160)
     parser.add_argument(
         "--fixture-set",
-        choices=("timing", "uhd-tensile"),
+        choices=("timing", "uhd-tensile", "uhd-translation"),
         default="timing",
-        help="timing translations or original UHD reference/frame_040 affine truth",
+        help="timing tiles, original UHD tensile truth, or pure shifts of the UHD reference",
     )
     parser.add_argument("--frames", type=int, default=12)
     parser.add_argument("--warmups", type=int, default=3)
@@ -498,6 +498,15 @@ def main() -> int:
             ),
         ]
         fixture_names = ["reference.png", "frame_040.png"]
+        if args.fixture_set == "uhd-translation":
+            # Pure translation of the original UHD texture; the ellipse ROI
+            # excludes the roll seam. No archived fixture is modified.
+            targets = []
+            fixture_names = []
+            for dx, dy in ((0, 0), (2, -1), (4, -2)):
+                shifted = np.roll(reference, (dy, dx), axis=(0, 1))
+                targets.append((shifted, (dx, dy), hashlib.sha256(shifted).hexdigest()))
+                fixture_names.append(f"reference-shift-{dx}-{dy}")
     mask = None if args.roi_mask is None else np.load(args.roi_mask, allow_pickle=False)
     measurements = {}
     for backend in args.backends:

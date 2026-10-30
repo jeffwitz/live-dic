@@ -403,3 +403,16 @@ all-true/absent masks, compact/fragmented regions and the optional subgroup path
 The observed hardware drift prevents a conclusive real-time non-regression
 decision within the predeclared margins. These ROI campaigns do not replace
 the established unmasked measurements above. See :doc:`../how-to/use-roi`.
+
+Partial-support ROI qualification
+---------------------------------
+
+The explicitly enabled ``partial`` policy has its own
+`UHD report and raw campaigns
+<https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/roi-partial-20261030>`_.
+It separates complete and partial-window accuracy, preparation cost and actual
+stream latency/throughput, including optional visibility truncation. Translation
+uses pure shifts of the original UHD reference; affine uses its archived tensile
+frame 40. Hardware drift keeps temporal non-regression reception open. These
+measurements do not establish a universal zero-overhead partial mode.
+See :doc:`../how-to/use-partial-roi` for support definitions and limits.

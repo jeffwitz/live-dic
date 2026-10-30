@@ -1,0 +1,184 @@
+{
+  "commit": "31e7e25e052f110668eb26c0c9727ebf45aad944",
+  "source_hashes": {
+    "__init__.py": "8014ba4125ee1114de90e891599f09d1db1f04cc528d4811b2f4d52beb0b9bed",
+    "__main__.py": "935a1c1166b0c1ea35a82256345000bf2c73ded718d77773bc27a71ecce28f7d",
+    "cli.py": "b063b2d75a7952144b608a851b936a92cbf74cd8ba6c0667dc39837d122670a2",
+    "engine.py": "27d83051b99e053a6613f4e58c34d9a830fd39f5d403b270d33742c59daf50e8",
+    "full_pyramid_backend.py": "0f807462c8db2208d715089f753039b22b534834326e4eb935b4657195cacea7",
+    "interpolation.py": "f795f0282927c91624d13fbb9f4080115d4deb766f0f61fea24a27124d8978a9",
+    "motion.py": "e161f3b0fdfd7c3800fcae3e886a042a40479879f23949a9f8dfdde9a65bee54",
+    "outlier.py": "d0bcfd4e2ebc53e64374b0cb976debcafeb79bc94ca648fd9fe35b689968d126",
+    "partial.py": "2fc364d19db282ecdeefa97fb6a93a33322b2bf22a912a397b4985e4f8bde0f7",
+    "roi.py": "968a4ba212378e95f7bd74a74259e8a190b087cc6b42fc2d061088b34f321db3",
+    "shaders/full_pyramid.wgsl": "032645ad39423abd81308212ea0cb2deb3159f7581b45f5772bbe10491c26613",
+    "shaders/icgn.wgsl": "22cf135b0e929d1d88566e0d1b72fcb2df7b905a2bb02658c6a17de1cc5b577f",
+    "shaders/icgn_subgroup.wgsl": "3c35126b1d5e18690cfe882516dea2d112afa1b0ce9e06eefea4349b1547006e",
+    "shaders/subgroup_probe.wgsl": "6e4d149ed7f17969ede557a3062742d8da6c62cb6dd745d5510112c1489fed61",
+    "subset.py": "fcd5d06bab637cc1d352036bc3855b2bab88ca15d045fa97c15fc3eaaf12411f",
+    "weighting.py": "f25f7f3ac7bc2d0d313bffe6942b80315ca8e99c58325bda01c1a7b0e57f74a8",
+    "wgpu_backend.py": "56257203868e312f261df73eaf2aa90ea5e85d8d9e58794ee246fa150ed0f741"
+  },
+  "wgpu_version": "0.32.0",
+  "reference_hash": "3bfc9f9d10d627b9cc50f74b0a4aa9481689c122154b857c41d31600cc7ad808",
+  "git_dirty": true,
+  "command": [
+    "DIC/LucasKanadeICGN/benchmarks/benchmark_image_to_field.py",
+    "--backend",
+    "webgpu-wgsl",
+    "--width",
+    "512",
+    "--height",
+    "512",
+    "--frames",
+    "8",
+    "--warmups",
+    "3",
+    "--motion-model",
+    "affine",
+    "--outlier-policy",
+    "median"
+  ],
+  "python": "3.11.14 (main, Jan 27 2026, 23:58:49) [Clang 21.1.4 ]",
+  "platform": "Linux-7.0.0-38-generic-x86_64-with-glibc2.39",
+  "roi_mask_file": null,
+  "roi_policy": "full",
+  "roi_truncation": "none",
+  "resolution": [
+    512,
+    512
+  ],
+  "input": "pre-acquired contiguous uint8 NumPy grayscale frames",
+  "reference_preparation_included": false,
+  "camera_or_decoder_included": false,
+  "fixture_hashes": {
+    "frame_001.png": "c8bd4b7a4391ec8bd07189f351011191fcb46e6ba1d1ed992c4cfe7fe2b37bdb",
+    "frame_005.png": "28b8e0e77b43a8065e31dbd741bd521ba396bb5c30a32dbe8965b543bcee3ddb",
+    "frame_010.png": "a4ade786dc4238aec5d93bdd20525abf7ec8769b49b8b56a6bef5aee36d827c5",
+    "frame_020.png": "fe4cf98101f419e703f5875b2424e8c6c016fe272fbb76c581c43cebad00169a"
+  },
+  "fixture_set": "timing",
+  "pyramid_levels": 2,
+  "subset_size": 16,
+  "subset_stride": 16,
+  "interpolation": "bspline",
+  "motion_model": "affine",
+  "outlier_policy": "median",
+  "spatial_weighting": "uniform",
+  "gaussian_sigma": 4,
+  "pipeline_depth": 1,
+  "device_type": "auto",
+  "campaigns": 1,
+  "measurements": {
+    "webgpu-wgsl": {
+      "device": "Raw WebGPU shared WGSL (intel xe-2lpg)",
+      "adapter_info": {},
+      "execution_device_type": "browser",
+      "preparation_ms": 790.2473949943669,
+      "boundary": "resident uint8 NumPy image to materialized NumPy parameter field",
+      "execution": "synchronous persistent engine; one result completed before the next input",
+      "pipeline_depth": 1,
+      "frames": 8,
+      "warmups": 3,
+      "latency_median_ms": 9.539467995637096,
+      "latency_p95_ms": 12.061050650663674,
+      "latency_p99_ms": 12.085909331217408,
+      "latency_samples_ms": [
+        12.092124001355842,
+        9.54704699688591,
+        9.457536012632772,
+        11.286774999462068,
+        9.185498987790197,
+        12.00334299937822,
+        9.531888994388282,
+        9.482905006734654
+      ],
+      "completion_period_samples_ms": [
+        9.54980801907368,
+        9.460889996262267,
+        11.289440997643396,
+        9.19391299248673,
+        12.00498701655306,
+        9.53336397651583,
+        9.484117006650195
+      ],
+      "populations": {
+        "gridTotal": 1024,
+        "roiSelected": 1024,
+        "roiExcluded": 0,
+        "roiPartial": 0,
+        "referenceAdmissible": null,
+        "accepted": 900,
+        "rejectedSelected": 124,
+        "acceptedFractionSelected": 0.87890625
+      },
+      "config": {
+        "subsetStride": 16,
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median"
+      },
+      "support_quality": {
+        "complete": {
+          "selected": 1024,
+          "accepted_min": 900,
+          "accepted_fraction_min": 0.87890625,
+          "displacement_rmse_max_px": 0.02462096646969371,
+          "displacement_p95_max_px": 0.04633909908297987,
+          "gradient_component_rmse_max": 0.0011554982728315829
+        },
+        "partial": {
+          "selected": 0,
+          "accepted_min": 0,
+          "accepted_fraction_min": null,
+          "displacement_rmse_max_px": null,
+          "displacement_p95_max_px": null,
+          "gradient_component_rmse_max": null
+        }
+      },
+      "iterations_histogram": {
+        "1": 1800,
+        "2": 4006,
+        "3": 1338,
+        "4": 54,
+        "5": 2
+      },
+      "stream_period_ms": 10.326390998670831,
+      "throughput_fps": 96.83925392024335,
+      "completion_period_median_ms": 9.53336397651583,
+      "field_shape": [
+        32,
+        32,
+        6
+      ],
+      "field_bytes": 24576,
+      "accepted_min": 900,
+      "accepted_max": 900,
+      "rmse_median_px": 0.01197875640091857,
+      "rmse_max_px": 0.02462096646969371,
+      "component_timing_medians_ms": {
+        "binaryInputWallMs": 0.6000000089406967,
+        "binaryPackingWallMs": 0,
+        "encodingWallMs": 0,
+        "gpuMs": 1.0391059999999999,
+        "inputPreparationWallMs": 0.02279000182170421,
+        "pythonCallWallMs": 9.53218351060059,
+        "resultBuildWallMs": 0.18984550843015313,
+        "wallMs": 3.0499999970197678
+      },
+      "campaigns": 1
+    }
+  }
+}

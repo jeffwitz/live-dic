@@ -64,22 +64,24 @@ corner touches. The central component is then recomputed. A ray cannot jump
 over a one-pixel fissure. The segment footprints are cached by subset size;
 truncation occurs only during preparation.
 
-.. code-block:: text
+.. figure:: ../_static/partial-supports.svg
+   :alt: Actual 17-pixel support before and after visibility truncation near a slit.
 
-   connected support near a tip       visibility from centre C
-   +-------------------+             +-------------------+
-   | allowed | allowed |             | removed | allowed |
-   | allowed |    C    |             | removed |    C    |
-   | allowed | allowed |             | removed | allowed |
-   | allowed   allowed |             | some visible only |
-   +-------------------+             +-------------------+
-       crack ends here                 rays may not cross it
+   The same nominal square and centre retain 275 pixels by connectivity and
+   189 after visibility truncation. These are the supports from the geometry
+   regression, not a reconstruction of Ncorr's contour algorithm.
 
 This is a geometric heuristic and may remove additional useful pixels. A loss
 of information can cause numerical rejection, especially for affine motion.
 The geometry tests verify conservative corner touches and removal of a
 connected wrap-around region. Keep the option explicit when publishing results.
 It is rejected with ``full`` or without a mask.
+
+A controlled linear-interpolation regression also assigns opposite subpixel
+translations on the two sides of a slit. In the square containing its tip,
+visibility reduces the centre-displacement error from more than 0.1 pixel to
+less than 0.05 pixel for both models. This single constructed case demonstrates
+reduced cross-side mixing; it is not a general crack-tip uncertainty bound.
 
 The ROI is a prepared reference mask. It does not detect new cracks in a live
 target. Changing the support requires finishing the stream and preparing a new
@@ -116,6 +118,12 @@ deficient. Its geometric selection stays true, its numerical reference validity
 is false, and its output is a numerical rejection, not a geometric exclusion.
 These controls do not promise the same uncertainty for every accepted shape;
 partial-boundary error must be measured separately from complete-window error.
+
+In particular, an 8/8 cubic-translation test on the smooth analytic fixture
+produces about 0.147 pixel RMSE on accepted partial supports (0.074 unmasked),
+despite agreement with an independent double-precision IC-GN calculation.
+The 0.05 pixel qualification of 16/16 UHD windows does not extend to this case.
+Use sufficient texture and support size, and qualify the intended geometry.
 
 Keep the live path resident
 ---------------------------
@@ -206,3 +214,5 @@ Preparation and live execution are separate measurements. Report complete and
 partial populations and error separately; the cost and uncertainty depend on
 boundary geometry and available texture. No universal zero-overhead or 4K60
 guarantee applies to partial supports.
+The measured UHD populations, errors and raw campaigns are linked from
+:doc:`../reference/performance`.

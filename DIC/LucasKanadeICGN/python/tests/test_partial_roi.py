@@ -32,7 +32,26 @@ def _bilinear(image, x, y):
     )
 
 
-def _double_icgn(reference, target, support, *, origin, model, weights, tolerance=1e-4):
+def _keys_cubic(image, x, y):
+    """Independent separable Keys kernel evaluated from sample distances."""
+    ix = np.floor(x).astype(int)[:, None] + np.arange(-1, 3)
+    iy = np.floor(y).astype(int)[:, None] + np.arange(-1, 3)
+
+    def kernel(distance):
+        z = np.abs(distance)
+        return np.where(
+            z < 1,
+            1.5 * z**3 - 2.5 * z**2 + 1,
+            np.where(z < 2, -0.5 * z**3 + 2.5 * z**2 - 4 * z + 2, 0),
+        )
+
+    pixels = image[iy[:, :, None], ix[:, None, :]]
+    return np.einsum("nij,ni,nj->n", pixels, kernel(y[:, None] - iy), kernel(x[:, None] - ix))
+
+
+def _double_icgn(
+    reference, target, support, *, origin, model, weights, tolerance=1e-4, sampler=_bilinear
+):
     """Matrix-based double-precision oracle; no production metadata or inverse."""
     size = support.shape[0]
     y, x = np.indices(support.shape, dtype=np.float64)
@@ -51,7 +70,7 @@ def _double_icgn(reference, target, support, *, origin, model, weights, toleranc
     corners = np.asarray([[-1, -1, 1, 1], [-1, 1, -1, 1]]) * (size - 1) / 2
     for _ in range(30):
         positions = a @ local + center[:, None] + t[:, None]
-        g = _bilinear(target.astype(np.float64), positions[0], positions[1])
+        g = sampler(target.astype(np.float64), positions[0], positions[1])
         g -= np.average(g, weights=w)
         ratio = norm_f / np.sqrt(np.dot(w, g * g))
         delta = np.zeros(6)
@@ -173,6 +192,83 @@ class PartialGeometryTests(unittest.TestCase):
 
 @unittest.skipUnless(os.environ.get("ICGN_RUN_GPU_TESTS") == "1", "explicit GPU opt-in")
 class PartialGPURegressionTests(unittest.TestCase):
+    def test_partial_supports_cover_the_other_supported_sizes(self):
+        truth = (0.35, -0.2)
+        reference, target = _fractional_pair(256, 256, truth)
+        mask = np.zeros(reference.shape, bool)
+        mask[21:237, 19:235] = True
+        mask[80:101, 112:115] = False
+        configurations = (
+            (8, 8, "translation", "cubic", "uniform"),
+            (15, 7, "translation", "bspline", "uniform"),
+            (31, 16, "affine", "cubic", "uniform"),
+            (32, 32, "affine", "bspline", "uniform"),
+            (33, 16, "affine", "bspline", "gaussian"),
+        )
+        for size, stride, model, interpolation, weighting in configurations:
+            with (
+                self.subTest(size=size, stride=stride, model=model),
+                ICGNWGPU(
+                    subset_size=size,
+                    subset_stride=stride,
+                    motion_model=model,
+                    interpolation=interpolation,
+                    spatial_weighting=weighting,
+                    prefer_subgroups=False,
+                    outlier_policy="disabled",
+                ) as engine,
+            ):
+                info = engine.set_reference(
+                    reference, roi_mask=mask, roi_policy="partial", tolerance=0.005
+                )
+                result = engine.register(target)
+                partial = np.zeros(result.status.shape, bool)
+                partial.ravel()[info.roi.partial_indices] = True
+                accepted = result.accepted_mask & partial
+                self.assertGreater(np.count_nonzero(accepted), 0)
+                error = result.displacement[accepted] - truth
+                if size != 8:
+                    self.assertLess(np.sqrt(np.mean(np.sum(error**2, axis=-1))), 0.05)
+                else:
+                    # Small supports on this texture do not meet the 16-pixel
+                    # metrology bound (documented separately). Check the
+                    # actual algorithm against double precision instead of
+                    # hiding this case or loosening that established bound.
+                    # A fixed 30-step budget avoids comparing different final
+                    # iterates when float32/float64 straddle a stop threshold.
+                    info = engine.set_reference(
+                        reference, roi_mask=mask, roi_policy="partial", tolerance=1e-8
+                    )
+                    result = engine.register(target)
+                    pixels, _, _ = _reference_arrays(
+                        reference,
+                        interpolation=interpolation,
+                        motion_model=model,
+                        subset_size=size,
+                        subset_stride=stride,
+                    )
+                    pixels = pixels.reshape(256, 256, 4)
+                    for ordinal, index in enumerate(info.roi.partial_indices):
+                        if not info.reference_valid.ravel()[index]:
+                            continue
+                        gy, gx = divmod(int(index), engine.grid_width)
+                        expected = _double_icgn(
+                            pixels[
+                                gy * stride : gy * stride + size, gx * stride : gx * stride + size
+                            ],
+                            target,
+                            unpack_support(info.roi.support_words[ordinal], size),
+                            origin=(gx * stride, gy * stride),
+                            model=model,
+                            weights=np.ones((size, size)),
+                            tolerance=1e-8,
+                            sampler=_keys_cubic,
+                        )
+                        np.testing.assert_allclose(
+                            result.parameters[gy, gx], expected, atol=2e-3, rtol=0
+                        )
+                self.assertFalse(np.any(result.status == -4))
+
     def test_visibility_limits_mixing_across_a_displacement_jump(self):
         truth = np.array([0.35, -0.2])
         reference, right = _fractional_pair(136, 136, tuple(truth))

@@ -1,5 +1,9 @@
 # Full-window ROI qualification
 
+This report describes the full-only checkpoint `31e7e25`. Partial supports were
+added subsequently; see [their separate qualification](../roi-partial-20261030/).
+Availability statements below describe the measured checkpoint.
+
 Starting revision: `4a435841eeda09a5611ef1f93573dd5370ac10e7`.
 Candidate reports correctly record a dirty checkout; their source SHA256 maps
 identify the Python/WGSL actually loaded. Baseline reports load an isolated

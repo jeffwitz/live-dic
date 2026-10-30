@@ -1,0 +1,142 @@
+{
+  "tests": {
+    "intel_gpu": {
+      "tests": 157,
+      "seconds": 35.742,
+      "status": "passed",
+      "skips": 0,
+      "log_sha256": "869c0d3b8ea3f8377648fe4c1a4c8c334cf7a4ba6839c1220e6cf4d6f5346424"
+    },
+    "lavapipe": {
+      "tests": 157,
+      "seconds": 60.884,
+      "status": "passed",
+      "skips": 0,
+      "log_sha256": "637b9586affdbaff43f6509a3de5f507f984b51b22c8b4fdec3f61b1d6deaba0"
+    }
+  },
+  "source_sha256": {
+    "__init__.py": "8014ba4125ee1114de90e891599f09d1db1f04cc528d4811b2f4d52beb0b9bed",
+    "__main__.py": "935a1c1166b0c1ea35a82256345000bf2c73ded718d77773bc27a71ecce28f7d",
+    "cli.py": "b063b2d75a7952144b608a851b936a92cbf74cd8ba6c0667dc39837d122670a2",
+    "engine.py": "27d83051b99e053a6613f4e58c34d9a830fd39f5d403b270d33742c59daf50e8",
+    "full_pyramid_backend.py": "0f807462c8db2208d715089f753039b22b534834326e4eb935b4657195cacea7",
+    "interpolation.py": "f795f0282927c91624d13fbb9f4080115d4deb766f0f61fea24a27124d8978a9",
+    "motion.py": "e161f3b0fdfd7c3800fcae3e886a042a40479879f23949a9f8dfdde9a65bee54",
+    "outlier.py": "d0bcfd4e2ebc53e64374b0cb976debcafeb79bc94ca648fd9fe35b689968d126",
+    "partial.py": "2fc364d19db282ecdeefa97fb6a93a33322b2bf22a912a397b4985e4f8bde0f7",
+    "roi.py": "968a4ba212378e95f7bd74a74259e8a190b087cc6b42fc2d061088b34f321db3",
+    "shaders/full_pyramid.wgsl": "032645ad39423abd81308212ea0cb2deb3159f7581b45f5772bbe10491c26613",
+    "shaders/icgn.wgsl": "22cf135b0e929d1d88566e0d1b72fcb2df7b905a2bb02658c6a17de1cc5b577f",
+    "shaders/icgn_subgroup.wgsl": "3c35126b1d5e18690cfe882516dea2d112afa1b0ce9e06eefea4349b1547006e",
+    "shaders/subgroup_probe.wgsl": "6e4d149ed7f17969ede557a3062742d8da6c62cb6dd745d5510112c1489fed61",
+    "subset.py": "fcd5d06bab637cc1d352036bc3855b2bab88ca15d045fa97c15fc3eaaf12411f",
+    "weighting.py": "f25f7f3ac7bc2d0d313bffe6942b80315ca8e99c58325bda01c1a7b0e57f74a8",
+    "wgpu_backend.py": "56257203868e312f261df73eaf2aa90ea5e85d8d9e58794ee246fa150ed0f741"
+  },
+  "adapter_info": {
+    "vendor": "Intel open-source Mesa driver",
+    "architecture": "",
+    "device": "Intel(R) Graphics (LNL)",
+    "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+    "stackgroup_min_size": 4,
+    "stackgroup_max_size": 128,
+    "vendor_id": 32902,
+    "device_id": 25760,
+    "adapter_type": "IntegratedGPU",
+    "backend_type": "Vulkan"
+  },
+  "implementation_commit": "0e1f4719b2ae6a69bf5d65150310c384e6c4ddf8",
+  "test_partial_roi_sha256": "30ee801f3431b42e96733984155257ee9dde51964eced9aea1f0849477ba28f2",
+  "full_only_baseline": "31e7e25e052f110668eb26c0c9727ebf45aad944",
+  "ci": "Local validation only; workflow updated but remote CI not run for these local commits.",
+  "commands": {
+    "hardware": "ICGN_RUN_GPU_TESTS=1 PYTHONPATH=DIC/LucasKanadeICGN/python/src python -m unittest discover -s DIC/LucasKanadeICGN/python/tests -v",
+    "software": "ICGN_RUN_GPU_TESTS=1 VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json LIBGL_ALWAYS_SOFTWARE=1 PYTHONPATH=DIC/LucasKanadeICGN/python/src python -m unittest discover -s DIC/LucasKanadeICGN/python/tests -v",
+    "docs": "python -m sphinx -W --keep-going -b html DIC/LucasKanadeICGN/docs /tmp/live-dic-partial-docs",
+    "wheel": "python -m pip wheel --no-deps DIC/LucasKanadeICGN/python --wheel-dir /tmp/live-dic-partial-wheel"
+  },
+  "checks": {
+    "ruff_check": "passed",
+    "ruff_format": "passed",
+    "strict_sphinx": "passed",
+    "raw_json": "43 campaign latency quantiles checked; 15 source maps match baseline/candidate commits"
+  },
+  "installed_wheel": {
+    "filename": "lucas_kanade_icgn_webgl-0.1.0-py3-none-any.whl",
+    "sha256": "4979eed82851ac05ae1bd56b80488b5b5c4f72b60c1d24af03dced4fd176b356",
+    "compiled_project_files": [],
+    "loaded_from": "/tmp/live-dic-partial-install/lib/python3.12/site-packages/lucas_kanade_icgn",
+    "environment": "Fresh Python 3.12 venv; pip installed wheel and declared dependencies; execution cwd /tmp, PYTHONPATH unset; pip check passed.",
+    "versions": {
+      "numpy": "2.5.4",
+      "wgpu": "0.32.0",
+      "Pillow": "13.0.0",
+      "websockets": "17.3"
+    },
+    "source_matches_checkout": true,
+    "configuration": {
+      "roi_policy": "partial",
+      "roi_truncation": "visibility",
+      "outlier_policy": "median",
+      "device_type": "gpu"
+    },
+    "npz": {
+      "allow_pickle": false,
+      "mask_and_support_words_verified": true,
+      "strict_config_json": true
+    },
+    "observed_checks": [
+      {
+        "engine": "ICGNWGPU",
+        "model": "translation",
+        "selected": 992,
+        "partial": 45,
+        "accepted": 900,
+        "rmse_px": 0.00001667081854023318
+      },
+      {
+        "engine": "ICGNWGPU",
+        "model": "affine",
+        "selected": 992,
+        "partial": 45,
+        "accepted": 900,
+        "rmse_px": 0.00008309915405816646
+      },
+      {
+        "engine": "ICGNWGPUFullPyramid",
+        "model": "translation",
+        "selected": 992,
+        "partial": 45,
+        "accepted": 900,
+        "rmse_px": 0.000022686765050505426
+      },
+      {
+        "engine": "ICGNWGPUFullPyramid",
+        "model": "affine",
+        "selected": 992,
+        "partial": 45,
+        "accepted": 900,
+        "rmse_px": 0.0001370795543157261
+      }
+    ]
+  },
+  "browser": {
+    "report": "browser-compatibility.json",
+    "backend": "webgpu-wgsl",
+    "frames": 8,
+    "accepted_min": 900,
+    "rmse_max_px": 0.02462096646969371,
+    "roi": false
+  },
+  "notes": [
+    "Full remains the default; partial is opt-in for native translation/affine.",
+    "Visibility is a separate conservative ray heuristic, not an exact Ncorr contour algorithm.",
+    "Tests compare independent double-precision IC-GN with common budgets; the small 8/8 Keys case uses fixed 30-step iterates to avoid stop-threshold differences.",
+    "The 8/8 cubic-translation partial case on the smooth analytic texture has about 0.1471 px displacement RMSE (0.0738 unmasked) at tolerance 0.005. It is not qualified to the 16/16 UHD 0.05 px bound.",
+    "Hardware performance campaigns run without concurrent correctness jobs. Temporal non-regression reception remains open because of control drift and tail uncertainty.",
+    "Intel hardware exercises admissible native subgroup plus portable partial; lavapipe exercises the portable/capability-rejection branches.",
+    "Windows and macOS GPU execution not tested here.",
+    "Later changes after the implementation commit affect tests, documentation and benchmark fixture generation; shipped Python/WGSL hashes remain those recorded."
+  ]
+}
