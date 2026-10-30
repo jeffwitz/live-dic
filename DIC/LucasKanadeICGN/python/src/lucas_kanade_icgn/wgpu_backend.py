@@ -1060,6 +1060,7 @@ class ICGNWGPU:
         ):
             setattr(level, name, getattr(self, name))
         level._solver_preference = False
+        level._solver_extra_constants = getattr(self, "_solver_extra_constants", {})
         level.device_type = getattr(self, "device_type", "auto")
         level.execution_device_type = getattr(self, "execution_device_type", "unknown")
         level.adapter_info = dict(getattr(self, "adapter_info", {}))
@@ -1223,6 +1224,24 @@ class ICGNWGPU:
                 )
         return self.device.create_bind_group_layout(entries=entries)
 
+    def _solver_constants(self) -> dict:
+        """Constants shared by portable fresh, seeded and partial solvers."""
+        return {
+            "INTERPOLATION_MODE": INTERPOLATION_PIPELINE_CONSTANTS[
+                getattr(self, "interpolation", "bspline")
+            ],
+            "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[
+                getattr(self, "motion_model", "affine")
+            ],
+            "SUBSET_SIZE": self.subset_size,
+            "SUBSET_STRIDE": getattr(self, "subset_stride", self.subset_size),
+            "SPATIAL_WEIGHTING": SPATIAL_WEIGHTING_PIPELINE_CONSTANTS[
+                getattr(self, "spatial_weighting", "uniform")
+            ],
+            "GAUSSIAN_SIGMA": getattr(self, "gaussian_sigma", 0.25 * self.subset_size),
+            **getattr(self, "_solver_extra_constants", {}),
+        }
+
     def _ensure_seeded_solver(self) -> None:
         """Create fresh seeded and preserving retry pipelines on one layout."""
 
@@ -1254,6 +1273,7 @@ class ICGNWGPU:
                 "gaussian_sigma",
                 0.25 * self.subset_size,
             ),
+            **getattr(self, "_solver_extra_constants", {}),
         }
         seeded_solver = self.device.create_compute_pipeline(
             layout=layout,
@@ -1286,6 +1306,7 @@ class ICGNWGPU:
             "SUBSET_STRIDE": self.subset_stride,
             "SPATIAL_WEIGHTING": SPATIAL_WEIGHTING_PIPELINE_CONSTANTS[self.spatial_weighting],
             "GAUSSIAN_SIGMA": self.gaussian_sigma,
+            **getattr(self, "_solver_extra_constants", {}),
         }
 
     def _ensure_partial_seeded_pipelines(self) -> None:
@@ -1325,6 +1346,7 @@ class ICGNWGPU:
                 "SUBSET_STRIDE": self.subset_stride,
                 "SPATIAL_WEIGHTING": SPATIAL_WEIGHTING_PIPELINE_CONSTANTS[self.spatial_weighting],
                 "GAUSSIAN_SIGMA": self.gaussian_sigma,
+                **getattr(self, "_solver_extra_constants", {}),
             }
             if "portable" not in self._roi_solver_pipelines:
                 self._roi_solver_pipelines["portable"] = self.device.create_compute_pipeline(

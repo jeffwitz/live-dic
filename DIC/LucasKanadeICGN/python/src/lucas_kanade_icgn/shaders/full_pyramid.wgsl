@@ -45,6 +45,7 @@ override SUBSET_STRIDE: f32 = 16.0;
 // Matches icgn.wgsl: 0 affine, 1 translation, 2 quadratic.
 override MOTION_MODEL: u32 = 0u;
 override TRACK_SEED_AVAILABILITY: bool = false;
+override REPORT_HISTORY_EXPIRY: bool = false;
 
 @group(0) @binding(0) var reduce_x_source: texture_2d<f32>;
 @group(0) @binding(1) var reduce_x_destination: texture_storage_2d<r32float, write>;
@@ -70,6 +71,67 @@ override TRACK_SEED_AVAILABILITY: bool = false;
 @group(3) @binding(3) var<storage, read> output_state: Float4Buffer;
 @group(3) @binding(4) var<uniform> temporal_config: TemporalConfig;
 @group(3) @binding(5) var<storage, read_write> temporal_counts: AtomicBuffer;
+// Separate opt-in entry points keep these bindings out of historical pipelines.
+@group(3) @binding(6) var<storage, read_write> previous_temporal_state: Float4Buffer;
+@group(3) @binding(7) var<storage, read_write> previous_temporal_ages: UintBuffer;
+
+// source_state=current accepted history; fine_history=previous accepted history;
+// coarse_history_ages holds the previous-history ages in this entry point only.
+@compute @workgroup_size(256)
+fn predict_temporal_state(@builtin(global_invocation_id) id: vec3<u32>) {
+    let index = id.x;
+    if index >= arrayLength(&fine_history_ages.values) { return; }
+    let stride = select(2u, 4u, MOTION_MODEL == 2u);
+    let base = index * stride;
+    let status_vector = select(1u, 3u, MOTION_MODEL == 2u);
+    let status_lane = select(2u, 0u, MOTION_MODEL == 2u);
+    let current_status = source_state.values[base + status_vector][status_lane];
+    let previous_status = fine_history.values[base + status_vector][status_lane];
+    // Rejections break unit frame spacing: require two consecutive accepted
+    // measurements, both still fresh. Otherwise retain the existing seed.
+    let predict = fine_history_ages.values[index] == 0u
+        && coarse_history_ages.values[index] == 0u
+        && current_status >= 0.5 && previous_status >= 0.5;
+    for (var word = 0u; word < stride; word += 1u) {
+        var value = source_state.values[base + word];
+        if predict { value = 2.0 * value - fine_history.values[base + word]; }
+        destination_seed.values[base + word] = value;
+    }
+    // Metadata are measurements, not quantities to extrapolate.
+    var metadata = source_state.values[base + status_vector];
+    if MOTION_MODEL != 2u {
+        metadata = vec4<f32>(select(metadata.xy,
+            2.0 * metadata.xy - fine_history.values[base + 1u].xy, predict), metadata.zw);
+    }
+    destination_seed.values[base + status_vector] = metadata;
+    if predict { atomicAdd(&projection_counts.values[2], 1u); }
+}
+
+// Save measurements before the ordinary merge overwrites current history.
+// The output prediction is never copied into either history.
+@compute @workgroup_size(256)
+fn save_previous_temporal_state(@builtin(global_invocation_id) id: vec3<u32>) {
+    let index = id.x;
+    if index >= temporal_config.count { return; }
+    let stride = select(2u, 4u, MOTION_MODEL == 2u);
+    let base = index * stride;
+    let status_vector = select(1u, 3u, MOTION_MODEL == 2u);
+    let status_lane = select(2u, 0u, MOTION_MODEL == 2u);
+    let raw_status = raw_state.values[base + status_vector][status_lane];
+    let final_status = output_state.values[base + status_vector][status_lane];
+    if (raw_status == 1.0 || raw_status == 2.0)
+        && (final_status == 1.0 || final_status == 2.0) {
+        for (var word = 0u; word < stride; word += 1u) {
+            previous_temporal_state.values[base + word] = temporal_state.values[base + word];
+        }
+        previous_temporal_ages.values[index] = temporal_ages.values[index];
+    } else {
+        let age = previous_temporal_ages.values[index];
+        if age != 0xffffffffu {
+            previous_temporal_ages.values[index] = min(age, 0xfffffffdu) + 1u;
+        }
+    }
+}
 
 fn mirror_coordinate(coordinate: i32, size: i32) -> i32 {
     if coordinate < 0 {
@@ -444,6 +506,10 @@ fn update_temporal_state(@builtin(global_invocation_id) global_id: vec3<u32>) {
             temporal_ages.values[index] = new_age;
             if new_age > temporal_config.max_age {
                 temporal_state.values[base + status_vector][status_lane] = -1.0;
+                if REPORT_HISTORY_EXPIRY && temporal_config.padding == 0u
+                    && new_age == temporal_config.max_age + 1u {
+                    atomicAdd(&temporal_counts.values[3], 1u);
+                }
             }
         }
     }

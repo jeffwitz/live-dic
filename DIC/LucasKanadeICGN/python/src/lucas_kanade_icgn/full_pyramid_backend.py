@@ -92,6 +92,9 @@ class _TemporalSlot:
     seed_config: Any
     refinement: Any | None = None
     coarse_merge: Any | None = None
+    prediction: Any | None = None
+    save_previous: Any | None = None
+    fine_projection: _SeedEdge | None = None
 
 
 @dataclass(slots=True)
@@ -104,6 +107,7 @@ class _PendingFullPyramidRegistration:
     upload_wall_ms: float
     encoding_wall_ms: float
     submission_wall_ms: float
+    levels_used: int | None = None
 
 
 def _level_count(value: int) -> int:
@@ -113,6 +117,16 @@ def _level_count(value: int) -> int:
         raise ValueError("pyramid_levels must be an integer from 1 to 3") from error
     if isinstance(value, bool) or not 1 <= count <= 3:
         raise ValueError("pyramid_levels must be an integer from 1 to 3")
+    return count
+
+
+def _iteration_count(value: int, name: str) -> int:
+    try:
+        count = operator.index(value)
+    except TypeError as error:
+        raise ValueError(f"{name} must be an integer from 1 to 30") from error
+    if isinstance(value, bool) or not 1 <= count <= 30:
+        raise ValueError(f"{name} must be an integer from 1 to 30")
     return count
 
 
@@ -180,7 +194,41 @@ class ICGNWGPUFullPyramid:
         initialization: str = "zero",
         temporal_max_age: int | None = None,
         temporal_fine_correction: bool = False,
+        temporal_prediction: str = "none",
+        divergence_patience: int | None = None,
+        divergence_min_iterations: int = 4,
+        pyramid_policy: str = "fixed",
+        adaptive_acceptance: float = 0.95,
     ) -> None:
+        if not isinstance(pyramid_policy, str) or pyramid_policy not in ("fixed", "adaptive"):
+            raise ValueError("pyramid_policy must be 'fixed' or 'adaptive'")
+        if pyramid_policy == "adaptive" and (initialization != "temporal" or pyramid_levels != 2):
+            raise ValueError("adaptive pyramid requires temporal initialization and two levels")
+        if (
+            isinstance(adaptive_acceptance, bool)
+            or not isinstance(adaptive_acceptance, (int, float))
+            or not np.isfinite(adaptive_acceptance)
+            or not 0 < adaptive_acceptance <= 1
+        ):
+            raise ValueError("adaptive_acceptance must be finite and in (0, 1]")
+        self.pyramid_policy = pyramid_policy
+        self.adaptive_acceptance = float(adaptive_acceptance)
+        self.divergence_patience = (
+            None
+            if divergence_patience is None
+            else _iteration_count(divergence_patience, "divergence_patience")
+        )
+        self.divergence_min_iterations = _iteration_count(
+            divergence_min_iterations, "divergence_min_iterations"
+        )
+        if not isinstance(temporal_prediction, str) or temporal_prediction not in (
+            "none",
+            "velocity",
+        ):
+            raise ValueError("temporal_prediction must be 'none' or 'velocity'")
+        if temporal_prediction != "none" and initialization != "temporal":
+            raise ValueError("temporal_prediction requires temporal initialization")
+        self.temporal_prediction = temporal_prediction
         if not isinstance(temporal_fine_correction, bool):
             raise ValueError("temporal_fine_correction must be a boolean")
         if temporal_fine_correction and (initialization != "temporal" or pyramid_levels != 2):
@@ -217,6 +265,7 @@ class ICGNWGPUFullPyramid:
             subset_size=self.subset_size,
         )
         self.pyramid_levels = _level_count(pyramid_levels)
+        self._adaptive_next_levels = self.pyramid_levels
         iteration_values = _schedule(
             iterations_per_level,
             level_count=self.pyramid_levels,
@@ -254,6 +303,22 @@ class ICGNWGPUFullPyramid:
             spatial_weighting=self.spatial_weighting,
             gaussian_sigma=self.gaussian_sigma,
         )
+        if self.divergence_patience is not None:
+            root = self._root
+            root._solver_extra_constants = {
+                "DIVERGENCE_PATIENCE": self.divergence_patience,
+                "DIVERGENCE_MIN_ITERATIONS": self.divergence_min_iterations,
+            }
+            root._portable_solver = root.device.create_compute_pipeline(
+                layout=root._pipeline_layout,
+                compute={
+                    "module": root._shader,
+                    "entry_point": "solve",
+                    "constants": root._solver_constants(),
+                },
+            )
+            root._base_portable_solver = root._portable_solver
+            root._solver = root._portable_solver
         self._root._ensure_seeded_solver()
         self._wgpu = self._root._wgpu
         self.device = self._root.device
@@ -314,12 +379,70 @@ class ICGNWGPUFullPyramid:
                     SUBSET_SIZE=self.subset_size,
                     SUBSET_STRIDE=self.subset_stride,
                 )
+            else:
+                constants["REPORT_HISTORY_EXPIRY"] = self.pyramid_policy == "adaptive"
             pipeline = self.device.create_compute_pipeline(
                 layout=pipeline_layout,
                 compute={"module": shader, "entry_point": entry, "constants": constants},
             )
             self._temporal_layouts.append(layout)
             self._temporal_pipelines.append(pipeline)
+        if self.temporal_prediction == "velocity":
+            self._velocity_layouts = []
+            self._velocity_pipelines = []
+            for group, entry, bindings, kinds in (
+                (
+                    2,
+                    "predict_temporal_state",
+                    (0, 1, 5, 6, 7, 9),
+                    (
+                        "read-only-storage",
+                        "storage",
+                        "storage",
+                        "read-only-storage",
+                        "read-only-storage",
+                        "read-only-storage",
+                    ),
+                ),
+                (
+                    3,
+                    "save_previous_temporal_state",
+                    (0, 1, 2, 3, 4, 6, 7),
+                    (
+                        "storage",
+                        "storage",
+                        "read-only-storage",
+                        "read-only-storage",
+                        "uniform",
+                        "storage",
+                        "storage",
+                    ),
+                ),
+            ):
+                layout = self.device.create_bind_group_layout(
+                    entries=[
+                        {
+                            "binding": binding,
+                            "visibility": self._wgpu.ShaderStage.COMPUTE,
+                            "buffer": {"type": kind},
+                        }
+                        for binding, kind in zip(bindings, kinds, strict=True)
+                    ]
+                )
+                pipeline = self.device.create_compute_pipeline(
+                    layout=self.device.create_pipeline_layout(
+                        bind_group_layouts=[self._empty_layout] * group + [layout]
+                    ),
+                    compute={
+                        "module": shader,
+                        "entry_point": entry,
+                        "constants": {
+                            "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model]
+                        },
+                    },
+                )
+                self._velocity_layouts.append(layout)
+                self._velocity_pipelines.append(pipeline)
         if self.temporal_fine_correction:
             bindings = (0, 1, 2, 3, 4, 6, 7, 8, 9)
             kinds = (
@@ -380,7 +503,7 @@ class ICGNWGPUFullPyramid:
                 "<4I",
                 count,
                 0xFFFFFFFE if self.temporal_max_age is None else self.temporal_max_age,
-                int(self.outlier_policy == "replace"),
+                int(self.outlier_policy == "replace" and self.temporal_prediction == "none"),
                 0,
             ),
             usage=usage.UNIFORM,
@@ -400,6 +523,14 @@ class ICGNWGPUFullPyramid:
             data=permissions,
             usage=usage.STORAGE,
         )
+        if self.pyramid_policy == "adaptive":
+            permissions = np.full(count, 31, dtype=np.uint32)
+            if root.roi is not None:
+                permissions[~root.roi.selected.ravel()] = 0
+            self._temporal_buffers["fine_links"] = self.device.create_buffer_with_data(
+                data=permissions,
+                usage=usage.STORAGE,
+            )
         if self.temporal_fine_correction and 0 not in self._roi_link_buffers:
             self._temporal_buffers["refinement_links"] = self.device.create_buffer_with_data(
                 data=np.full(count, 31, np.uint32),
@@ -420,10 +551,23 @@ class ICGNWGPUFullPyramid:
                     "<4I",
                     coarse_count,
                     0xFFFFFFFE if self.temporal_max_age is None else self.temporal_max_age,
-                    int(self.outlier_policy == "replace"),
+                    int(self.outlier_policy == "replace" and self.temporal_prediction == "none"),
                     1,
                 ),
                 usage=usage.UNIFORM,
+            )
+        if self.temporal_prediction == "velocity":
+            self._temporal_buffers["previous_state"] = self.device.create_buffer(
+                size=self._temporal_buffers["state"].size,
+                usage=usage.STORAGE | usage.COPY_DST,
+            )
+            self._temporal_buffers["previous_ages"] = self.device.create_buffer(
+                size=count * 4,
+                usage=usage.STORAGE | usage.COPY_DST,
+            )
+            self._temporal_buffers["prediction"] = self.device.create_buffer(
+                size=self._temporal_buffers["state"].size,
+                usage=usage.STORAGE,
             )
         self.reset_temporal_state()
 
@@ -434,9 +578,11 @@ class ICGNWGPUFullPyramid:
         targets. The reference and all pyramid preparations stay unchanged.
         This is a no-op before reference preparation or in zero mode.
         """
+        if getattr(self, "pyramid_policy", "fixed") == "adaptive":
+            self._adaptive_next_levels = self.pyramid_levels
         if not self._temporal_buffers:
             return
-        for prefix in ("", "coarse_"):
+        for prefix in ("", "coarse_", "previous_"):
             if prefix + "ages" not in self._temporal_buffers:
                 continue
             ages = self._temporal_buffers[prefix + "ages"]
@@ -475,7 +621,9 @@ class ICGNWGPUFullPyramid:
                 self._buffer_resource(i, buffer)
                 for i, buffer in enumerate(
                     (
-                        shared["state"],
+                        shared["prediction"]
+                        if self.temporal_prediction == "velocity"
+                        else shared["state"],
                         coarse_slot.buffers["seed_state"],
                         coarse_slot.buffers["active_mask"],
                         config,
@@ -553,7 +701,86 @@ class ICGNWGPUFullPyramid:
                     )
                 ],
             )
-        return _TemporalSlot(projection, merge, counts, config, refinement, coarse_merge)
+        prediction = save_previous = None
+        if self.temporal_prediction == "velocity":
+            prediction = self.device.create_bind_group(
+                layout=self._velocity_layouts[0],
+                entries=[
+                    self._buffer_resource(binding, buffer)
+                    for binding, buffer in (
+                        (0, shared["state"]),
+                        (1, shared["prediction"]),
+                        (5, counts),
+                        (6, shared["previous_state"]),
+                        (7, shared["ages"]),
+                        (9, shared["previous_ages"]),
+                    )
+                ],
+            )
+            save_previous = self.device.create_bind_group(
+                layout=self._velocity_layouts[1],
+                entries=[
+                    self._buffer_resource(binding, buffer)
+                    for binding, buffer in (
+                        (0, shared["state"]),
+                        (1, shared["ages"]),
+                        (2, fine_slot.buffers["state"]),
+                        (3, self._root._output_buffer(fine_slot)),
+                        (4, shared["config"]),
+                        (6, shared["previous_state"]),
+                        (7, shared["previous_ages"]),
+                    )
+                ],
+            )
+        fine_projection = None
+        if self.pyramid_policy == "adaptive":
+            self._root._ensure_seed_resources(fine_slot)
+            fine_config = self.device.create_buffer_with_data(
+                data=struct.pack(
+                    "<4I4f",
+                    self._root.grid_width,
+                    self._root.grid_height,
+                    self._root.grid_width,
+                    self._root.grid_width * self._root.grid_height,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                ),
+                usage=usage.UNIFORM,
+            )
+            group = self.device.create_bind_group(
+                layout=self._temporal_layouts[0],
+                entries=[
+                    self._buffer_resource(i, buffer)
+                    for i, buffer in enumerate(
+                        (
+                            shared["prediction"]
+                            if self.temporal_prediction == "velocity"
+                            else shared["state"],
+                            fine_slot.buffers["seed_state"],
+                            fine_slot.buffers["active_mask"],
+                            fine_config,
+                            shared["fine_links"],
+                            counts,
+                        )
+                    )
+                ],
+            )
+            fine_projection = _SeedEdge(
+                self._root.grid_width * self._root.grid_height, fine_config, group
+            )
+        return _TemporalSlot(
+            projection,
+            merge,
+            counts,
+            config,
+            refinement,
+            coarse_merge,
+            prediction,
+            save_previous,
+            fine_projection,
+        )
 
     def _create_orchestration_pipelines(self) -> None:
         wgpu = self._wgpu
@@ -683,6 +910,8 @@ class ICGNWGPUFullPyramid:
             if slot.temporal is not None:
                 slot.temporal.counts.destroy()
                 slot.temporal.seed_config.destroy()
+                if slot.temporal.fine_projection is not None:
+                    slot.temporal.fine_projection.config.destroy()
             for edge in slot.seed_edges.values():
                 edge.config.destroy()
         self._full_slots.clear()
@@ -880,14 +1109,35 @@ class ICGNWGPUFullPyramid:
             "iterationsPerLevel": list(self.iterations_per_level),
             "tolerancePerLevel": list(self.tolerance_per_level),
         }
+        if self.pyramid_policy == "adaptive":
+            self._root._pyramid_config.update(
+                pyramidPolicy="adaptive",
+                adaptiveAcceptance=self.adaptive_acceptance,
+                adaptiveFeedback="ordered-single-slot",
+            )
+            self._adaptive_population = int(np.count_nonzero(self.reference_valid))
+        if self.divergence_patience is not None:
+            self._root._pyramid_config.update(
+                divergencePatience=self.divergence_patience,
+                divergenceMinIterations=self.divergence_min_iterations,
+            )
         if self.initialization == "temporal":
             self._prepare_temporal_state(mask)
             self._root._pyramid_config.update(
                 initialization="temporal",
                 temporalMaxAge=self.temporal_max_age,
                 temporalSeedLevel="coarsest",
-                temporalSeedState=("filtered" if self.outlier_policy == "replace" else "raw"),
+                temporalSeedState=(
+                    "filtered"
+                    if self.outlier_policy == "replace" and self.temporal_prediction == "none"
+                    else "raw"
+                ),
                 **({"temporalFineCorrection": True} if self.temporal_fine_correction else {}),
+                **(
+                    {"temporalPrediction": "velocity"}
+                    if self.temporal_prediction == "velocity"
+                    else {}
+                ),
             )
 
         first_slot = self._create_full_slot(0)
@@ -1006,13 +1256,27 @@ class ICGNWGPUFullPyramid:
         if slot.temporal is not None:
             encoder.clear_buffer(slot.temporal.counts)
         compute_pass = encoder.begin_compute_pass()
-        self._encode_reductions(encoder, slot.reduction_edges, compute_pass=compute_pass)
-        coarsest_index = self.pyramid_levels - 1
+        levels_used = getattr(self, "_adaptive_next_levels", self.pyramid_levels)
+        self._encode_reductions(
+            encoder, slot.reduction_edges if levels_used > 1 else [], compute_pass=compute_pass
+        )
+        coarsest_index = levels_used - 1
         coarsest = self._levels[coarsest_index]
         coarsest_slot = slot.level_slots[coarsest_index]
         if slot.temporal is not None:
+            if slot.temporal.prediction is not None:
+                compute_pass.set_pipeline(self._velocity_pipelines[0])
+                compute_pass.set_bind_group(2, slot.temporal.prediction)
+                compute_pass.dispatch_workgroups(
+                    (self._root.grid_width * self._root.grid_height + 255) // 256
+                )
             compute_pass.set_pipeline(self._temporal_pipelines[0])
-            compute_pass.set_bind_group(2, slot.temporal.projection)
+            projection = (
+                slot.temporal.fine_projection.bind_group
+                if levels_used == 1 and slot.temporal.fine_projection is not None
+                else slot.temporal.projection
+            )
+            compute_pass.set_bind_group(2, projection)
             compute_pass.dispatch_workgroups(
                 (coarsest.grid_width * coarsest.grid_height + 255) // 256
             )
@@ -1053,6 +1317,12 @@ class ICGNWGPUFullPyramid:
             )
         fine_slot = slot.level_slots[0]
         if slot.temporal is not None:
+            if slot.temporal.save_previous is not None:
+                compute_pass.set_pipeline(self._velocity_pipelines[1])
+                compute_pass.set_bind_group(3, slot.temporal.save_previous)
+                compute_pass.dispatch_workgroups(
+                    (self._root.grid_width * self._root.grid_height + 255) // 256
+                )
             compute_pass.set_pipeline(self._temporal_pipelines[1])
             compute_pass.set_bind_group(3, slot.temporal.merge)
             compute_pass.dispatch_workgroups(
@@ -1061,7 +1331,7 @@ class ICGNWGPUFullPyramid:
             if slot.temporal.coarse_merge is not None:
                 compute_pass.set_bind_group(3, slot.temporal.coarse_merge)
                 compute_pass.dispatch_workgroups(
-                    (coarsest.grid_width * coarsest.grid_height + 255) // 256
+                    (self._levels[-1].grid_width * self._levels[-1].grid_height + 255) // 256
                 )
             compute_pass.end()
             encoder.copy_buffer_to_buffer(
@@ -1104,6 +1374,7 @@ class ICGNWGPUFullPyramid:
             upload_wall_ms=upload_wall_ms,
             encoding_wall_ms=encoding_wall_ms,
             submission_wall_ms=submission_wall_ms,
+            levels_used=getattr(self, "_adaptive_next_levels", self.pyramid_levels),
         )
 
     def _retire_slot(self, pending: _PendingFullPyramidRegistration) -> RegistrationResult:
@@ -1121,6 +1392,10 @@ class ICGNWGPUFullPyramid:
                 "temporallySeededCoarseSubsets": float(counts[0]),
                 "temporalAcceptedUpdates": float(counts[1]),
             }
+            if self.temporal_prediction == "velocity":
+                temporal_timing["velocityPredictedSubsets"] = float(counts[2])
+            if self.pyramid_policy == "adaptive":
+                temporal_timing["temporalExpiredSubsets"] = float(counts[3])
             raw = memoryview(raw)[:-16]
         readback_copy_wall_ms = (time.perf_counter() - copy_started) * 1_000.0
         pipeline_latency_wall_ms = (time.perf_counter() - pending.accepted_at) * 1_000.0
@@ -1139,12 +1414,23 @@ class ICGNWGPUFullPyramid:
                 "readbackCopyWallMs": readback_copy_wall_ms,
                 "executeReadbackWallMs": execute_readback_wall_ms,
                 "pipelineLatencyWallMs": pipeline_latency_wall_ms,
-                "pyramidLevels": float(self.pyramid_levels),
+                "pyramidLevels": float(pending.levels_used or self.pyramid_levels),
                 "queueSubmissions": 1.0,
                 **temporal_timing,
             },
             config=self._root._config,
         )
+        if getattr(self, "pyramid_policy", "fixed") == "adaptive":
+            accepted = temporal_timing.get("temporalAcceptedUpdates", 0)
+            expired = temporal_timing.get("temporalExpiredSubsets", 0)
+            self._adaptive_next_levels = (
+                1
+                if self._adaptive_population > 0
+                and accepted / self._adaptive_population >= self.adaptive_acceptance
+                and not expired
+                else 2
+            )
+            result.config["pyramidLevelsUsed"] = pending.levels_used
         result_build_wall_ms = (time.perf_counter() - result_started) * 1_000.0
         total_wall_ms = (time.perf_counter() - pending.accepted_at) * 1_000.0
         result.timing = {
@@ -1196,6 +1482,12 @@ class ICGNWGPUFullPyramid:
             raise ValueError("pipeline_depth must be a positive integer") from error
         if isinstance(pipeline_depth, bool) or depth < 1:
             raise ValueError("pipeline_depth must be a positive integer")
+
+        # Host feedback must see the same preceding frame at every requested
+        # depth. Retire each result before choosing the next level count;
+        # this reuses the normal readback and adds no intermediate GPU sync.
+        if self.pyramid_policy == "adaptive":
+            depth = 1
 
         if self._root.roi is not None and self._root.roi.empty:
             for target in targets:

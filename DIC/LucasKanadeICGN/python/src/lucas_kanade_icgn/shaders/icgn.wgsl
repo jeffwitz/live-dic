@@ -86,6 +86,20 @@ override PREFILTER_CLAMP_HALO: u32 = 1u;
 // Zero keeps browser consumers and unmasked native pipelines unchanged.
 override ROI_ENABLED: u32 = 0u;
 override PARTIAL_SUPPORT: u32 = 0u;
+// Zero compiles away the opt-in stagnation check. Status 3 is internal only;
+// aborted windows are exported as status 0, just like an iteration ceiling.
+override DIVERGENCE_PATIENCE: u32 = 0u;
+override DIVERGENCE_MIN_ITERATIONS: u32 = 4u;
+
+fn divergence_status(change: f32, count: u32, status: f32,
+    previous: ptr<function, f32>, stalled: ptr<function, u32>) -> f32 {
+    if DIVERGENCE_PATIENCE == 0u || status != 0.0 { return status; }
+    if count >= DIVERGENCE_MIN_ITERATIONS {
+        *stalled = select(0u, *stalled + 1u, change >= *previous);
+    }
+    *previous = change;
+    return select(status, 3.0, *stalled >= DIVERGENCE_PATIENCE);
+}
 
 var<workgroup> partial_a: array<vec4<f32>, 16>;
 var<workgroup> partial_b: array<vec4<f32>, 16>;
@@ -615,8 +629,10 @@ fn solve_subset(
         local_maximum = support_box.zw - vec2<f32>(half_extent);
     }
 
+    var previous_change = 3.402823e38;
+    var stalled_iterations = 0u;
     for (var iteration = 0u; iteration < 30u; iteration = iteration + 1u) {
-        if lane == 0u {
+        if lane == 0u && !(DIVERGENCE_PATIENCE != 0u && shared_status.x == 3.0) {
             var inside = true;
             if MOTION_MODEL == 1u {
                 let minimum = center - vec2<f32>(0.5) + local_minimum + shared_translation;
@@ -840,7 +856,9 @@ fn solve_subset(
                         shared_linear = update.linear;
                         shared_curvature = update.curvature;
                         let zncc = totals_a.z / (reference_norm * current_norm);
-                        shared_status.x = convergence_status(quadratic_change(delta), zncc);
+                        let change = quadratic_change(delta);
+                        shared_status.x = divergence_status(change, iteration + 1u,
+                            convergence_status(change, zncc), &previous_change, &stalled_iterations);
                     }
                 }
             }
@@ -880,9 +898,9 @@ fn solve_subset(
                     shared_translation = update.translation;
                     shared_linear = update.linear;
                     let zncc = totals_a.z / (reference_norm * current_norm);
-                    shared_status.x = convergence_status(
-                        standard_corner_change(delta), zncc,
-                    );
+                    let change = standard_corner_change(delta);
+                    shared_status.x = divergence_status(change, iteration + 1u,
+                        convergence_status(change, zncc), &previous_change, &stalled_iterations);
                 }
             }
         }
@@ -893,6 +911,8 @@ fn solve_subset(
     // A selective retry instead retains their existing results so the median
     // pass can still use neighbours that already converged.
     if lane == 0u && (enabled || !preserve_disabled) {
+        let final_status = select(shared_status.x, 0.0,
+            DIVERGENCE_PATIENCE != 0u && shared_status.x == 3.0);
         let state_index = subset_index * state_vec4_stride();
         state.values[state_index] = vec4<f32>(
             shared_translation.x,
@@ -909,13 +929,13 @@ fn solve_subset(
                 shared_curvature[4], shared_curvature[5],
             );
             state.values[state_index + 3u] = vec4<f32>(
-                shared_status.x, shared_status.y, 0.0, 0.0,
+                final_status, shared_status.y, 0.0, 0.0,
             );
         } else {
             state.values[state_index + 1u] = vec4<f32>(
                 shared_linear.z,
                 shared_linear.w,
-                shared_status.x,
+                final_status,
                 shared_status.y,
             );
         }

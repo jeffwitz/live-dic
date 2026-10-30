@@ -161,3 +161,13 @@ jobs:
           -s DIC/LucasKanadeICGN/python/tests
           -p test_fused_pyramid.py
           -v
+
+      - name: Run native latency-policy regressions on lavapipe
+        env:
+          ICGN_RUN_GPU_TESTS: "1"
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: >-
+          python -m unittest discover
+          -s DIC/LucasKanadeICGN/python/tests
+          -p test_latency_options.py
+          -v
