@@ -187,6 +187,59 @@ def _quadratic_pair(
     "set ICGN_RUN_GPU_TESTS=1 to execute the native GPU regressions",
 )
 class GPURegressionTests(unittest.TestCase):
+    def test_128_lane_solver_preserves_fractional_motion_and_stream_results(self) -> None:
+        truth = (0.5, -0.375)
+        reference, target = _fractional_pair(128, 128, truth)
+        for engine_type in (ICGNWGPU, ICGNWGPUFullPyramid):
+            for model in ("translation", "affine"):
+                fields = []
+                for width in (16, 128):
+                    with self.subTest(engine=engine_type, model=model, width=width):
+                        options = dict(
+                            solver_workgroup_size=width,
+                            motion_model=model,
+                            outlier_policy="disabled",
+                        )
+                        if engine_type is ICGNWGPU:
+                            options["prefer_subgroups"] = False
+                        engine = engine_type(**options)
+                        try:
+                            prepared = engine.set_reference(reference)
+                            result = engine.register(target)
+                            streamed = list(
+                                engine.register_stream([target, target], pipeline_depth=2)
+                            )
+                            self.assertEqual(prepared.config["solverWorkgroupSize"], width)
+                            self.assertGreater(result.accepted, 0)
+                            self.assertLess(result.rmse(truth), 0.03)
+                            for field in (result, *streamed):
+                                self.assertEqual(field.config["solverWorkgroupSize"], width)
+                                self.assertTrue(np.isfinite(field.parameters).all())
+                                np.testing.assert_array_equal(field.status, result.status)
+                                np.testing.assert_array_equal(field.parameters, result.parameters)
+                            fields.append(result)
+                        finally:
+                            engine.close()
+                            engine.device.destroy()
+                # Reuse the established comparison thresholds, without requiring
+                # bitwise equality after changing the floating-point reduction tree.
+                raw = []
+                for field in fields:
+                    raw.append(
+                        np.concatenate(
+                            (
+                                field.parameters,
+                                field.status[..., None],
+                                field.iterations[..., None],
+                            ),
+                            axis=-1,
+                        ).astype(np.float32)
+                    )
+                comparison = _compare_solver_outputs(
+                    raw[0], raw[1], grid_count=fields[0].status.size
+                )
+                self.assertTrue(comparison["valid"], comparison)
+
     def test_explicit_cpu_selection_runs_native_engines_and_streams(self) -> None:
         wgpu = self.runtime._wgpu
         cpu_available = any(

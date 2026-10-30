@@ -84,6 +84,15 @@ change latency measurements.
 Choose a work decomposition
 ---------------------------
 
+For the native LK solver, set ``solver_workgroup_size=16``, ``32``, or
+experimental ``128`` when constructing ``ICGNWGPU`` or
+``ICGNWGPUFullPyramid``. Keep the subset size, stride, levels and stream depth
+fixed when comparing widths. Width 16 remains the default; the others select
+the portable reduction and do not enable subgroup collectives. Use
+``benchmark_latency_reduction.py --solver-workgroup-size 128`` to exercise
+the same changing-frame trajectory with the larger group, then compare both
+quality and complete image-to-field latency. See :doc:`../reference/performance`.
+
 List independent outputs and dependencies. An elementwise operation can use
 one invocation per output. LK can use one cooperating workgroup per subset.
 An image filter can use a rectangular tile to reuse neighbouring input values.

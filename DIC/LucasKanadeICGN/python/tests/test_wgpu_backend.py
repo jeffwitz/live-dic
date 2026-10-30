@@ -35,6 +35,7 @@ from lucas_kanade_icgn.wgpu_backend import (
     ICGNWGPU,
     _compare_solver_outputs,
     _fir_weights,
+    _normalize_solver_workgroup_size,
     _pyramid_dependency_mask,
     _reduce_half,
     _reference_arrays,
@@ -46,6 +47,19 @@ from lucas_kanade_icgn.wgpu_backend import (
 
 
 class NativeReferenceTests(unittest.TestCase):
+    def test_solver_width_validation_and_specialization_contract(self) -> None:
+        for width in (16, 32, 128, np.int32(128)):
+            self.assertEqual(_normalize_solver_workgroup_size(width), width)
+        for value in (True, 64, 128.0, "128", None):
+            with (
+                self.subTest(value=value),
+                self.assertRaisesRegex(ValueError, "solver_workgroup_size"),
+            ):
+                ICGNWGPU(solver_workgroup_size=value)
+        for width in (32, 128):
+            with self.subTest(width=width), self.assertRaisesRegex(ValueError, "portable solver"):
+                ICGNWGPU(solver_workgroup_size=width, prefer_subgroups=True)
+
     @staticmethod
     def _adapter(kind: str, backend: str = "Vulkan") -> SimpleNamespace:
         return SimpleNamespace(info={"adapter_type": kind, "backend_type": backend})

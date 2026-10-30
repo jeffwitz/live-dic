@@ -181,7 +181,7 @@ def main():
     parser.add_argument("--campaign", action="store_true")
     parser.add_argument("--baseline-source", type=Path)
     parser.add_argument("--variants", nargs="+", choices=VARIANTS, default=VARIANTS)
-    parser.add_argument("--solver-workgroup-size", type=int, choices=(16, 32))
+    parser.add_argument("--solver-workgroup-size", type=int, choices=(16, 32, 128))
     args = parser.parse_args()
     if args.campaign:
         run_campaign(args)

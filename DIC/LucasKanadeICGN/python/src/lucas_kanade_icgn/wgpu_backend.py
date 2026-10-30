@@ -68,9 +68,9 @@ def _normalize_solver_workgroup_size(value: int) -> int:
     try:
         size = operator.index(value)
     except TypeError as error:
-        raise ValueError("solver_workgroup_size must be 16 or 32") from error
-    if isinstance(value, bool) or size not in (16, 32):
-        raise ValueError("solver_workgroup_size must be 16 or 32")
+        raise ValueError("solver_workgroup_size must be 16, 32, or 128") from error
+    if isinstance(value, bool) or size not in (16, 32, 128):
+        raise ValueError("solver_workgroup_size must be 16, 32, or 128")
     return size
 
 
@@ -787,7 +787,7 @@ class ICGNWGPU:
     ``spatial_weighting="gaussian"`` applies centred Gaussian integration with
     ``gaussian_sigma`` expressed in pixels. The subgroup WGSL path requires
     size and stride 16 plus uniform integration. The portable solver accepts
-    ``solver_workgroup_size=16`` or ``32``. A 32-invocation portable solve
+    ``solver_workgroup_size=16``, ``32``, or experimental ``128``. A non-default-width solve
     forces the portable path because the subgroup specialization is fixed at
     16 invocations.
 
@@ -838,10 +838,11 @@ class ICGNWGPU:
             subset_size=self.subset_size,
         )
         self.solver_workgroup_size = _normalize_solver_workgroup_size(solver_workgroup_size)
-        if self.solver_workgroup_size == 32:
+        if self.solver_workgroup_size != 16:
             if prefer_subgroups is True:
                 raise ValueError(
-                    "solver_workgroup_size=32 uses the portable solver and cannot be combined "
+                    f"solver_workgroup_size={self.solver_workgroup_size} uses the portable solver "
+                    "and cannot be combined "
                     "with prefer_subgroups=True"
                 )
             prefer_subgroups = False

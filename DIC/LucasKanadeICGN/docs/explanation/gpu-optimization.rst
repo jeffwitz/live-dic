@@ -208,7 +208,7 @@ expensive image sampling without a new Python, JavaScript, or GPU submission.
 Portable shared-WGSL workgroup reduction
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The native portable solver supports 16- and 32-lane mappings; 16 remains the
+The native portable solver supports 16-, 32-, and experimental 128-lane mappings; 16 remains the
 default. Three shared ``vec4`` arrays hold the partial sums and a binary
 reduction tree uses workgroup barriers between its stages:
 
@@ -223,13 +223,16 @@ reduction tree uses workgroup barriers between its stages:
 Use ``solver_workgroup_size=32`` to split each subset's pixel samples across
 twice as many invocations. The browser shared-WGSL host keeps the default
 16-invocation pipeline unless it supplies another pipeline override.
+The experimental value ``128`` assigns two pixels per invocation for a 16 by
+16 subset, but increases the reduction tree to seven stages instead of four.
+It is an opt-in measurement candidate, not an automatic performance upgrade.
 
 The canonical WGSL uses ``workgroupUniformLoad`` to make the shared status a
 provably uniform loop condition. A converged subset can therefore leave the
 iteration loop early while every barrier that is reached remains in uniform
 control flow. This path does not depend on a particular subgroup width and is
 executed by raw browser WebGPU with 16 invocations and by native wgpu-py with
-the selected 16- or 32-invocation mapping.
+the selected 16-, 32-, or 128-invocation mapping.
 
 Three.js selects the subgroup path only when the width probe permits it and the
 production-pipeline validation agrees. ``EngineInfo.subgroup_probe_width``,

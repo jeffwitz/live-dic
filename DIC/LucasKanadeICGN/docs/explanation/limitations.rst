@@ -141,6 +141,9 @@ Runtime
   weighting, size 16, and stride 16.
 * Current timing is soft real-time and provides no operating-system deadline
   guarantee.
+* Native ``solver_workgroup_size=128`` is experimental and must be explicitly
+  selected. A larger workgroup does not guarantee lower latency. The default
+  remains 16; browser hosts and the specialized subgroup solver are unchanged.
 
 The solver's HTML and JavaScript resources are packaged locally. Network access
 is not a runtime requirement once the Python dependencies and Chromium are

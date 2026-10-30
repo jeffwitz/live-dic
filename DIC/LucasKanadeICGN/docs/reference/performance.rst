@@ -122,7 +122,7 @@ campaigns after the binary transport change.
 Portable native workgroup-size experiment
 -----------------------------------------
 
-The portable native solver can run with 16 or 32 invocations per subset.
+The portable native solver can run with 16, 32, or experimental 128 invocations per subset.
 Sixteen remains the default. This experiment compared both values on the
 current RTX 3080 Laptop PC and its integrated Intel UHD Graphics adapter. It
 uses the same two-level affine full-pyramid engine and a fixed native-UHD
@@ -385,7 +385,7 @@ Kernel configuration represented by the results
 * Three.js FIR: a 16 x 16 output tile and all 31 coefficients;
 * Three.js solver: the measured 32-lane hardware subgroup, eight subset pixels
   per lane on the validation GPU;
-* portable shared-WGSL solver: one 16- or 32-lane workgroup per subset in the
+* portable shared-WGSL solver: one 16-, 32-, or experimental 128-lane workgroup per subset in the
   native engine (16 by default); browser WGSL uses 16 lanes;
 * full pyramid: GPU-resident five-tap reduction, per-level FIR coefficients,
   affine seed transfer, seeded solves, final UOD pass, and one packed

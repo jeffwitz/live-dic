@@ -84,6 +84,13 @@ contract.
 Native single-scale and streaming engine
 ----------------------------------------
 
+Both native engines accept ``solver_workgroup_size=16`` (default), ``32``,
+or experimental ``128``. This is the invocation count per subset, independent
+of subset size and stream depth. Non-default widths use the portable solver;
+they cannot be combined with ``ICGNWGPU(prefer_subgroups=True)``. The effective
+width is retained as ``solverWorkgroupSize`` in reference and result metadata.
+No automatic width selection is performed. See :doc:`../how-to/optimize-webgpu`.
+
 Both native engines accept ``device_type="auto"`` (hardware preferred, CPU
 when no hardware is enumerated), ``"gpu"`` (hardware required), and ``"cpu"``
 (software CPU adapter required). ``execution_device_type`` and ``adapter_info``
