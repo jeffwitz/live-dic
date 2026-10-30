@@ -30,6 +30,13 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--warmups", type=int, default=3)
     parser.add_argument("--repeats", type=int, default=10)
     parser.add_argument(
+        "--workgroup-size",
+        type=int,
+        choices=(16, 32),
+        default=16,
+        help="portable native solver invocations per subset",
+    )
+    parser.add_argument(
         "--motion-model",
         choices=("affine", "translation", "quadratic"),
         default="affine",
@@ -85,6 +92,7 @@ def main() -> int:
 
     with ICGNWGPU(
         prefer_subgroups=False,
+        solver_workgroup_size=args.workgroup_size,
         pyramid_levels=1,
         motion_model=args.motion_model,
     ) as engine:
@@ -98,6 +106,7 @@ def main() -> int:
     for levels in args.levels:
         with ICGNWGPUFullPyramid(
             pyramid_levels=levels,
+            solver_workgroup_size=args.workgroup_size,
             motion_model=args.motion_model,
         ) as engine:
             preparation = engine.set_reference(reference)
@@ -115,6 +124,7 @@ def main() -> int:
                 "resolution": [args.width, args.height],
                 "truth": list(TRUTH),
                 "motion_model": args.motion_model,
+                "solver_workgroup_size": args.workgroup_size,
                 "warmups": args.warmups,
                 "repeats": args.repeats,
                 "measurements": measurements,

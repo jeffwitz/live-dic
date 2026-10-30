@@ -12,9 +12,9 @@ _SUPPORTED_SUBSET_SIZES_TEXT = ", ".join(str(value) for value in SUPPORTED_SUBSE
 def normalize_subset_size(value: int) -> int:
     """Return a supported square subset width.
 
-    The portable kernels keep a fixed 16-lane workgroup and distribute the
-    selected number of pixels over those lanes. Odd widths expose an exact
-    centre pixel, while the established power-of-two widths remain available.
+    The portable solver distributes the selected number of pixels over its
+    configurable 16- or 32-lane workgroup. Odd widths expose an exact centre
+    pixel, while the established power-of-two widths remain available.
     """
 
     try:

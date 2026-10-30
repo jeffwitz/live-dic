@@ -209,12 +209,14 @@ The WGSL file separates the algorithm into ordinary functions:
 * ``convergence_status`` applies tolerance and ZNCC rules.
 
 The portable solve entry point retains the GPU-specific organization: one
-16-lane workgroup owns one subset and reduces three packed partial-sum vectors.
-Quadratic mode then reuses two of those vectors for a second reduction of its
-six curvature products. It deliberately does not declare a fourth reduction
-buffer: doing so reduced affine occupancy on the validation GPU even when the
-pipeline override selected affine mode. Each lane processes 4, 16, or 64
-pixels for ``S=8``, ``16``, or ``32``. A
+16- or 32-lane workgroup owns one subset and reduces three packed partial-sum
+vectors. Sixteen is the default; native callers select the width with
+``solver_workgroup_size``. Quadratic mode then reuses two of those vectors for
+a second reduction of its six curvature products. It deliberately does not
+declare a fourth reduction buffer: doing so reduced affine occupancy on the
+validation GPU even when the pipeline override selected affine mode. With the
+default 16 lanes, each lane processes 4, 16, or 64 pixels for ``S=8``, ``16``,
+or ``32``; 32 lanes halve those per-lane counts. A
 ``workgroupUniformLoad`` makes the convergence decision uniform, so completed
 subsets leave the iteration loop without violating barrier uniformity.
 

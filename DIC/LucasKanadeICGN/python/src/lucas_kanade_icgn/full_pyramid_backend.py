@@ -170,6 +170,7 @@ class ICGNWGPUFullPyramid:
         tolerance_per_level: tuple[float, ...] | None = None,
         power_preference: str = "high-performance",
         device_type: str = "auto",
+        solver_workgroup_size: int = 16,
         interpolation: str = "bspline",
         motion_model: str = "affine",
         outlier_policy: str = "replace",
@@ -216,6 +217,7 @@ class ICGNWGPUFullPyramid:
             gaussian_sigma,
             subset_size=self.subset_size,
         )
+        self.solver_workgroup_size = solver_workgroup_size
         self.pyramid_levels = _level_count(pyramid_levels)
         iteration_values = _schedule(
             iterations_per_level,
@@ -245,6 +247,7 @@ class ICGNWGPUFullPyramid:
             power_preference=power_preference,
             device_type=device_type,
             prefer_subgroups=False,
+            solver_workgroup_size=self.solver_workgroup_size,
             pyramid_levels=1,
             interpolation=self.interpolation,
             motion_model=self.motion_model,
@@ -261,6 +264,7 @@ class ICGNWGPUFullPyramid:
         self.device_type = self._root.device_type
         self.execution_device_type = self._root.execution_device_type
         self.adapter_info = dict(self._root.adapter_info)
+        self.solver_workgroup_size = self._root.solver_workgroup_size
         self._levels: list[ICGNWGPU] = [self._root]
         self._reduction_edges: list[_ReductionEdge] = []
         self._seed_edges: dict[int, _SeedEdge] = {}
@@ -917,6 +921,7 @@ class ICGNWGPUFullPyramid:
                 "outlierPolicy": self.outlier_policy,
                 "subsetStride": self.subset_stride,
                 "spatialWeighting": self.spatial_weighting,
+                "solverWorkgroupSize": self.solver_workgroup_size,
                 "gaussianSigma": self.gaussian_sigma,
             },
             device=self.device_name,

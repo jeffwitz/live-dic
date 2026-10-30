@@ -207,9 +207,10 @@ layout is documented in the [native backend explanation](./DIC/LucasKanadeICGN/d
 The specialized Three.js/WebGPU solver fuses the IC-GN iterations into one
 compute dispatch and fills the measured hardware subgroup. On the validation
 GPU, 32 lanes each process eight pixels of a default 16 x 16 subset. Its portable
-fallback instead uses one 16-lane workgroup per subset and shared-memory
-reductions. These solver groups are independent of the FIR tiles: the shared
-WGSL prefilter uses 32 x 8 horizontal and 8 x 32 vertical output tiles.
+fallback instead uses one portable 16- or 32-lane workgroup per subset, with 16
+as the default and the native width configurable. These solver groups are
+independent of the FIR tiles: the shared WGSL prefilter uses 32 x 8 horizontal
+and 8 x 32 vertical output tiles.
 
 The GPU-IO solver uses the WebGL2 execution model: one fragment owns one subset
 and scans the selected square serially. Its iterations are fused into one draw,

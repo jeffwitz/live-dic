@@ -375,7 +375,7 @@ related [`DIC_FROM_H264` SYSCL implementation](https://github.com/jeffwitz/DIC_F
 remains referenced for provenance, but no stale timing row is retained.
 
 [`GPU tiling and grouping`](./docs/explanation/gpu-optimization.rst) explains
-the axis-oriented FIR tiles, the 16-lane portable WGSL reduction, the
+the axis-oriented FIR tiles, the configurable 16- or 32-lane portable WGSL reduction, the
 hardware-width Three.js subgroup reduction, and the fused one-fragment-per-
 subset WebGL2 strategy with execution diagrams.
 

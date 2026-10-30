@@ -167,7 +167,8 @@ PYTHONPATH=DIC/LucasKanadeICGN/python/src \
 - the Three.js FIR uses a conservative 16 × 16 output tile with all 31 taps;
 - the Three.js solver fills the measured 32-lane hardware subgroup, so each
   lane handles eight subset pixels;
-- the portable shared WGSL solver retains one 16-lane workgroup per subset;
+- the portable shared WGSL solver supports 16 or 32 invocations per subset,
+  with 16 as the default;
 - the two-level full pyramid keeps reduction, coefficients, affine seed
   transfer, solves, and final readback on one GPU command graph.
 
