@@ -166,3 +166,103 @@ class BrowserPostprocessTests(unittest.TestCase):
         self.assertAlmostEqual(result["exx"], 0.001)
         self.assertAlmostEqual(result["eyy"], 0.005)
         self.assertAlmostEqual(result["exy"], 0.003)
+
+    def test_compressed_native_numpy_archive_uses_exact_roi_geometry(self):
+        import base64
+        import io
+
+        output = io.BytesIO()
+        parameters = np.zeros((8, 8, 6), dtype=np.float32)
+        parameters[..., 0] = 0.3
+        parameters[..., 3] = -0.2
+        np.savez_compressed(
+            output,
+            parameters=parameters,
+            status=np.ones((8, 8)),
+            iterations=np.full((8, 8), 3, dtype=np.int64),
+            roi_mask=np.ones((128, 128), dtype=bool),
+            config_json=np.asarray(
+                json.dumps(dict(motionModel="affine", subsetSize=16, subsetStride=16))
+            ),
+        )
+        encoded = base64.b64encode(output.getvalue()).decode("ascii")
+        archive_module = MODULE.with_name("archive.js")
+        result = javascript(f"""
+          import {{importFieldArchive}} from {json.dumps(archive_module.as_uri())};
+          const result=await importFieldArchive(Buffer.from({json.dumps(encoded)},'base64'));
+          console.log(JSON.stringify({{width:result.field.width,height:result.field.height,iterations:result.field.iterations[0],v:result.field.parameters[3],geometry:result.metadata.importGeometry}}));
+        """)
+        self.assertEqual((result["width"], result["height"]), (128, 128))
+        self.assertEqual(result["iterations"], 3)
+        self.assertAlmostEqual(result["v"], -0.2, places=7)
+        self.assertEqual(result["geometry"]["imageExtentSource"], "archived ROI shape")
+
+    def test_native_sequence_requires_explicit_geometry_and_frame_selection(self):
+        import base64
+        import io
+
+        output = io.BytesIO()
+        parameters = np.zeros((2, 8, 8, 6), dtype=np.float32)
+        parameters[1, ..., 0] = 2
+        np.savez_compressed(
+            output,
+            parameters=parameters,
+            status=np.ones((2, 8, 8)),
+            iterations=np.ones((2, 8, 8)),
+            config_json=np.asarray(
+                json.dumps(dict(motionModel="translation", subsetSize=16, subsetStride=16))
+            ),
+        )
+        encoded = base64.b64encode(output.getvalue()).decode("ascii")
+        archive_module = MODULE.with_name("archive.js")
+        result = javascript(f"""
+          import {{importFieldArchive}} from {json.dumps(archive_module.as_uri())};
+          const buffer=Buffer.from({json.dumps(encoded)},'base64');let missing;
+          try{{await importFieldArchive(buffer);}}catch(e){{missing={{code:e.code,geometry:e.geometry}};}}
+          const result=await importFieldArchive(buffer,{{width:128,height:128,frameIndex:1}});
+          console.log(JSON.stringify({{missing,u:result.field.parameters[0],geometry:result.metadata.importGeometry}}));
+        """)
+        self.assertEqual(result["missing"]["code"], "FIELD_GEOMETRY_REQUIRED")
+        self.assertEqual(result["missing"]["geometry"]["frameCount"], 2)
+        self.assertEqual(result["u"], 2)
+        self.assertEqual(result["geometry"]["frameIndex"], 1)
+        self.assertEqual(result["geometry"]["imageExtentSource"], "explicit user input")
+
+    def test_uhd_point_history_preserves_failure_gaps_and_order(self):
+        history_module = MODULE.with_name("history.js")
+        result = javascript(f"""
+          import {{extractHistory}} from {json.dumps(history_module.as_uri())};
+          const entries=[.1,.2,.3].map((value,i)=>{{const field=fixture();for(let j=0;j<field.status.length;j++)field.parameters[j*6]=value;if(i===1)field.status[62+56*240]=-2;return {{id:i+1,field,metadata:{{analysisEpoch:'same-reference',comparison:{{mode:'fixed',target:{{index:i}}}}}},mask:null}};}});
+          const rows=await extractHistory(entries,{{recipe:p.DEFAULT_RECIPE,component:'u',points:[[999.5,903.5]],tool:'probe'}});
+          console.log(JSON.stringify(rows));
+        """)
+        self.assertEqual([r["order"] for r in result], [1, 2, 3])
+        self.assertEqual([r["value"] for r in result], [0.1, None, 0.3])
+        self.assertEqual([r["status"] for r in result], [1, -2, 1])
+
+    def test_gauge_history_is_not_cumulative_and_rejects_unrelated_references(self):
+        history_module = MODULE.with_name("history.js")
+        result = javascript(f"""
+          import {{extractHistory,sameAnalysis}} from {json.dumps(history_module.as_uri())};
+          const entries=[.001,.002,.003].map((strain,i)=>{{const field=fixture(128,128);for(let j=0;j<64;j++)field.parameters[j*6]=strain*(j%8*16+7.5);return {{id:i+1,field,metadata:{{analysisEpoch:'same-reference'}},mask:null}};}});
+          const rows=await extractHistory(entries,{{recipe:p.DEFAULT_RECIPE,component:'u',points:[[7.5,7.5],[103.5,7.5]],tool:'gauge'}});
+          entries[1].metadata.analysisEpoch='another-reference';let error;
+          try{{await extractHistory(entries,{{recipe:p.DEFAULT_RECIPE,component:'u',points:[[7.5,7.5]],tool:'probe'}});}}catch(e){{error=e.message;}}
+          console.log(JSON.stringify({{rows,error,same:sameAnalysis(entries[0],entries[1])}}));
+        """)
+        np.testing.assert_allclose(
+            [r["value"] for r in result["rows"]], [0.001, 0.002, 0.003], atol=1e-15
+        )
+        self.assertFalse(result["same"])
+        self.assertIn("one analysis epoch", result["error"])
+
+    def test_history_cancellation_stops_before_the_next_field(self):
+        history_module = MODULE.with_name("history.js")
+        result = javascript(f"""
+          import {{extractHistory}} from {json.dumps(history_module.as_uri())};
+          const entries=Array.from({{length:5}},(_,i)=>({{id:i,field:fixture(128,128),metadata:{{analysisEpoch:'same'}},mask:null}})),abort=new AbortController();let processed=0,cancelled;
+          try{{await extractHistory(entries,{{recipe:p.DEFAULT_RECIPE,component:'u',points:[[7.5,7.5]],tool:'probe',signal:abort.signal,progress:n=>{{processed=n;if(n===2)abort.abort();}}}});}}catch(e){{cancelled=e.name;}}
+          console.log(JSON.stringify({{processed,cancelled}}));
+        """)
+        self.assertEqual(result["processed"], 2)
+        self.assertEqual(result["cancelled"], "AbortError")

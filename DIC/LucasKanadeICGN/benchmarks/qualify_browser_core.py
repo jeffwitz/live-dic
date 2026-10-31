@@ -56,7 +56,7 @@ def main():
     )
     rows = []
     configurations = []
-    with ICGNWebGL(backend="webgpu-wgsl", chromium_args=flags) as browser:
+    with ICGNWebGL(backend="webgpu-wgsl", startup_timeout=60, chromium_args=flags) as browser:
         for model in ("translation", "affine"):
             for depth in (1, 2):
                 options = dict(

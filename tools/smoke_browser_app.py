@@ -46,7 +46,9 @@ def main():
         else ()
     )
     try:
-        browser = ICGNWebGL(backend="webgpu-wgsl", chromium_args=flags, call_timeout=180)
+        browser = ICGNWebGL(
+            backend="webgpu-wgsl", startup_timeout=60, chromium_args=flags, call_timeout=180
+        )
         with browser:
             url = f"http://127.0.0.1:{server.port}/{quote(site.name)}/?smoke=1"
             if args.plate:

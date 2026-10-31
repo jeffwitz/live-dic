@@ -300,13 +300,35 @@ arrays, their validity masks, metadata and binary ROI. Open it in Python with:
        valid = saved["strain_valid"].astype(bool)
        recipe = json.loads(str(saved["recipe_json"]))
 
-**Open saved NPZ field** restores a single workbench archive. Legacy exports
-without explicit image width/height and subset geometry are refused; the app
-does not guess image extent. The importer has a 256 MiB uncompressed limit and
+**Open saved NPZ field** restores a workbench archive or the native CLI
+parameters/status/iterations/config_json layout, including compressed NumPy
+archives. A stored ROI supplies exact image dimensions. Otherwise a dialog
+requires explicit width/height and any missing subset geometry; current-image
+values are suggestions to check, never a guessed extent. For sequence archives,
+choose the field number explicitly. One field is added per import. The source
+archive SHA-256, geometry source and selected index are retained. An archive
+that declares an ROI but omits its binary mask is refused. The importer has a 256 MiB uncompressed limit and
 rejects pickle/object arrays. **Export displayed values CSV** leaves unavailable
 measurements empty and retains solver statuses. **Save figure PNG** includes
 quantity, scale, processing convention and attribution. Images are not included
 in saved fields; retain your original input sequence separately.
+
+Extract a measurement through saved fields
+-------------------------------------------
+
+Place a point probe or two extensometer endpoints, then choose **Extract through
+saved fields**. The application applies the current analysis recipe to compatible
+saved fields one at a time in a separate worker. Progress and cancellation are
+available. Results from another analysis epoch, ROI or grid are counted as
+excluded; matching dimensions alone do not prove a shared reference. Native
+sequence fields imported from the same archive share its source hash.
+
+The chart uses **saved field order**, not an inferred physical acquisition clock.
+Exports retain input indices and media timestamps when present. Failed
+measurements remain null gaps; neither zero filling nor success-only compaction
+is used. Consecutive comparisons remain increments at fixed image locations,
+not accumulated material trajectories. The extraction CSV has an accompanying
+JSON containing units, input pair, analysis recipe and chosen geometry.
 
 Record fields deliberately
 --------------------------

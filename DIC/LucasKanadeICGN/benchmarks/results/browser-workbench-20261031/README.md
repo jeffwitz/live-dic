@@ -22,3 +22,10 @@ Use the project Python environment. The output contains a no-pickle NPZ and
 viewport screenshots as well as the report. The checked-in reports identify the
 build's source revision and dirty content version. Screenshots show the first
 qualified implementation before subsequent interface refinements.
+
+`history-hardware.json` and `history-software.json` extend the UI check to a
+point/gauge extraction through three saved fields and a native CLI-style
+compressed UHD sequence import. The latter explicitly asks for missing image
+extent and selects field 2/2. Computed arrays, invalid samples and provenance
+remain separate from processing recipes. The independent strain oracle retains
+its pre-existing tolerance; no threshold was relaxed for the UI work.

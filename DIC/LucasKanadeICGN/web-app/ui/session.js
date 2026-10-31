@@ -17,6 +17,7 @@ export function createSession(send) {
   const ages = [], sampleLog = [];
   let lastComparison = null, referenceAdmissible = 0;
   let recording = false;
+  let analysisEpoch = null;
   let bitmapPresentation = false, profile = null;
   const completionTimes = [];
   const outstanding = new Set();
@@ -35,6 +36,7 @@ export function createSession(send) {
     engine.device.lost.then((info) => { if (info.reason !== 'destroyed') send({ type: 'error', message: `GPU device lost: ${info.message}` }); });
     engine.device.addEventListener('uncapturederror', (event) => send({ type: 'error', message: `WebGPU: ${event.error.message}` }));
     mask = roiMask; profile = options.profile ?? 'portable';
+    analysisEpoch = crypto.randomUUID();
     const info = await engine.setReference(frame, { roiMask: mask });
     referenceAdmissible = [...info.referenceValid].reduce((n,v,i)=>n+ +(v && (!info.roiSelected || info.roiSelected[i])),0);
     lastComparison = null;
@@ -102,7 +104,7 @@ export function createSession(send) {
             let record = null;
             if (recording) {
               const started = performance.now(), field = await engine.exportField();
-              record = { field, metadata: { comparison: lastComparison, configuration: field.config,
+              record = { field, metadata: { analysisEpoch, comparison: lastComparison, configuration: field.config,
                 createdAt: new Date().toISOString(), frameIndex: message.frameIndex,
                 recordingReadbackWallMs: performance.now()-started,
                 workerArrivalToRecordedFieldMs: performance.now()-available,
@@ -141,7 +143,7 @@ export function createSession(send) {
         await Promise.all([...outstanding]);
         if (!engine) throw new Error('No field is available');
         const start = performance.now(), field = await engine.exportField();
-        const metadata = { configuration: engine.reference.config, capabilities, profile, comparison:lastComparison, createdAt: new Date().toISOString(),
+        const metadata = { configuration: engine.reference.config, capabilities, profile, analysisEpoch, comparison:lastComparison, createdAt: new Date().toISOString(),
           exportSerial: ++exportSerial, readbackWallMs: performance.now() - start,
           width: field.width, height: field.height, grid: field.grid, subsetSize: field.subsetSize,
           subsetStride: field.subsetStride, samples: sampleLog,

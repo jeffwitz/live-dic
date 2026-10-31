@@ -72,6 +72,10 @@ export function readNpy(bytes) {
     const values=[];for(let i=0;i<count;i++){let text='';for(let j=0;j<size;j++){const c=dataView.getUint32((i*size+j)*4,true);if(c)text+=String.fromCodePoint(c);}values.push(text);}return{shape,values,descriptor};
   }
   const types={f4:Float32Array,f8:Float64Array,i4:Int32Array,u4:Uint32Array,i2:Int16Array,u2:Uint16Array,i1:Int8Array,u1:Uint8Array,b1:Uint8Array};
+  if((kind==='i'||kind==='u')&&size===8){const values=new Float64Array(count);for(let i=0;i<count;i++){
+    values[i]=Number(kind==='i'?dataView.getBigInt64(i*8,true):dataView.getBigUint64(i*8,true));
+    if(!Number.isSafeInteger(values[i]))throw new Error('NumPy integer exceeds JavaScript exact integer range');
+  }return{shape,values,descriptor};}
   const Type=types[kind+size];if(!Type)throw new Error(`Unsupported NumPy scalar type ${descriptor}`);
   return {shape,values:new Type(data.buffer),descriptor};
 }
@@ -101,17 +105,36 @@ export async function readZip(buffer) {
   }
   return entries;
 }
-export async function importFieldArchive(buffer) {
+export async function importFieldArchive(buffer, suppliedGeometry = {}) {
   const zip=await readZip(buffer),read=name=>{if(!zip[name+'.npy'])throw new Error(`Archive is missing ${name}`);return readNpy(zip[name+'.npy']);};
   const parameters=read('parameters'),status=read('status'),iterations=read('iterations');
-  if(status.shape.length!==2||parameters.shape.length!==3)throw new Error('Import one field at a time; sequence archives are not supported');
-  const config=JSON.parse(read('config_json').values[0]),field={width:read('width').values[0],height:read('height').values[0],
-    subsetSize:read('subset_size').values[0],subsetStride:read('subset_stride').values[0],grid:[status.shape[1],status.shape[0]],config,
-    parameters:parameters.values,status:status.values,iterations:iterations.values};
-  const {components}=validateField(field);
-  if(parameters.shape[0]!==status.shape[0]||parameters.shape[1]!==status.shape[1]||parameters.shape[2]!==components)throw new Error('Parameter shape mismatch');
-  const roi=zip['roi_mask.npy']?read('roi_mask'):null;
+  const sequence=status.shape.length===3;
+  if(![2,3].includes(status.shape.length)||parameters.shape.length!==status.shape.length+1)throw new Error('Unsupported field/sequence array dimensions');
+  if(iterations.shape.length!==status.shape.length||iterations.shape.some((v,i)=>v!==status.shape[i])||status.shape.some((v,i)=>parameters.shape[i]!==v))throw new Error('Field array shapes differ');
+  const config=JSON.parse(read('config_json').values[0]),roi=zip['roi_mask.npy']?read('roi_mask'):null;
+  if(config.roi&&!roi)throw new Error('Archive declares an ROI but contains no roi_mask; the missing mask must not be ignored');
+  const scalar=name=>{const item=read(name);if(item.values.length!==1)throw new Error(`${name} must be scalar`);return item.values[0];};
+  const width=zip['width.npy']?scalar('width'):roi?.shape[1]??suppliedGeometry.width;
+  const height=zip['height.npy']?scalar('height'):roi?.shape[0]??suppliedGeometry.height;
+  const subsetSize=zip['subset_size.npy']?scalar('subset_size'):config.subsetSize??suppliedGeometry.subsetSize;
+  const subsetStride=zip['subset_stride.npy']?scalar('subset_stride'):config.subsetStride??suppliedGeometry.subsetStride;
+  const frameCount=sequence?status.shape[0]:1,frameIndex=suppliedGeometry.frameIndex??0;
+  if([width,height,subsetSize,subsetStride].some(v=>v===undefined)||(frameCount>1&&suppliedGeometry.frameIndex===undefined)){
+    const error=new Error('Confirm image geometry and the field to import; image extent is never guessed from the grid');
+    error.code='FIELD_GEOMETRY_REQUIRED';error.geometry={width,height,subsetSize,subsetStride,frameCount};throw error;
+  }
+  if(!Number.isInteger(frameIndex)||frameIndex<0||frameIndex>=frameCount)throw new Error('Requested archive frame does not exist');
+  const shape=sequence?status.shape.slice(1):status.shape,count=shape[0]*shape[1],components=parameters.shape.at(-1);
+  const field={width,height,subsetSize,subsetStride,grid:[shape[1],shape[0]],config,
+    parameters:parameters.values.slice(frameIndex*count*components,(frameIndex+1)*count*components),
+    status:status.values.slice(frameIndex*count,(frameIndex+1)*count),iterations:iterations.values.slice(frameIndex*count,(frameIndex+1)*count)};
+  const expected=validateField(field);
+  if(components!==expected.components)throw new Error('Parameter shape mismatch');
   if(roi&&(roi.shape[0]!==field.height||roi.shape[1]!==field.width||roi.shape.length!==2||roi.values.some(v=>v!==0&&v!==1)))throw new Error('Invalid archive ROI');
-  return {field,metadata:zip['metadata_json.npy']?JSON.parse(read('metadata_json').values[0]):{},roiMask:roi?.values??null,
+  const metadata=zip['metadata_json.npy']?JSON.parse(read('metadata_json').values[0]):{};
+  metadata.archiveSha256=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',buffer)),b=>b.toString(16).padStart(2,'0')).join('');
+  metadata.importGeometry={width,height,subsetSize,subsetStride,frameIndex,frameCount,
+    imageExtentSource:zip['width.npy']&&zip['height.npy']?'archive scalars':roi?'archived ROI shape':'explicit user input'};
+  return {field,metadata,roiMask:roi?.values??null,
     recipe:zip['recipe_json.npy']?JSON.parse(read('recipe_json').values[0]):null};
 }

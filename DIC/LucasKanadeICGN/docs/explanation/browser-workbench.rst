@@ -80,9 +80,12 @@ image dimensions, subset geometry and the binary ROI are included. NumPy can
 open these files with ``allow_pickle=False``. Float64 imported parameters are
 preserved. The importer checks CRC and sizes, rejects object/pickle arrays and
 limits total uncompressed input to 256 MiB. It supports C-order little-endian
-numeric/Unicode arrays and a single field, not arbitrary multi-frame archives.
-Archives need explicit image dimensions and subset geometry; legacy NPZ files
-without these are rejected rather than guessing image extent.
+numeric/Unicode arrays, including exact-range 64-bit integers. Native CLI
+sequence archives require an explicit selected frame. Image extent comes from
+stored scalar dimensions, an archived ROI shape, or explicit user confirmation;
+it is never inferred from a last grid cell. Subset geometry comes from stored
+scalars/configuration or confirmation. Declared ROI without its binary mask is
+rejected. The input archive hash and geometry provenance survive re-export.
 
 Qualification
 -------------
@@ -107,3 +110,20 @@ fields use symmetric limits. Full range and fixed bounds are explicit options.
 Sequential blue/green/gold, signed blue/white/red and grayscale palettes are
 presentation choices. Saturated values are counted but not removed or clipped
 in the data. Histograms use the valid population, not only the unsaturated range.
+
+Saved-field history
+-------------------
+
+The acquisition worker assigns a new analysis epoch whenever the user prepares
+a reference/ROI. A consecutive pair changes its actual reference image while
+retaining that preparation epoch; both input identifiers remain in comparison
+metadata. The history tool requires matching epoch (or native archive hash),
+image/grid geometry, model, ROI hash and comparison mode. It processes one field
+at a time and sends a shared static mask once to its worker. No GPU calculation
+or image decoding is repeated. Cancellation releases that worker.
+
+A probe samples an actual grid point; a gauge computes endpoint distance strain
+for each field independently. Missing values stay null and break chart lines.
+The horizontal axis is saved order; input indices/timestamps are additional
+export columns. The tool does not infer regular sampling, accumulate incremental
+displacements or silently combine unrelated reference configurations.

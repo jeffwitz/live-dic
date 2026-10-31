@@ -485,3 +485,9 @@ qualification rather than infer mobile coverage from desktop results.
 - `tools/qualify_browser_workbench.py` exercises the actual UHD GUI, pointer
   measurements, independent NumPy strain oracle, recording and NPZ reimport.
   Its timing is correctness evidence, not live performance qualification.
+
+- History extraction requires an analysis epoch or native archive hash, preserves
+  null gaps, and uses saved order rather than inferred acquisition time. It is
+  not cumulative incremental tracking. Native sequence NPZ import selects one
+  field and explicitly confirms any missing image geometry. Keep provenance and
+  stored ROI data; never guess original image extent from grid dimensions.

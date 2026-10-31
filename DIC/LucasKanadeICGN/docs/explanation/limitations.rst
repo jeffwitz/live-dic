@@ -238,5 +238,7 @@ resolution. VSG can lose valid strain support near gaps and narrow regions;
 invalid values are not filled. Unit scaling is isotropic and does not correct
 lens distortion, perspective or out-of-plane motion. Gauge strain is an endpoint
 distance measure. No automatic cumulative trajectory or physical acquisition
-clock is inferred from folder replay. Imported workbench archives require explicit
-geometry and support one field, not arbitrary legacy/sequence NPZ layouts.
+clock is inferred from folder replay. Native CLI/workbench archive layouts are supported. Missing image geometry
+requires confirmation, and sequence import requires an explicit frame. Other
+legacy layouts are not guessed. A history uses saved order and matching analysis
+provenance; it does not supply an acquisition clock or material trajectory.

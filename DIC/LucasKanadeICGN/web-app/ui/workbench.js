@@ -1,5 +1,6 @@
 import { DEFAULT_RECIPE, analyzeField, componentValues, statistics, nearestIndex, extensometer, validateField } from './postprocess.js';
 import { fieldArchive, importFieldArchive } from './archive.js';
+import { extractHistory, sameAnalysis } from './history.js';
 
 const $ = id => document.getElementById(id);
 const number = value => value == null || !Number.isFinite(value) ? 'unavailable' : value.toPrecision(5);
@@ -38,15 +39,20 @@ function setRecipe(recipe) {
 }
 
 /** A bounded, opt-in results library; the default live path never enters this module's analysis loop. */
-export function installWorkbench({ captureCurrent, pause, error, recordChange, liveChanged, openResults }) {
+export function installWorkbench({ captureCurrent, pause, error, recordChange, liveChanged, openResults, geometryDefaults = () => ({}) }) {
   const entries = [], canvas = $('review-field'), overlay = $('inspection'), chart = $('profile-chart');
   document.querySelector('.viewer').append($('results-workbench'));
   let nextId = 1, selected = null, analysis = null, currentMask = null, reviewing = false;
   let tool = 'probe', points = [], extraction = [], computedView = false;
   let requestId = 0, workerBusy = false, pendingAnalysis = false, workerFieldId = null, debounce = null;
+  let pendingImport = null, importSerial = 0;
+  let history = null, historyAbort = null;
   const worker = typeof Worker === 'function' ? new Worker(new URL('./analysis-worker.js', import.meta.url), { type: 'module' }) : null;
   const recording = () => $('record-fields').checked;
   const activeEntry = () => entries.find(entry => entry.id === selected);
+  function clearHistory() {
+    historyAbort?.abort();history=null;$('spatial-view').hidden=true;$('history-state').textContent='';
+  }
   function viewSettings() {
     return { component:$('review-component').value,colourScale:$('review-scale').value,
       minimum:Number($('review-min').value),maximum:Number($('review-max').value),
@@ -94,6 +100,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     return entry;
   }
   function returnLive(restore = false) {
+    historyAbort?.abort();history=null;
     reviewing = false; requestId++; pendingAnalysis = false; clearTimeout(debounce);
     analysis=null;workerFieldId=null;worker?.postMessage({clear:true});
     $('results-workbench').hidden = true; canvas.hidden = true; overlay.hidden = true;
@@ -104,6 +111,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   }
   function selectEntry(id) {
     const entry = entries.find(value => value.id === Number(id)); if (!entry) return;
+    historyAbort?.abort();history=null;$('spatial-view').hidden=true;$('history-state').textContent='';
     pause(); selected = entry.id; analysis = null; reviewing = true; computedView = false; points = []; extraction = [];
     $('saved-fields').value = entry.id; $('results-workbench').hidden = false;
     $('return-live').hidden = false; canvas.hidden = false; overlay.hidden = false; $('field').hidden = true;
@@ -154,6 +162,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     }
   }
   function scheduleAnalysis() {
+    clearHistory();
     requestId++; pendingAnalysis = true; clearTimeout(debounce); analysis = null;
     $('analysis-state').textContent = 'Updating analysis…';
     for (const id of ['save-npz','save-processed-csv','save-figure']) $(id).disabled = true;
@@ -238,12 +247,14 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
       }
     } else $('probe-value').textContent='Choose the second endpoint on the field.';
     $('cursor-value').hidden=false;$('cursor-value').textContent=$('probe-value').textContent;
-    drawChart(tool==='line'?extraction:[]);$('save-profile').disabled=!extraction.length;
+    if(history){extraction=history.rows;drawChart(history.rows.map(row=>({...row,distance:row.order})),{axisLabel:'Saved field order · not physical time',gauge:history.tool==='gauge'});}
+    else drawChart(tool==='line'?extraction:[]);$('save-profile').disabled=!extraction.length;
   }
-  function drawChart(rows) {
+  function drawChart(rows, options={}) {
     const ctx=chart.getContext('2d'),w=chart.width,h=chart.height;ctx.clearRect(0,0,w,h);ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);
     const finite=rows.filter(r=>r.value!=null);ctx.fillStyle='#607782';ctx.font='15px system-ui';
     if(!finite.length){
+      if(rows.length){ctx.fillText(`No valid measurement in ${rows.length} saved samples; gaps are retained.`,24,40);return;}
       if(!analysis)return;const {values,valid}=componentValues(analysis,$('review-component').value),stats=statistics(values,valid);
       if(!stats.count){ctx.fillText('No valid values for this quantity.',24,40);return;}
       const bins=new Uint32Array(40),span=Math.max(1e-14,stats.max-stats.min);
@@ -255,19 +266,39 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     }
     let low=Math.min(...finite.map(r=>r.value)),high=Math.max(...finite.map(r=>r.value));const span=Math.max(1e-12,Math.abs(high)*1e-9,high-low),xmax=Math.max(...rows.map(r=>r.distance),1e-12);
     low-=.08*span;high+=.08*span;const x=v=>76+v/xmax*(w-108),y=v=>h-48-(v-low)/(high-low)*(h-82);
-    const factor=STRAIN_COMPONENTS.has($('review-component').value)?1e6:1;
+    const factor=options.gauge||STRAIN_COMPONENTS.has($('review-component').value)?1e6:1;
     ctx.strokeStyle='#d9e3e7';ctx.lineWidth=1;for(let i=0;i<=4;i++){const v=low+(high-low)*i/4;ctx.beginPath();ctx.moveTo(76,y(v));ctx.lineTo(w-32,y(v));ctx.stroke();ctx.fillText(number(v*factor),4,y(v)+5);}
     ctx.strokeStyle='#117c72';ctx.lineWidth=2.5;ctx.beginPath();let pen=false;for(const row of rows){if(row.value==null){pen=false;continue;}if(pen)ctx.lineTo(x(row.distance),y(row.value));else ctx.moveTo(x(row.distance),y(row.value));pen=true;}ctx.stroke();
-    ctx.fillText(`Distance along snapped samples (${analysis.recipe.unit})`,w/2-160,h-10);
-    ctx.fillText(`${$('review-component').selectedOptions[0].textContent} (${factor===1e6?'µε':componentValues(analysis,$('review-component').value).unit})`,76,22);
+    ctx.fillStyle='#117c72';for(const row of finite){ctx.beginPath();ctx.arc(x(row.distance),y(row.value),3,0,2*Math.PI);ctx.fill();}
+    ctx.fillStyle='#607782';for(let i=0;i<=4;i++)ctx.fillText(number(xmax*i/4),x(xmax*i/4)-15,h-30);
+    ctx.fillText(options.axisLabel??`Distance along snapped samples (${analysis.recipe.unit})`,w/2-160,h-10);
+    ctx.fillText(`${options.gauge?'Gauge engineering strain':$('review-component').selectedOptions[0].textContent} (${factor===1e6?'µε':componentValues(analysis,$('review-component').value).unit})`,76,22);
   }
   overlay.onpointerdown = event => {
+    clearHistory();
     if(!analysis)return;const rect=overlay.getBoundingClientRect(),point=[(event.clientX-rect.left)/rect.width*overlay.width,(event.clientY-rect.top)/rect.height*overlay.height];
     if(tool==='probe'||points.length>=2)points=[];points.push(point);updateInspection();
   };
   overlay.classList.add('inspecting');
-  document.querySelectorAll('[data-inspect]').forEach(button=>button.onclick=()=>{tool=button.dataset.inspect;points=[];document.querySelectorAll('[data-inspect]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));$('inspection-hint').textContent=tool==='probe'?'Click a subset to inspect values and solver status.':'Click two endpoints on the field; measurements snap to subset centres.';updateInspection();});
-  $('clear-inspection').onclick=()=>{points=[];updateInspection();};
+  document.querySelectorAll('[data-inspect]').forEach(button=>button.onclick=()=>{clearHistory();tool=button.dataset.inspect;points=[];document.querySelectorAll('[data-inspect]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));$('inspection-hint').textContent=tool==='probe'?'Click a subset to inspect values and solver status.':'Click two endpoints on the field; measurements snap to subset centres.';updateInspection();});
+  $('clear-inspection').onclick=()=>{clearHistory();points=[];updateInspection();};
+  $('extract-history').onclick=async()=>{
+    if(!analysis)return;
+    const entry=activeEntry(),candidates=entries.filter(candidate=>sameAnalysis(entry,candidate));
+    const controller=new AbortController();historyAbort?.abort();historyAbort=controller;
+    const recipe=analysis.recipe,component=$('review-component').value,selection=points.map(point=>[...point]),selectedTool=tool;
+    $('extract-history').disabled=true;$('cancel-history').hidden=false;
+    try{
+      const rows=await extractHistory(candidates,{recipe,component,points:selection,tool:selectedTool,signal:controller.signal,
+        progress:(done,total)=>{$('history-state').textContent=`Analysing saved field ${done} / ${total}…`;}});
+      if(controller.signal.aborted)return;history={rows,recipe,component,tool:selectedTool};$('spatial-view').hidden=false;
+      $('history-state').textContent=`${rows.length} fields from the same analysis epoch · ${entries.length-rows.length} unrelated fields excluded. Missing measurements stay gaps. ${entry.metadata.comparison?.mode==='consecutive'?'Pair increments at fixed image coordinates; not cumulative material tracking.':'Same fixed reference.'}`;
+      updateInspection();
+    }catch(e){if(e.name!=='AbortError')$('history-state').textContent=e.message;}
+    finally{if(historyAbort===controller){historyAbort=null;$('extract-history').disabled=false;$('cancel-history').hidden=true;}}
+  };
+  $('cancel-history').onclick=()=>historyAbort?.abort();
+  $('spatial-view').onclick=()=>{history=null;$('spatial-view').hidden=true;updateInspection();};
   $('freeze-field').onclick=async()=>{try{const {field,metadata}=await captureCurrent();let mask=currentMask;if(metadata.roi&&!mask)mask=maskFromMetadata(metadata);add(field,metadata,{select:true,mask});}catch(e){error(e.message);}};
   $('return-live').onclick=()=>returnLive(true);
   $('record-fields').onchange=()=>recordChange(recording());
@@ -276,7 +307,42 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   $('delete-field').onclick=()=>{const index=entries.findIndex(e=>e.id===Number($('saved-fields').value));if(index<0)return;const active=entries[index].id===selected;entries.splice(index,1);if(active){returnLive(true);selected=null;}updateLibrary();};
   $('clear-fields').onclick=()=>{if(!entries.length||confirm('Delete saved fields from this tab? Export NPZ first if needed.')){returnLive(true);entries.length=0;selected=null;updateLibrary();}};
   $('import-result').onclick=()=>$('result-file').click();
-  $('result-file').onchange=async()=>{const file=$('result-file').files[0];$('result-file').value='';if(!file)return;try{if(file.size>LIMIT_BYTES*2)throw new Error('NPZ exceeds the 256 MiB import limit');const imported=await importFieldArchive(await file.arrayBuffer());add(imported.field,{...imported.metadata,name:imported.metadata.name??file.name},{mask:imported.roiMask,select:true,recipe:imported.recipe});}catch(e){error(e.message);}};
+  function addImported(imported, file) {
+    const selection=imported.metadata.importGeometry;
+    add(imported.field,{...imported.metadata,name:imported.metadata.name??`${file.name}${selection?.frameCount>1?` · field ${selection.frameIndex+1}/${selection.frameCount}`:''}`},
+      {mask:imported.roiMask,select:true,recipe:imported.recipe});
+  }
+  $('result-file').onchange=async()=>{
+    const file=$('result-file').files[0];$('result-file').value='';if(!file)return;
+    const serial=++importSerial;
+    try{
+      if(file.size>LIMIT_BYTES*2)throw new Error('NPZ exceeds the 256 MiB import limit');
+      const bytes=await file.arrayBuffer();if(serial!==importSerial)return;
+      try {const imported=await importFieldArchive(bytes);if(serial!==importSerial)return;addImported(imported,file);}
+      catch(e){
+        if(e.code!=='FIELD_GEOMETRY_REQUIRED')throw e;
+        pause();pendingImport={bytes,file,serial};const defaults=geometryDefaults(),geometry=e.geometry;
+        for(const [id,key] of [['import-width','width'],['import-height','height'],['import-subset','subsetSize'],['import-stride','subsetStride']]){
+          $(id).value=geometry[key]??defaults[key]??(key.startsWith('subset')?16:'');$(id).readOnly=geometry[key]!==undefined;
+        }
+        $('import-frame').max=geometry.frameCount;$('import-frame').value=1;$('import-frame-label').hidden=geometry.frameCount===1;
+        $('import-geometry-note').textContent=`${file.name} · ${geometry.frameCount} field(s). Stored dimensions remain authoritative. Missing dimensions must be supplied explicitly; current-image values, if shown, must be checked. Extent is never inferred from the last grid cell.`;
+        $('import-geometry-error').textContent='';$('import-geometry').showModal();
+      }
+    }catch(e){error(e.message);}
+  };
+  $('cancel-import').onclick=()=>{$('import-geometry').close();};
+  $('import-geometry').onclose=()=>{pendingImport=null;importSerial++;};
+  $('import-geometry-form').onsubmit=async event=>{
+    event.preventDefault();if(!pendingImport)return;
+    const pending=pendingImport;$('confirm-import').disabled=true;
+    try{
+      const geometry={width:Number($('import-width').value),height:Number($('import-height').value),subsetSize:Number($('import-subset').value),subsetStride:Number($('import-stride').value),frameIndex:Number($('import-frame').value)-1};
+      const imported=await importFieldArchive(pending.bytes,geometry);
+      if(pending.serial!==importSerial)return;addImported(imported,pending.file);$('import-geometry').close();
+    }catch(e){$('import-geometry-error').textContent=e.message;}
+    finally{$('confirm-import').disabled=false;}
+  };
   for(const id of ['post-smoothing','strain-source','post-window','strain-measure','exclude-flagged','length-unit','length-scale'])$(id).onchange=()=>{
     if($('post-smoothing').value!=='none')$('strain-source').value='vsg';
     if(activeEntry()?.field.config.motionModel==='translation')$('strain-source').value='vsg';
@@ -285,7 +351,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   };
   $('reset-processing').onclick=()=>{setRecipe({...DEFAULT_RECIPE,strainSource:activeEntry()?.field.config.motionModel==='translation'?'vsg':'direct'});computedView=false;scheduleAnalysis();};
   $('compare-computed').onclick=()=>{computedView=!computedView;$('compare-computed').textContent=computedView?'Restore processing recipe':'Show computed field';scheduleAnalysis();};
-  $('review-component').onchange=()=>{$('review-scale').value='robust';$('manual-limits').hidden=true;render();};
+  $('review-component').onchange=()=>{clearHistory();$('review-scale').value='robust';$('manual-limits').hidden=true;render();};
   for(const id of ['review-scale','review-min','review-max','review-palette'])$(id).onchange=()=>{$('manual-limits').hidden=$('review-scale').value!=='manual';render();};
   $('save-npz').onclick=()=>{if(!analysis)return;const entry=activeEntry();download(`live-dic-${entry.id}.npz`,fieldArchive(entry.field,{...entry.metadata,workbench:{view:viewSettings()},analysis:{recipe:analysis.recipe,processingWallMs:analysis.processingWallMs}},analysis,entry.mask),'application/octet-stream');};
   $('save-processed-csv').onclick=()=>{if(!analysis)return;const {values,valid,unit}=componentValues(analysis,$('review-component').value),lines=[`x_px,y_px,${$('review-component').value}_${unit},valid,solver_status`];for(let i=0;i<values.length;i++)lines.push([...pointPosition(i),valid[i]?values[i]:'',valid[i],analysis.field.status[i]].join(','));download('live-dic-displayed-field.csv',lines.join('\n'),'text/csv');};
@@ -295,7 +361,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   return { add, returnLive, setMask(mask){currentMask=mask;}, get reviewing(){return reviewing;}, get recording(){return recording();},
     setReady(ready){$('freeze-field').disabled=!ready;$('record-fields').disabled=!ready;},
     stopRecording(){ $('record-fields').checked=false;recordChange(false); },
-    clearInspection(){points=[];updateInspection();},
-    report(){const values=analysis?componentValues(analysis,$('review-component').value):null;return{count:entries.length,selected,reviewing,memoryBytes:memoryBytes(),recipe:analysis?.recipe??null,statistics:values?statistics(values.values,values.valid):null,extraction};},
+    clearInspection(){clearHistory();points=[];updateInspection();},
+    report(){const values=analysis?componentValues(analysis,$('review-component').value):null;return{count:entries.length,selected,reviewing,memoryBytes:memoryBytes(),provenance:activeEntry()?{analysisEpoch:activeEntry().metadata.analysisEpoch,archiveSha256:activeEntry().metadata.archiveSha256,importGeometry:activeEntry().metadata.importGeometry}:null,recipe:analysis?.recipe??null,statistics:values?statistics(values.values,values.valid):null,extraction};},
     destroy(){worker?.terminate();} };
 }

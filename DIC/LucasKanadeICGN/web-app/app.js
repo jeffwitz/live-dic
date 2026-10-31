@@ -35,6 +35,7 @@ const workspace = installWorkspace({ shortcuts: {
 } });
 const workbench = installWorkbench({
   captureCurrent: captureCurrentField,
+  geometryDefaults: () => referenceInfo ? { width: referenceInfo.width, height: referenceInfo.height, subsetSize: referenceInfo.subsetSize, subsetStride: referenceInfo.subsetStride } : {},
   pause: () => { pauseSource(); $('pause').textContent = 'Play'; },
   error: text => message(text, true),
   recordChange: enabled => send('recording', { enabled }).catch(e => message(e.message, true)),
@@ -130,9 +131,10 @@ async function sourceChange(operation) {
   finally { loadingSource = false; document.querySelector('.workspace').inert=false; sourceButtons.forEach(id => $(id).disabled = !capabilities?.supported); }
 }
 async function stop() {
-  workbench.returnLive(); workbench.stopRecording(); workbench.setReady(false); workbench.setMask(null);
+  workbench.returnLive(); workbench.stopRecording();
   pauseSource(); generation++; seekSerial++; sourceAbort.abort();
   await drain(); await imageTask?.catch(() => {}); await imageLoop?.catch(() => {}); sourceAbort = new AbortController();
+  workbench.setReady(false); workbench.setMask(null);
   await reader?.cancel(); reader = null;
   stream?.getTracks().forEach(track => track.stop()); stream = null;
   video.pause(); video.srcObject = null; video.removeAttribute('src'); video.load();
@@ -150,8 +152,8 @@ async function frameFromVideo() {
   return createImageBitmap(video, { resizeWidth: width, resizeHeight: height });
 }
 async function captureReference(frame = null) {
-  workbench.returnLive(); workbench.setMask(null); workbench.setReady(false);
-  pauseSource(); await drain(); roiEditing = false; $('roi-editor').hidden = true;
+  workbench.returnLive();
+  pauseSource(); await drain(); workbench.setMask(null); workbench.setReady(false); roiEditing = false; $('roi-editor').hidden = true;
   frame ??= await frameFromVideo();
   if (source === 'camera') { sourceSettings.actual = stream?.getVideoTracks()[0]?.getSettings(); sourceSettings.outputSize = [video.videoWidth, video.videoHeight]; }
   referenceInfo = (await send('reference', { frame, options: options() }, [frame])).info; appliedShapes = [];
@@ -486,7 +488,7 @@ $('apply-roi').onclick = async () => {
     else if (source === 'images') await runImage(imageIndex,true);
   } catch (error) { message(error.message, true); }
 };
-$('clear-roi').onclick = async () => { workbench.returnLive(); workbench.setMask(null); pauseSource(); await drain(); roiEditing = false; roi.reset(referenceInfo.width, referenceInfo.height); appliedShapes = []; $('roi-editor').hidden = true;
+$('clear-roi').onclick = async () => { workbench.returnLive(); pauseSource(); await drain(); workbench.setMask(null); workbench.setReady(false); roiEditing = false; roi.reset(referenceInfo.width, referenceInfo.height); appliedShapes = []; $('roi-editor').hidden = true;
   referenceInfo = (await send('roi', { mask: null, options: options() })).info; $('pause').textContent = 'Resume'; details(); if (source === 'plate') await runPlateTarget(); };
 function displayOptions() { return { mode: Number($('component').value), scale: $('scale').value === 'auto' ? null : Number($('scale').value),
   opacity: Number($('opacity').value), arrows: $('arrows').checked, arrowStep: Number($('arrow-step').value), arrowGain: Number($('arrow-gain').value) }; }

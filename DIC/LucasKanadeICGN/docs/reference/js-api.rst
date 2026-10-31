@@ -251,3 +251,15 @@ Optional recording performs full ``exportField`` readback after each admitted
 solve. Its metadata contains ``recordingReadbackWallMs`` and
 ``workerArrivalToRecordedFieldMs``. The normal unrecorded live path retains its
 small-summary readback. These are application options, not new solver defaults.
+
+Application history and native archives
+---------------------------------------
+
+Reference preparation assigns an ``analysisEpoch`` to exported/recorded fields.
+History extraction requires the same epoch (or source ``archiveSha256`` for
+native imports), ROI, geometry, model and comparison mode. It preserves null
+measurements and plots saved order. Native NPZ import accepts the documented
+parameters/status/iterations/config_json arrays; sequence frame and any absent
+image/subset dimensions require explicit confirmation. Import provenance records
+``frameIndex``, ``frameCount``, geometry and its source. Integer values outside
+JavaScript's exact range, inconsistent shapes and missing declared ROI data fail.

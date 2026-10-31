@@ -65,6 +65,7 @@ def main():
     try:
         with ICGNWebGL(
             backend="webgpu-wgsl",
+            startup_timeout=60,
             chromium_args=(*flags, "--window-size=1600,1200"),
             call_timeout=240,
         ) as browser:
@@ -190,6 +191,45 @@ def main():
                     browser,
                     "liveDicWorkbench.report().count===3 && liveDicWorkbench.report().recipe?.smoothing==='gaussian'",
                 )
+            browser._evaluate(
+                "document.querySelector('.viewer').scrollIntoView({block:'start'});document.querySelector('[data-inspect=gauge]').click();true"
+            )
+            click(browser, "#inspection", 800, 900)
+            click(browser, "#inspection", 1400, 900)
+            browser._evaluate("document.getElementById('extract-history').onclick().then(()=>true)")
+            history = browser._evaluate("liveDicWorkbench.report().extraction")
+            assert len(history) == 3 and all(row["value"] is not None for row in history), history
+            assert abs(history[0]["value"] - history[2]["value"]) < 1e-12, history
+            # Native CLI-style compressed sequence: the UI must request absent image extent and frame.
+            with tempfile.TemporaryDirectory(
+                prefix="live-dic-native-npz-", dir=visible if visible.is_dir() else None
+            ) as temp:
+                native_file = Path(temp) / "native-sequence.npz"
+                with np.load(io.BytesIO(payload), allow_pickle=False) as data:
+                    config = json.loads(str(data["config_json"]))
+                    config.pop("roi", None)
+                    np.savez_compressed(
+                        native_file,
+                        parameters=np.stack([data["parameters"], data["parameters"]]),
+                        status=np.stack([data["status"], data["status"]]),
+                        iterations=np.stack([data["iterations"], data["iterations"]]),
+                        config_json=np.asarray(json.dumps(config)),
+                    )
+                asyncio.run(choose_files(browser, "#result-file", [native_file]))
+                wait(browser, "document.getElementById('import-geometry').open")
+                browser._evaluate(
+                    "document.getElementById('import-width').value=3840;document.getElementById('import-height').value=2160;document.getElementById('import-frame').value=2;document.getElementById('import-geometry-form').requestSubmit();true"
+                )
+                wait(
+                    browser,
+                    "liveDicWorkbench.report().count===4 && liveDicWorkbench.report().recipe!=null",
+                )
+                geometry = browser._evaluate("liveDicWorkbench.report().provenance.importGeometry")
+                assert (
+                    geometry["frameIndex"] == 1
+                    and geometry["width"] == 3840
+                    and geometry["height"] == 2160
+                ), geometry
             report = dict(
                 build=json.loads((site / "build.json").read_text()),
                 software=args.software,
@@ -197,6 +237,8 @@ def main():
                 baseline=baseline,
                 processed=processed,
                 profile=profile,
+                history=history,
+                native_import_geometry=geometry,
                 gauge=gauge,
                 operator_max_error=numeric_error,
                 archive_sha256=hashlib.sha256(payload).hexdigest(),
