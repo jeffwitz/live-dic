@@ -78,8 +78,10 @@ Use a camera
 
 1. Choose a requested resolution and **Camera**, then grant the browser's
    camera permission. Audio is never requested.
-2. Read the **actual** track settings in the details. Requested resolution and
-   60 Hz are preferences, not a measurement of delivered frames.
+2. Read the **actual** size/rate summary next to the camera controls and the
+   detailed track settings below. Requested size/rate, initial settings and
+   post-lock settings are recorded separately. A negotiated rate is not a
+   timestamp-measured delivered rate; requested 60 Hz is a preference.
 3. Keep the camera and specimen fixed while capturing a reference. Use a
    textured surface and controlled illumination.
 4. Inspect exposure, focus and white-balance lock results. The app requests

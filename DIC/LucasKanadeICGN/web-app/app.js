@@ -46,7 +46,10 @@ const workbench = installWorkbench({
   liveChanged: (reviewing,restore) => { if(restore && transport && referenceInfo) send('display',{display:displayOptions()}).catch(e=>message(e.message,true)); $('run-state').textContent = reviewing ? 'Saved field · reference coordinates' : source ? `${source} · ${paused ? 'paused' : 'running'}` : 'No source selected'; },
   openResults: () => workspace.showPane('view'),
 });
-function details() { $('details').textContent = JSON.stringify({ capabilities, acquisition: { ...sourceSettings, files: sourceSettings.files ? `${sourceSettings.files.length} file records retained in export` : undefined },
+function details() {
+  const settings=sourceSettings.actual; $('camera-summary').hidden=source!=='camera';
+  if(source==='camera'&&settings) $('camera-summary').textContent=`Actual ${settings.width} × ${settings.height} · ${settings.frameRate ?? '?'} Hz negotiated (requested ${sourceSettings.requested?.width} × ${sourceSettings.requested?.height} · ${sourceSettings.requested?.frameRate} Hz). ${sourceSettings.frameDelivery ?? 'Preparing capture'}. Delivered/processed rates may be lower.`;
+  $('details').textContent = JSON.stringify({ capabilities, acquisition: { ...sourceSettings, files: sourceSettings.files ? `${sourceSettings.files.length} file records retained in export` : undefined },
   build: buildInfo, execution: transport.isMain ? 'Main-thread fallback: OffscreenCanvas unavailable' : 'Dedicated worker',
   reference: referenceInfo ? { ...referenceInfo, roiSelected: undefined, referenceValid: undefined } : null, profile: $('profile').value,
   requestedResolution: $('resolution').value }, null, 2); }
@@ -167,6 +170,7 @@ async function captureReference(frame = null) {
   pauseSource(); await drain(); workbench.setMask(null); workbench.setReady(false); roiEditing = false; $('roi-editor').hidden = true;
   frame ??= await frameFromVideo();
   if (source === 'camera') { sourceSettings.actual = stream?.getVideoTracks()[0]?.getSettings(); sourceSettings.outputSize = [video.videoWidth, video.videoHeight]; }
+  if(source==='camera')sourceSettings.reference={kind:'camera',timestampUs:frame.timestamp??null,capturedAt: new Date().toISOString(),coordinateFrame:'captured reference image'};
   referenceInfo = (await send('reference', { frame, options: options() }, [frame])).info; appliedShapes = []; draftMaskSource = appliedMaskSource = null; $('mask-import-summary').textContent='White pixels are kept; black pixels are excluded. Imported images must match the reference dimensions.';
   $('placeholder').hidden = true; $('image-viewport').style.aspectRatio = `${referenceInfo.width}/${referenceInfo.height}`;
   roi.reset(referenceInfo.width, referenceInfo.height); appliedEditorState=roi.state(); $('apply-roi').disabled = true;
@@ -395,7 +399,7 @@ async function lockCamera(track) {
       catch (error) { locks[key] = `not locked: ${error.message}`; }
     } else locks[key] = 'manual lock not exposed';
   }
-  return { requested: settings, actual: track.getSettings(), capabilities: caps, locks };
+  return { initialSettings: settings, actual: track.getSettings(), capabilities: caps, locks };
 }
 async function refreshCameras() {
   if (!navigator.mediaDevices?.enumerateDevices) { message('Camera enumeration is not available in this browser.',true); return; }
@@ -408,6 +412,7 @@ $('refresh-cameras').onclick = () => refreshCameras().catch(e=>message(e.message
 $('camera-device').onchange = () => { if(source==='camera') sourceChange(startCamera); };
 async function startCamera() {
   await stop(); manifest = null; source = 'camera'; $('resolution').disabled = false;
+  try {
   const [width, height] = $('resolution').value.split('x').map(Number);
   stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { ...($('camera-device').value ? {deviceId:{exact:$('camera-device').value}} : {facingMode:'environment'}), width, height, frameRate: { ideal: 60 } } });
   video.src = ''; video.srcObject = stream; await video.play();
@@ -416,14 +421,16 @@ async function startCamera() {
   await captureReference(); paused = false; $('pause').textContent = 'Pause';
   const token = generation;
   if (typeof MediaStreamTrackProcessor === 'function') {
-    try { reader = new MediaStreamTrackProcessor({ track }).readable.getReader(); }
-    catch (error) { sourceSettings.trackProcessor = String(error); scheduleVideo(token); details(); return; }
+    try { reader = new MediaStreamTrackProcessor({ track }).readable.getReader(); sourceSettings.frameDelivery='MediaStreamTrackProcessor'; }
+    catch (error) { sourceSettings.trackProcessor = String(error); sourceSettings.frameDelivery='Video-frame callback fallback'; scheduleVideo(token); details(); return; }
     const consume = async () => {
       while (generation === token) { const item = await reader.read(); if (item.done) break; processFrame(item.value).catch(error => { pauseSource(); message(error.message, true); }); }
     }; consume().catch((error) => message(error.message, true));
-  } else scheduleVideo(token);
-  details(); message('Camera active. Actual settings and available manual locks are shown below.');
+  } else {sourceSettings.frameDelivery='Video-frame callback fallback';scheduleVideo(token);}
+  track.addEventListener('ended',()=>{if(generation===token){pauseSource();$('pause').textContent='Play';message('Camera disconnected or permission revoked. Choose a source to restart.',true);}});
+  details(); message('Camera active. Actual settings and available manual locks are shown below.');  } catch(error) { await stop(); $('run-state').textContent='Camera unavailable · choose an input'; throw error; }
 }
+
 const roi = installRoi($('roi'), $('shape'), (state) => {
   const list = $('regions'); list.replaceChildren();
   state.shapes.forEach(s => { const option = document.createElement('option'); option.value = s.id;
