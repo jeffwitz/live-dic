@@ -153,6 +153,27 @@ def main():
                 ), comparison
                 assert np.isfinite(pair["parameters"]).all()
                 browser._evaluate(
+                    "document.getElementById('record-fields').checked=true;document.getElementById('record-fields').onchange();document.getElementById('pause').onclick();true"
+                )
+                wait(browser, "liveDicWorkbench.report().count>=2")
+                browser._evaluate("document.getElementById('pause').onclick().then(()=>true)")
+                wait(browser, "liveDicSourceState().inFlight===0")
+                browser._evaluate(
+                    "document.getElementById('record-fields').checked=false;document.getElementById('record-fields').onchange();true"
+                )
+                assert browser._evaluate("document.getElementById('saved-fields').value===''")
+                browser._evaluate(
+                    "const saved=document.getElementById('saved-fields');saved.value=saved.options[saved.options.length-1].value;saved.onchange();true"
+                )
+                wait(
+                    browser,
+                    "liveDicWorkbench.report().reviewing&&liveDicWorkbench.report().recipe!=null",
+                )
+                recording_label = browser._evaluate(
+                    "document.getElementById('result-title').textContent"
+                )
+                assert "Input " in recording_label, recording_label
+                browser._evaluate(
                     "const stopped=testCameraTracks.at(-1);stopped.stop();stopped.dispatchEvent(new Event('ended'));true"
                 )
                 wait(
@@ -161,6 +182,9 @@ def main():
                 )
                 assert browser._evaluate(
                     "document.getElementById('pause').textContent==='Restart camera'"
+                )
+                assert browser._evaluate(
+                    "document.getElementById('run-state').textContent.includes('Saved field')"
                 )
                 browser._evaluate("document.getElementById('pause').onclick().then(()=>true)")
                 wait(
@@ -216,6 +240,7 @@ def main():
                     fallback=fallback,
                     all_tracks_closed=True,
                     ended_restart=True,
+                    recording_label=recording_label,
                     ended_event_kind="synthetic ended event after stopping the fake track; not physical disconnect",
                     errors=browser._evaluate("liveDicStatus.errors"),
                 )

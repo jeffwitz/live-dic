@@ -212,3 +212,11 @@ is rejected rather than interpreted as a different motion convention. Raw
 parameter units remain image-pixel units; display calibration never rewrites
 those arrays. Byte-view normalization also keeps native uncompressed NumPy
 archives correct when passed through offset byte views in the Node harness.
+
+A resize observer can run while an analysis response is pending. Chart rendering
+therefore requires a current analysis, clears live-view caches and defers size
+changes to an animation frame. A deterministic UHD regression holds the real
+worker response during a line-profile resize and then releases it. Pending or
+failed derived views are visibly dimmed and cannot produce derived exports.
+A live-mode library uses an explicit selection placeholder, so its first recorded
+field can be opened without creating a duplicate frozen field.

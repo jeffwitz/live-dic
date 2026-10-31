@@ -122,6 +122,45 @@ def main():
             click(browser, "#inspection", 1400, 900)
             profile = browser._evaluate("liveDicWorkbench.report().extraction")
             assert len(profile) > 20 and all(row["value"] is not None for row in profile), profile
+            # Hold the actual analysis response to make resize-during-update deterministic.
+            browser._evaluate("""(()=>{globalThis.heldAnalysis=[];globalThis.originalWorkerPost=Worker.prototype.postMessage;
+                Worker.prototype.postMessage=function(...args){if(args[0]?.recipe&&!args[0]?.type&&!args[0]?.extract){heldAnalysis.push([this,args]);return;}return originalWorkerPost.apply(this,args);};
+                document.getElementById('post-window').value='7';document.getElementById('post-window').onchange();return true;})()""")
+            wait(browser, "heldAnalysis.length===1&&liveDicWorkbench.report().recipe===null")
+            try:
+                assert browser._evaluate(
+                    "document.getElementById('review-field').getAttribute('aria-busy')==='true'"
+                )
+                asyncio.run(
+                    protocol(
+                        browser,
+                        [
+                            (
+                                "Emulation.setDeviceMetricsOverride",
+                                dict(width=390, height=844, deviceScaleFactor=1, mobile=True),
+                            ),
+                            (
+                                "Runtime.evaluate",
+                                dict(
+                                    expression="new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(()=>r(true)))))",
+                                    awaitPromise=True,
+                                ),
+                            ),
+                            ("Emulation.clearDeviceMetricsOverride", {}),
+                        ],
+                    )
+                )
+                resize_errors = browser._evaluate("liveDicStatus.errors")
+                assert not resize_errors, resize_errors
+            finally:
+                browser._evaluate(
+                    "Worker.prototype.postMessage=originalWorkerPost;for(const [worker,args]of heldAnalysis)originalWorkerPost.apply(worker,args);heldAnalysis=[];true"
+                )
+            wait(browser, "liveDicWorkbench.report().recipe?.window===7")
+            browser._evaluate(
+                "document.getElementById('post-window').value='5';document.getElementById('post-window').onchange();true"
+            )
+            wait(browser, "liveDicWorkbench.report().recipe?.window===5")
             browser._evaluate("document.querySelector('[data-inspect=gauge]').click();true")
             click(browser, "#inspection", 800, 900)
             click(browser, "#inspection", 1400, 900)

@@ -48,3 +48,10 @@ a synthetic ended event, then restarts through the actual Restart camera
 action. The reader checks its generation after awaiting a frame, so a replaced
 camera cannot inject a late old frame. The test is an explicit simulation of
 the UI recovery path, not physical disconnect/reconnect qualification.
+
+`recording-review-hardware.json` adds an acquisition-first workflow: record
+completed camera fields without freezing an initial result, select the recorded
+field from the live-mode placeholder, and inspect its received-input ordinal
+label. The ended-camera event preserves the saved-field caption and restarts
+through the same recovery control. This short functional run supplements the
+longer 65-second controls; it is not a timing campaign.

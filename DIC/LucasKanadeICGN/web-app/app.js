@@ -427,7 +427,7 @@ $('camera-device').onchange = () => { if(source==='camera') sourceChange(startCa
 function cameraStopped(token, reason) {
   if(generation!==token||source!=='camera')return;
   pauseSource();sourceSettings.deliveryState='stopped';sourceSettings.deliveryError=reason;
-  $('pause').textContent='Restart camera';$('run-state').textContent='Camera stopped · last completed field';
+  $('pause').textContent='Restart camera';if(!workbench.reviewing)$('run-state').textContent='Camera stopped · last completed field';
   details();message(`${reason} Restart camera to capture a new reference; reapply the mask afterwards.`,true);
 }
 async function startCamera() {

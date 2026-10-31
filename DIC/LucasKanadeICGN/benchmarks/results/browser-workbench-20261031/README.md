@@ -108,3 +108,32 @@ analysis-window edit. The script independently reads manifest.json and requires
 that selected field's new window (9) rather than the previous recipe. Export
 pauses acquisition and awaits the pending derived analysis outside the live loop.
 The existing NumPy field oracle and raw-array preservation checks still pass.
+
+## Offline release check and pending-analysis resize
+
+The lossless gzip files `offline-video.json.gz` / `offline-uhd.json.gz` retain
+the complete raw smoke reports without repeating many megabytes of mask bytes
+as plain base64. `offline-records.json` records uncompressed hashes/sizes. The
+video run lasts over 65 seconds, then reloads with the server stopped. The UHD
+case independently reloads the original 3840 x 2160 plate offline and exports
+its full 32,400-position field. Numerical/console/export gates pass. The movie
+is the derived 1080p replay, not a 4K60 performance campaign.
+
+```bash
+python tools/smoke_browser_app.py --site _site --duration 65 --frames 60 \
+  --offline --export --report /tmp/offline-video.json
+python tools/smoke_browser_app.py --site _site --plate --frames 1 \
+  --offline --export --report /tmp/offline-uhd.json
+```
+
+`pending-resize-negative.txt` reproduces a null-analysis error in the old line
+chart callback. The updated test holds the real analysis worker's recipe
+response, resizes the view, and then releases it. Both
+`pending-resize-hardware.json` and `pending-resize-software.json` pass with zero
+console errors and the existing UHD NumPy oracle. This is a deterministic
+ordering test, not a relaxed startup or numerical threshold.
+
+`final-review-hardware.json` / `final-review-software.json` repeat that pending
+resize test and complete the full workbench flow after adding explicit live-mode
+saved-field selection. Pending/failed derived views are dimmed and cannot be
+exported as a new analysis. Acquisition remains paused during this review.

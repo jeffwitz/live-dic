@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/home/jeff/Code/tests_gpuio/tools/qualify_browser_workbench.py", line 445, in <module>
+    main()
+  File "/home/jeff/Code/tests_gpuio/tools/qualify_browser_workbench.py", line 151, in main
+    assert not resize_errors, resize_errors
+           ^^^^^^^^^^^^^^^^^
+AssertionError: ["Uncaught TypeError: Cannot read properties of null (reading 'recipe')", "Uncaught TypeError: Cannot read properties of null (reading 'recipe')"]

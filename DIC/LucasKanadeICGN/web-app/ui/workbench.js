@@ -22,7 +22,7 @@ function maskFromMetadata(metadata) {
 }
 function fieldLabel(metadata, index) {
   const pair = metadata.comparison;
-  const name = item => item?.name ?? (item?.frame != null ? `Frame ${item.frame}` : null) ?? (item?.index != null ? `Image ${item.index+1}` : item?.timeSeconds != null ? `${item.timeSeconds.toFixed(3)} s` : 'capture');
+  const name = item => item?.name ?? (item?.frame != null ? `Frame ${item.frame}` : null) ?? (item?.index != null ? `Image ${item.index+1}` : item?.timeSeconds != null ? `${item.timeSeconds.toFixed(3)} s` : item?.ordinal != null ? `Input ${item.ordinal}` : 'capture');
   return pair ? `${index} · ${name(pair.reference)} → ${name(pair.target)}` : `${index} · ${metadata.name ?? 'Computed field'}`;
 }
 function recipeFromControls() {
@@ -107,16 +107,17 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   function updateLibrary() {
     const select = $('saved-fields'); select.replaceChildren();
     if (!entries.length) select.add(new Option('No saved fields', ''));
+    else if(!reviewing)select.add(new Option('Choose a field to inspect…',''));
     for (const entry of entries) select.add(new Option(entry.label, entry.id));
-    select.value = selected ?? entries.at(-1)?.id ?? '';
+    select.value = reviewing?selected??'':'';
     $('library-summary').textContent = `${entries.length} field(s) · ${(memoryBytes()/1048576).toFixed(1)} / 128 MiB in this tab. ${!entries.length?'No stored results.':hasUnsaved()?'Project has changes not included in the last requested project download.':'Project download requested; check that the file was saved.'} Images are not recorded.`;
     $('clear-fields').disabled = !entries.length; $('delete-field').disabled = !entries.length;
     $('save-project').disabled=!entries.length;
-    const index=entries.findIndex(entry=>entry.id===selected);
+    const index=reviewing?entries.findIndex(entry=>entry.id===selected):-1;
     $('previous-result').disabled=index<=0;$('next-result').disabled=index<0||index>=entries.length-1;
     $('result-seek').max=Math.max(0,entries.length-1);$('result-seek').value=Math.max(0,index);$('result-seek').disabled=!entries.length;
     $('result-order').textContent=index>=0?`${index+1} / ${entries.length} · saved order`:`${entries.length} saved fields`;
-    const base=activeEntry()??entries[0];$('replay-results').disabled=!base||entries.filter(entry=>sameAnalysis(base,entry)).length<2;
+    const base=activeEntry()??entries[0];$('replay-results').disabled=!reviewing||!base||entries.filter(entry=>sameAnalysis(base,entry)).length<2;
   }
   function add(field, metadata = {}, { select = false, mask = currentMask, recipe = null } = {}) {
     validateField(field);
@@ -136,12 +137,12 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     stopReplay();rememberView();
     historyAbort?.abort();history=null;
     reviewing = false; requestId++; pendingAnalysis = false; clearTimeout(debounce);
-    analysis=null;workerFieldId=null;worker?.postMessage({clear:true});
+    analysis=null;workerFieldId=null;lastChartRows=[];lastChartOptions={};canvas.dataset.analysisState='idle';canvas.setAttribute('aria-busy','false');worker?.postMessage({clear:true});
     $('results-workbench').hidden = true; canvas.hidden = true; overlay.hidden = true;
     $('field').hidden = false; $('return-live').hidden = true;
     $('roi').hidden=false;$('review-controls').hidden=true;$('live-appearance').hidden=false;$('cursor-value').hidden=true;
     document.querySelector('.legend div').style.background='';
-    liveChanged(false, restore);
+    liveChanged(false, restore);updateLibrary();
   }
   function selectEntry(id,{replay=false}={}) {
     if(!replay)stopReplay();
@@ -170,7 +171,8 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   function analysisComplete(id, result, failure) {
     workerBusy = false;
     if (id === requestId && reviewing) {
-      if (failure) { analysis = null; $('analysis-state').textContent = failure; error(failure); }
+      canvas.setAttribute('aria-busy','false');canvas.dataset.analysisState=failure?'failed':'ready';
+      if (failure) { analysis = null; $('analysis-state').textContent = failure;$('cursor-value').hidden=false;$('cursor-value').textContent=`Derived analysis unavailable: ${failure}. Stored coefficients are preserved.`; error(failure); }
       else {
         analysis = { ...result, field: activeEntry().field }; if (!computedView) {
           if(JSON.stringify(activeEntry().recipe)!==JSON.stringify(result.recipe))changed();
@@ -210,6 +212,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   function scheduleAnalysis() {
     clearHistory();
     requestId++; pendingAnalysis = true; clearTimeout(debounce); analysis = null;
+    canvas.dataset.analysisState='pending';canvas.setAttribute('aria-busy','true');$('cursor-value').hidden=false;$('cursor-value').textContent='Updating derived analysis…';
     $('analysis-state').textContent = 'Updating analysis…';
     for (const id of ['save-npz','save-processed-csv','save-figure','measurement-inputs','apply-recipe-analysis']) $(id).disabled = true;
     debounce = setTimeout(runAnalysis, 60);
@@ -343,6 +346,8 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     const w=Math.max(320,Math.round(chart.clientWidth||960)),h=w<500?240:280,ratio=Math.min(devicePixelRatio||1,2);
     if(chart.width!==Math.round(w*ratio)||chart.height!==Math.round(h*ratio)){chart.width=Math.round(w*ratio);chart.height=Math.round(h*ratio);}
     const ctx=chart.getContext('2d');ctx.setTransform(ratio,0,0,ratio,0,0);ctx.clearRect(0,0,w,h);ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);
+    // A resize can arrive while a new worker analysis has replaced the previous one.
+    if(!analysis)return;
     const finite=rows.filter(r=>r.value!=null);ctx.fillStyle='#607782';ctx.font=`${w<500?11:13}px system-ui`;
     if(!finite.length){
       if(rows.length){ctx.fillText(`No valid measurement in ${rows.length} saved samples; gaps are retained.`,24,40);return;}

@@ -114,6 +114,11 @@ target frames are not read into a CPU pixel array.
 Open your own images or video
 -----------------------------
 
+Correlation uses browser-decoded 8-bit luminance. This path does not preserve
+16-bit/HDR sensor precision; retain original files and use an explicit conversion
+when that range matters. Browser decoding and colour management are part of the
+image-formation pipeline to qualify.
+
 Choose **Open image folder** or **Select images**. Images are decoded lazily,
 one pair at a time, in natural relative-filename order (``frame_2`` before
 ``frame_10``). PNG, JPEG, WebP, BMP, AVIF and GIF are admitted when the browser
@@ -347,6 +352,9 @@ median/Gaussian smoothing and VSG plane-fit strain are separate analysis
 operations. **Show computed field** temporarily compares with the computed
 values; **Restore processing recipe** returns to the selected operations.
 The processing worker keeps these operations off the acquisition worker.
+A pending or failed derived view is dimmed, its state is displayed, and derived
+exports are disabled until an analysis is available. Resizing or changing another
+control while a calculation is pending never presents the previous recipe as new.
 Saved-field vectors use processed displacements with explicit magnification;
 an optional contour follows the exact binary ROI pixels. Image x points right
 and y points down. These displays do not modify computed values.
@@ -432,7 +440,9 @@ still the simplest direct NumPy interchange format.
 Browse and reuse processing
 ---------------------------
 
-Use the saved-result slider, dropdown or Previous/Next buttons. **Replay matching
+Choose a recorded field in the live-mode dropdown to enter review. The placeholder
+keeps even a single newly recorded result selectable. In review, use the saved-result
+slider, dropdown or Previous/Next buttons. **Replay matching
 results · 2 Hz** only visits fields compatible with the selected analysis epoch,
 ROI, grid and reference mode. It waits for each CPU analysis before advancing;
 it never queues an experiment's fields at once. Two hertz is a presentation

@@ -569,3 +569,19 @@ qualification rather than infer mobile coverage from desktop results.
 - The complete remote CI on `57ef273` passed, including macOS launcher tests,
   lavapipe and the software browser plus no-WebGPU review checks. Later revisions
   still need their own observed result.
+
+### Asynchronous review and offline release checks
+
+- A chart resize must tolerate a pending/null derived analysis; no cached line
+  data may read its former recipe. Pending/failed views are dimmed and derived
+  exports are disabled. The UHD worker-hold regression retains its failing
+  control and passes on hardware/SwiftShader after the fix.
+- Live-mode saved-field selection needs a placeholder so the first recorded
+  result is selectable. Camera labels retain received-input ordinals. Source
+  failures must not relabel a separately reviewed saved field.
+- Offline smoke checks reload both a long derived movie and the original UHD
+  plate with their server stopped. Raw reports are losslessly gzipped with
+  recorded uncompressed hashes; no 4K60 claim is inferred from the movie.
+- Remote CI completed successfully on `e5a52fa`; later changes still need their
+  own observed result. Sphinx's illustrated tutorial was also rendered locally
+  and all three archived figures loaded.

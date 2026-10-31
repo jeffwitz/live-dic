@@ -1,0 +1,16 @@
+{
+  "video": {
+    "raw_sha256": "89fb006be786b7a5581e626a8fd4666e53d046c61ad73b845ae699bbe4c76716",
+    "raw_bytes": 4312091,
+    "gzip_bytes": 256652,
+    "completed": 1948,
+    "offline_reload": true
+  },
+  "uhd": {
+    "raw_sha256": "04df022122e9012d6666f3d98ec278f81f2fa69d9d1b830d105c8efad62be10a",
+    "raw_bytes": 11074174,
+    "gzip_bytes": 17085,
+    "completed": 1,
+    "offline_reload": true
+  }
+}
