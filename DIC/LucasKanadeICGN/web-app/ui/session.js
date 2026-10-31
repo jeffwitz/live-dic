@@ -93,6 +93,7 @@ export function createSession(send) {
       } else if (type === 'display') {
         display = { ...display, ...message.display };
         if (last) { const scale = renderer?.draw(engine, last, showingReference ? { ...display, opacity: 0, imageTexture: referenceTexture } : display); present({ type: 'scale', id, scale }); }
+        else send({ type: 'scale', id, scale: null });
       } else if (type === 'reset') {
         await Promise.all([...outstanding]); engine?.resetTemporalState(); send({ type: 'reset', id });
       } else if (type === 'export') {

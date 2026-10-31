@@ -83,6 +83,8 @@ async function init() {
   }
   $('demo').disabled = $('camera').disabled = false;
   $('profile').value = capabilities.recommendedProfile;
+  const recommended = capabilities.recommendedResolution ?? capabilities.resolutions[0];
+  if (recommended) $('resolution').value = recommended.join('x');
   message(`Ready. ${capabilities.reasons.join('. ')}`); status.ready = true;
   if (smoke) await startDemo();
 }
