@@ -2,21 +2,22 @@
 import { seedPermissions } from './roi.js';
 
 export function validateTemporal(options) {
-  const initialization = options.initialization ?? 'zero';
-  const prediction = options.temporalPrediction ?? 'none';
+  const initialization = options.initialization === undefined ? 'zero' : options.initialization;
+  const prediction = options.temporalPrediction === undefined ? 'none' : options.temporalPrediction;
   if (!['zero', 'temporal'].includes(initialization)) throw new Error("initialization must be 'zero' or 'temporal'");
   if (!['none', 'velocity'].includes(prediction)) throw new Error("temporalPrediction must be 'none' or 'velocity'");
   if (prediction !== 'none' && initialization !== 'temporal') throw new Error('temporalPrediction requires temporal initialization');
-  if (options.temporalFineCorrection && (initialization !== 'temporal' || (options.pyramidLevels ?? 2) < 2)) {
-    throw new Error('temporalFineCorrection requires temporal initialization and at least two levels');
+  if (options.temporalFineCorrection && (initialization !== 'temporal' || (options.pyramidLevels ?? 2) !== 2)) {
+    throw new Error('temporalFineCorrection requires temporal initialization and exactly two levels');
   }
   if (options.temporalMaxAge != null && (!Number.isInteger(options.temporalMaxAge) || options.temporalMaxAge < 0 || options.temporalMaxAge > 0xfffffffe)) {
     throw new Error('temporalMaxAge must be a nonnegative integer or null');
   }
+  if (options.divergenceMinIterations === null) throw new Error('divergenceMinIterations must be an integer');
   for (const name of ['divergencePatience', 'divergenceMinIterations']) {
     if (options[name] != null && (!Number.isInteger(options[name]) || options[name] < 1 || options[name] > 30)) throw new Error(`${name} must be an integer between 1 and 30`);
   }
-  if (options.pyramidPolicy && options.pyramidPolicy !== 'fixed') throw new Error('Adaptive pyramids are experimental and not supported in this browser engine');
+  if (options.pyramidPolicy !== undefined && options.pyramidPolicy !== 'fixed') throw new Error('Adaptive pyramids are experimental and not supported in this browser engine');
 }
 
 export async function createTemporalGraph(device, shader, levels, seedEdges, options, roiMask, size, stride, shared = null) {

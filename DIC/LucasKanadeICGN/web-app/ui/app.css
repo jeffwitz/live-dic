@@ -9,3 +9,5 @@
 .viewer{aspect-ratio:auto}#field{position:relative;height:auto;object-fit:fill;display:block}
 .legend.magnitude div{background:linear-gradient(90deg,#fafafa,#d62e1f)}
 .legend.status div{background:linear-gradient(90deg,#19a666,#ffa619)}
+
+.metric-warning{color:#a84221}

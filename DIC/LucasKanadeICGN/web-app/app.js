@@ -40,12 +40,14 @@ function receive({ data }) {
     paused = true; return;
   }
   if (data.type === 'result') {
-    status.completed++; status.results.push(data); if (status.results.length > 18000) status.results.shift();
+    status.completed++; status.results.push(data); if (status.results.length > (smoke ? 18000 : 120)) status.results.shift();
     $('fps').textContent = data.fps.toFixed(1);
     $('age').textContent = `${data.ageMedian.toFixed(1)} / ${data.ageP95.toFixed(1)} ms`;
     $('acceptance').textContent = `${data.accepted} / ${data.selected}`;
     $('iterations').textContent = data.meanIterations?.toFixed(2) ?? '—';
     $('error').textContent = data.truthRmse == null ? '—' : `${data.truthRmse.toFixed(4)} px`;
+    $('error').classList.toggle('metric-warning', data.truthRmse != null && data.truthRmse > .1);
+    $('error').title = 'Whole accepted field, including possible wrong-basin estimates near the image boundary';
     updateScale(data.scale);
   }
   if (data.type === 'scale') updateScale(data.scale);
@@ -107,7 +109,8 @@ async function captureReference(frame = null) {
   previousFrame = -1; details(); message('Reference captured. Camera and results stay on this device.');
 }
 async function processFrame(frame, frameIndex = null) {
-  if (paused || inFlight >= 1) { frame.close(); dropped++; $('drops').textContent = dropped; return; }
+  if (paused) { frame.close(); return; }
+  if (inFlight >= 1) { frame.close(); dropped++; $('drops').textContent = dropped; return; }
   inFlight++;
   const reset = frameIndex != null && frameIndex < previousFrame;
   if (frameIndex != null) previousFrame = frameIndex;
@@ -221,5 +224,6 @@ $('profile').onchange = () => { if (referenceInfo) message('Profile change takes
 window.addEventListener('pagehide', () => { stream?.getTracks().forEach((t) => t.stop()); transport?.postMessage({ type: 'destroy' }); });
 window.addEventListener('error', (event) => { status.errors.push(event.message); message(event.message, true); });
 window.addEventListener('unhandledrejection', (event) => { const text = String(event.reason); status.errors.push(text); message(text, true); });
+if (smoke) globalThis.liveDicReport = () => send('report');
 init().catch((error) => { status.errors.push(error.message); message(error.message, true); });
 if ('serviceWorker' in navigator && (!smoke || query.has('offline'))) navigator.serviceWorker.register(new URL('./sw.js', import.meta.url)).catch((error) => message(`Offline installation unavailable: ${error.message}`, true));

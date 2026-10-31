@@ -48,21 +48,27 @@ def main():
             browser._evaluate(f"location.assign({json.dumps(url)}); true")
             started = time.monotonic()
             deadline = started + max(120, args.duration + 60)
+            processing_started = None
             while True:
                 snapshot = browser._evaluate(
-                    "globalThis.liveDicStatus ? JSON.parse(JSON.stringify(liveDicStatus)) : null"
+                    "globalThis.liveDicStatus ? {ready:liveDicStatus.ready, completed:liveDicStatus.completed, errors:liveDicStatus.errors} : null"
                 )
                 if snapshot and snapshot["errors"]:
                     raise RuntimeError(snapshot["errors"])
+                if snapshot and snapshot["completed"] and processing_started is None:
+                    processing_started = time.monotonic()
                 if (
                     snapshot
                     and snapshot["completed"] >= args.frames
-                    and time.monotonic() - started >= args.duration
+                    and processing_started is not None
+                    and time.monotonic() - processing_started >= args.duration
                 ):
                     break
                 if time.monotonic() > deadline:
                     raise RuntimeError(f"App did not produce enough results: {snapshot}")
                 time.sleep(0.5)
+            snapshot = browser._evaluate("JSON.parse(JSON.stringify(liveDicStatus))")
+            worker_report = browser._evaluate("liveDicReport()")
             if args.offline:
                 browser._evaluate("navigator.serviceWorker.ready.then(()=>true)")
                 server.close()
@@ -102,6 +108,12 @@ def main():
                 url=url,
                 elapsed_seconds=time.monotonic() - started,
                 snapshot=snapshot,
+                worker_report=worker_report,
+                processing_span_seconds=(
+                    worker_report["samples"][-1]["completedMs"]
+                    - worker_report["samples"][0]["workerAvailableMs"]
+                )
+                / 1000,
                 details=browser._evaluate('document.getElementById("details").textContent'),
                 version=browser._evaluate("navigator.userAgent"),
                 timing_boundary="Worker frame available -> observable GPU field and small HUD diagnostics; full field not copied",

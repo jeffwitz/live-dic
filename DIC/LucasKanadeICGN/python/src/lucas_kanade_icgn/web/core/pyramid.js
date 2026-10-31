@@ -142,7 +142,7 @@ export function createPyramidHost(options = {}) {
       slot.reductionEdges.forEach((edge) => release(edge.intermediate));
       slot.seedEdges.forEach((edge) => { release(edge.config); release(edge.links); });
     });
-    slots = []; temporal = null; lastFieldBuffer = null;
+    slots = []; temporal = null; lastFieldBuffer = null; lastSlot = null;
     if (querySet) querySet.destroy();
     if (queryResolveBuffer) queryResolveBuffer.destroy();
     levels = [];
@@ -1188,7 +1188,7 @@ export function createPyramidHost(options = {}) {
     destroy() {
       destroyRuntimeResources();
       if (ownsDevice) device?.destroy();
-      device = null; adapter = null; shaderModule = null; pyramidShaderModule = null;
+      device = null; adapter = null; shaderModule = null; pyramidShaderModule = null; roiMask = null; roiPlans = [];
     },
   };
 }

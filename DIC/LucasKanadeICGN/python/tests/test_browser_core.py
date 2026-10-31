@@ -46,7 +46,7 @@ class BrowserGeometryTests(unittest.TestCase):
                 reduced: [...r.mask], links: [...seedPermissions(coarse, fine, 2, 1, {size}, {stride}, mask, 111, 93)] }}));
             """
             output = subprocess.check_output(
-                ["node", "--input-type=module", "-e", script], text=True
+                ["node", "--input-type=module"], input=script, text=True
             )
             actual = json.loads(output)
             np.testing.assert_array_equal(actual["selected"], fine.selected.ravel())
@@ -69,9 +69,21 @@ class BrowserGeometryTests(unittest.TestCase):
           console.log(JSON.stringify({{concurrent, blocked, values, idle:ring.idle}}));
         """
         result = json.loads(
-            subprocess.check_output(["node", "--input-type=module", "-e", script], text=True)
+            subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
         )
         self.assertEqual(result, dict(concurrent=True, blocked=True, values=[0, 1], idle=True))
+
+    def test_constructor_rejects_unported_or_invalid_options_without_a_gpu(self):
+        script = f"""
+          import {{DICEngine}} from {json.dumps((CORE / "engine.js").as_uri())};
+          const cases=[{{subsetSize:'16'}},{{pyramidLevels:true}},{{initialization:'temporal',pyramidLevels:3,temporalFineCorrection:true}},
+            {{spatialWeighting:'gaussian'}},{{roiPolicy:'partial'}},{{solverWorkgroupSize:32}},{{unknownOption:1}},{{roiPolicy:0}},{{readback:null}},{{spatialWeighting:null}},{{initialization:null}},{{pipelineDepth:null}}];
+          console.log(JSON.stringify(cases.map(options=>{{try{{new DICEngine(options);return false;}}catch{{return true;}}}})));
+        """
+        results = json.loads(
+            subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
+        )
+        self.assertTrue(all(results))
 
 
 @unittest.skipUnless(

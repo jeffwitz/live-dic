@@ -11,7 +11,7 @@ export class DICEngine {
     try { await engine.host.ensureDevice(); return engine; }
     catch (error) { engine.destroy(); throw error; }
   }
-  constructor(options) {
+  constructor(options = {}) {
     const supported = new Set(['device', 'width', 'height', 'subsetSize', 'subsetStride', 'motionModel',
       'interpolation', 'pyramidLevels', 'iterationsPerLevel', 'tolerancePerLevel', 'iterations', 'tolerance',
       'znccMin', 'outlierPolicy', 'initialization', 'temporalPrediction', 'temporalFineCorrection',
@@ -19,7 +19,7 @@ export class DICEngine {
       'spatialWeighting', 'roiPolicy', 'roiTruncation', 'pyramidPolicy', 'solverWorkgroupSize']);
     for (const key of Object.keys(options)) if (!supported.has(key)) throw new Error(`Unsupported engine option: ${key}`);
     if (options.solverWorkgroupSize !== undefined && options.solverWorkgroupSize !== 16) throw new Error('The browser engine supports only solverWorkgroupSize=16');
-    if (options.roiTruncation && options.roiTruncation !== 'none') throw new Error('ROI truncation is not supported in the browser engine');
+    if (options.roiTruncation !== undefined && options.roiTruncation !== 'none') throw new Error('ROI truncation is not supported in the browser engine');
     if (options.temporalFineCorrection !== undefined && typeof options.temporalFineCorrection !== 'boolean') throw new Error('temporalFineCorrection must be boolean');
     for (const key of ['width', 'height']) if (options[key] !== undefined && (!Number.isInteger(options[key]) || options[key] < 1)) throw new Error(`${key} must be a positive integer`);
 
@@ -30,14 +30,15 @@ export class DICEngine {
       if (options[key] !== undefined && (typeof options[key] === 'string' || options[key] === null
           || !Array.from(options[key]).every((value) => typeof value === 'number'))) throw new Error(`${key} must contain numbers`);
     }
-    if (options.spatialWeighting && options.spatialWeighting !== 'uniform') {
+    if (options.spatialWeighting !== undefined && options.spatialWeighting !== 'uniform') {
       throw new Error('Gaussian weighting is not supported in the browser engine');
     }
-    if (options.roiPolicy && options.roiPolicy !== 'full') {
+    if (options.roiPolicy !== undefined && options.roiPolicy !== 'full') {
       throw new Error('partial ROI is not supported in the browser engine');
     }
-    if (!['full', 'decimated', 'none'].includes(options.readback ?? 'full')) throw new Error('Unknown readback mode');
+    if (!['full', 'decimated', 'none'].includes(options.readback === undefined ? 'full' : options.readback)) throw new Error('Unknown readback mode');
     this.options = Object.freeze({ readback: 'full', ...options });
+    if (options.pipelineDepth !== undefined && (!Number.isInteger(options.pipelineDepth) || options.pipelineDepth < 1)) throw new Error('pipelineDepth must be a positive integer');
     this.ring = new SlotRing(options.pipelineDepth ?? 1);
     this.inputs = [];
     this.host = createPyramidHost({ ...options, inputConverterForSlot: (i) => this.inputs[i] });
@@ -53,8 +54,8 @@ export class DICEngine {
     const size = this.options.subsetSize ?? 16, scale = 2 ** ((this.options.pyramidLevels ?? 2) - 1);
     if (!Number.isInteger(width) || !Number.isInteger(height) || Math.floor(width / scale) < size || Math.floor(height / scale) < size) throw new Error('Source dimensions must contain the coarsest subset');
     if (source instanceof Uint8Array && source.length !== width * height) throw new Error('Expected width * height grayscale bytes');
-    if (options.roiTruncation && options.roiTruncation !== 'none') throw new Error('ROI truncation is not supported in the browser engine');
-    const ownedMask = validateMask(options.roiMask, width, height, options.roiPolicy ?? 'full', this.host.configuration.motionModel);
+    if (options.roiTruncation !== undefined && options.roiTruncation !== 'none') throw new Error('ROI truncation is not supported in the browser engine');
+    const ownedMask = validateMask(options.roiMask, width, height, options.roiPolicy === undefined ? 'full' : options.roiPolicy, this.host.configuration.motionModel);
     this.reference = null;
     this.inputs.forEach((input) => input.destroy()); this.inputs = [];
     for (let i = 0; i < this.ring.depth; i++) this.inputs.push(await createInputConverter(this.device, width, height));
@@ -93,8 +94,8 @@ export class DICEngine {
     if (!this.ring.idle) throw new Error('Pause and finish current frames before exporting');
     return this.host.exportField();
   }
-  get device() { return this.host.device; }
+  get device() { return this.host?.device; }
   get imageTexture() { this.assertOpen(); return this.host.imageTexture; }
   get fieldBuffer() { this.assertOpen(); return this.host.fieldBuffer; }
-  destroy() { if (this.closed) return; this.closed = true; this.host.destroy(); this.inputs.forEach((input) => input.destroy()); this.inputs = []; }
+  destroy() { if (this.closed) return; this.closed = true; this.host.destroy(); this.inputs.forEach((input) => input.destroy()); this.inputs = []; this.host = null; this.options = null; }
 }
