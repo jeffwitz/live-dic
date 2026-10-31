@@ -23,3 +23,9 @@ Use the project Python environment. The helper stages original fixture bytes in
 a temporary directory visible to Snap Chromium if applicable; it does not edit
 or regenerate archived fixtures. NPZ field captures are generated in the chosen
 output directory. The checked-in JSON retains pair identities and image hashes.
+
+`hardware-uhd-video.json` additionally verifies a local 3840 x 2160 lossless VP9
+video: 20 repeated original reference frames at 10 Hz, encoded temporarily with
+FFmpeg (not a replacement fixture). It checks full-size seek, decoded dimensions,
+play and pause, with no console errors. The file hash is recorded. This static
+negative-motion video qualifies the input path, not deformation precision/FPS.

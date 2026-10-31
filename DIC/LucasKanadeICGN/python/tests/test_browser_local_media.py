@@ -13,7 +13,9 @@ MODULE = Path(__file__).resolve().parents[2] / "web-app/ui/local-media.js"
 
 def javascript(script):
     return json.loads(
-        subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
+        subprocess.check_output(
+            ["node", "--input-type=module"], input=script, text=True, encoding="utf-8"
+        )
     )
 
 
