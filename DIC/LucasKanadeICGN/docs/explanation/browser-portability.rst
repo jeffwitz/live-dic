@@ -226,6 +226,10 @@ device request or infer an optimal workgroup width from a vendor name.
 benchmark. It tries only fitting resolutions, keeps raw samples and reports
 its recommendation and reasons. A static zero-motion benchmark is advisory;
 thermal throttling, motion, video decoding and display require longer runs.
+The archived local capability probe recommends 1080p: its five retained
+zero-motion samples have a maximum of 6.80 ms at 1080p versus 17.50 ms at UHD.
+The app initializes the camera resolution to that recommendation. This is
+not the 70-second external-image/display campaign or a native FPS comparison.
 No subgroup feature is required. Minimal/adaptive/cubic trajectory shortcuts
 are not promoted after failed or missing native gates.
 

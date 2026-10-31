@@ -395,3 +395,39 @@ Done when:
 - The Pages workflow is ready, but not enabled by you.
 - The docs are written.
 - The device matrix states what ran, what didn't and why.
+
+
+### Implementation record — 2026-10-31
+
+The phases above are implemented locally, starting from `b9d23a2`. Keep this
+specification and its acceptance gates; future work should extend the recorded
+qualification rather than infer mobile coverage from desktop results.
+
+- Shared layouts use six storage bindings, eight when seeded. The metadata /
+  inverse packing and FIR plane packing preserve solver binding bounds. The
+  binding-budget campaign verifies 441 native arrays bit for bit across 49
+  UHD configurations and alternating native A/B within declared repeatability.
+- `web/core` is packaged and used by both the Python raw-WGSL shim and PWA.
+  Temporal history/velocity/fine correction, bounded slots, GPU input,
+  full ROI and small/decimated/full readback are implemented. Partial ROI,
+  truncation, Gaussian integration and adaptive browser pyramids reject
+  explicitly. Three.js and its WebGL fallback remain independent and unchanged.
+- Hardware and software browser parity each cover 240 frame rows, with no
+  predeclared-tolerance exceedance. Actual UHD tensile/plate-hole full-ROI
+  checks and external-image conversion are recorded. The native defaults and
+  scientific thresholds were not changed.
+- The worker PWA includes local camera control, direct GPU rendering, fixed
+  reference ROI drawing, analytic demo, explicit exports and a scoped offline
+  service worker. A 70.5-second 1080p/30 Hz demo and server-stopped reload pass
+  locally. This is not 60 Hz camera, phone or all-browser qualification.
+- A fresh outside-checkout wheel install executes all 202 tests with native
+  GPU and browser flags, no skips. Ruff, Node syntax, strict Sphinx, resources,
+  editable installation and no-pickle ROI export are checked locally.
+- See `benchmarks/results/browser-core-20261031/README.md` and
+  `docs/reference/performance.rst` for raw records, timing boundaries, retained
+  negative controls and the device matrix. In particular, whole-image demo
+  errors near an unobservable boundary remain visible and are reproduced by
+  the native solver; do not hide them by changing the evaluated population.
+- `.github/workflows/pages.yml` and the software-browser CI job are prepared.
+  No new remote CI result, push, PR, Pages setting or deployment is asserted.
+  Publication remains a separate explicit action by the repository owner.

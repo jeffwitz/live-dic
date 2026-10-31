@@ -143,3 +143,20 @@ There is no current metrology qualification for phone optics, rolling shutter,
 exposure stability or hand motion. See :doc:`../explanation/browser-portability`
 for tested and untested devices and :doc:`../reference/performance` for the
 separate timing boundaries.
+
+Developer reproduction
+----------------------
+
+With the Python package and Chromium installed, exercise the same assembled
+application under a subpath, including explicit downloads and offline reload:
+
+.. code-block:: bash
+
+   python3 tools/smoke_browser_app.py --site _site --frames 1800 --duration 70 \
+     --offline --export --report /tmp/browser-display.json
+
+Run this without other tests/builds or GPU campaigns in parallel. Add
+``--software`` for a correctness smoke test at a deliberately slowed demo rate;
+software time is not a hardware performance result. The source replay is
+30 Hz. The report separates worker-field ages and an explicit full export;
+it does not measure camera exposure-to-screen latency.

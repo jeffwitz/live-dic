@@ -161,7 +161,9 @@ Runtime
   buffers per compute stage.
 * Maximum image size depends on the adapter's WebGPU storage-buffer or WebGL2
   texture limits.
-* Full parameter and status fields are read back for every ``register`` call.
+* Python ``register`` calls materialize complete parameter/status fields.
+  The standalone JS API separately offers full, decimated or small-summary
+  readback modes.
 * The native backend includes portable and subgroup solvers, but subgroup
   support does not imply higher performance. Reference preparation benchmarks
   both and selects the faster valid pipeline for the current adapter.
@@ -180,7 +182,7 @@ installed.
 Acquisition
 -----------
 
-The package accepts NumPy-compatible frames but does not own a camera, trigger,
+The native Python package accepts NumPy-compatible frames but does not own a camera, trigger,
 timestamp synchronization, or codec pipeline. Those components must preserve
 their own timing and provenance and must be included in end-to-end qualification.
 

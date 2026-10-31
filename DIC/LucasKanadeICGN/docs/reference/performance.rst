@@ -1133,3 +1133,65 @@ is about 59 px from truth. This is not a JS/native discrepancy. The reports
 retain it, with no output filtering or population change to hide the failure.
 It reinforces the distinction between the qualified interior UHD tests and
 an unqualified whole-image demonstration/camera measurement.
+
+.. list-table:: Sustained 1080p worker display, Intel Lunar Lake / Chromium 155
+   :header-rows: 1
+
+   * - Boundary / population
+     - Median
+     - p95
+     - p99
+   * - Worker frame available → observable GPU field + HUD (ms)
+     - 9.60
+     - 12.70
+     - 14.10
+   * - Host upload/encode → observable field + summary (ms)
+     - 9.20
+     - 12.20
+     - 13.70
+   * - Whole accepted displacement RMSE versus demo truth (px)
+     - 0.03026
+     - 0.03857
+     - 0.68418
+
+The 2,092 worker records span 70.507 s and approximately 29.66 completed
+fields/s from a 30 Hz source. Minimum acceptance is 90%; no application,
+console or uncaptured GPU errors were observed. A reload completed ten more
+fields after the static server was stopped. Source revision and shader hashes
+are retained in ``display-build.json``. There was no concurrent test/build
+workload during measurement; ordinary desktop applications stayed open.
+
+In blocks of 300 fields, median age rises from 8.80 to 10.20 ms; p95 ranges
+from 11.51 to 13.40 ms. The records establish that drift, without isolating its
+thermal, motion or system-load cause. The maximum individual age is 27.10 ms;
+this is no hard-deadline guarantee. An initial control with full-history polling
+is retained separately and must not be treated as an LK speed comparison.
+
+.. figure:: ../../benchmarks/results/browser-core-20261031/display-over-time.png
+   :alt: Every worker age, 300-field quantiles and retained whole-field truth error spikes over 70 seconds
+
+   Completed-field ages and the uncropped truth metric. The 16.67 ms line is
+   a reference period, not evidence of a 60 Hz camera.
+
+A separate explicit-export check pauses the app and produces 8,040 finite CSV
+rows plus configuration/adapter JSON. One hardware observation measured
+6.90 ms from the worker's export call to the complete mapped/decoded field.
+This is a single cold export, not an export-latency distribution, and excludes
+main-to-worker delivery, CSV formatting and file download. SwiftShader also
+passes the demo and export contract; its times do not qualify hardware speed.
+The full raw reports, screenshot, analysis script and native reproduction of
+the boundary failure are in the linked browser campaign directory.
+
+Installed-package validation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A ``py3-none-any`` wheel was installed outside the checkout into a clean
+Python 3.12 environment (wgpu 0.32.0, NumPy 2.5.4, Pillow 13.0.0). All **202
+tests pass with native GPU and browser execution enabled, no skips**. Resource
+inspection verifies six WGSL and ten core JS modules. Native UHD ROI accepts
+24,975 subsets and exports an NPZ readable with ``allow_pickle=False``,
+including the original mask, grid selection, reference validity and strict
+configuration JSON. Editable installation with ``[native]``, CLI help, Ruff,
+JavaScript syntax, local Markdown links and strict Sphinx also pass locally.
+The new GitHub browser job and Pages deployment have not been run or enabled
+by this work. Camera hardware and the untested device matrix remain open.
