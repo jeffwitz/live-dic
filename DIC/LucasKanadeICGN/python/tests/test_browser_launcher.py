@@ -55,9 +55,9 @@ class BrowserLauncherTests(unittest.TestCase):
                     [
                         sys.executable,
                         "-c",
-                        "import socket,runpy,sys; "
+                        "import os,socket,runpy,sys; "
                         "socket.getfqdn=lambda *args: (_ for _ in ()).throw(AssertionError('No reverse DNS for a local server')); "
-                        "launcher=sys.argv[1];sys.argv=sys.argv[1:];runpy.run_path(launcher,run_name='__main__')",
+                        "launcher=sys.argv[1];sys.argv=sys.argv[1:];sys.path.insert(0,os.path.dirname(launcher));runpy.run_path(launcher,run_name='__main__')",
                         str(LAUNCHER),
                         "--site",
                         str(site),
