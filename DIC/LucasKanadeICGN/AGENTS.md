@@ -510,3 +510,21 @@ qualification rather than infer mobile coverage from desktop results.
 - Software video qualification uses the actual slow-replay control so a finite
   movie does not end before two slow solves finish. Do not turn this into a
   software-adapter FPS claim or weaken numerical tolerances.
+
+### Results analysis and camera controls — 2026-10-31
+
+- Region statistics use equal-weight actual subset centres. Keep total grid,
+  ROI-selected and valid counts separate; status codes are categories. Histories
+  preserve changing counts and null gaps, not inferred area integrals or time.
+- Projects restore measurement geometry and applied recipes. The unload guard
+  tracks changes since a requested project download; it cannot prove a file was
+  saved or replace deliberate export. Keyboard shortcuts must not intercept
+  ordinary focused controls. Responsive charts resize outside observer callbacks.
+- The camera retains requested, initially negotiated and post-lock settings
+  separately. Fake-camera UHD records cover permission failure/recovery, both
+  frame-delivery paths and track closure; they qualify neither physical cameras
+  nor live FPS. Keep failed short observation controls with that context.
+- Local validation reached 242 tests with native GPU and browser flags, no skips.
+  The complete remote Python/browser/lavapipe CI passed on `7f6fe65`. Later commits
+  require their own observed CI result. The one-command local launcher is
+  `python3 tools/run_browser_app.py`; it retains the user's browser GPU settings.

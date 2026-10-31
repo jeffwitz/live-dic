@@ -26,6 +26,16 @@ that commercial solvers were executed locally.
 * `DICe VSG processor <https://dicengine.github.io/dice/class_d_i_ce_1_1_v_s_g___strain___post___processor.html>`_:
   displacement-neighbourhood strain calculation as an explicit postprocessor.
 
+* `DICe desktop GUI <https://github.com/dicengine/dicegui>`_:
+  a separate HTML/JavaScript desktop supervisor around an independent engine.
+  Its numerical implementation is not imported into live-dic.
+* `Dantec Istra4D <https://www.dantecdynamics.com/new-istra4d-v4-11-software-release/>`_:
+  integrated acquisition, correlation and temporal/spatial extraction with
+  different virtual gauge geometries.
+* `iDICs Good Practices Guide, edition 2 <https://idics.org/guide/>`_:
+  keep reference convention, strain calculation and spatial support explicit.
+  Using these interface principles is not a claim of certification.
+
 The adopted principles are progressive disclosure, a large central field view,
 explicit acquisition/measurement state, reversible processing and named physical
 quantities. No proprietary source, icon set or screen layout is copied. Stereo,
@@ -73,6 +83,13 @@ scale, not a lens/perspective calibration. No material stress is inferred.
 A two-point extensometer snaps to actual subset centres and requires valid
 endpoints. It reports change in endpoint distance divided by original distance,
 which is a gauge engineering strain, distinct from a local tensor component.
+Rectangle statistics select actual subset centres between two snapped corners,
+inclusive. They use equal sample weights and exclude invalid values. Total grid
+positions, ROI-selected positions, valid samples and categorical statuses remain
+separate. Overlapping windows do not define disjoint material areas: a sample
+mean is not an area integral. No interpolation, gap filling or uncertainty claim
+is introduced. Status codes have counts, not a scalar average.
+
 Incremental comparisons remain pairwise; they are not summed into trajectories.
 
 Archive contract
@@ -128,7 +145,8 @@ at a time and sends a shared static mask once to its worker. No GPU calculation
 or image decoding is repeated. Cancellation releases that worker.
 
 A probe samples an actual grid point; a gauge computes endpoint distance strain
-for each field independently. Missing values stay null and break chart lines.
+for each field independently. A region reports its valid-sample mean and sample
+count for each field; changing coverage is retained rather than hidden. Missing values stay null and break chart lines.
 The horizontal axis is saved order; input indices/timestamps are additional
 export columns. The tool does not infer regular sampling, accumulate incremental
 displacements or silently combine unrelated reference configurations.
@@ -149,6 +167,13 @@ source or settings. Current library storage is 128 MiB, total uncompressed
 archive input is capped at 256 MiB, and the versioned format accepts at most
 512 fields / 4096 ZIP entries. CRC protects entries; ROI hashes are checked
 against their canonical binary mask. Export/import does not execute code.
+
+Changes since the last project download request trigger a browser unload warning
+when supported. This is an accidental-loss guard, not automatic persistence or
+proof that a download succeeded. Computed data, recipes and view edits affect
+that state. The acquisition worker's live path does not inspect or serialize
+this library state. Saved presentation includes the measurement tool and its
+reference coordinates; importing/selecting that field restores the geometry.
 
 Mask image editing
 ------------------

@@ -51,6 +51,31 @@ class BrowserPostprocessTests(unittest.TestCase):
         self.assertAlmostEqual(result["sample"]["principal1"], eigen[1], places=13)
         self.assertAlmostEqual(result["sample"]["principal2"], eigen[0], places=13)
 
+    def test_region_statistics_use_actual_uhd_centres_and_exclude_failed_samples(self):
+        result = javascript("""
+          const f=fixture();for(let i=0;i<f.status.length;i++)f.parameters[i*6]=.3+.001*(i%240*16+7.5)-.002*(Math.floor(i/240)*16+7.5);
+          for(let y=45;y<=50;y++)for(let x=60;x<=65;x++)f.status[y*240+x]=-3;
+          f.status[55*240+70]=-2;f.status[54*240+69]=2;
+          const bytes=Array.from(f.parameters),a=p.analyzeField(f,{excludeFlagged:true});
+          const summary=p.regionSummary(a,'u',[807.5,647.5],[1207.5,967.5]);
+          console.log(JSON.stringify({summary,same:bytes.every((v,i)=>v===f.parameters[i]),outside:p.regionSummary(a,'u',[-20,-20],[100,100])}));
+        """)
+        y, x = np.mgrid[40:61, 50:76]
+        values = 0.3 + 0.001 * (x * 16 + 7.5) - 0.002 * (y * 16 + 7.5)
+        valid = ~((y >= 45) & (y <= 50) & (x >= 60) & (x <= 65))
+        valid &= ~((y == 55) & (x == 70)) & ~((y == 54) & (x == 69))
+        summary = result["summary"]
+        self.assertEqual(summary["total"], values.size)
+        self.assertEqual(summary["selected"], values.size - 36)
+        self.assertEqual(summary["count"], int(valid.sum()))
+        self.assertAlmostEqual(summary["mean"], float(values[valid].mean()), places=13)
+        self.assertAlmostEqual(summary["standardDeviation"], float(values[valid].std()), places=13)
+        np.testing.assert_allclose(
+            [summary["p02"], summary["p98"]], np.quantile(values[valid], [0.02, 0.98]), atol=1e-13
+        )
+        self.assertTrue(result["same"])
+        self.assertIsNone(result["outside"])
+
     def test_green_strain_and_polar_rotation_of_exact_rigid_rotation(self):
         theta = 0.37
         result = javascript(f"""
@@ -255,6 +280,20 @@ class BrowserPostprocessTests(unittest.TestCase):
         )
         self.assertFalse(result["same"])
         self.assertIn("one analysis epoch", result["error"])
+
+    def test_region_history_preserves_varying_valid_populations_and_empty_gaps(self):
+        history_module = MODULE.with_name("history.js")
+        rows = javascript(f"""
+          import {{extractHistory}} from {json.dumps(history_module.as_uri())};
+          const entries=[];for(let j=0;j<3;j++){{const f=fixture(128,128);for(let i=0;i<64;i++)f.parameters[i*6]=j+1;
+            if(j===1)f.status.fill(-2);else f.status[2*8+2]=-3;
+            entries.push({{id:j+1,field:f,metadata:{{analysisEpoch:'region'}}}});}}
+          console.log(JSON.stringify(await extractHistory(entries,{{recipe:p.DEFAULT_RECIPE,component:'u',
+            points:[[23.5,23.5],[71.5,71.5]],tool:'region'}})));
+        """)
+        self.assertEqual([row["value"] for row in rows], [1, None, 3])
+        self.assertEqual([row["validRegionSamples"] for row in rows], [15, 0, 15])
+        self.assertEqual([row["regionGridPositions"] for row in rows], [16, 16, 16])
 
     def test_history_cancellation_stops_before_the_next_field(self):
         history_module = MODULE.with_name("history.js")

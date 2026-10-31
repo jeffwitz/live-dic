@@ -258,3 +258,9 @@ replace/reimport that base to change them. Preview/export of unapplied edits is
 distinct from the applied mask carried by a numerical field. The result canvas
 has no retained source image; its vector and contour overlays use reference
 coordinates and are presentation only.
+
+Region statistics are equal-weight subset sample statistics, not area
+integrals; overlapping subsets remain overlapping measurements. A region mean
+can change when its valid population changes. History exports retain its sample
+count and null gaps. Browser unload warnings may be suppressed by platform
+policy and cannot replace saving and checking a project file.

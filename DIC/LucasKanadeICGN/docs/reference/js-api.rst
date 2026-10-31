@@ -291,3 +291,12 @@ contour. Pixel-index measurements use integer pixel centres; canvas coordinates
 include the corresponding +0.5 offset. Display controls are saved separately
 from processing recipes. Application exports also include the assembled build's
 revision/content version and canonical shader hashes when available.
+
+``ui/postprocess.js`` also exposes ``regionSummary(analysis, component, a, b)``.
+It snaps two reference pixel-index coordinate pairs to grid centres and returns
+null outside the grid. The inclusive rectangle report separates ``total``,
+``selected`` and valid ``count``; its mean, population standard deviation and
+percentiles use equal weights. Status quantities return category counts with
+null scalar statistics. ``extractHistory`` accepts ``tool: 'region'`` and
+records ``validRegionSamples`` and ``regionGridPositions`` beside each mean.
+Status codes cannot be averaged through a region history.

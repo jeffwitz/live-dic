@@ -35,3 +35,17 @@ importing the validated batch, yielding eight library entries. The report stores
 archive size/hash; no original fixture is regenerated. Masks shared by a
 recording are saved once. Subsequent support-span labels distinguish smoothing
 from the larger composed smoothing-plus-VSG strain support.
+
+## Region, project-state and responsive follow-up
+
+`regions-hardware.json` / `regions-software.json` add a real two-corner UHD
+region measurement, checked against NumPy statistics of the exported processed
+field. They also verify restoration of that region after project import and
+check the unload guard before/after a full project download request. The
+Space key activates a focused button without triggering acquisition shortcuts.
+`regions-mobile-analysis.png` captures the same 4K data at a 390 CSS-pixel
+emulated viewport with no horizontal page overflow. Desktop Chromium emulation
+is not physical mobile hardware qualification.
+
+The complete local suite passed 242 tests with native GPU and browser tests
+enabled, no skips. These tests exercise correctness, not isolated live FPS.

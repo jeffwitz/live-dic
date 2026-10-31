@@ -348,6 +348,12 @@ invalid cells remain gaps. **Extensometer** reports endpoint distance change
 and engineering gauge strain, distinct from a local strain tensor. It may span a hole: it uses only the two endpoints, not a continuous material
 line. It requires
 two distinct accepted endpoints and does not infer measurements at invalid points.
+**Region statistics** uses two opposite rectangle corners. It reports valid,
+selected and total grid counts, mean, standard deviation, extrema and percentiles
+of the displayed quantity at subset centres. Holes and invalid points do not
+become zeros. Each valid subset has equal weight; this is not a physical area
+integral, especially with overlapping windows. Status view reports category
+counts instead of averaging status codes.
 
 **Save NPZ + processing recipe** preserves computed arrays, separate processed
 arrays, their validity masks, metadata and binary ROI. Open it in Python with:
@@ -384,6 +390,10 @@ fields, their shared ROI masks, provenance and applied processing recipes in one
 ``.dicproject`` ZIP. Keep original images separately. Importing a project adds
 its fields to the current library after validating the entire batch and checking
 capacity; it does not silently replace the active source or solver settings.
+A browser close/reload warning protects changes not included in the last
+requested project download, where the browser permits such warnings. A download
+request cannot confirm that the file reached disk: check your downloads. NPZ
+exports of individual fields do not mark the complete results project as saved.
 Use **Clear results** first if you want a separate library. An oversized or
 invalid project leaves the library unchanged. The current stored-data limit is
 128 MiB; archive input is limited to 256 MiB uncompressed. Single-field NPZ is
@@ -392,8 +402,8 @@ still the simplest direct NumPy interchange format.
 Extract a measurement through saved fields
 -------------------------------------------
 
-Place a point probe or two extensometer endpoints, then choose **Extract through
-saved fields**. The application applies the current analysis recipe to compatible
+Place a point probe, two extensometer endpoints or two region corners, then
+choose **Extract through saved fields**. The application applies the current analysis recipe to compatible
 saved fields one at a time in a separate worker. Progress and cancellation are
 available. Results from another analysis epoch, ROI or grid are counted as
 excluded; matching dimensions alone do not prove a shared reference. Native
@@ -401,7 +411,9 @@ sequence fields imported from the same archive share its source hash.
 
 The chart uses **saved field order**, not an inferred physical acquisition clock.
 Exports retain input indices and media timestamps when present. Failed
-measurements remain null gaps; neither zero filling nor success-only compaction
+measurements remain null gaps. Region histories report a mean and the number of
+valid samples for every field, because a changing valid population can bias an
+average. Neither zero filling nor success-only compaction
 is used. Consecutive comparisons remain increments at fixed image locations,
 not accumulated material trajectories. The extraction CSV has an accompanying
 JSON containing units, input pair, analysis recipe and chosen geometry.

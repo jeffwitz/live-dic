@@ -73,6 +73,26 @@ def main():
                 f"location.assign({json.dumps(f'http://127.0.0.1:{server.port}/{quote(site.name)}/?smoke=1&case=plate')});true"
             )
             wait(browser, "globalThis.liveDicStatus?.completed>=1")
+            browser._evaluate("document.getElementById('help').focus();true")
+            asyncio.run(
+                protocol(
+                    browser,
+                    [
+                        (
+                            "Input.dispatchKeyEvent",
+                            dict(type="keyDown", key=" ", code="Space", windowsVirtualKeyCode=32),
+                        ),
+                        (
+                            "Input.dispatchKeyEvent",
+                            dict(type="keyUp", key=" ", code="Space", windowsVirtualKeyCode=32),
+                        ),
+                    ],
+                )
+            )
+            assert browser._evaluate("document.getElementById('quick-guide').open"), (
+                "Space on a focused button must activate that button"
+            )
+            browser._evaluate("document.getElementById('quick-guide').close();true")
             browser._evaluate(
                 "document.querySelector('[data-pane=view]').click();document.getElementById('freeze-field').onclick().then(()=>true)"
             )
@@ -80,6 +100,10 @@ def main():
             baseline = browser._evaluate("liveDicWorkbench.report()")
             assert baseline["count"] == 1 and baseline["reviewing"], baseline
             assert baseline["statistics"]["count"] > 30000, baseline
+            assert baseline["unsavedProject"], baseline
+            assert not browser._evaluate(
+                "window.dispatchEvent(new Event('beforeunload',{cancelable:true}))"
+            )
             for key, value in [
                 ("review-component", "vonMises"),
                 ("post-smoothing", "gaussian"),
@@ -102,6 +126,11 @@ def main():
             click(browser, "#inspection", 1400, 900)
             gauge = browser._evaluate("liveDicWorkbench.report().extraction")
             assert len(gauge) == 1 and np.isfinite(gauge[0]["engineeringStrain"]), gauge
+            browser._evaluate("document.querySelector('[data-inspect=region]').click();true")
+            click(browser, "#inspection", 800, 800)
+            click(browser, "#inspection", 1400, 1100)
+            region = browser._evaluate("liveDicWorkbench.report().extraction")[0]
+            assert region["valid"] > 500, region
             # Capture the real download Blob; NumPy independently verifies shapes and operators.
             encoded = browser._evaluate("""(async()=>{
               const original=URL.createObjectURL;let saved;
@@ -145,6 +174,23 @@ def main():
                 np.testing.assert_allclose(actual, expected, atol=1e-12, rtol=1e-10)
                 assert np.all(data["analysis_valid"][data["status"] < 0.5] == 0)
                 numeric_error = float(np.max(np.abs(np.asarray(actual) - expected)))
+                yy, xx = np.mgrid[:135, :240]
+                rx, ry = xx * 16 + 7.5, yy * 16 + 7.5
+                chosen = (
+                    (rx >= region["x0"])
+                    & (rx <= region["x1"])
+                    & (ry >= region["y0"])
+                    & (ry <= region["y1"])
+                    & (data["strain_valid"] != 0)
+                )
+                expected_region = data["processed_vonMises"][chosen]
+                assert region["valid"] == int(chosen.sum()), region
+                np.testing.assert_allclose(
+                    [region["mean"], region["standardDeviation"]],
+                    [expected_region.mean(), expected_region.std()],
+                    atol=1e-12,
+                    rtol=1e-10,
+                )
             # Comparing computed data is temporary; returning restores the explicit processing recipe.
             browser._evaluate("document.getElementById('compare-computed').onclick();true")
             wait(browser, "liveDicWorkbench.report().recipe?.smoothing==='none'")
@@ -169,6 +215,30 @@ def main():
                 path = args.output / f"{label}.png"
                 path.write_bytes(base64.b64decode(reply["data"]))
                 screenshots[label] = hashlib.sha256(path.read_bytes()).hexdigest()
+            mobile = asyncio.run(
+                protocol(
+                    browser,
+                    [
+                        (
+                            "Emulation.setDeviceMetricsOverride",
+                            dict(width=390, height=844, deviceScaleFactor=1, mobile=True),
+                        ),
+                        (
+                            "Runtime.evaluate",
+                            dict(
+                                expression="(async()=>{await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));document.getElementById('results-workbench').scrollIntoView({block:'start'});return {width:innerWidth,pageWidth:document.documentElement.scrollWidth,chartWidth:document.getElementById('profile-chart').clientWidth};})()",
+                                awaitPromise=True,
+                                returnByValue=True,
+                            ),
+                        ),
+                        ("Page.captureScreenshot", dict(format="png", captureBeyondViewport=False)),
+                        ("Emulation.clearDeviceMetricsOverride", {}),
+                    ],
+                )
+            )
+            viewport = mobile[1]["result"]["value"]
+            assert viewport["width"] == 390 and viewport["pageWidth"] <= 390, viewport
+            (args.output / "mobile-analysis.png").write_bytes(base64.b64decode(mobile[2]["data"]))
             browser._evaluate(
                 "document.getElementById('return-live').onclick();document.getElementById('record-fields').checked=true;document.getElementById('record-fields').onchange();true"
             )
@@ -236,6 +306,10 @@ def main():
                 for(let i=0;i<bytes.length;i+=32768)parts.push(String.fromCharCode(...bytes.subarray(i,i+32768)));return btoa(parts.join(''));}
               finally{URL.createObjectURL=original;}
             })()""")
+            assert not browser._evaluate("liveDicWorkbench.report().unsavedProject")
+            assert browser._evaluate(
+                "window.dispatchEvent(new Event('beforeunload',{cancelable:true}))"
+            )
             project_payload = base64.b64decode(project_encoded)
             with tempfile.TemporaryDirectory(
                 prefix="live-dic-project-", dir=visible if visible.is_dir() else None
@@ -247,6 +321,12 @@ def main():
                     browser,
                     "liveDicWorkbench.report().count===8 && liveDicWorkbench.report().recipe!=null",
                 )
+            browser._evaluate(
+                "const select=document.getElementById('saved-fields');select.value=select.options[4].value;select.onchange();true"
+            )
+            wait(browser, "liveDicWorkbench.report().recipe?.smoothing==='gaussian'")
+            restored_region = browser._evaluate("liveDicWorkbench.report().extraction")[0]
+            assert restored_region == region, (restored_region, region)
             report = dict(
                 build=json.loads((site / "build.json").read_text()),
                 software=args.software,
@@ -257,6 +337,7 @@ def main():
                 history=history,
                 native_import_geometry=geometry,
                 gauge=gauge,
+                region=region,
                 operator_max_error=numeric_error,
                 archive_sha256=hashlib.sha256(payload).hexdigest(),
                 project_sha256=hashlib.sha256(project_payload).hexdigest(),

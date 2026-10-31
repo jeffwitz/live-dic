@@ -1,4 +1,4 @@
-import { DEFAULT_RECIPE, analyzeField, componentValues, statistics, nearestIndex, extensometer, validateField } from './postprocess.js';
+import { DEFAULT_RECIPE, analyzeField, componentValues, statistics, nearestIndex, extensometer, regionSummary, validateField } from './postprocess.js';
 import { fieldArchive, importFieldArchive, projectArchive, importProjectArchive } from './archive.js';
 import { extractHistory, sameAnalysis } from './history.js';
 
@@ -46,9 +46,14 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   let tool = 'probe', points = [], extraction = [], computedView = false;
   let requestId = 0, workerBusy = false, pendingAnalysis = false, workerFieldId = null, debounce = null;
   let pendingImport = null, importSerial = 0;
-  let history = null, historyAbort = null;
+  let history = null, historyAbort = null, lastChartRows=[], lastChartOptions={};
+  let projectRevision=0, downloadedRevision=0;
+  const hasUnsaved=()=>entries.length>0&&projectRevision!==downloadedRevision;
+  const changed=()=>{projectRevision++;};
+  const beforeUnload=event=>{rememberView();if(hasUnsaved()){event.preventDefault();event.returnValue='';}};
+  window.addEventListener('beforeunload',beforeUnload);
   const contours = new WeakMap();
-  const worker = typeof Worker === 'function' ? new Worker(new URL('./analysis-worker.js', import.meta.url), { type: 'module' }) : null;
+  let worker = typeof Worker === 'function' ? new Worker(new URL('./analysis-worker.js', import.meta.url), { type: 'module' }) : null;
   const recording = () => $('record-fields').checked;
   const activeEntry = () => entries.find(entry => entry.id === selected);
   function clearHistory() {
@@ -69,6 +74,13 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     $('review-vectors').checked=view.vectors===true;$('review-contour').checked=view.contour===true;
     if([2,4,8].includes(view.vectorStep))$('review-vector-step').value=view.vectorStep;
     if([1,5,20,50,100].includes(view.vectorGain))$('review-vector-gain').value=view.vectorGain;
+    const field=activeEntry()?.field;
+    if(['probe','line','gauge','region'].includes(view.tool)&&Array.isArray(view.points)&&view.points.length<=2&&
+      view.points.every(point=>Array.isArray(point)&&point.length===2&&point.every(Number.isFinite)&&
+        point[0]>=0&&point[1]>=0&&point[0]<field.width&&point[1]<field.height)) {
+      tool=view.tool;points=view.points.map(point=>[...point]);
+      document.querySelectorAll('[data-inspect]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.inspect===tool)));
+    }
   }
 
   function memoryBytes(extra = []) {
@@ -85,14 +97,17 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   }
   function rememberView() {
     const entry=activeEntry();if(!reviewing||!entry||!analysis)return;
-    entry.metadata={...entry.metadata,workbench:{view:viewSettings()}};entry.metadataBytes=encoderBytes(entry.metadata);
+    const view=viewSettings();
+    if(JSON.stringify(entry.metadata.workbench?.view)!==JSON.stringify(view)){
+      entry.metadata={...entry.metadata,workbench:{view}};entry.metadataBytes=encoderBytes(entry.metadata);changed();updateLibrary();
+    }
   }
   function updateLibrary() {
     const select = $('saved-fields'); select.replaceChildren();
     if (!entries.length) select.add(new Option('No saved fields', ''));
     for (const entry of entries) select.add(new Option(entry.label, entry.id));
     select.value = selected ?? entries.at(-1)?.id ?? '';
-    $('library-summary').textContent = `${entries.length} field(s) · ${(memoryBytes()/1048576).toFixed(1)} / 128 MiB in this tab. Save NPZ before closing; images are not recorded.`;
+    $('library-summary').textContent = `${entries.length} field(s) · ${(memoryBytes()/1048576).toFixed(1)} / 128 MiB in this tab. ${!entries.length?'No stored results.':hasUnsaved()?'Project has changes not included in the last requested project download.':'Project download requested; check that the file was saved.'} Images are not recorded.`;
     $('clear-fields').disabled = !entries.length; $('delete-field').disabled = !entries.length;
     $('save-project').disabled=!entries.length;
     const index=entries.findIndex(entry=>entry.id===selected);
@@ -108,7 +123,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
       $('record-fields').checked = false; recordChange(false); pause();
       throw new Error('Results storage reached 128 MiB. Acquisition is paused. Export or delete fields before continuing; no stored result was discarded.');
     }
-    entry.label = fieldLabel(metadata, entry.id); entries.push(entry); updateLibrary();
+    entry.label = fieldLabel(metadata, entry.id); entries.push(entry); changed(); updateLibrary();
     if (select) selectEntry(entry.id);
     return entry;
   }
@@ -147,7 +162,10 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     if (id === requestId && reviewing) {
       if (failure) { analysis = null; $('analysis-state').textContent = failure; error(failure); }
       else {
-        analysis = { ...result, field: activeEntry().field }; if (!computedView) activeEntry().recipe = result.recipe;
+        analysis = { ...result, field: activeEntry().field }; if (!computedView) {
+          if(JSON.stringify(activeEntry().recipe)!==JSON.stringify(result.recipe))changed();
+          activeEntry().recipe = result.recipe;updateLibrary();
+        }
         $('analysis-state').textContent = `Analysis ${result.processingWallMs.toFixed(1)} ms, outside the live solver. Computed arrays preserved.`;
         $('processing-summary').textContent = result.recipe.smoothing === 'none' && result.recipe.strainSource === 'direct'
           ? 'Computed displacement and local model gradients. Solver smoothing, if enabled during correlation, is already part of these values.'
@@ -160,7 +178,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   }
   if (worker) {
     worker.onmessage = ({ data }) => analysisComplete(data.id, data.analysis, data.error);
-    worker.onerror = event => { workerBusy = false; error(`Analysis worker: ${event.message}`); };
+    worker.onerror = event => {worker?.terminate();worker=null;workerFieldId=null;pendingAnalysis=false;analysisComplete(requestId,null,`Analysis worker stopped: ${event.message}. Retry a setting to use the main-thread fallback.`);};
   }
   function runAnalysis() {
     if (!reviewing || !activeEntry()) return;
@@ -255,10 +273,11 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     document.querySelector('.legend div').style.background=component==='status'?'':`linear-gradient(90deg,${Array.from({length:11},(_,i)=>`rgb(${colour(low+(high-low)*i/10).join(',')}) ${i*10}%`).join(',')})`;
     const clipped = Array.from(values).reduce((n,v,i)=>n+ +(valid[i] && (v<low||v>high)),0);
     const summary = $('field-summary'); summary.replaceChildren();
-    for (const [label,value] of [['Valid values',`${stats.count} / ${values.length}`],['Minimum',format(stats.min,unit)],['Mean',format(stats.mean,unit)],['Maximum',format(stats.max,unit)],['Colour clipping',`${clipped} values · ${scaleMode} scale`]]) {
+    const summaryRows=component==='status'?Object.entries(STATUS).map(([code,label])=>[label,field.status.reduce((n,status)=>n+ +(status===Number(code)),0)]):[['Valid values',`${stats.count} / ${values.length}`],['Minimum',format(stats.min,unit)],['Mean',format(stats.mean,unit)],['Maximum',format(stats.max,unit)],['Colour clipping',`${clipped} values · ${scaleMode} scale`]];
+    for (const [label,value] of summaryRows) {
       const box = document.createElement('div'), strong = document.createElement('strong'); box.textContent = label; strong.textContent = value; box.append(strong); summary.append(box);
     }
-    updateInspection();
+    updateInspection();rememberView();
   }
   function pointPosition(index) {
     const f = analysis.field;return [(index%f.grid[0])*f.subsetStride+(f.subsetSize-1)/2,Math.floor(index/f.grid[0])*f.subsetStride+(f.subsetSize-1)/2];
@@ -280,8 +299,15 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
       $('probe-value').textContent=`Subset ${i} · x=${snapped[0][0].toFixed(1)}, y=${snapped[0][1].toFixed(1)} px\n${STATUS[Math.round(f.status[i])] ?? 'Unknown status'} · ${f.iterations[i]} iterations\n${component}: ${valid[i]?format(values[i],unit):'unavailable — not a valid measurement'}`;
       extraction=[{distance:0,x:snapped[0][0],y:snapped[0][1],value:valid[i]?values[i]:null,status:f.status[i]}];
     } else if(points.length===2 && snapped.every(Boolean)) {
-      const [a,b]=snapped;ctx.beginPath();ctx.moveTo(a[0]+.5,a[1]+.5);ctx.lineTo(b[0]+.5,b[1]+.5);ctx.stroke();
-      if(tool==='gauge') {
+      const [a,b]=snapped;
+      ctx.beginPath();if(tool==='region')ctx.rect(Math.min(a[0],b[0])+.5,Math.min(a[1],b[1])+.5,Math.abs(b[0]-a[0]),Math.abs(b[1]-a[1]));
+      else {ctx.moveTo(a[0]+.5,a[1]+.5);ctx.lineTo(b[0]+.5,b[1]+.5);}ctx.stroke();
+      if(tool==='region') {
+        const summary=regionSummary(analysis,component,a,b);
+        $('probe-value').textContent=`Rectangle · ${summary.count} valid ${component} values / ${summary.selected} selected / ${summary.total} grid positions\nMean ${format(summary.mean,unit)} · standard deviation ${format(summary.standardDeviation,unit)}\nMin ${format(summary.min,unit)} · max ${format(summary.max,unit)}\nEqually weighted subset centres; holes and invalid values are excluded. No area integral.`;
+        if(component==='status')$('probe-value').textContent=`Rectangle · ${summary.selected} selected / ${summary.total} grid positions\n${Object.entries(summary.statusCounts).map(([status,count])=>`${STATUS[status]}: ${count}`).join('\n')}\nStatus codes are categories, not a scalar mean.`;
+        extraction=component==='status'?Object.entries(summary.statusCounts).map(([status,count])=>({status:Number(status),count})):[{x0:summary.bounds[0],y0:summary.bounds[1],x1:summary.bounds[2],y1:summary.bounds[3],valid:summary.count,selected:summary.selected,total:summary.total,mean:summary.mean,standardDeviation:summary.standardDeviation,minimum:summary.min,maximum:summary.max,p02:summary.p02,p98:summary.p98}];
+      } else if(tool==='gauge') {
         const gauge=extensometer(analysis,a,b);
         $('probe-value').textContent=gauge?`Gauge L₀ = ${number(gauge.referenceLength)} ${gauge.unit}\nΔL = ${number(gauge.extension)} ${gauge.unit} · ΔL/L₀ = ${number(gauge.engineeringStrain*1e6)} µε\nEndpoint distance strain; not a local tensor component.`:'The gauge needs two distinct accepted endpoints. Invalid values are never filled.';
         if(gauge)extraction=[{referenceLength:gauge.referenceLength,deformedLength:gauge.deformedLength,extension:gauge.extension,engineeringStrain:gauge.engineeringStrain}];
@@ -294,19 +320,32 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     } else $('probe-value').textContent='Choose the second endpoint on the field.';
     $('cursor-value').hidden=false;$('cursor-value').textContent=$('probe-value').textContent;
     if(history){extraction=history.rows;drawChart(history.rows.map(row=>({...row,distance:row.order})),{axisLabel:'Saved field order · not physical time',gauge:history.tool==='gauge'});}
-    else drawChart(tool==='line'?extraction:[]);$('save-profile').disabled=!extraction.length;
+    else {
+      const regionBounds=tool==='region'&&points.length===2&&snapped.every(Boolean)?[Math.min(snapped[0][0],snapped[1][0]),Math.min(snapped[0][1],snapped[1][1]),Math.max(snapped[0][0],snapped[1][0]),Math.max(snapped[0][1],snapped[1][1])]:null;
+      drawChart(tool==='line'?extraction:[],regionBounds?{regionBounds}:{});
+    }$('save-profile').disabled=!extraction.length;
   }
   function drawChart(rows, options={}) {
-    const ctx=chart.getContext('2d'),w=chart.width,h=chart.height;ctx.clearRect(0,0,w,h);ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);
-    const finite=rows.filter(r=>r.value!=null);ctx.fillStyle='#607782';ctx.font='15px system-ui';
+    lastChartRows=rows;lastChartOptions=options;
+    const w=Math.max(320,Math.round(chart.clientWidth||960)),h=w<500?240:280,ratio=Math.min(devicePixelRatio||1,2);
+    if(chart.width!==Math.round(w*ratio)||chart.height!==Math.round(h*ratio)){chart.width=Math.round(w*ratio);chart.height=Math.round(h*ratio);}
+    const ctx=chart.getContext('2d');ctx.setTransform(ratio,0,0,ratio,0,0);ctx.clearRect(0,0,w,h);ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);
+    const finite=rows.filter(r=>r.value!=null);ctx.fillStyle='#607782';ctx.font=`${w<500?11:13}px system-ui`;
     if(!finite.length){
       if(rows.length){ctx.fillText(`No valid measurement in ${rows.length} saved samples; gaps are retained.`,24,40);return;}
-      if(!analysis)return;const {values,valid}=componentValues(analysis,$('review-component').value),stats=statistics(values,valid);
+      if(!analysis)return;const component=$('review-component').value,{values,valid}=componentValues(analysis,component);
+      const chosen=options.regionBounds?Uint8Array.from(valid,(v,i)=>{const p=pointPosition(i),[x0,y0,x1,y1]=options.regionBounds;return +(v&&p[0]>=x0&&p[0]<=x1&&p[1]>=y0&&p[1]<=y1);}):valid;
+      if(component==='status'){
+        const codes=[-3,-2,-1,0,1,2],counts=codes.map(code=>values.reduce((n,v,i)=>n+ +(chosen[i]&&v===code),0)),highest=Math.max(1,...counts),step=(w-80)/6;
+        ctx.fillText(`${options.regionBounds?'Region status':'Status'} · categorical counts`,16,24);
+        counts.forEach((count,i)=>{const x=60+i*step,height=count/highest*(h-105);ctx.fillStyle=['#687c88','#c22c23','#9e8b79','#dfb82c','#229a70','#e88a2b'][i];ctx.fillRect(x,h-65-height,step-8,height);ctx.fillStyle='#607782';ctx.fillText(String(count),x,h-72-height);ctx.fillText(String(codes[i]),x,h-45);ctx.fillText(['ROI','corr','ref','GN','ok','flag'][i],x,h-28);});return;
+      }
+      const stats=statistics(values,chosen);
       if(!stats.count){ctx.fillText('No valid values for this quantity.',24,40);return;}
       const bins=new Uint32Array(40),span=Math.max(1e-14,stats.max-stats.min);
-      values.forEach((v,i)=>{if(valid[i])bins[Math.min(39,Math.floor((v-stats.min)/span*40))]++;});
+      values.forEach((v,i)=>{if(chosen[i])bins[Math.min(39,Math.floor((v-stats.min)/span*40))]++;});
       const highest=Math.max(...bins,1);ctx.fillStyle='#2d8b83';bins.forEach((n,i)=>ctx.fillRect(76+i*(w-108)/40,h-48-n/highest*(h-90),(w-108)/40-1,n/highest*(h-90)));
-      ctx.fillStyle='#607782';ctx.fillText(`Distribution · ${stats.count} valid samples · ${$('review-component').selectedOptions[0].textContent}`,24,25);
+      ctx.fillStyle='#607782';ctx.fillText(`${options.regionBounds?'Region distribution':'Distribution'} · ${stats.count} valid samples · ${$('review-component').selectedOptions[0].textContent}`,24,25);
       const factor=STRAIN_COMPONENTS.has($('review-component').value)?1e6:1;
       ctx.fillText(`${number(stats.min*factor)} ${factor===1e6?'µε':''}`,76,h-16);ctx.fillText(`${number(stats.max*factor)} ${factor===1e6?'µε':''}`,w-190,h-16);return;
     }
@@ -318,8 +357,14 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     ctx.fillStyle='#117c72';for(const row of finite){ctx.beginPath();ctx.arc(x(row.distance),y(row.value),3,0,2*Math.PI);ctx.fill();}
     ctx.fillStyle='#607782';for(let i=0;i<=4;i++)ctx.fillText(number(xmax*i/4),x(xmax*i/4)-15,h-30);
     ctx.fillText(options.axisLabel??`Distance along snapped samples (${analysis.recipe.unit})`,w/2-160,h-10);
-    ctx.fillText(`${options.gauge?'Gauge engineering strain':$('review-component').selectedOptions[0].textContent} (${factor===1e6?'µε':componentValues(analysis,$('review-component').value).unit})`,76,22);
+    ctx.fillText(`${options.gauge?'Gauge engineering strain':$('review-component').selectedOptions[0].textContent} (${factor===1e6?'µε':componentValues(analysis,$('review-component').value).unit})`,16,22);
   }
+  let chartResizeFrame=null,lastChartWidth=null;
+  const chartResize=typeof ResizeObserver==='function'?new ResizeObserver(entries=>{
+    const width=Math.round(entries[0].contentRect.width);if(width<=0||width===lastChartWidth)return;
+    lastChartWidth=width;cancelAnimationFrame(chartResizeFrame);
+    chartResizeFrame=requestAnimationFrame(()=>drawChart(lastChartRows,lastChartOptions));
+  }):null;chartResize?.observe(chart);
   overlay.onpointerdown = event => {
     clearHistory();
     if(!analysis)return;const rect=overlay.getBoundingClientRect(),point=[(event.clientX-rect.left)/rect.width*overlay.width-.5,(event.clientY-rect.top)/rect.height*overlay.height-.5];
@@ -332,7 +377,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     if(positions.some(([x,y])=>!Number.isFinite(x)||!Number.isFinite(y)||x<0||y<0||x>=analysis.field.width||y>=analysis.field.height)){$('inspection-hint').textContent='Use coordinates inside the reference image.';return;}
     clearHistory();points=positions;updateInspection();
   };
-  document.querySelectorAll('[data-inspect]').forEach(button=>button.onclick=()=>{clearHistory();tool=button.dataset.inspect;points=[];document.querySelectorAll('[data-inspect]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));$('inspection-hint').textContent=tool==='probe'?'Click a subset to inspect values and solver status.':'Click two endpoints on the field; measurements snap to subset centres.';updateInspection();});
+  document.querySelectorAll('[data-inspect]').forEach(button=>button.onclick=()=>{clearHistory();tool=button.dataset.inspect;points=[];document.querySelectorAll('[data-inspect]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));$('inspection-hint').textContent=tool==='probe'?'Click a subset to inspect values and solver status.':tool==='region'?'Click two opposite rectangle corners; valid subset centres are equally weighted.':'Click two endpoints on the field; measurements snap to subset centres.';updateInspection();});
   $('clear-inspection').onclick=()=>{clearHistory();points=[];updateInspection();};
   $('extract-history').onclick=async()=>{
     if(!analysis)return;
@@ -356,7 +401,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   $('record-fields').onchange=()=>recordChange(recording());
   $('saved-fields').onchange=()=>selectEntry($('saved-fields').value);
   for(const [id,delta] of [['previous-result',-1],['next-result',1]])$(id).onclick=()=>{const index=entries.findIndex(e=>e.id===selected);if(entries[index+delta])selectEntry(entries[index+delta].id);};
-  $('delete-field').onclick=()=>{const index=entries.findIndex(e=>e.id===Number($('saved-fields').value));if(index<0)return;const active=entries[index].id===selected;entries.splice(index,1);if(active){returnLive(true);selected=null;}updateLibrary();};
+  $('delete-field').onclick=()=>{const index=entries.findIndex(e=>e.id===Number($('saved-fields').value));if(index<0)return;const active=entries[index].id===selected;entries.splice(index,1);changed();if(active){returnLive(true);selected=null;}updateLibrary();};
   $('clear-fields').onclick=()=>{if(!entries.length||confirm('Delete saved fields from this tab? Export NPZ first if needed.')){returnLive(true);entries.length=0;selected=null;updateLibrary();}};
   $('import-result').onclick=()=>$('result-file').click();
   $('save-project').onclick=async()=>{
@@ -365,7 +410,8 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
       const snapshot=[...entries];
       const bytes=projectArchive(snapshot,{selectedId:selected});
       download('live-dic-results.dicproject',bytes,'application/zip');
-      $('project-state').textContent=`Saved ${snapshot.length} computed fields, shared ROI masks and applied recipes. Input images are separate.`;
+      downloadedRevision=projectRevision;updateLibrary();
+      $('project-state').textContent=`Download requested: ${snapshot.length} computed fields, shared ROI masks and applied recipes. Check the downloaded file; input images are separate.`;
     }catch(e){error(e.message);}
   };
   $('open-project').onclick=()=>$('project-file').click();
@@ -437,6 +483,6 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     setReady(ready){$('freeze-field').disabled=!ready;$('record-fields').disabled=!ready;},
     stopRecording(){ $('record-fields').checked=false;recordChange(false); },
     clearInspection(){clearHistory();points=[];updateInspection();},
-    report(){const values=analysis?componentValues(analysis,$('review-component').value):null;return{count:entries.length,selected,reviewing,memoryBytes:memoryBytes(),provenance:activeEntry()?{analysisEpoch:activeEntry().metadata.analysisEpoch,archiveSha256:activeEntry().metadata.archiveSha256,importGeometry:activeEntry().metadata.importGeometry}:null,recipe:analysis?.recipe??null,statistics:values?statistics(values.values,values.valid):null,extraction};},
-    destroy(){worker?.terminate();} };
+    report(){const values=analysis?componentValues(analysis,$('review-component').value):null;return{count:entries.length,selected,reviewing,unsavedProject:hasUnsaved(),memoryBytes:memoryBytes(),provenance:activeEntry()?{analysisEpoch:activeEntry().metadata.analysisEpoch,archiveSha256:activeEntry().metadata.archiveSha256,importGeometry:activeEntry().metadata.importGeometry}:null,recipe:analysis?.recipe??null,statistics:values?statistics(values.values,values.valid):null,extraction};},
+    destroy(){historyAbort?.abort();clearTimeout(debounce);chartResize?.disconnect();cancelAnimationFrame(chartResizeFrame);worker?.terminate();window.removeEventListener('beforeunload',beforeUnload);} };
 }

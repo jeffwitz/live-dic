@@ -20,7 +20,7 @@ export function installWorkspace({ shortcuts }) {
   document.getElementById('help').onclick = () => document.getElementById('quick-guide').showModal();
   window.addEventListener('keydown', event => {
     if (event.repeat || event.ctrlKey || event.altKey || event.metaKey
-        || event.target.closest('input,select,textarea,[contenteditable=true],dialog')
+        || event.target.closest('button,a,summary,input,select,textarea,[contenteditable=true],[role=button],dialog')
         || document.querySelector('#roi.drawing') || document.getElementById('quick-guide').open) return;
     if (event.code === 'Space') { shortcuts.play(); event.preventDefault(); }
     if (event.key.toLowerCase() === 'r') shortcuts.reference();

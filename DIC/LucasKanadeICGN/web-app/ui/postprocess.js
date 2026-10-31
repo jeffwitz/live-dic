@@ -124,6 +124,7 @@ export function statistics(values,valid) {
   return {count,min:sorted[0],max:sorted.at(-1),mean,standardDeviation:Math.sqrt(sorted.reduce((s,v)=>s+(v-mean)**2,0)/count),p02:quantile(.02),p98:quantile(.98)};
 }
 export function nearestIndex(field,x,y) {
+  if(!Number.isFinite(x)||!Number.isFinite(y))return -1;
   const c=(field.subsetSize-1)/2,gx=Math.round((x-c)/field.subsetStride),gy=Math.round((y-c)/field.subsetStride);
   return gx<0||gy<0||gx>=field.grid[0]||gy>=field.grid[1] ? -1:gy*field.grid[0]+gx;
 }
@@ -135,4 +136,22 @@ export function extensometer(analysis,a,b) {
   const deformed=Math.hypot((q[0]-p[0])*recipe.unitsPerPixel+analysis.fields.u[indices[1]]-analysis.fields.u[indices[0]],
     (q[1]-p[1])*recipe.unitsPerPixel+analysis.fields.v[indices[1]]-analysis.fields.v[indices[0]]);
   return {indices,points:[p,q],referenceLength:length,deformedLength:deformed,extension:deformed-length,engineeringStrain:(deformed-length)/length,unit:recipe.unit};
+}
+
+/** Equally weighted subset-centre statistics, never an area integral or gap fill. */
+export function regionSummary(analysis, component, a, b) {
+  const {field}=analysis,indices=[a,b].map(point=>nearestIndex(field,...point));
+  if(indices.some(i=>i<0))return null;
+  const [gw]=field.grid,x0=Math.min(...indices.map(i=>i%gw)),x1=Math.max(...indices.map(i=>i%gw));
+  const y0=Math.min(...indices.map(i=>Math.floor(i/gw))),y1=Math.max(...indices.map(i=>Math.floor(i/gw)));
+  const {values,valid,unit}=componentValues(analysis,component),chosen=new Uint8Array(values.length),statusCounts={};
+  let selected=0,total=0;
+  for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++) {
+    const i=y*gw+x,status=field.status[i];total++;selected+=+(status!==-3);
+    statusCounts[status]=(statusCounts[status]??0)+1;
+    if(component!=='status'&&valid[i])chosen[i]=1;
+  }
+  const c=(field.subsetSize-1)/2,s=field.subsetStride;
+  return {...statistics(values,chosen),total,selected,statusCounts,unit,
+    bounds:[x0*s+c,y0*s+c,x1*s+c,y1*s+c],population:'equally weighted valid subset centres inside inclusive snapped rectangle'};
 }
