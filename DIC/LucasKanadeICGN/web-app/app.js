@@ -13,6 +13,10 @@ function send(type, data = {}, transfer = []) {
   transport.postMessage({ type, id, ...data }, transfer);
   return result;
 }
+if (smoke) {
+  const original = console.error.bind(console);
+  console.error = (...args) => { status.errors.push(args.map(String).join(' ')); original(...args); };
+}
 const options = () => ({ profile: $('profile').value });
 function details() { $('details').textContent = JSON.stringify({ capabilities, acquisition: sourceSettings,
   execution: transport.isMain ? 'Main-thread fallback: OffscreenCanvas unavailable' : 'Dedicated worker',
@@ -61,12 +65,12 @@ async function init() {
     transport = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
     transport.onmessage = receive;
     transport.onerror = (error) => { status.errors.push(error.message); message(error.message, true); paused = true; for (const request of pending.values()) request.reject(new Error(error.message)); pending.clear(); };
-    capabilities = (await send('boot', { presentation: 'bitmap', measure: !smoke })).capabilities;
+    capabilities = (await send('boot', { presentation: 'bitmap', measure: !smoke, captureErrors: smoke })).capabilities;
   } else {
     const { createSession } = await import('./ui/session.js');
     const session = createSession((data) => queueMicrotask(() => receive({ data })));
     transport = { isMain: true, postMessage: (data) => { session.handle(data); } };
-    capabilities = (await send('boot', { canvas, measure: !smoke })).capabilities;
+    capabilities = (await send('boot', { canvas, measure: !smoke, captureErrors: smoke })).capabilities;
   }
   details();
   if (!capabilities.supported) {

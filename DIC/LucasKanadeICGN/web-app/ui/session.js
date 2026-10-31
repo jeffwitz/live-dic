@@ -41,6 +41,10 @@ export function createSession(send) {
     const { type, id } = message;
     try {
       if (type === 'boot') {
+        if (message.captureErrors && typeof document === 'undefined') {
+          const original = console.error.bind(console);
+          console.error = (...args) => { send({ type: 'error', message: args.map(String).join(' ') }); original(...args); };
+        }
         bitmapPresentation = message.presentation === 'bitmap';
         canvas = message.canvas ?? (bitmapPresentation ? new OffscreenCanvas(1, 1) : null);
         capabilities = await probeCapabilities({ benchmark: message.measure !== false });
