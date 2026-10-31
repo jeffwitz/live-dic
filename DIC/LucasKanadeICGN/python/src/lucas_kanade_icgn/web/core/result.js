@@ -94,3 +94,8 @@ export async function createResultReader(device, module, level, options, field) 
     destroy() { summary.destroy(); samples.destroy(); config.destroy(); },
   };
 }
+
+export function decodeCounters(values, configuration) {
+  return { temporallySeededCoarseSubsets: values[0], temporalAcceptedUpdates: values[1],
+    ...(configuration.temporalPrediction === 'velocity' ? { velocityPredictedSubsets: values[2] } : {}) };
+}

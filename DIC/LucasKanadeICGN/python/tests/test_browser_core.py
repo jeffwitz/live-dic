@@ -7,13 +7,14 @@ import os
 import shutil
 import subprocess
 import unittest
+from importlib.resources import files
 from pathlib import Path
 
 import numpy as np
 
 from lucas_kanade_icgn.roi import prepare_roi, reduce_mask, seed_permissions
 
-CORE = Path(__file__).resolve().parents[1] / "src/lucas_kanade_icgn/web/core"
+CORE = Path(str(files("lucas_kanade_icgn").joinpath("web/core")))
 
 
 @unittest.skipUnless(shutil.which("node"), "Node is needed to execute ES modules")
@@ -182,3 +183,30 @@ class BrowserCoreExecutionTests(unittest.TestCase):
         self.assertTrue(actual["excluded"])
         self.assertGreater(actual["accepted"], 0)
         self.assertTrue(actual["partial"])
+
+    def test_decimated_readback_is_a_gpu_sample_of_the_complete_field(self):
+        from lucas_kanade_icgn import ICGNWebGL
+
+        flags = (
+            (
+                "--use-angle=swiftshader",
+                "--enable-unsafe-webgpu",
+                "--use-webgpu-adapter=swiftshader",
+                "--use-vulkan=swiftshader",
+            )
+            if os.environ.get("ICGN_BROWSER_SOFTWARE") == "1"
+            else ()
+        )
+        with ICGNWebGL(backend="webgpu-wgsl", chromium_args=flags) as browser:
+            actual = browser._evaluate("""(async()=>{
+              const {DICEngine}=await import('../core/engine.js');
+              const width=640,height=480,pixels=Uint8Array.from({length:width*height},(_,i)=>(i*7+i*i)%251);
+              const engine=await DICEngine.create({width,height,readback:'decimated'});
+              await engine.setReference(pixels);const result=await engine.register(pixels);
+              const full=await engine.exportField();let matches=true;
+              result.sampleIndices.forEach((index,i)=>{
+                for(let k=0;k<6;k++)if(result.packed[i*8+k]!==full.parameters[index*6+k])matches=false;
+                if(result.packed[i*8+6]!==full.status[index]||result.packed[i*8+7]!==full.iterations[index])matches=false;
+              });engine.destroy();return {matches,smaller:result.sampleIndices.length<full.status.length};
+            })()""")
+        self.assertEqual(actual, dict(matches=True, smaller=True))

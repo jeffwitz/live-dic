@@ -1,7 +1,7 @@
 import { createTargetSlot, attachExternalInput } from './ring.js';
 import { createTemporalGraph, validateTemporal } from './temporal.js';
 import { validateMask, planRoi, reduceMask, seedPermissions, hashMask } from './roi.js';
-import { decodePacked, createResultReader } from './result.js';
+import { decodePacked, createResultReader, decodeCounters } from './result.js';
 import { loadShader } from './shaders.js';
 /*
  * Raw browser WebGPU adapter for the same portable WGSL used by wgpu-py.
@@ -895,15 +895,25 @@ const executePipeline = async ({ measureGpu = false, slot = slots[0] } = {}) => 
 const readResult = async (timing, slot = slots[0], forceFull = false) => {
   if (roiPlans[0]?.count === 0) {
     const stride = configuration.motionModel === 'quadratic' ? 16 : 8;
-    const packed = new Float32Array(GRID_COUNT * stride);
-    for (let i = 0; i < GRID_COUNT; i++) packed[i * stride + stride - 2] = -3;
+    const mode = forceFull ? 'full' : options.readback ?? 'full';
     lastSlot = slot; lastFieldBuffer = configuration.outlierPolicy === 'disabled' ? slot.levels[0].buffers.state : slot.levels[0].buffers.filteredState;
-    if (forceFull || (options.readback ?? 'full') === 'full') return decodePacked(packed, { width: FRAME_WIDTH, height: FRAME_HEIGHT,
-      gridWidth: GRID_WIDTH, gridHeight: GRID_HEIGHT, subsetSize: SUBSET_SIZE, subsetStride: SUBSET_STRIDE, configuration, timing });
-    return { width: FRAME_WIDTH, height: FRAME_HEIGHT, subsetSize: SUBSET_SIZE, subsetStride: SUBSET_STRIDE,
+    const result = { width: FRAME_WIDTH, height: FRAME_HEIGHT, subsetSize: SUBSET_SIZE, subsetStride: SUBSET_STRIDE,
       grid: [GRID_WIDTH, GRID_HEIGHT], config: { ...configuration }, timing, accepted: 0, selected: 0,
       excluded: GRID_COUNT, acceptance: null, meanIterations: null, truthRmse: null, maxAbs: [0, 0, 0, 0],
-      readback: options.readback, roiSelected: roiPlans[0].selected };
+      readback: mode, roiSelected: roiPlans[0].selected };
+    if (mode === 'full') {
+      const packed = new Float32Array(GRID_COUNT * stride);
+      for (let i = 0; i < GRID_COUNT; i++) packed[i * stride + stride - 2] = -3;
+      Object.assign(result, decodePacked(packed, { width: FRAME_WIDTH, height: FRAME_HEIGHT,
+        gridWidth: GRID_WIDTH, gridHeight: GRID_HEIGHT, subsetSize: SUBSET_SIZE, subsetStride: SUBSET_STRIDE, configuration, timing }));
+    } else if (mode === 'decimated') {
+      const reader = slot.resultReader;
+      result.sampleIndices = Uint32Array.from({ length: reader.sampleCount }, (_, i) => i * reader.step);
+      result.packed = new Float32Array(reader.sampleCount * stride); result.stateStride = stride;
+      for (let i = 0; i < reader.sampleCount; i++) result.packed[i * stride + stride - 2] = -3;
+    }
+    if (slot.temporal) result.counters = decodeCounters(new Uint32Array(4), configuration);
+    return result;
   }
   if (!forceFull && slot.resultReader && (options.readback ?? 'full') !== 'full') return readDisplayResult(timing, slot);
   const { temporal } = slot;
@@ -928,7 +938,7 @@ const readResult = async (timing, slot = slots[0], forceFull = false) => {
     subsetStride: SUBSET_STRIDE, configuration, timing });
   if (temporal) {
     const counters = new Uint32Array(mapped, size, 4);
-    result.counters = { temporallySeededCoarseSubsets: counters[0], temporalAcceptedUpdates: counters[1], velocityPredictedSubsets: counters[2], temporalExpiredSubsets: counters[3] };
+    result.counters = decodeCounters(counters, configuration);
   }
   if (roiPlans[0]) result.roiSelected = roiPlans[0].selected;
   readback.unmap();
@@ -952,7 +962,7 @@ const readDisplayResult = async (timing, slot) => {
   }
   if (slot.temporal) {
     const counts = new Uint32Array(mapped, offset, 4);
-    result.counters = { temporallySeededCoarseSubsets: counts[0], temporalAcceptedUpdates: counts[1], velocityPredictedSubsets: counts[2], temporalExpiredSubsets: counts[3] };
+    result.counters = decodeCounters(counts, configuration);
   }
   slot.readback.unmap();
   lastFieldBuffer = configuration.outlierPolicy === 'disabled' ? slot.levels[0].buffers.state : slot.levels[0].buffers.filteredState;

@@ -8,6 +8,7 @@ import hashlib
 import json
 import subprocess
 import sys
+from importlib import metadata
 from pathlib import Path
 
 import numpy as np
@@ -54,6 +55,7 @@ def main():
         else ()
     )
     rows = []
+    configurations = []
     with ICGNWebGL(backend="webgpu-wgsl", chromium_args=flags) as browser:
         for model in ("translation", "affine"):
             for depth in (1, 2):
@@ -89,6 +91,9 @@ def main():
                   return true;
                 }})()""")
                 with ICGNWGPUFullPyramid(**options) as native:
+                    configurations.append(
+                        dict(native=options, browser=js_options, native_adapter=native.adapter_info)
+                    )
                     native.set_reference(ref, roi_mask=mask)
                     for start, stop in ((0, 40), (40, 60)):
                         if start:
@@ -185,6 +190,15 @@ def main():
         dirty=bool(subprocess.check_output(["git", "status", "--porcelain"], text=True)),
         criteria=criteria,
         browser=info,
+        configurations=configurations,
+        software_browser=args.software_browser,
+        native_device=args.native_device,
+        versions={name: metadata.version(name) for name in ("numpy", "wgpu", "Pillow")},
+        source_sha256={
+            str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in sorted((ROOT / "python/src/lucas_kanade_icgn/web/core").glob("*.js"))
+            + sorted((ROOT / "python/src/lucas_kanade_icgn/shaders").glob("*.wgsl"))
+        },
         reference_sha256=hashlib.sha256(ref).hexdigest(),
         mask_sha256=hashlib.sha256(mask).hexdigest(),
         frame_sha256=[hashlib.sha256(frame).hexdigest() for frame in frames],

@@ -12,6 +12,24 @@ export class DICEngine {
     catch (error) { engine.destroy(); throw error; }
   }
   constructor(options) {
+    const supported = new Set(['device', 'width', 'height', 'subsetSize', 'subsetStride', 'motionModel',
+      'interpolation', 'pyramidLevels', 'iterationsPerLevel', 'tolerancePerLevel', 'iterations', 'tolerance',
+      'znccMin', 'outlierPolicy', 'initialization', 'temporalPrediction', 'temporalFineCorrection',
+      'temporalMaxAge', 'divergencePatience', 'divergenceMinIterations', 'pipelineDepth', 'readback',
+      'spatialWeighting', 'roiPolicy', 'roiTruncation', 'pyramidPolicy', 'solverWorkgroupSize']);
+    for (const key of Object.keys(options)) if (!supported.has(key)) throw new Error(`Unsupported engine option: ${key}`);
+    if (options.solverWorkgroupSize !== undefined && options.solverWorkgroupSize !== 16) throw new Error('The browser engine supports only solverWorkgroupSize=16');
+    if (options.roiTruncation && options.roiTruncation !== 'none') throw new Error('ROI truncation is not supported in the browser engine');
+    if (options.temporalFineCorrection !== undefined && typeof options.temporalFineCorrection !== 'boolean') throw new Error('temporalFineCorrection must be boolean');
+    for (const key of ['width', 'height']) if (options[key] !== undefined && (!Number.isInteger(options[key]) || options[key] < 1)) throw new Error(`${key} must be a positive integer`);
+
+    for (const key of ['subsetSize', 'subsetStride', 'pyramidLevels', 'iterations', 'tolerance', 'znccMin']) {
+      if (options[key] !== undefined && typeof options[key] !== 'number') throw new Error(`${key} must be a number`);
+    }
+    for (const key of ['iterationsPerLevel', 'tolerancePerLevel']) {
+      if (options[key] !== undefined && (typeof options[key] === 'string' || options[key] === null
+          || !Array.from(options[key]).every((value) => typeof value === 'number'))) throw new Error(`${key} must contain numbers`);
+    }
     if (options.spatialWeighting && options.spatialWeighting !== 'uniform') {
       throw new Error('Gaussian weighting is not supported in the browser engine');
     }
@@ -19,7 +37,7 @@ export class DICEngine {
       throw new Error('partial ROI is not supported in the browser engine');
     }
     if (!['full', 'decimated', 'none'].includes(options.readback ?? 'full')) throw new Error('Unknown readback mode');
-    this.options = { readback: 'full', ...options };
+    this.options = Object.freeze({ readback: 'full', ...options });
     this.ring = new SlotRing(options.pipelineDepth ?? 1);
     this.inputs = [];
     this.host = createPyramidHost({ ...options, inputConverterForSlot: (i) => this.inputs[i] });
@@ -28,6 +46,7 @@ export class DICEngine {
   assertOpen() { if (this.closed) throw new Error('The engine has been destroyed'); }
   async setReference(source, options = {}) {
     this.assertOpen();
+    for (const key of Object.keys(options)) if (!['roiMask', 'roiPolicy', 'roiTruncation'].includes(key)) throw new Error(`Unsupported reference option: ${key}`);
     if (!this.ring.idle) throw new Error('Finish the current sequence before replacing the reference');
     let pixels = source;
     const [width, height] = source instanceof Uint8Array ? [this.options.width, this.options.height] : frameSize(source);
@@ -35,7 +54,7 @@ export class DICEngine {
     if (!Number.isInteger(width) || !Number.isInteger(height) || Math.floor(width / scale) < size || Math.floor(height / scale) < size) throw new Error('Source dimensions must contain the coarsest subset');
     if (source instanceof Uint8Array && source.length !== width * height) throw new Error('Expected width * height grayscale bytes');
     if (options.roiTruncation && options.roiTruncation !== 'none') throw new Error('ROI truncation is not supported in the browser engine');
-    const ownedMask = validateMask(options.roiMask, width, height, options.roiPolicy ?? 'full', this.options.motionModel ?? 'affine');
+    const ownedMask = validateMask(options.roiMask, width, height, options.roiPolicy ?? 'full', this.host.configuration.motionModel);
     this.reference = null;
     this.inputs.forEach((input) => input.destroy()); this.inputs = [];
     for (let i = 0; i < this.ring.depth; i++) this.inputs.push(await createInputConverter(this.device, width, height));
