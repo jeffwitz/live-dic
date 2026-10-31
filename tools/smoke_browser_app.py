@@ -21,6 +21,11 @@ def main():
     parser.add_argument("--duration", type=float, default=0)
     parser.add_argument("--software", action="store_true")
     parser.add_argument("--offline", action="store_true")
+    parser.add_argument(
+        "--export",
+        action="store_true",
+        help="also validate explicit CSV/JSON downloads after timing",
+    )
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--screenshot", type=Path)
     args = parser.parse_args()
@@ -69,6 +74,28 @@ def main():
                 time.sleep(0.5)
             snapshot = browser._evaluate("JSON.parse(JSON.stringify(liveDicStatus))")
             worker_report = browser._evaluate("liveDicReport()")
+            exported = None
+            if args.export:
+                exported = browser._evaluate("""(async()=>{
+                  const original=URL.createObjectURL, blobs={};
+                  URL.createObjectURL=(blob)=>{blobs[blob.type]=blob;return original(blob);};
+                  try {
+                    await document.getElementById('export').onclick();
+                    const csv=await blobs['text/csv'].text();
+                    const metadata=JSON.parse(await blobs['application/json'].text());
+                    const lines=csv.trim().split('\\n');
+                    const finite=lines.slice(1).every(line=>line.split(',').every(v=>Number.isFinite(Number(v))));
+                    return {rows:lines.length-1, finite, grid:metadata.grid,
+                      readbackWallMs:metadata.readbackWallMs, configuration:metadata.configuration,
+                      adapter:metadata.capabilities.adapter, roi:metadata.roi,
+                      timingBoundary:'Explicit export request while paused -> full field mapped and decoded; acquisition age excluded'};
+                  } finally {URL.createObjectURL=original;}
+                })()""")
+                if (
+                    not exported["finite"]
+                    or exported["rows"] != exported["grid"][0] * exported["grid"][1]
+                ):
+                    raise AssertionError(f"Invalid CSV export: {exported}")
             if args.offline:
                 browser._evaluate("navigator.serviceWorker.ready.then(()=>true)")
                 server.close()
@@ -121,6 +148,7 @@ def main():
                 canvas_std=visual,
                 offline_reload=args.offline,
                 console_errors=snapshot["errors"],
+                export=exported,
             )
             args.report.parent.mkdir(parents=True, exist_ok=True)
             args.report.write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
