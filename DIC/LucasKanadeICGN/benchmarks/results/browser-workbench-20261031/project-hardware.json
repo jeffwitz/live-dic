@@ -1,0 +1,436 @@
+{
+  "build": {
+    "commit": "381a774800b2b457ad2de7924fdc14377c120769",
+    "dirty": true,
+    "shaders": {
+      "full_pyramid.wgsl": "d00ef999c5dbc23013928e95ea6ca498a52fbb63850056c05bdbd3c963dc0401",
+      "icgn.wgsl": "a60231689fbc3d29953fd98eb8d04649ec93cbec0f5a89a65446df716152299b",
+      "icgn_subgroup.wgsl": "d68225b1b6b6b21071e59ea6109bbd24dc0fd8b6734b6ebc4f7d59356799a034",
+      "input.wgsl": "d269f8bf203e3363a6e753476c49de27188329409fa5a848358ea031bb554f7e",
+      "result.wgsl": "a587a3112670a702578df6c13f75addd4136e43fa6c7efba7959aa472d0e3267",
+      "subgroup_probe.wgsl": "6e4d149ed7f17969ede557a3062742d8da6c62cb6dd745d5510112c1489fed61"
+    },
+    "demo_manifest_sha256": "c78c445a38a8541d632f28e85ec1154e492b4195c7b8f5d4755597e07605f24a",
+    "plate_image_sha256": {
+      "reference.png": "26135118b554c5996443f07abd2a89273a344154338c4c7f428ab283f85f7192",
+      "frame_095.png": "af0f4c09d2e9292beb4cbbabe01c6651a2e914c1b36b569a5861a8be431d3faf",
+      "frame_225.png": "abe3693810e289b8a2029833011a0d59fdf7ff1ea975eea91b12dc5e708d2897"
+    },
+    "cache_version": "381a774800b2b457ad2de7924fdc14377c120769-dirty-d667cedbaf82"
+  },
+  "software": false,
+  "user_agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+  "baseline": {
+    "count": 1,
+    "selected": 1,
+    "reviewing": true,
+    "memoryBytes": 9335731,
+    "provenance": {
+      "analysisEpoch": "f278a518-3142-4729-bfd1-e796d85f5caa"
+    },
+    "recipe": {
+      "smoothing": "none",
+      "window": 5,
+      "strainSource": "direct",
+      "strainMeasure": "small",
+      "excludeFlagged": false,
+      "unitsPerPixel": 1,
+      "unit": "px"
+    },
+    "statistics": {
+      "count": 31474,
+      "min": 0.001687877604410636,
+      "max": 2.3590784288358653,
+      "mean": 1.2129375425540632,
+      "standardDeviation": 0.5958360993513087,
+      "p02": 0.14775626003830933,
+      "p98": 2.2182593419155747
+    },
+    "extraction": []
+  },
+  "processed": {
+    "count": 1,
+    "selected": 1,
+    "reviewing": true,
+    "memoryBytes": 9335731,
+    "provenance": {
+      "analysisEpoch": "f278a518-3142-4729-bfd1-e796d85f5caa"
+    },
+    "recipe": {
+      "smoothing": "gaussian",
+      "window": 5,
+      "strainSource": "vsg",
+      "strainMeasure": "green",
+      "excludeFlagged": false,
+      "unitsPerPixel": 1,
+      "unit": "px"
+    },
+    "statistics": {
+      "count": 31474,
+      "min": 0.00028096804176539874,
+      "max": 0.0013709044127784601,
+      "mean": 0.0009126696196797362,
+      "standardDeviation": 7.017979646157721e-05,
+      "p02": 0.0007451321599937356,
+      "p98": 0.0010454209130996775
+    },
+    "extraction": []
+  },
+  "profile": [
+    {
+      "distance": 0,
+      "x": 807.5,
+      "y": 903.5,
+      "value": 0.000920455807557695,
+      "status": 1
+    },
+    {
+      "distance": 16,
+      "x": 823.5,
+      "y": 903.5,
+      "value": 0.000910816126543509,
+      "status": 1
+    },
+    {
+      "distance": 32,
+      "x": 839.5,
+      "y": 903.5,
+      "value": 0.0008957118063130871,
+      "status": 1
+    },
+    {
+      "distance": 48,
+      "x": 855.5,
+      "y": 903.5,
+      "value": 0.0008797810311803327,
+      "status": 1
+    },
+    {
+      "distance": 64,
+      "x": 871.5,
+      "y": 903.5,
+      "value": 0.0008771965195372018,
+      "status": 1
+    },
+    {
+      "distance": 80,
+      "x": 887.5,
+      "y": 903.5,
+      "value": 0.0008892622209749504,
+      "status": 1
+    },
+    {
+      "distance": 96,
+      "x": 903.5,
+      "y": 903.5,
+      "value": 0.0009014944593445447,
+      "status": 1
+    },
+    {
+      "distance": 112,
+      "x": 919.5,
+      "y": 903.5,
+      "value": 0.0009123755166199714,
+      "status": 1
+    },
+    {
+      "distance": 128,
+      "x": 935.5,
+      "y": 903.5,
+      "value": 0.0009197130769056356,
+      "status": 1
+    },
+    {
+      "distance": 144,
+      "x": 951.5,
+      "y": 903.5,
+      "value": 0.0009161278360875266,
+      "status": 1
+    },
+    {
+      "distance": 160,
+      "x": 967.5,
+      "y": 903.5,
+      "value": 0.0009086611213678397,
+      "status": 1
+    },
+    {
+      "distance": 176,
+      "x": 983.5,
+      "y": 903.5,
+      "value": 0.000908364481221999,
+      "status": 1
+    },
+    {
+      "distance": 192,
+      "x": 999.5,
+      "y": 903.5,
+      "value": 0.000908090658625631,
+      "status": 1
+    },
+    {
+      "distance": 208,
+      "x": 1015.5,
+      "y": 903.5,
+      "value": 0.0008950025044456526,
+      "status": 1
+    },
+    {
+      "distance": 224,
+      "x": 1031.5,
+      "y": 903.5,
+      "value": 0.0008753445245847332,
+      "status": 1
+    },
+    {
+      "distance": 240,
+      "x": 1047.5,
+      "y": 903.5,
+      "value": 0.0008674300359301884,
+      "status": 1
+    },
+    {
+      "distance": 256,
+      "x": 1063.5,
+      "y": 903.5,
+      "value": 0.0008787153095653336,
+      "status": 1
+    },
+    {
+      "distance": 272,
+      "x": 1079.5,
+      "y": 903.5,
+      "value": 0.0008958900829756245,
+      "status": 1
+    },
+    {
+      "distance": 288,
+      "x": 1095.5,
+      "y": 903.5,
+      "value": 0.0009029094973241852,
+      "status": 1
+    },
+    {
+      "distance": 304,
+      "x": 1111.5,
+      "y": 903.5,
+      "value": 0.0009057242216675163,
+      "status": 1
+    },
+    {
+      "distance": 320,
+      "x": 1127.5,
+      "y": 903.5,
+      "value": 0.0009131468326711713,
+      "status": 1
+    },
+    {
+      "distance": 336,
+      "x": 1143.5,
+      "y": 903.5,
+      "value": 0.0009213825548398016,
+      "status": 1
+    },
+    {
+      "distance": 352,
+      "x": 1159.5,
+      "y": 903.5,
+      "value": 0.0009254579591015184,
+      "status": 1
+    },
+    {
+      "distance": 368,
+      "x": 1175.5,
+      "y": 903.5,
+      "value": 0.0009223202483746772,
+      "status": 1
+    },
+    {
+      "distance": 384,
+      "x": 1191.5,
+      "y": 903.5,
+      "value": 0.0009180838286660781,
+      "status": 1
+    },
+    {
+      "distance": 400,
+      "x": 1207.5,
+      "y": 903.5,
+      "value": 0.0009150195055443837,
+      "status": 1
+    },
+    {
+      "distance": 416,
+      "x": 1223.5,
+      "y": 903.5,
+      "value": 0.0009136887590987152,
+      "status": 1
+    },
+    {
+      "distance": 432,
+      "x": 1239.5,
+      "y": 903.5,
+      "value": 0.0009164951260915616,
+      "status": 1
+    },
+    {
+      "distance": 448,
+      "x": 1255.5,
+      "y": 903.5,
+      "value": 0.0009164109589531453,
+      "status": 1
+    },
+    {
+      "distance": 464,
+      "x": 1271.5,
+      "y": 903.5,
+      "value": 0.0009097258749632402,
+      "status": 1
+    },
+    {
+      "distance": 480,
+      "x": 1287.5,
+      "y": 903.5,
+      "value": 0.0009027049025662218,
+      "status": 1
+    },
+    {
+      "distance": 496,
+      "x": 1303.5,
+      "y": 903.5,
+      "value": 0.000900829770334556,
+      "status": 1
+    },
+    {
+      "distance": 512,
+      "x": 1319.5,
+      "y": 903.5,
+      "value": 0.0009034425899241074,
+      "status": 1
+    },
+    {
+      "distance": 528,
+      "x": 1335.5,
+      "y": 903.5,
+      "value": 0.0009069697552834857,
+      "status": 1
+    },
+    {
+      "distance": 544,
+      "x": 1351.5,
+      "y": 903.5,
+      "value": 0.0009107366470330995,
+      "status": 1
+    },
+    {
+      "distance": 560,
+      "x": 1367.5,
+      "y": 903.5,
+      "value": 0.000918207557616359,
+      "status": 1
+    },
+    {
+      "distance": 576,
+      "x": 1383.5,
+      "y": 903.5,
+      "value": 0.0009285514823707112,
+      "status": 1
+    },
+    {
+      "distance": 592,
+      "x": 1399.5,
+      "y": 903.5,
+      "value": 0.0009351078606762224,
+      "status": 1
+    }
+  ],
+  "history": [
+    {
+      "order": 1,
+      "fieldId": 1,
+      "sourceIndex": null,
+      "mediaTimeSeconds": null,
+      "value": -0.0004625830284001455,
+      "status": null
+    },
+    {
+      "order": 2,
+      "fieldId": 2,
+      "sourceIndex": 225,
+      "mediaTimeSeconds": null,
+      "value": -0.00017233762092800858,
+      "status": null
+    },
+    {
+      "order": 3,
+      "fieldId": 3,
+      "sourceIndex": null,
+      "mediaTimeSeconds": null,
+      "value": -0.0004625830284001455,
+      "status": null
+    }
+  ],
+  "native_import_geometry": {
+    "width": 3840,
+    "height": 2160,
+    "subsetSize": 16,
+    "subsetStride": 16,
+    "frameIndex": 1,
+    "frameCount": 2,
+    "imageExtentSource": "explicit user input"
+  },
+  "gauge": [
+    {
+      "referenceLength": 592,
+      "deformedLength": 591.7261508471871,
+      "extension": -0.27384915281288613,
+      "engineeringStrain": -0.0004625830284001455
+    }
+  ],
+  "operator_max_error": 1.940721888749053e-17,
+  "archive_sha256": "e3347f32763119f86bbb2ec848014316723c83f88479fa026a3416b4f413c0d1",
+  "project_sha256": "10cc09d217c75e6c0b8367c3baf2e8d666d247eb8be5d5c2a7a1acee1804e859",
+  "project_bytes": 20755302,
+  "screenshots": {
+    "field": "698fd63654771510b19fd469918845097dbb2597579fc4f36bb6a81686b436d5",
+    "analysis": "78f15c99bee72dfd27faddd277bc1852b7073ee4310afe94088c46ac703575f8"
+  },
+  "final": {
+    "count": 8,
+    "selected": 8,
+    "reviewing": true,
+    "memoryBytes": 41495870,
+    "provenance": {
+      "archiveSha256": "9ef9e0ed3ca161575b1ef22ca74ca047670dffbb49c709e5ecc582bbd27f7724",
+      "importGeometry": {
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "subsetStride": 16,
+        "frameIndex": 1,
+        "frameCount": 2,
+        "imageExtentSource": "explicit user input"
+      }
+    },
+    "recipe": {
+      "smoothing": "none",
+      "window": 5,
+      "strainSource": "direct",
+      "strainMeasure": "small",
+      "excludeFlagged": false,
+      "unitsPerPixel": 1,
+      "unit": "px"
+    },
+    "statistics": {
+      "count": 31474,
+      "min": 0.00019032457720345147,
+      "max": 0.0026494290771279004,
+      "mean": 0.0009212214446670995,
+      "standardDeviation": 0.0001690830267693103,
+      "p02": 0.0006009284451995205,
+      "p98": 0.0013003653214795313
+    },
+    "extraction": []
+  },
+  "errors": []
+}

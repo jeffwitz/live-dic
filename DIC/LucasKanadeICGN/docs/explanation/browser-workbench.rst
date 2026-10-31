@@ -55,8 +55,13 @@ centred normal equations and a determinant rank test. At least three
 non-collinear admissible points are required. Failed fits retain a separate
 invalid strain mask. Translation-only fields require VSG for strain.
 Smoothing requires VSG so that processed displacement and strain describe the
-same operation. The subset-plus-window span is
-``subsetSize + (window - 1) * subsetStride`` pixels.
+same operation. The displacement smoothing span is
+``subsetSize + (window - 1) * subsetStride`` pixels. VSG on unsmoothed
+displacements has the same span; applying smoothing followed by VSG composes
+two neighbourhoods, giving ``subsetSize + 2 * (window - 1) * subsetStride``
+for strain. Direct unsmoothed gradients retain the solver subset span. At
+16/16 with a 5-point window, smoothing spans 80 px and smoothed VSG strain
+spans 144 px nominally; truncated boundary support can be smaller.
 
 Small strain uses the symmetric displacement gradient. Green-Lagrange strain
 uses ``E = (F.T F - I)/2``. Principal values are the eigenvalues of that 2D
@@ -127,3 +132,20 @@ for each field independently. Missing values stay null and break chart lines.
 The horizontal axis is saved order; input indices/timestamps are additional
 export columns. The tool does not infer regular sampling, accumulate incremental
 displacements or silently combine unrelated reference configurations.
+
+Results projects
+----------------
+
+A ``.dicproject`` is a standard ZIP with ``manifest.json``, per-field NPY
+parameters/status/iterations, and shared static masks. It retains every computed
+field, applied recipe, grid, source-pair provenance and analysis epoch. A mask
+shared by a recording is written once. Processed arrays can be regenerated from
+the stored recipe; individual NPZ export also includes those arrays explicitly.
+No input image, camera permission or File handle is serialized.
+
+Import validates all fields before changing the library and checks capacity for
+the complete batch. It adds fields without replacing the active acquisition
+source or settings. Current library storage is 128 MiB, total uncompressed
+archive input is capped at 256 MiB, and the versioned format accepts at most
+512 fields / 4096 ZIP entries. CRC protects entries; ROI hashes are checked
+against their canonical binary mask. Export/import does not execute code.

@@ -1,5 +1,5 @@
 /** Dependency-free NumPy archive interchange. No pickle, eval or filesystem extraction. */
-import { validateField } from './postprocess.js';
+import { validateField, validateRecipe } from './postprocess.js';
 const encoder=new TextEncoder(),decoder=new TextDecoder();
 const table=Uint32Array.from({length:256},(_,n)=>{for(let k=0;k<8;k++)n=n&1?0xedb88320^(n>>>1):n>>>1;return n>>>0;});
 function crc32(bytes){let c=0xffffffff;for(const b of bytes)c=table[(c^b)&255]^(c>>>8);return(c^0xffffffff)>>>0;}
@@ -33,6 +33,7 @@ export function zipStore(entries) {
 }
 export function fieldArchive(field,metadata={},analysis=null,roiMask=null) {
   const {components}=validateField(field),shape=[field.grid[1],field.grid[0]];
+  if(field.config.roi&&!roiMask)throw new Error('A field with ROI must be exported with its binary mask');
   const entries={
     'parameters.npy':npy(field.parameters instanceof Float64Array?field.parameters:Float32Array.from(field.parameters),[...shape,components],field.parameters instanceof Float64Array?'<f8':'<f4'),
     'status.npy':npy(Float32Array.from(field.status),shape,'<f4'),
@@ -50,6 +51,17 @@ export function fieldArchive(field,metadata={},analysis=null,roiMask=null) {
 }
 
 const MAX_BYTES=256*1024*1024;
+async function verifyMask(mask, field, cache = new Map()) {
+  const expected=field.config.roi?.maskSha256;if(!expected)return;
+  if(!mask)throw new Error('Archive declares an ROI without its mask');
+  if(!cache.has(mask)){
+    const prefix=encoder.encode('live-dic-roi-v1\0'),data=new Uint8Array(prefix.length+16+mask.length);
+    data.set(prefix);const dimensions=new DataView(data.buffer,prefix.length,16);
+    dimensions.setBigUint64(0,BigInt(field.height),true);dimensions.setBigUint64(8,BigInt(field.width),true);data.set(mask,prefix.length+16);
+    cache.set(mask,crypto.subtle.digest('SHA-256',data).then(hash=>Array.from(new Uint8Array(hash),b=>b.toString(16).padStart(2,'0')).join('')));
+  }
+  if(await cache.get(mask)!==expected)throw new Error('Archived ROI hash does not match the binary mask');
+}
 export function readNpy(bytes) {
   const view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
   if(bytes.length<10||!bytes.slice(0,6).every((v,i)=>v===[147,78,85,77,80,89][i]))throw new Error('Invalid NumPy header');
@@ -85,7 +97,7 @@ export async function readZip(buffer) {
   const view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);let end=-1;
   for(let i=bytes.length-22;i>=Math.max(0,bytes.length-65557);i--)if(view.getUint32(i,true)===0x06054b50){end=i;break;}
   if(end<0||view.getUint16(end+4,true)||view.getUint16(end+6,true))throw new Error('Unsupported ZIP directory');
-  const count=view.getUint16(end+10,true);if(count>128)throw new Error('Too many archive entries');
+  const count=view.getUint16(end+10,true);if(count>4096)throw new Error('Too many archive entries');
   let offset=view.getUint32(end+16,true),total=0;const entries=Object.create(null);
   for(let i=0;i<count;i++){
     if(offset+46>end||view.getUint32(offset,true)!==0x02014b50)throw new Error('Invalid ZIP central directory');
@@ -131,10 +143,62 @@ export async function importFieldArchive(buffer, suppliedGeometry = {}) {
   const expected=validateField(field);
   if(components!==expected.components)throw new Error('Parameter shape mismatch');
   if(roi&&(roi.shape[0]!==field.height||roi.shape[1]!==field.width||roi.shape.length!==2||roi.values.some(v=>v!==0&&v!==1)))throw new Error('Invalid archive ROI');
+  await verifyMask(roi?.values??null,field);
   const metadata=zip['metadata_json.npy']?JSON.parse(read('metadata_json').values[0]):{};
   metadata.archiveSha256=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',buffer)),b=>b.toString(16).padStart(2,'0')).join('');
   metadata.importGeometry={width,height,subsetSize,subsetStride,frameIndex,frameCount,
     imageExtentSource:zip['width.npy']&&zip['height.npy']?'archive scalars':roi?'archived ROI shape':'explicit user input'};
   return {field,metadata,roiMask:roi?.values??null,
     recipe:zip['recipe_json.npy']?JSON.parse(read('recipe_json').values[0]):null};
+}
+
+/** A complete results project stores each static ROI once, never once per frame. */
+export function projectArchive(records, settings = {}) {
+  const entries={},masks=new Map(),manifest={format:'live-dic-results',version:1,createdAt:new Date().toISOString(),settings,fields:[]};
+  if(!records.length)throw new Error('Save at least one computed field before creating a results project');
+  for(const record of records){
+    const field=record.field,{components}=validateField(field),shape=[field.grid[1],field.grid[0]],prefix=`fields/${manifest.fields.length}`;
+    let maskFile=null;
+    if(record.mask){
+      if(record.mask.length!==field.width*field.height)throw new Error('Project mask dimensions differ');
+      maskFile=masks.get(record.mask);
+      if(!maskFile){maskFile=`masks/${masks.size}.npy`;masks.set(record.mask,maskFile);entries[maskFile]=npy(record.mask,[field.height,field.width],'|u1');}
+    }else if(field.config.roi)throw new Error('A project field declares an ROI without its mask');
+    entries[`${prefix}/parameters.npy`]=npy(field.parameters instanceof Float64Array?field.parameters:Float32Array.from(field.parameters),[...shape,components],field.parameters instanceof Float64Array?'<f8':'<f4');
+    entries[`${prefix}/status.npy`]=npy(Float32Array.from(field.status),shape,'<f4');
+    entries[`${prefix}/iterations.npy`]=npy(Float32Array.from(field.iterations),shape,'<f4');
+    manifest.fields.push({prefix,maskFile,originalId:record.id,width:field.width,height:field.height,subsetSize:field.subsetSize,
+      subsetStride:field.subsetStride,grid:field.grid,config:field.config,metadata:record.metadata,recipe:record.recipe??null});
+  }
+  entries['manifest.json']=encoder.encode(JSON.stringify(manifest));
+  if(Object.values(entries).reduce((n,value)=>n+value.length,0)>MAX_BYTES)throw new Error('Project exceeds the 256 MiB archive limit; export individual fields instead');
+  return zipStore(entries);
+}
+
+export async function importProjectArchive(buffer) {
+  const zip=await readZip(buffer);
+  if(!zip['manifest.json'])throw new Error('This is not a live-dic results project');
+  const manifest=JSON.parse(decoder.decode(zip['manifest.json']));
+  if(manifest.format!=='live-dic-results'||manifest.version!==1||!Array.isArray(manifest.fields)||!manifest.fields.length||manifest.fields.length>512)throw new Error('Unsupported results project format/version');
+  const masks=new Map(),hashes=new Map(),records=[];
+  for(const saved of manifest.fields){
+    const read=path=>{if(!zip[path])throw new Error(`Project is missing ${path}`);return readNpy(zip[path]);};
+    const parameters=read(`${saved.prefix}/parameters.npy`),status=read(`${saved.prefix}/status.npy`),iterations=read(`${saved.prefix}/iterations.npy`);
+    const field={width:saved.width,height:saved.height,subsetSize:saved.subsetSize,subsetStride:saved.subsetStride,
+      grid:saved.grid,config:saved.config,parameters:parameters.values,status:status.values,iterations:iterations.values};
+    const {components}=validateField(field);
+    if(parameters.shape.length!==3||parameters.shape[0]!==field.grid[1]||parameters.shape[1]!==field.grid[0]||parameters.shape[2]!==components
+      ||[status,iterations].some(item=>item.shape.length!==2||item.shape[0]!==field.grid[1]||item.shape[1]!==field.grid[0]))throw new Error('Project field array shapes differ');
+    let mask=null;
+    if(saved.maskFile){
+      if(!masks.has(saved.maskFile))masks.set(saved.maskFile,read(saved.maskFile));
+      const item=masks.get(saved.maskFile);mask=item.values;
+      if(item.shape.length!==2||item.shape[0]!==field.height||item.shape[1]!==field.width||mask.some(v=>v!==0&&v!==1))throw new Error('Invalid project ROI');
+    }else if(field.config.roi)throw new Error('Project field declares an ROI without its mask');
+    await verifyMask(mask,field,hashes);
+    const recipe=saved.recipe?validateRecipe(saved.recipe):null;
+    if(recipe&&field.config.motionModel==='translation'&&recipe.strainSource==='direct')throw new Error('Translation project strain requires VSG');
+    records.push({field,mask,metadata:saved.metadata??{},recipe,originalId:saved.originalId});
+  }
+  return {records,settings:manifest.settings??{},createdAt:manifest.createdAt};
 }

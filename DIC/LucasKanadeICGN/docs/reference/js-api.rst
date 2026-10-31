@@ -263,3 +263,13 @@ parameters/status/iterations/config_json arrays; sequence frame and any absent
 image/subset dimensions require explicit confirmation. Import provenance records
 ``frameIndex``, ``frameCount``, geometry and its source. Integer values outside
 JavaScript's exact range, inconsistent shapes and missing declared ROI data fail.
+
+Results-project schema
+----------------------
+
+``.dicproject`` is ZIP/NPY plus a versioned JSON manifest
+(``format="live-dic-results"``, ``version=1``). Each field records image/subset/grid
+geometry, actual solver configuration, metadata, recipe and a shared mask path.
+No source image or live permission is embedded. Import validates shapes, finite
+parameters, documented statuses, integer iteration counts, recipes, mask hashes
+and library capacity before adding a batch. It never changes an active solver.

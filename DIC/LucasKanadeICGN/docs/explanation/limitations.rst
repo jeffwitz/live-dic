@@ -242,3 +242,11 @@ clock is inferred from folder replay. Native CLI/workbench archive layouts are s
 requires confirmation, and sequence import requires an explicit frame. Other
 legacy layouts are not guessed. A history uses saved order and matching analysis
 provenance; it does not supply an acquisition clock or material trajectory.
+
+Results projects preserve computed fields and recipes but exclude input images
+and live source permissions. Project import adds a validated batch within the
+in-tab capacity; it does not resume an acquisition automatically. Smoothing and
+VSG compose their support sizes: two 5-point operations on a 16/16 grid have a
+nominal 144 px strain span, not an 80 px span. Smaller windows can preserve more
+spatial detail; numerical operator tests are not a material-specific choice of
+strain gauge size.

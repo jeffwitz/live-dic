@@ -29,3 +29,9 @@ compressed UHD sequence import. The latter explicitly asks for missing image
 extent and selects field 2/2. Computed arrays, invalid samples and provenance
 remain separate from processing recipes. The independent strain oracle retains
 its pre-existing tolerance; no threshold was relaxed for the UI work.
+
+`project-hardware.json` adds saving four UHD fields as one results project and
+importing the validated batch, yielding eight library entries. The report stores
+archive size/hash; no original fixture is regenerated. Masks shared by a
+recording are saved once. Subsequent support-span labels distinguish smoothing
+from the larger composed smoothing-plus-VSG strain support.

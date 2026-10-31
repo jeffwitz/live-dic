@@ -19,7 +19,7 @@ export function validateRecipe(options = {}) {
 
 export function validateField(field) {
   const { width, height, grid, subsetSize, subsetStride, status, parameters, iterations, config } = field;
-  if (![width, height, subsetSize, subsetStride, ...grid ?? []].every(v => Number.isInteger(v) && v > 0)
+  if (![width, height, subsetSize, subsetStride, ...grid ?? []].every(v => Number.isSafeInteger(v) && v > 0)
       || grid?.length !== 2 || subsetSize > width || subsetSize > height
       || grid[0] !== 1 + Math.floor((width-subsetSize)/subsetStride)
       || grid[1] !== 1 + Math.floor((height-subsetSize)/subsetStride)) throw new Error('Inconsistent field image/grid geometry');
@@ -27,6 +27,7 @@ export function validateField(field) {
   if (!['translation','affine','quadratic'].includes(config?.motionModel)) throw new Error('Unknown field motion model');
   if (status?.length !== count || iterations?.length !== count || parameters?.length !== components*count) throw new Error('Field arrays do not match grid geometry');
   for (const values of [status, iterations, parameters]) if (!ArrayBuffer.isView(values) || !values.every(Number.isFinite)) throw new Error('Field arrays must contain finite numeric values');
+  if(!status.every(value=>[-3,-2,-1,0,1,2].includes(value))||!iterations.every(value=>Number.isInteger(value)&&value>=0))throw new Error('Invalid solver status or iteration count');
   return { count, components };
 }
 
@@ -103,8 +104,10 @@ export function analyzeField(field, options = {}, roiMask = null) {
     fields.vonMises[i]=2/3*Math.sqrt(Math.max(0,exx*exx-exx*eyy+eyy*eyy+3*exy*exy));
     fields.rotation[i]=Math.atan2(vx-uy,2+ux+vy); // Polar rotation of the local 2D deformation gradient.
   }
+  const smoothingSpanPx=field.subsetSize+(recipe.smoothing==='none'?0:(recipe.window-1)*stride);
+  const strainSpanPx=recipe.strainSource==='direct'?field.subsetSize:smoothingSpanPx+(recipe.window-1)*stride;
   return {field,recipe,fields,valid,strainValid,processingWallMs:performance.now()-started,
-    supportSpanPx:field.subsetSize+(recipe.window-1)*stride};
+    smoothingSpanPx,strainSpanPx,supportSpanPx:Math.max(smoothingSpanPx,strainSpanPx)};
 }
 
 export function componentValues(analysis,component) {

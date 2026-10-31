@@ -230,6 +230,23 @@ def main():
                     and geometry["width"] == 3840
                     and geometry["height"] == 2160
                 ), geometry
+            project_encoded = browser._evaluate("""(async()=>{
+              const original=URL.createObjectURL;let saved;URL.createObjectURL=b=>{if(b.type==='application/zip')saved=b;return original(b);};
+              try{await document.getElementById('save-project').onclick();const bytes=new Uint8Array(await saved.arrayBuffer()),parts=[];
+                for(let i=0;i<bytes.length;i+=32768)parts.push(String.fromCharCode(...bytes.subarray(i,i+32768)));return btoa(parts.join(''));}
+              finally{URL.createObjectURL=original;}
+            })()""")
+            project_payload = base64.b64decode(project_encoded)
+            with tempfile.TemporaryDirectory(
+                prefix="live-dic-project-", dir=visible if visible.is_dir() else None
+            ) as temp:
+                project_file = Path(temp) / "experiment.dicproject"
+                project_file.write_bytes(project_payload)
+                asyncio.run(choose_files(browser, "#project-file", [project_file]))
+                wait(
+                    browser,
+                    "liveDicWorkbench.report().count===8 && liveDicWorkbench.report().recipe!=null",
+                )
             report = dict(
                 build=json.loads((site / "build.json").read_text()),
                 software=args.software,
@@ -242,6 +259,8 @@ def main():
                 gauge=gauge,
                 operator_max_error=numeric_error,
                 archive_sha256=hashlib.sha256(payload).hexdigest(),
+                project_sha256=hashlib.sha256(project_payload).hexdigest(),
+                project_bytes=len(project_payload),
                 screenshots=screenshots,
                 final=browser._evaluate("liveDicWorkbench.report()"),
                 errors=browser._evaluate("liveDicStatus.errors"),

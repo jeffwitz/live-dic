@@ -266,3 +266,50 @@ class BrowserPostprocessTests(unittest.TestCase):
         """)
         self.assertEqual(result["processed"], 2)
         self.assertEqual(result["cancelled"], "AbortError")
+
+    def test_results_project_roundtrip_shares_masks_and_preserves_computed_fields(self):
+        import base64
+        import io
+        import zipfile
+
+        archive_module = MODULE.with_name("archive.js")
+        result = javascript(f"""
+          import {{projectArchive,importProjectArchive,readZip}} from {json.dumps(archive_module.as_uri())};
+          const mask=new Uint8Array(128*128).fill(1),records=[1,2].map((n,i)=>{{const field=fixture(128,128);field.parameters[0]=n+.1234567890123;return {{id:n,field,mask,metadata:{{analysisEpoch:'one experiment',name:'µε'}},recipe:p.DEFAULT_RECIPE}};}});
+          const bytes=projectArchive(records,{{selectedId:2}}),project=await importProjectArchive(bytes),zip=await readZip(bytes);
+          console.log(JSON.stringify({{base64:Buffer.from(bytes).toString('base64'),maskEntries:Object.keys(zip).filter(k=>k.startsWith('masks/')),shared:project.records[0].mask===project.records[1].mask,values:project.records.map(r=>r.field.parameters[0]),selected:project.settings.selectedId}}));
+        """)
+        self.assertTrue(result["shared"])
+        self.assertEqual(len(result["maskEntries"]), 1)
+        self.assertEqual(result["selected"], 2)
+        np.testing.assert_allclose(
+            result["values"], [1.1234567890123, 2.1234567890123], atol=0, rtol=0
+        )
+        with zipfile.ZipFile(io.BytesIO(base64.b64decode(result["base64"]))) as saved:
+            manifest = json.loads(saved.read("manifest.json"))
+            self.assertEqual(manifest["format"], "live-dic-results")
+            self.assertEqual(len(manifest["fields"]), 2)
+            values = np.load(io.BytesIO(saved.read("fields/0/parameters.npy")), allow_pickle=False)
+            self.assertEqual(values.shape, (8, 8, 6))
+            self.assertEqual(values[0, 0, 0], 1.1234567890123)
+
+    def test_numpy_roi_hash_mismatch_is_rejected(self):
+        archive_module = MODULE.with_name("archive.js")
+        result = javascript(f"""
+          import {{fieldArchive,importFieldArchive}} from {json.dumps(archive_module.as_uri())};
+          const f=fixture(128,128);f.config.roi={{maskSha256:'0'.repeat(64)}};const mask=new Uint8Array(128*128).fill(1);
+          let error;try{{await importFieldArchive(fieldArchive(f,{{}},null,mask));}}catch(e){{error=e.message;}}
+          console.log(JSON.stringify(error));
+        """)
+        self.assertIn("hash does not match", result)
+
+    def test_smoothing_then_vsg_reports_its_composed_spatial_support(self):
+        result = javascript("""
+          const f=fixture(512,512);f.parameters[(16*32+16)*6]=1;
+          const a=p.analyzeField(f,{smoothing:'gaussian',strainSource:'vsg',window:5});
+          console.log(JSON.stringify({uSpan:a.smoothingSpanPx,strainSpan:a.strainSpanPx,inside:a.fields.exx[16*32+19],outside:a.fields.exx[16*32+21]}));
+        """)
+        self.assertEqual(result["uSpan"], 80)
+        self.assertEqual(result["strainSpan"], 144)
+        self.assertGreater(abs(result["inside"]), 1e-8)
+        self.assertEqual(result["outside"], 0)

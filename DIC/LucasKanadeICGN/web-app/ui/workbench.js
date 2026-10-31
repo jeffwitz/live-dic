@@ -1,5 +1,5 @@
 import { DEFAULT_RECIPE, analyzeField, componentValues, statistics, nearestIndex, extensometer, validateField } from './postprocess.js';
-import { fieldArchive, importFieldArchive } from './archive.js';
+import { fieldArchive, importFieldArchive, projectArchive, importProjectArchive } from './archive.js';
 import { extractHistory, sameAnalysis } from './history.js';
 
 const $ = id => document.getElementById(id);
@@ -39,7 +39,7 @@ function setRecipe(recipe) {
 }
 
 /** A bounded, opt-in results library; the default live path never enters this module's analysis loop. */
-export function installWorkbench({ captureCurrent, pause, error, recordChange, liveChanged, openResults, geometryDefaults = () => ({}) }) {
+export function installWorkbench({ captureCurrent, pause, error, recordChange, liveChanged, openResults, geometryDefaults = () => ({}), beforeProjectExport = async () => pause() }) {
   const entries = [], canvas = $('review-field'), overlay = $('inspection'), chart = $('profile-chart');
   document.querySelector('.viewer').append($('results-workbench'));
   let nextId = 1, selected = null, analysis = null, currentMask = null, reviewing = false;
@@ -74,6 +74,14 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     }
     return bytes;
   }
+  function normalizeMetadata(metadata) {
+    return { ...metadata, samples: metadata.samples?.slice(-1), sampleScope: 'this field',
+      roi: metadata.roi ? { ...metadata.roi, data: undefined, encoding: 'roi_mask.npy' } : null };
+  }
+  function rememberView() {
+    const entry=activeEntry();if(!reviewing||!entry||!analysis)return;
+    entry.metadata={...entry.metadata,workbench:{view:viewSettings()}};entry.metadataBytes=encoderBytes(entry.metadata);
+  }
   function updateLibrary() {
     const select = $('saved-fields'); select.replaceChildren();
     if (!entries.length) select.add(new Option('No saved fields', ''));
@@ -81,14 +89,14 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     select.value = selected ?? entries.at(-1)?.id ?? '';
     $('library-summary').textContent = `${entries.length} field(s) · ${(memoryBytes()/1048576).toFixed(1)} / 128 MiB in this tab. Save NPZ before closing; images are not recorded.`;
     $('clear-fields').disabled = !entries.length; $('delete-field').disabled = !entries.length;
+    $('save-project').disabled=!entries.length;
     const index=entries.findIndex(entry=>entry.id===selected);
     $('previous-result').disabled=index<=0;$('next-result').disabled=index<0||index>=entries.length-1;
   }
   function add(field, metadata = {}, { select = false, mask = currentMask, recipe = null } = {}) {
     validateField(field);
     // A single-field archive carries its own timing sample. The live timing log remains in direct export.
-    metadata = { ...metadata, samples: metadata.samples?.slice(-1), sampleScope: 'this field',
-      roi: metadata.roi ? { ...metadata.roi, data: undefined, encoding: 'roi_mask.npy' } : null };
+    metadata = normalizeMetadata(metadata);
     const entry = { id: nextId++, field, metadata, mask, recipe, metadataBytes: encoderBytes(metadata) };
     if (mask && mask.length !== field.width*field.height) throw new Error('Saved field mask dimensions differ');
     if (memoryBytes([entry]) > LIMIT_BYTES) {
@@ -100,6 +108,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     return entry;
   }
   function returnLive(restore = false) {
+    rememberView();
     historyAbort?.abort();history=null;
     reviewing = false; requestId++; pendingAnalysis = false; clearTimeout(debounce);
     analysis=null;workerFieldId=null;worker?.postMessage({clear:true});
@@ -111,6 +120,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   }
   function selectEntry(id) {
     const entry = entries.find(value => value.id === Number(id)); if (!entry) return;
+    rememberView();
     historyAbort?.abort();history=null;$('spatial-view').hidden=true;$('history-state').textContent='';
     pause(); selected = entry.id; analysis = null; reviewing = true; computedView = false; points = []; extraction = [];
     $('saved-fields').value = entry.id; $('results-workbench').hidden = false;
@@ -134,7 +144,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
         $('analysis-state').textContent = `Analysis ${result.processingWallMs.toFixed(1)} ms, outside the live solver. Computed arrays preserved.`;
         $('processing-summary').textContent = result.recipe.smoothing === 'none' && result.recipe.strainSource === 'direct'
           ? 'Computed displacement and local model gradients. Solver smoothing, if enabled during correlation, is already part of these values.'
-          : `${result.recipe.smoothing} displacement smoothing · ${result.recipe.strainSource === 'vsg' ? 'VSG strain' : 'direct gradients'} · ${result.recipe.window} × ${result.recipe.window} grid points · nominal support span ${result.supportSpanPx} px. No filling across gaps.`;
+          : `${result.recipe.smoothing} displacement smoothing · ${result.recipe.strainSource === 'vsg' ? 'VSG strain' : 'direct gradients'} · ${result.recipe.window} × ${result.recipe.window} grid points · nominal displacement span ${result.smoothingSpanPx} px / strain span ${result.strainSpanPx} px. No filling across gaps.`;
         render();
       }
       for (const id of ['save-npz','save-processed-csv','save-figure']) $(id).disabled = !analysis;
@@ -307,6 +317,29 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   $('delete-field').onclick=()=>{const index=entries.findIndex(e=>e.id===Number($('saved-fields').value));if(index<0)return;const active=entries[index].id===selected;entries.splice(index,1);if(active){returnLive(true);selected=null;}updateLibrary();};
   $('clear-fields').onclick=()=>{if(!entries.length||confirm('Delete saved fields from this tab? Export NPZ first if needed.')){returnLive(true);entries.length=0;selected=null;updateLibrary();}};
   $('import-result').onclick=()=>$('result-file').click();
+  $('save-project').onclick=async()=>{
+    try{
+      await beforeProjectExport();rememberView();
+      const snapshot=[...entries];
+      const bytes=projectArchive(snapshot,{selectedId:selected});
+      download('live-dic-results.dicproject',bytes,'application/zip');
+      $('project-state').textContent=`Saved ${snapshot.length} computed fields, shared ROI masks and applied recipes. Input images are separate.`;
+    }catch(e){error(e.message);}
+  };
+  $('open-project').onclick=()=>$('project-file').click();
+  $('project-file').onchange=async()=>{
+    const file=$('project-file').files[0];$('project-file').value='';if(!file)return;
+    try{
+      if(file.size>256*1048576)throw new Error('Project exceeds the 256 MiB import limit');
+      const project=await importProjectArchive(await file.arrayBuffer());
+      const drafts=project.records.map(record=>({...record,metadataBytes:encoderBytes(normalizeMetadata(record.metadata))}));
+      if(memoryBytes(drafts)>LIMIT_BYTES)throw new Error('Project plus saved results exceeds 128 MiB. Export/clear existing results first. Nothing was imported.');
+      const added=project.records.map(record=>add(record.field,record.metadata,{mask:record.mask,recipe:record.recipe}));
+      const previous=project.records.findIndex(record=>record.originalId===project.settings.selectedId);
+      selectEntry(added[Math.max(0,previous)].id);
+      $('project-state').textContent=`Opened ${added.length} fields from ${file.name}. Current acquisition settings and source were not replaced.`;
+    }catch(e){error(e.message);}
+  };
   function addImported(imported, file) {
     const selection=imported.metadata.importGeometry;
     add(imported.field,{...imported.metadata,name:imported.metadata.name??`${file.name}${selection?.frameCount>1?` · field ${selection.frameIndex+1}/${selection.frameCount}`:''}`},
@@ -355,7 +388,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   for(const id of ['review-scale','review-min','review-max','review-palette'])$(id).onchange=()=>{$('manual-limits').hidden=$('review-scale').value!=='manual';render();};
   $('save-npz').onclick=()=>{if(!analysis)return;const entry=activeEntry();download(`live-dic-${entry.id}.npz`,fieldArchive(entry.field,{...entry.metadata,workbench:{view:viewSettings()},analysis:{recipe:analysis.recipe,processingWallMs:analysis.processingWallMs}},analysis,entry.mask),'application/octet-stream');};
   $('save-processed-csv').onclick=()=>{if(!analysis)return;const {values,valid,unit}=componentValues(analysis,$('review-component').value),lines=[`x_px,y_px,${$('review-component').value}_${unit},valid,solver_status`];for(let i=0;i<values.length;i++)lines.push([...pointPosition(i),valid[i]?values[i]:'',valid[i],analysis.field.status[i]].join(','));download('live-dic-displayed-field.csv',lines.join('\n'),'text/csv');};
-  $('save-profile').onclick=()=>{if(!extraction.length)return;const columns=Object.keys(extraction[0]);download('live-dic-extraction.csv',[columns.join(','),...extraction.map(row=>columns.map(k=>row[k]??'').join(','))].join('\n'),'text/csv');download('live-dic-extraction.json',JSON.stringify({recipe:analysis.recipe,view:viewSettings(),valueUnit:componentValues(analysis,$('review-component').value).unit,coordinateUnit:'px',distanceUnit:analysis.recipe.unit,comparison:activeEntry().metadata.comparison},null,2),'application/json');};
+  $('save-profile').onclick=()=>{if(!extraction.length)return;const columns=Object.keys(extraction[0]);download('live-dic-extraction.csv',[columns.join(','),...extraction.map(row=>columns.map(k=>row[k]??'').join(','))].join('\n'),'text/csv');download('live-dic-extraction.json',JSON.stringify({recipe:analysis.recipe,view:viewSettings(),valueUnit:(history?.tool??tool)==='gauge'?'strain':componentValues(analysis,$('review-component').value).unit,coordinateUnit:'px',distanceUnit:analysis.recipe.unit,comparison:activeEntry().metadata.comparison},null,2),'application/json');};
   $('save-figure').onclick=()=>{if(!analysis)return;const figure=document.createElement('canvas');figure.width=Math.max(1600,canvas.width);const imageHeight=Math.round(canvas.height*figure.width/canvas.width);figure.height=imageHeight+160;const ctx=figure.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.drawImage(canvas,0,0,figure.width,imageHeight);ctx.drawImage(overlay,0,0,figure.width,imageHeight);ctx.fillStyle='#fff';ctx.fillRect(0,imageHeight,figure.width,160);ctx.fillStyle='#163540';ctx.font='32px system-ui';ctx.fillText(`${$('review-component').selectedOptions[0].textContent} · ${$('low').textContent} … ${$('high').textContent}`,40,imageHeight+50);ctx.font='22px system-ui';ctx.fillText(`${analysis.recipe.strainMeasure} strain · ${analysis.recipe.strainSource} · ${analysis.recipe.smoothing} smoothing · solver ${analysis.field.config.outlierPolicy}`,40,imageHeight+90);ctx.fillText('Reference image coordinates · live-dic · foundational work by Pierre Margerit',40,imageHeight+130);figure.toBlob(blob=>blob&&download('live-dic-field.png',blob,'image/png'),'image/png');};
   updateLibrary();
   return { add, returnLive, setMask(mask){currentMask=mask;}, get reviewing(){return reviewing;}, get recording(){return recording();},

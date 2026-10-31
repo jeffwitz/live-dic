@@ -313,6 +313,19 @@ measurements empty and retains solver statuses. **Save figure PNG** includes
 quantity, scale, processing convention and attribution. Images are not included
 in saved fields; retain your original input sequence separately.
 
+Save a results project
+-----------------------
+
+**Save results project** pauses acquisition and packages all saved computed
+fields, their shared ROI masks, provenance and applied processing recipes in one
+``.dicproject`` ZIP. Keep original images separately. Importing a project adds
+its fields to the current library after validating the entire batch and checking
+capacity; it does not silently replace the active source or solver settings.
+Use **Clear results** first if you want a separate library. An oversized or
+invalid project leaves the library unchanged. The current stored-data limit is
+128 MiB; archive input is limited to 256 MiB uncompressed. Single-field NPZ is
+still the simplest direct NumPy interchange format.
+
 Extract a measurement through saved fields
 -------------------------------------------
 

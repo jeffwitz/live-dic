@@ -35,6 +35,7 @@ const workspace = installWorkspace({ shortcuts: {
 } });
 const workbench = installWorkbench({
   captureCurrent: captureCurrentField,
+  beforeProjectExport: async () => { pauseSource(); await drain(); $('pause').textContent='Play'; },
   geometryDefaults: () => referenceInfo ? { width: referenceInfo.width, height: referenceInfo.height, subsetSize: referenceInfo.subsetSize, subsetStride: referenceInfo.subsetStride } : {},
   pause: () => { pauseSource(); $('pause').textContent = 'Play'; },
   error: text => message(text, true),
