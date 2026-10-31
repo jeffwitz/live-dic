@@ -1,0 +1,108 @@
+{
+  "source": "display-final-70s-offline.json",
+  "samples": 2092,
+  "processing_span_seconds": 70.50679999998212,
+  "completed_fps": 29.656713962348743,
+  "source_fps": 30,
+  "worker_age_p50_p95_p99_max_ms": [
+    9.600000023841858,
+    12.699999988079071,
+    14.099999994039536,
+    27.099999994039536
+  ],
+  "gpu_field_observable_p50_p95_p99_max_ms": [
+    9.200000017881393,
+    12.199999988079071,
+    13.69999999076128,
+    26.599999994039536
+  ],
+  "whole_accepted_truth_rmse_p50_p95_p99_max_px": [
+    0.030260901314143433,
+    0.038569429636089995,
+    0.6841764885442144,
+    0.6874597660443915
+  ],
+  "minimum_acceptance": 0.9,
+  "offline_reload": true,
+  "application_errors": [],
+  "blocks": [
+    {
+      "start_frame": 0,
+      "stop_frame_exclusive": 300,
+      "start_seconds": 0.0,
+      "end_seconds": 10.065799999982119,
+      "age_p50_p95_p99_ms": [
+        8.800000011920929,
+        11.504999999701978,
+        12.599999994039536
+      ]
+    },
+    {
+      "start_frame": 300,
+      "stop_frame_exclusive": 600,
+      "start_seconds": 10.08269999998808,
+      "end_seconds": 20.21609999999404,
+      "age_p50_p95_p99_ms": [
+        9.349999994039536,
+        11.704999987781049,
+        12.800999982357025
+      ]
+    },
+    {
+      "start_frame": 600,
+      "stop_frame_exclusive": 900,
+      "start_seconds": 20.265399999976157,
+      "end_seconds": 30.29869999998808,
+      "age_p50_p95_p99_ms": [
+        9.400000005960464,
+        12.5,
+        13.10099999397993
+      ]
+    },
+    {
+      "start_frame": 900,
+      "stop_frame_exclusive": 1200,
+      "start_seconds": 30.3315,
+      "end_seconds": 40.44789999997616,
+      "age_p50_p95_p99_ms": [
+        9.800000011920929,
+        12.900000005960464,
+        14.10099999397993
+      ]
+    },
+    {
+      "start_frame": 1200,
+      "stop_frame_exclusive": 1500,
+      "start_seconds": 40.49739999997616,
+      "end_seconds": 50.5475,
+      "age_p50_p95_p99_ms": [
+        10.0,
+        13.404999977350236,
+        14.599999994039536
+      ]
+    },
+    {
+      "start_frame": 1500,
+      "stop_frame_exclusive": 1800,
+      "start_seconds": 50.58129999998212,
+      "end_seconds": 60.64709999999404,
+      "age_p50_p95_p99_ms": [
+        10.099999994039536,
+        13.105000023543836,
+        14.101000023782252
+      ]
+    },
+    {
+      "start_frame": 1800,
+      "stop_frame_exclusive": 2092,
+      "start_seconds": 60.68059999999404,
+      "end_seconds": 70.49639999997616,
+      "age_p50_p95_p99_ms": [
+        10.200000017881393,
+        12.899999989569187,
+        14.008999999463557
+      ]
+    }
+  ],
+  "interpretation": "1080p compressed demo at 30 Hz, not 60 Hz camera qualification. Truth includes wrong basins near unobservable image boundaries. Age excludes main-to-worker delivery and display presentation."
+}

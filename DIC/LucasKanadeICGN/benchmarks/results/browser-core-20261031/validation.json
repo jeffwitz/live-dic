@@ -1,0 +1,18 @@
+{
+  "commit": "a545b8a0dc896bc2350a23d6055e19fa3d1d79a1",
+  "git_dirty": false,
+  "wheel_file": "lucas_kanade_icgn_webgl-0.1.0-py3-none-any.whl",
+  "wheel_sha256": "a87c5d03e1758cc1aeabecab54b9790137a99967ce347e7f713044c560b0d130",
+  "installed_suite": {
+    "tests": 202,
+    "passed": 202,
+    "skipped": 0,
+    "seconds": 95.54,
+    "command": "cd /tmp; ICGN_RUN_GPU_TESTS=1 ICGN_RUN_BROWSER_TESTS=1 /tmp/live-dic-pwa-installed/bin/python -m unittest discover -s /home/jeff/Code/tests_gpuio/DIC/LucasKanadeICGN/python/tests -v"
+  },
+  "documentation": "Sphinx -W --keep-going html: passed",
+  "javascript_modules_checked": 19,
+  "ruff": "All checks passed; 56 files formatted",
+  "platform": "Linux-7.0.0-38-generic-x86_64-with-glibc2.39",
+  "power_profile": "performance"
+}

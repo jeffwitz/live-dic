@@ -1,0 +1,137 @@
+{
+  "supported": true,
+  "adapter": {
+    "vendor": "intel",
+    "architecture": "xe-2lpg",
+    "device": "",
+    "description": ""
+  },
+  "limits": {
+    "maxStorageBuffersPerShaderStage": 16,
+    "maxBindGroups": 4,
+    "maxStorageBufferBindingSize": 4294967292,
+    "maxBufferSize": 4294967292,
+    "maxComputeWorkgroupStorageSize": 65536,
+    "maxComputeInvocationsPerWorkgroup": 1024,
+    "maxTextureDimension2D": 16384
+  },
+  "features": [
+    "depth32float-stencil8",
+    "chromium-experimental-subgroup-matrix",
+    "rg11b10ufloat-renderable",
+    "texture-formats-tier1",
+    "bgra8unorm-storage",
+    "chromium-experimental-multi-draw-indirect",
+    "texture-compression-bc",
+    "dual-source-blending",
+    "core-features-and-limits",
+    "chromium-experimental-sampling-resource-table",
+    "chromium-experimental-timestamp-query-inside-passes",
+    "float32-filterable",
+    "indirect-first-instance",
+    "float32-blendable",
+    "atomic-vec2u-min-max",
+    "subgroup-size-control",
+    "texture-compression-unaligned",
+    "texture-compression-etc2",
+    "depth-clip-control",
+    "texture-compression-bc-sliced-3d",
+    "shader-f16",
+    "clip-distances",
+    "timestamp-query",
+    "texture-formats-tier2",
+    "primitive-index",
+    "texture-component-swizzle",
+    "subgroups"
+  ],
+  "resolutions": [
+    [
+      1280,
+      720
+    ],
+    [
+      1920,
+      1080
+    ],
+    [
+      3840,
+      2160
+    ]
+  ],
+  "recommendedProfile": "qualified-latency",
+  "reasons": [
+    "Zero-motion graph p95 6.8 ms at 1920\u00d71080",
+    "Short microbenchmark only; camera motion, decoding, display and thermal throttling require a real run"
+  ],
+  "profiles": {
+    "portable": true,
+    "qualified-latency": true,
+    "minimal": false
+  },
+  "measurements": [
+    {
+      "width": 1280,
+      "height": 720,
+      "times": [
+        3.4000000059604645,
+        3.5999999940395355,
+        3.5999999940395355,
+        3.5,
+        3.5999999940395355
+      ],
+      "medianMs": 3.5999999940395355,
+      "p95Ms": 3.5999999940395355,
+      "acceptance": 0.9316666666666666,
+      "preparationWallMs": 576.5
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "times": [
+        5.9000000059604645,
+        5.699999988079071,
+        4.9000000059604645,
+        5.4000000059604645,
+        6.799999982118607
+      ],
+      "medianMs": 5.699999988079071,
+      "p95Ms": 6.799999982118607,
+      "acceptance": 0.9686567164179104,
+      "preparationWallMs": 569.9000000059605
+    },
+    {
+      "width": 3840,
+      "height": 2160,
+      "times": [
+        13,
+        17.5,
+        12.900000005960464,
+        14.199999988079071,
+        16.30000001192093
+      ],
+      "medianMs": 14.199999988079071,
+      "p95Ms": 17.5,
+      "acceptance": 0.9769753086419753,
+      "preparationWallMs": 1441.7000000178814
+    }
+  ],
+  "recommendedResolution": [
+    1920,
+    1080
+  ],
+  "browser_version": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+  "commit": "528c66961fe06e35e5923b22aded2d4096057121",
+  "dirty": true,
+  "source_sha256": {
+    "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/temporal.js": "64eff24f4e06b66512cf55a02bec2a2a40068bc863c461cde990cb9913afd781",
+    "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/reference.js": "9e7ee740e6f3b589df844fbcef9fe56ce56a51098dc8192accfd5168282a7a89",
+    "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/roi.js": "34498b19d39989cce51a99520e66c1b43c0578e234ce5e25ade2396066eed510",
+    "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/result.js": "793485398807e1af156599de961d844c2c275775ff92a3733d9f5de9849a41ad",
+    "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/input.js": "3975ddceaa68d153602c61c666fa6be19cc3dfc148eaff44838c423ca32aa13a",
+    "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/ring.js": "52e28bbd0acd385d222f604becb658f9080da93891335b24fad402fca845ca2d",
+    "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/shaders.js": "deb98c3c573f3c22d97f63707113453cec59c4f4b323a82f8c46c107dc531b7f",
+    "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/device.js": "249ff3690fe6b04e03d3fd3b85b4f34df4ef5e69863a92556ae937b8f6827e8f",
+    "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/pyramid.js": "4dc0a8875d92a46d71aa96b845e98aef3e4e477f68a3e32beaa76d49d5dba735",
+    "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/engine.js": "f007ab269a6f876a916a61f0febf9cb0b8b878c4a6e15aadc2990ad4e5a11aca"
+  }
+}

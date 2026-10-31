@@ -1,0 +1,13 @@
+Processing ./DIC/LucasKanadeICGN/python
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: lucas-kanade-icgn-webgl
+  Building wheel for lucas-kanade-icgn-webgl (pyproject.toml): started
+  Building wheel for lucas-kanade-icgn-webgl (pyproject.toml): finished with status 'done'
+  Created wheel for lucas-kanade-icgn-webgl: filename=lucas_kanade_icgn_webgl-0.1.0-py3-none-any.whl size=980103 sha256=a87c5d03e1758cc1aeabecab54b9790137a99967ce347e7f713044c560b0d130
+  Stored in directory: /tmp/pip-ephem-wheel-cache-94oeabm_/wheels/9b/d9/e4/18359b4c27f4d8a987635a4fd423da4180ed934e23eeed6f80
+Successfully built lucas-kanade-icgn-webgl

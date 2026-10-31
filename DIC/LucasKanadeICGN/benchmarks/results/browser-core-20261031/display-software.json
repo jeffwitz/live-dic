@@ -1,0 +1,525 @@
+{
+  "url": "http://127.0.0.1:45001/_site/?smoke=1&rate=0.0625",
+  "elapsed_seconds": 30.456573736999417,
+  "snapshot": {
+    "ready": true,
+    "completed": 10,
+    "errors": [],
+    "results": [
+      {
+        "type": "result",
+        "id": 3,
+        "completed": 1,
+        "received": 1,
+        "width": 1920,
+        "height": 1080,
+        "fps": 0,
+        "ageMedian": 2054.5,
+        "ageP95": 2054.5,
+        "accepted": 7788,
+        "selected": 8040,
+        "meanIterations": 1.960708782742681,
+        "truthRmse": 0.015871216139135426,
+        "scale": 0.01390058547258377,
+        "counters": {
+          "temporallySeededCoarseSubsets": 0,
+          "temporalAcceptedUpdates": 7788,
+          "velocityPredictedSubsets": 0
+        },
+        "timing": {
+          "gpuMs": null,
+          "wallMs": 2054,
+          "totalWallMs": 2054.300000011921
+        },
+        "frameIndex": 1
+      },
+      {
+        "type": "result",
+        "id": 4,
+        "completed": 2,
+        "received": 2,
+        "width": 1920,
+        "height": 1080,
+        "fps": 0.5061753391390044,
+        "ageMedian": 2054.5,
+        "ageP95": 2054.5,
+        "accepted": 7788,
+        "selected": 8040,
+        "meanIterations": 1.931176168464304,
+        "truthRmse": 0.03257383860778238,
+        "scale": 0.1615181267261505,
+        "counters": {
+          "temporallySeededCoarseSubsets": 1980,
+          "temporalAcceptedUpdates": 7788,
+          "velocityPredictedSubsets": 0
+        },
+        "timing": {
+          "gpuMs": null,
+          "wallMs": 1897.5999999940395,
+          "totalWallMs": 1897.9000000059605
+        },
+        "frameIndex": 6
+      },
+      {
+        "type": "result",
+        "id": 5,
+        "completed": 3,
+        "received": 3,
+        "width": 1920,
+        "height": 1080,
+        "fps": 0.4900519455076551,
+        "ageMedian": 1898,
+        "ageP95": 2054.5,
+        "accepted": 7788,
+        "selected": 8040,
+        "meanIterations": 2.00924499229584,
+        "truthRmse": 0.02318883339261685,
+        "scale": 0.2827056646347046,
+        "counters": {
+          "temporallySeededCoarseSubsets": 1980,
+          "temporalAcceptedUpdates": 7788,
+          "velocityPredictedSubsets": 7788
+        },
+        "timing": {
+          "gpuMs": null,
+          "wallMs": 1804.5,
+          "totalWallMs": 1804.9000000059605
+        },
+        "frameIndex": 10
+      },
+      {
+        "type": "result",
+        "id": 6,
+        "completed": 4,
+        "received": 4,
+        "width": 1920,
+        "height": 1080,
+        "fps": 0.46360686138154844,
+        "ageMedian": 1898,
+        "ageP95": 2054.5,
+        "accepted": 7788,
+        "selected": 8040,
+        "meanIterations": 2.0070621468926553,
+        "truthRmse": 0.0334048519876202,
+        "scale": 0.418237566947937,
+        "counters": {
+          "temporallySeededCoarseSubsets": 1980,
+          "temporalAcceptedUpdates": 7788,
+          "velocityPredictedSubsets": 7788
+        },
+        "timing": {
+          "gpuMs": null,
+          "wallMs": 1828.5,
+          "totalWallMs": 1828.7999999821186
+        },
+        "frameIndex": 14
+      },
+      {
+        "type": "result",
+        "id": 7,
+        "completed": 5,
+        "received": 5,
+        "width": 1920,
+        "height": 1080,
+        "fps": 0.4453549478922889,
+        "ageMedian": 1898,
+        "ageP95": 2054.5,
+        "accepted": 7788,
+        "selected": 8040,
+        "meanIterations": 2.059065228556754,
+        "truthRmse": 0.03585303234450563,
+        "scale": 0.5303744673728943,
+        "counters": {
+          "temporallySeededCoarseSubsets": 1980,
+          "temporalAcceptedUpdates": 7788,
+          "velocityPredictedSubsets": 7788
+        },
+        "timing": {
+          "gpuMs": null,
+          "wallMs": 1941.300000011921,
+          "totalWallMs": 1941.800000011921
+        },
+        "frameIndex": 18
+      },
+      {
+        "type": "result",
+        "id": 8,
+        "completed": 6,
+        "received": 6,
+        "width": 1920,
+        "height": 1080,
+        "fps": 0.4518752824220515,
+        "ageMedian": 1941.9000000059605,
+        "ageP95": 2054.5,
+        "accepted": 7788,
+        "selected": 8040,
+        "meanIterations": 2.042372881355932,
+        "truthRmse": 0.03908376183655922,
+        "scale": 0.645763635635376,
+        "counters": {
+          "temporallySeededCoarseSubsets": 1980,
+          "temporalAcceptedUpdates": 7788,
+          "velocityPredictedSubsets": 7788
+        },
+        "timing": {
+          "gpuMs": null,
+          "wallMs": 2020.300000011921,
+          "totalWallMs": 2020.800000011921
+        },
+        "frameIndex": 22
+      },
+      {
+        "type": "result",
+        "id": 9,
+        "completed": 7,
+        "received": 7,
+        "width": 1920,
+        "height": 1080,
+        "fps": 0.3617421501945608,
+        "ageMedian": 1941.9000000059605,
+        "ageP95": 2652.0999999940395,
+        "accepted": 7788,
+        "selected": 8040,
+        "meanIterations": 2.040960451977401,
+        "truthRmse": 0.03598080988603908,
+        "scale": 0.704541027545929,
+        "counters": {
+          "temporallySeededCoarseSubsets": 1980,
+          "temporalAcceptedUpdates": 7788,
+          "velocityPredictedSubsets": 7788
+        },
+        "timing": {
+          "gpuMs": null,
+          "wallMs": 2651.5999999940395,
+          "totalWallMs": 2652
+        },
+        "frameIndex": 26
+      },
+      {
+        "type": "result",
+        "id": 10,
+        "completed": 8,
+        "received": 8,
+        "width": 1920,
+        "height": 1080,
+        "fps": 0.37794323292556303,
+        "ageMedian": 2020.9000000059605,
+        "ageP95": 2652.0999999940395,
+        "accepted": 7788,
+        "selected": 8040,
+        "meanIterations": 2.032357473035439,
+        "truthRmse": 0.029580724035428836,
+        "scale": 0.8186556696891785,
+        "counters": {
+          "temporallySeededCoarseSubsets": 1980,
+          "temporalAcceptedUpdates": 7788,
+          "velocityPredictedSubsets": 7788
+        },
+        "timing": {
+          "gpuMs": null,
+          "wallMs": 2589.4000000059605,
+          "totalWallMs": 2589.800000011921
+        },
+        "frameIndex": 31
+      },
+      {
+        "type": "result",
+        "id": 11,
+        "completed": 9,
+        "received": 9,
+        "width": 1920,
+        "height": 1080,
+        "fps": 0.369180787833426,
+        "ageMedian": 2020.9000000059605,
+        "ageP95": 2660.800000011921,
+        "accepted": 7788,
+        "selected": 8040,
+        "meanIterations": 2.032999486389317,
+        "truthRmse": 0.03103051535251268,
+        "scale": 0.9858375191688538,
+        "counters": {
+          "temporallySeededCoarseSubsets": 1980,
+          "temporalAcceptedUpdates": 7788,
+          "velocityPredictedSubsets": 7788
+        },
+        "timing": {
+          "gpuMs": null,
+          "wallMs": 2660.2000000178814,
+          "totalWallMs": 2660.7000000178814
+        },
+        "frameIndex": 36
+      },
+      {
+        "type": "result",
+        "id": 12,
+        "completed": 10,
+        "received": 10,
+        "width": 1920,
+        "height": 1080,
+        "fps": 0,
+        "ageMedian": 2054.5,
+        "ageP95": 2660.800000011921,
+        "accepted": 7788,
+        "selected": 8040,
+        "meanIterations": 2.158577298407807,
+        "truthRmse": 0.026502916790183233,
+        "scale": 2.255470037460327,
+        "counters": {
+          "temporallySeededCoarseSubsets": 1980,
+          "temporalAcceptedUpdates": 7788,
+          "velocityPredictedSubsets": 7788
+        },
+        "timing": {
+          "gpuMs": null,
+          "wallMs": 2509.300000011921,
+          "totalWallMs": 2509.5
+        },
+        "frameIndex": 42
+      }
+    ]
+  },
+  "worker_report": {
+    "type": "report",
+    "id": 13,
+    "samples": [
+      {
+        "frame": 1,
+        "workerAvailableMs": 6395,
+        "captureTimestampUs": 31625,
+        "completedMs": 8449.699999988079,
+        "ageMs": 2054.5,
+        "gpuFieldObservableMs": 2054,
+        "truthRmse": 0.015871216139135426,
+        "acceptance": 0.9686567164179104,
+        "accepted": 7788,
+        "meanIterations": 1.960708782742681
+      },
+      {
+        "frame": 6,
+        "workerAvailableMs": 8527.199999988079,
+        "captureTimestampUs": 164937,
+        "completedMs": 10425.299999982119,
+        "ageMs": 1898,
+        "gpuFieldObservableMs": 1897.5999999940395,
+        "truthRmse": 0.03257383860778238,
+        "acceptance": 0.9686567164179104,
+        "accepted": 7788,
+        "meanIterations": 1.931176168464304
+      },
+      {
+        "frame": 10,
+        "workerAvailableMs": 10660.799999982119,
+        "captureTimestampUs": 298274,
+        "completedMs": 12465.899999976158,
+        "ageMs": 1804.9000000059605,
+        "gpuFieldObservableMs": 1804.5,
+        "truthRmse": 0.02318883339261685,
+        "acceptance": 0.9686567164179104,
+        "accepted": 7788,
+        "meanIterations": 2.00924499229584
+      },
+      {
+        "frame": 14,
+        "workerAvailableMs": 12793.899999976158,
+        "captureTimestampUs": 431585,
+        "completedMs": 14623,
+        "ageMs": 1828.9000000059605,
+        "gpuFieldObservableMs": 1828.5,
+        "truthRmse": 0.0334048519876202,
+        "acceptance": 0.9686567164179104,
+        "accepted": 7788,
+        "meanIterations": 2.0070621468926553
+      },
+      {
+        "frame": 18,
+        "workerAvailableMs": 14926.199999988079,
+        "captureTimestampUs": 564871,
+        "completedMs": 16868.29999998212,
+        "ageMs": 1941.9000000059605,
+        "gpuFieldObservableMs": 1941.300000011921,
+        "truthRmse": 0.03585303234450563,
+        "acceptance": 0.9686567164179104,
+        "accepted": 7788,
+        "meanIterations": 2.059065228556754
+      },
+      {
+        "frame": 22,
+        "workerAvailableMs": 17060.19999998808,
+        "captureTimestampUs": 698246,
+        "completedMs": 19081.29999998212,
+        "ageMs": 2020.9000000059605,
+        "gpuFieldObservableMs": 2020.300000011921,
+        "truthRmse": 0.03908376183655922,
+        "acceptance": 0.9686567164179104,
+        "accepted": 7788,
+        "meanIterations": 2.042372881355932
+      },
+      {
+        "frame": 26,
+        "workerAvailableMs": 19193.5,
+        "captureTimestampUs": 831574,
+        "completedMs": 21845.69999998808,
+        "ageMs": 2652.0999999940395,
+        "gpuFieldObservableMs": 2651.5999999940395,
+        "truthRmse": 0.03598080988603908,
+        "acceptance": 0.9686567164179104,
+        "accepted": 7788,
+        "meanIterations": 2.040960451977401
+      },
+      {
+        "frame": 31,
+        "workerAvailableMs": 21901.69999998808,
+        "captureTimestampUs": 1000843,
+        "completedMs": 24491.59999999404,
+        "ageMs": 2589.800000011921,
+        "gpuFieldObservableMs": 2589.4000000059605,
+        "truthRmse": 0.029580724035428836,
+        "acceptance": 0.9686567164179104,
+        "accepted": 7788,
+        "meanIterations": 2.032357473035439
+      },
+      {
+        "frame": 36,
+        "workerAvailableMs": 24539.29999998212,
+        "captureTimestampUs": 1165683,
+        "completedMs": 27200.29999998212,
+        "ageMs": 2660.800000011921,
+        "gpuFieldObservableMs": 2660.2000000178814,
+        "truthRmse": 0.03103051535251268,
+        "acceptance": 0.9686567164179104,
+        "accepted": 7788,
+        "meanIterations": 2.032999486389317
+      },
+      {
+        "frame": 42,
+        "workerAvailableMs": 27726.5,
+        "captureTimestampUs": 1364883,
+        "completedMs": 30236.5,
+        "ageMs": 2509.7999999821186,
+        "gpuFieldObservableMs": 2509.300000011921,
+        "truthRmse": 0.026502916790183233,
+        "acceptance": 0.9686567164179104,
+        "accepted": 7788,
+        "meanIterations": 2.158577298407807
+      }
+    ],
+    "capabilities": {
+      "supported": true,
+      "adapter": {
+        "vendor": "google",
+        "architecture": "swiftshader",
+        "device": "",
+        "description": ""
+      },
+      "limits": {
+        "maxStorageBuffersPerShaderStage": 10,
+        "maxBindGroups": 4,
+        "maxStorageBufferBindingSize": 1073741824,
+        "maxBufferSize": 1073741824,
+        "maxComputeWorkgroupStorageSize": 32768,
+        "maxComputeInvocationsPerWorkgroup": 256,
+        "maxTextureDimension2D": 8192
+      },
+      "features": [
+        "depth32float-stencil8",
+        "rg11b10ufloat-renderable",
+        "bgra8unorm-storage",
+        "texture-compression-bc",
+        "core-features-and-limits",
+        "chromium-experimental-sampling-resource-table",
+        "chromium-experimental-timestamp-query-inside-passes",
+        "float32-filterable",
+        "indirect-first-instance",
+        "texture-compression-astc-sliced-3d",
+        "float32-blendable",
+        "subgroup-size-control",
+        "texture-compression-unaligned",
+        "texture-compression-astc",
+        "texture-compression-etc2",
+        "depth-clip-control",
+        "texture-compression-bc-sliced-3d",
+        "timestamp-query",
+        "clip-distances",
+        "texture-component-swizzle",
+        "subgroups"
+      ],
+      "resolutions": [
+        [
+          1280,
+          720
+        ],
+        [
+          1920,
+          1080
+        ],
+        [
+          3840,
+          2160
+        ]
+      ],
+      "recommendedProfile": "portable",
+      "reasons": [
+        "Start at 720p; measure the real graph before raising resolution"
+      ],
+      "profiles": {
+        "portable": true,
+        "qualified-latency": true,
+        "minimal": false
+      }
+    }
+  },
+  "processing_span_seconds": 23.8415,
+  "details": "{\n  \"capabilities\": {\n    \"supported\": true,\n    \"adapter\": {\n      \"vendor\": \"google\",\n      \"architecture\": \"swiftshader\",\n      \"device\": \"\",\n      \"description\": \"\"\n    },\n    \"limits\": {\n      \"maxStorageBuffersPerShaderStage\": 10,\n      \"maxBindGroups\": 4,\n      \"maxStorageBufferBindingSize\": 1073741824,\n      \"maxBufferSize\": 1073741824,\n      \"maxComputeWorkgroupStorageSize\": 32768,\n      \"maxComputeInvocationsPerWorkgroup\": 256,\n      \"maxTextureDimension2D\": 8192\n    },\n    \"features\": [\n      \"depth32float-stencil8\",\n      \"rg11b10ufloat-renderable\",\n      \"bgra8unorm-storage\",\n      \"texture-compression-bc\",\n      \"core-features-and-limits\",\n      \"chromium-experimental-sampling-resource-table\",\n      \"chromium-experimental-timestamp-query-inside-passes\",\n      \"float32-filterable\",\n      \"indirect-first-instance\",\n      \"texture-compression-astc-sliced-3d\",\n      \"float32-blendable\",\n      \"subgroup-size-control\",\n      \"texture-compression-unaligned\",\n      \"texture-compression-astc\",\n      \"texture-compression-etc2\",\n      \"depth-clip-control\",\n      \"texture-compression-bc-sliced-3d\",\n      \"timestamp-query\",\n      \"clip-distances\",\n      \"texture-component-swizzle\",\n      \"subgroups\"\n    ],\n    \"resolutions\": [\n      [\n        1280,\n        720\n      ],\n      [\n        1920,\n        1080\n      ],\n      [\n        3840,\n        2160\n      ]\n    ],\n    \"recommendedProfile\": \"portable\",\n    \"reasons\": [\n      \"Start at 720p; measure the real graph before raising resolution\"\n    ],\n    \"profiles\": {\n      \"portable\": true,\n      \"qualified-latency\": true,\n      \"minimal\": false\n    }\n  },\n  \"acquisition\": {\n    \"source\": \"derived analytic tensile demo\",\n    \"encoding\": \"VP9 CRF 22, full-range grayscale YUV420, BT.709; compressed demonstration, not a numerical regression fixture\",\n    \"outputSize\": [\n      1920,\n      1080\n    ]\n  },\n  \"execution\": \"Dedicated worker\",\n  \"reference\": {\n    \"preparationWallMs\": 3285.9000000059605,\n    \"runtimeBuildWallMs\": 2116.9000000059605,\n    \"referenceBuildWallMs\": 1169,\n    \"width\": 1920,\n    \"height\": 1080,\n    \"subsetSize\": 16,\n    \"subsetStride\": 16,\n    \"grid\": [\n      120,\n      67\n    ],\n    \"config\": {\n      \"subsetSize\": 16,\n      \"subsetStride\": 16,\n      \"initialization\": \"temporal\",\n      \"temporalPrediction\": \"velocity\",\n      \"temporalFineCorrection\": true,\n      \"temporalMaxAge\": null,\n      \"divergencePatience\": 3,\n      \"divergenceMinIterations\": 4,\n      \"pyramidPolicy\": \"fixed\",\n      \"spatialWeighting\": \"uniform\",\n      \"solverWorkgroupSize\": 16,\n      \"pipelineDepth\": 1,\n      \"iterations\": 16,\n      \"tolerance\": 0.005,\n      \"znccMin\": 0.8,\n      \"pyramidLevels\": 2,\n      \"iterationsPerLevel\": [\n        8,\n        16\n      ],\n      \"tolerancePerLevel\": [\n        0.005,\n        0.005\n      ],\n      \"interpolation\": \"bspline\",\n      \"motionModel\": \"affine\",\n      \"outlierPolicy\": \"median\"\n    },\n    \"device\": \"Raw WebGPU shared WGSL (google swiftshader)\",\n    \"controllerPreparationWallMs\": 5511.5\n  },\n  \"profile\": \"portable\",\n  \"requestedResolution\": \"1920x1080\"\n}",
+  "version": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+  "timing_boundary": "Worker frame available -> observable GPU field and small HUD diagnostics; full field not copied",
+  "minimum_acceptance": 0.9686567164179104,
+  "canvas_std": 18.245696787690115,
+  "offline_reload": false,
+  "console_errors": [],
+  "export": {
+    "rows": 8040,
+    "finite": true,
+    "grid": [
+      120,
+      67
+    ],
+    "readbackWallMs": 3.600000023841858,
+    "configuration": {
+      "subsetSize": 16,
+      "subsetStride": 16,
+      "initialization": "temporal",
+      "temporalPrediction": "velocity",
+      "temporalFineCorrection": true,
+      "temporalMaxAge": null,
+      "divergencePatience": 3,
+      "divergenceMinIterations": 4,
+      "pyramidPolicy": "fixed",
+      "spatialWeighting": "uniform",
+      "solverWorkgroupSize": 16,
+      "pipelineDepth": 1,
+      "iterations": 16,
+      "tolerance": 0.005,
+      "znccMin": 0.8,
+      "pyramidLevels": 2,
+      "iterationsPerLevel": [
+        8,
+        16
+      ],
+      "tolerancePerLevel": [
+        0.005,
+        0.005
+      ],
+      "interpolation": "bspline",
+      "motionModel": "affine",
+      "outlierPolicy": "median"
+    },
+    "adapter": {
+      "vendor": "google",
+      "architecture": "swiftshader",
+      "device": "",
+      "description": ""
+    },
+    "roi": null,
+    "timingBoundary": "Explicit export request while paused -> full field mapped and decoded; acquisition age excluded"
+  }
+}

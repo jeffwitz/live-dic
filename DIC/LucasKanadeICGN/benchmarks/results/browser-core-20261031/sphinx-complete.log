@@ -1,0 +1,64 @@
+Running Sphinx v9.1.0
+loading translations [en]... done
+loading pickled environment... The configuration has changed (2 options: 'html_permalinks_icon', 'jquery_use_sri')
+done
+[autosummary] generating autosummary for: explanation/acknowledgements.rst, explanation/backend-selection.rst, explanation/browser-portability.rst, explanation/displacement-outliers.rst, explanation/gpu-optimization.rst, explanation/icgn.rst, explanation/interpolation.rst, explanation/limitations.rst, explanation/motion-models.rst, explanation/native-backend.rst, ..., index.rst, reference/api.rst, reference/command-line.rst, reference/gpu-vocabulary.rst, reference/js-api.rst, reference/performance.rst, reference/result-layout.rst, tutorials/first-gpu-kernel.rst, tutorials/first-registration.rst, tutorials/realtime-sequence.rst
+building [mo]: targets for 0 po files that are out of date
+writing output... 
+building [html]: targets for 4 source files that are out of date
+updating environment: 0 added, 4 changed, 0 removed
+reading sources... [ 25%] explanation/browser-portability
+reading sources... [ 50%] explanation/limitations
+reading sources... [ 75%] how-to/run-in-browser
+reading sources... [100%] reference/performance
+
+looking for now-outdated files... none found
+pickling environment... done
+checking consistency... done
+preparing documents... done
+copying assets... 
+copying downloadable files... [  7%] ../../../../benchmarks/results/2026-10-30-intel-arc-130v-portable.json
+copying downloadable files... [ 13%] ../../../../benchmarks/results/2026-10-30-intel-arc-130v-subgroup.json
+copying downloadable files... [ 20%] ../../../../benchmarks/results/2026-10-30-intel-arc-130v-auto.json
+copying downloadable files... [ 27%] ../../../../benchmarks/results/plate-hole-roi-20261030/von_mises_225.pdf
+copying downloadable files... [ 33%] examples/vector_scale.py
+copying downloadable files... [ 40%] ../../../../assets/uhd_tensile/manifest.json
+copying downloadable files... [ 47%] ../../../../benchmarks/results/workgroup-width-20261030/README.md
+copying downloadable files... [ 53%] ../../../../benchmarks/results/workgroup-width-amd-20261030/README.md
+copying downloadable files... [ 60%] ../../../../benchmarks/results/workgroup-width-amd-20261030/summary.json
+copying downloadable files... [ 67%] ../../../../benchmarks/results/workgroup-width-amd-20261030/device-lifecycle/README.md
+copying downloadable files... [ 73%] ../../../../benchmarks/results/workgroup-width-20261030/summary.json
+copying downloadable files... [ 80%] ../../../../benchmarks/results/workgroup-128-20261030/summary.json
+copying downloadable files... [ 87%] ../../../../benchmarks/results/latency-reduction-20261030/summary.json
+copying downloadable files... [ 93%] ../../../../benchmarks/results/temporal-init-20261030/report.json
+copying downloadable files... [100%] ../../../../benchmarks/results/temporal-init-20261030/metrics.csv
+
+copying static files... 
+Writing evaluated template result to /home/jeff/Code/tests_gpuio/DIC/LucasKanadeICGN/docs/_build/html/_static/basic.css
+Writing evaluated template result to /home/jeff/Code/tests_gpuio/DIC/LucasKanadeICGN/docs/_build/html/_static/language_data.js
+Writing evaluated template result to /home/jeff/Code/tests_gpuio/DIC/LucasKanadeICGN/docs/_build/html/_static/documentation_options.js
+copying static files: done
+copying extra files... 
+copying extra files: done
+copying assets: done
+writing output... [ 20%] explanation/browser-portability
+writing output... [ 40%] explanation/limitations
+writing output... [ 60%] how-to/run-in-browser
+writing output... [ 80%] index
+writing output... [100%] reference/performance
+
+generating indices... genindex py-modindex done
+highlighting module code... [ 33%] lucas_kanade_icgn.engine
+highlighting module code... [ 67%] lucas_kanade_icgn.full_pyramid_backend
+highlighting module code... [100%] lucas_kanade_icgn.wgpu_backend
+
+writing additional pages... search done
+copying images... [ 33%] _static/browser-flow.svg
+copying images... [ 67%] ../benchmarks/results/latency-reduction-20261030/quality-and-latency.png
+copying images... [100%] ../benchmarks/results/browser-core-20261031/display-over-time.png
+
+dumping search index in English (code: en)... done
+dumping object inventory... done
+build succeeded.
+
+The HTML pages are in DIC/LucasKanadeICGN/docs/_build/html.

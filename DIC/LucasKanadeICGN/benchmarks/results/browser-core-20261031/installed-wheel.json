@@ -1,0 +1,104 @@
+{
+  "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+  "platform": "Linux-7.0.0-38-generic-x86_64-with-glibc2.39",
+  "module": "/tmp/live-dic-pwa-installed/lib/python3.12/site-packages/lucas_kanade_icgn/__init__.py",
+  "versions": {
+    "lucas-kanade-icgn-webgl": "0.1.0",
+    "wgpu": "0.32.0",
+    "numpy": "2.5.4",
+    "Pillow": "13.0.0"
+  },
+  "adapter": {
+    "vendor": "Intel open-source Mesa driver",
+    "architecture": "",
+    "device": "Intel(R) Graphics (LNL)",
+    "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+    "stackgroup_min_size": 4,
+    "stackgroup_max_size": 128,
+    "vendor_id": 32902,
+    "device_id": 25760,
+    "adapter_type": "IntegratedGPU",
+    "backend_type": "Vulkan"
+  },
+  "accepted": 24975,
+  "selected": 24980,
+  "npz_fields": [
+    "targets",
+    "roi_mask",
+    "roi_selected",
+    "reference_valid",
+    "parameter_order",
+    "parameters",
+    "displacement",
+    "status",
+    "iterations",
+    "accepted",
+    "flagged",
+    "replaced",
+    "config_json",
+    "mean_translation"
+  ],
+  "config": {
+    "deviceType": "gpu",
+    "executionDeviceType": "gpu",
+    "gaussianSigma": 4.0,
+    "height": 2160,
+    "interpolation": "bspline",
+    "iterations": 16,
+    "iterationsPerLevel": [
+      8,
+      16
+    ],
+    "motionModel": "affine",
+    "outlierPolicy": "median",
+    "pyramidLevels": 2,
+    "pyramidStrategy": "full",
+    "roi": {
+      "excluded": 7420,
+      "gridTotal": 32400,
+      "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+      "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+      "maskShape": [
+        2160,
+        3840
+      ],
+      "partial": 0,
+      "policy": "full",
+      "selected": 24980,
+      "selectedPerLevel": [
+        24980,
+        5960
+      ],
+      "truncation": "none"
+    },
+    "solverWorkgroupSize": 16,
+    "spatialWeighting": "uniform",
+    "subsetSize": 16,
+    "subsetStride": 16,
+    "tolerance": 0.005,
+    "tolerancePerLevel": [
+      0.005,
+      0.005
+    ],
+    "width": 3840,
+    "znccMin": 0.8
+  },
+  "resources": {
+    "shaders/result.wgsl": "a587a3112670a702578df6c13f75addd4136e43fa6c7efba7959aa472d0e3267",
+    "shaders/full_pyramid.wgsl": "d00ef999c5dbc23013928e95ea6ca498a52fbb63850056c05bdbd3c963dc0401",
+    "shaders/subgroup_probe.wgsl": "6e4d149ed7f17969ede557a3062742d8da6c62cb6dd745d5510112c1489fed61",
+    "shaders/icgn.wgsl": "a60231689fbc3d29953fd98eb8d04649ec93cbec0f5a89a65446df716152299b",
+    "shaders/input.wgsl": "d269f8bf203e3363a6e753476c49de27188329409fa5a848358ea031bb554f7e",
+    "shaders/icgn_subgroup.wgsl": "d68225b1b6b6b21071e59ea6109bbd24dc0fd8b6734b6ebc4f7d59356799a034",
+    "web/core/temporal.js": "64eff24f4e06b66512cf55a02bec2a2a40068bc863c461cde990cb9913afd781",
+    "web/core/reference.js": "9e7ee740e6f3b589df844fbcef9fe56ce56a51098dc8192accfd5168282a7a89",
+    "web/core/roi.js": "34498b19d39989cce51a99520e66c1b43c0578e234ce5e25ade2396066eed510",
+    "web/core/result.js": "793485398807e1af156599de961d844c2c275775ff92a3733d9f5de9849a41ad",
+    "web/core/input.js": "3975ddceaa68d153602c61c666fa6be19cc3dfc148eaff44838c423ca32aa13a",
+    "web/core/ring.js": "52e28bbd0acd385d222f604becb658f9080da93891335b24fad402fca845ca2d",
+    "web/core/shaders.js": "deb98c3c573f3c22d97f63707113453cec59c4f4b323a82f8c46c107dc531b7f",
+    "web/core/device.js": "249ff3690fe6b04e03d3fd3b85b4f34df4ef5e69863a92556ae937b8f6827e8f",
+    "web/core/pyramid.js": "4dc0a8875d92a46d71aa96b845e98aef3e4e477f68a3e32beaa76d49d5dba735",
+    "web/core/engine.js": "f007ab269a6f876a916a61f0febf9cb0b8b878c4a6e15aadc2990ad4e5a11aca"
+  }
+}

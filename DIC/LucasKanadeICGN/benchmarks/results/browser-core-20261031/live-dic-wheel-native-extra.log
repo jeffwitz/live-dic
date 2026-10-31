@@ -1,0 +1,10 @@
+Processing ./live-dic-pwa-wheel/lucas_kanade_icgn_webgl-0.1.0-py3-none-any.whl (from lucas-kanade-icgn-webgl==0.1.0)
+Requirement already satisfied: numpy>=1.24 in ./live-dic-pwa-installed/lib/python3.12/site-packages (from lucas-kanade-icgn-webgl==0.1.0->lucas-kanade-icgn-webgl==0.1.0) (2.5.4)
+Requirement already satisfied: Pillow>=9.0 in ./live-dic-pwa-installed/lib/python3.12/site-packages (from lucas-kanade-icgn-webgl==0.1.0->lucas-kanade-icgn-webgl==0.1.0) (13.0.0)
+Requirement already satisfied: websockets>=10 in ./live-dic-pwa-installed/lib/python3.12/site-packages (from lucas-kanade-icgn-webgl==0.1.0->lucas-kanade-icgn-webgl==0.1.0) (17.4)
+Requirement already satisfied: wgpu<0.33,>=0.32 in ./live-dic-pwa-installed/lib/python3.12/site-packages (from lucas-kanade-icgn-webgl==0.1.0->lucas-kanade-icgn-webgl==0.1.0) (0.32.0)
+WARNING: lucas-kanade-icgn-webgl 0.1.0 does not provide the extra 'native'
+Requirement already satisfied: cffi>=1.15.0 in ./live-dic-pwa-installed/lib/python3.12/site-packages (from wgpu<0.33,>=0.32->lucas-kanade-icgn-webgl==0.1.0->lucas-kanade-icgn-webgl==0.1.0) (2.1.1)
+Requirement already satisfied: rendercanvas>=2.7 in ./live-dic-pwa-installed/lib/python3.12/site-packages (from wgpu<0.33,>=0.32->lucas-kanade-icgn-webgl==0.1.0->lucas-kanade-icgn-webgl==0.1.0) (2.7.2)
+Requirement already satisfied: pycparser in ./live-dic-pwa-installed/lib/python3.12/site-packages (from cffi>=1.15.0->wgpu<0.33,>=0.32->lucas-kanade-icgn-webgl==0.1.0->lucas-kanade-icgn-webgl==0.1.0) (3.12)
+lucas-kanade-icgn-webgl is already installed with the same version as the provided wheel. Use --force-reinstall to force an installation of the wheel.
