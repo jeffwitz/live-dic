@@ -66,7 +66,7 @@ export function analyzeField(field, options = {}, roiMask = null) {
   const [gw,gh]=field.grid,centre=(field.subsetSize-1)/2,stride=field.subsetStride;
   const valid=Uint8Array.from(field.status,s=>+(s>=.5 && (!recipe.excludeFlagged || s<1.5)));
   const u=new Float64Array(count),v=new Float64Array(count);
-  for(let i=0;i<count;i++){u[i]=field.parameters[i*components];v[i]=field.parameters[i*components+ (components===12 ? 6:3)];}
+  for(let i=0;i<count;i++){u[i]=field.parameters[i*components];v[i]=field.parameters[i*components+3];}
   const clear=visibility(roiMask,field.width,field.height),clearGrid=visibility(valid,gw,gh);
   const radius=(recipe.window-1)/2;
   function neighbours(i) {
@@ -93,7 +93,7 @@ export function analyzeField(field, options = {}, roiMask = null) {
     fields.u[i]=u[i]*recipe.unitsPerPixel;fields.v[i]=v[i]*recipe.unitsPerPixel;fields.magnitude[i]=Math.hypot(u[i],v[i])*recipe.unitsPerPixel;
     let slopes;
     if(recipe.strainSource==='vsg'){slopes=plane(neighbours(i),u,v);if(slopes)slopes=slopes.map(value=>value/stride);}
-    else {const p=i*components,k=components===12?6:3;slopes=[field.parameters[p+1],field.parameters[p+2],field.parameters[p+k+1],field.parameters[p+k+2]];}
+    else {const p=i*components;slopes=[field.parameters[p+1],field.parameters[p+2],field.parameters[p+4],field.parameters[p+5]];}
     if(!slopes){strainValid[i]=0;continue;}
     const [ux,uy,vx,vy]=slopes;
     let exx=ux,eyy=vy,exy=.5*(uy+vx);

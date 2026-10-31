@@ -154,3 +154,15 @@ class BrowserPostprocessTests(unittest.TestCase):
         """)
         self.assertIn("integrity", result["crc"])
         self.assertIn("pickle", result["object"])
+
+    def test_quadratic_public_layout_retains_affine_first_six_components(self):
+        result = javascript("""
+          const f=fixture(128,128);f.config.motionModel='quadratic';f.parameters=new Float64Array(64*12);
+          for(let i=0;i<64;i++)f.parameters.set([2,.001,.002,-3,.004,.005,11,12,13,14,15,16],i*12);
+          const a=p.analyzeField(f);console.log(JSON.stringify({u:a.fields.u[0],v:a.fields.v[0],exx:a.fields.exx[0],eyy:a.fields.eyy[0],exy:a.fields.exy[0]}));
+        """)
+        self.assertEqual(result["u"], 2)
+        self.assertEqual(result["v"], -3)
+        self.assertAlmostEqual(result["exx"], 0.001)
+        self.assertAlmostEqual(result["eyy"], 0.005)
+        self.assertAlmostEqual(result["exy"], 0.003)
