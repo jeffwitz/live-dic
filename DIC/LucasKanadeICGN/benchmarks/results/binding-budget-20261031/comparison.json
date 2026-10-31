@@ -1,0 +1,56 @@
+{
+  "pairs": [
+    {
+      "repeat": 0,
+      "before_fps": 83.62015934503597,
+      "after_fps": 86.96451936579815,
+      "fps_relative_change": 0.0399946621359879,
+      "before_age_median_ms": 12.09540999843739,
+      "after_age_median_ms": 11.808808005298488,
+      "before_age_p95_ms": 13.754783936019521,
+      "after_age_p95_ms": 12.857054840424096,
+      "before_age_p99_ms": 14.370997233490925,
+      "after_age_p99_ms": 13.24159629206406,
+      "quality_identical": true
+    },
+    {
+      "repeat": 1,
+      "before_fps": 86.24607304527437,
+      "after_fps": 88.45647715378243,
+      "fps_relative_change": 0.02562904060974147,
+      "before_age_median_ms": 11.839637489174493,
+      "after_age_median_ms": 11.306725500617176,
+      "before_age_p95_ms": 12.771822269132826,
+      "after_age_p95_ms": 13.010445835243441,
+      "before_age_p99_ms": 12.966158394119704,
+      "after_age_p99_ms": 13.444861414609479,
+      "quality_identical": true
+    },
+    {
+      "repeat": 2,
+      "before_fps": 79.85490785542413,
+      "after_fps": 87.2155897932358,
+      "fps_relative_change": 0.09217569884543653,
+      "before_age_median_ms": 12.688003509538248,
+      "after_age_median_ms": 11.620185498031788,
+      "before_age_p95_ms": 14.91649625240825,
+      "after_age_p95_ms": 12.508931919001043,
+      "before_age_p99_ms": 15.272156558930874,
+      "after_age_p99_ms": 12.79713095369516,
+      "quality_identical": true
+    }
+  ],
+  "criteria": {
+    "reference_repeatability": {
+      "throughput_fps": 0.04690800951292947,
+      "age_median_ms": 0.042784118080179456,
+      "age_p95_ms": 0.12677824516044678
+    },
+    "rule": "Matched candidate must stay within the observed baseline range expansion; otherwise report regression/indeterminate, do not claim equivalence.",
+    "accuracy": "All existing gates unchanged; native layout outputs must match exactly."
+  },
+  "scope": "Hardware Vulkan, NumPy input to NumPy field, native UHD 200-frame trajectory with 20 warmups, one slot. Only WGSL packing/host addresses changed.",
+  "native_code_unchanged_during_runs": true,
+  "other_work": "No tests/builds/scoring ran concurrently; only JS source editing (not used by native). Existing desktop apps remained open.",
+  "timing_conclusion": "Evaluate paired intervals against predeclared baseline repeatability; no universal FPS claim."
+}

@@ -98,3 +98,20 @@ unchanged. Qualification results are recorded with the implementation.
 Static buffer limits do not prove that a device has enough memory to run UHD.
 Capability checks must also account for all levels, reference preparation,
 mutable slots and history buffers. Mobile devices are not assumed tested.
+
+Shared packing qualification
+----------------------------
+
+The packed layout requests eight storage buffers explicitly. The ordinary
+solver/FIR/median layout uses six; the seeded layout uses eight. Metadata and
+inverse Hessians share a buffer, with a vec4 offset in the 48-byte configuration.
+FIR coefficients occupy the first scratch plane and intermediate values the
+second. Prefilters bind both planes; solvers bind only the first, preserving
+historical array bounds even for divergent quadratic warps.
+
+The recorded UHD comparison verifies **441 arrays bit for bit across 49
+configurations**, including partial ROI and rejected results. Hardware A/B pairs
+showed no regression outside the predeclared repeatability margin. Quality
+reports were identical. See the reproducible
+`binding-budget report <https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/binding-budget-20261031>`_.
+These are native NumPy-to-NumPy measurements, not browser camera timings.
