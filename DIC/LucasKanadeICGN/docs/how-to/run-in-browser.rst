@@ -1,6 +1,8 @@
 Run the local browser application
 =================================
 
+For a guided first exercise, start with :doc:`../tutorials/browser-experiment`.
+
 The browser companion accepts a camera, local video, local image sequence or an analytic demonstration and keeps
 its frame processing on the device. It uses the same portable WGSL solver as
 native Python. Pierre Margerit's foundational GPU work made this project
@@ -89,6 +91,9 @@ Use a camera
    visible. Watch acceptance and iteration counts when illumination changes.
 5. Use **Pause**, **Capture reference** or **Reset history** deliberately.
    Changing resolution restarts camera capture and prepares a new reference.
+   A disconnected/ended camera changes Play into **Restart camera**, preserving
+   the last completed field for export. Restart captures a new reference; reapply
+   the mask. This recovery does not manufacture missing measurements.
    A profile change takes effect at the next reference capture. After reference,
    mask or comparison changes, target exports/review remain disabled until a new
    target field arrives; old metrics are cleared. Drop counts restart on source

@@ -28,7 +28,10 @@ supervision, a bounded worker, editable multi-domain/full ROI with holes,
 temporal prediction, GPU field display with displacement arrows/equivalent strain
 and on-demand CSV/JSON export. A results workbench adds bounded opt-in field
 recording, point/line/extensometer extraction, reversible displacement smoothing,
-VSG strain, principal/equivalent strain, length units and NumPy NPZ interchange.
+VSG strain, principal/equivalent strain, region statistics, length units and NumPy
+NPZ interchange. Results projects restore shared masks, recipes and measurements.
+Stored native quadratic fields expose their computed second derivatives; saved
+field analysis also works without WebGPU.
 Fixed-reference and real consecutive-pair comparisons are distinct options; the
 latter rebuilds each reference and does not inherit fixed-reference FPS claims. It imports the same portable WGSL core as the
 Python raw-WebGPU adapter. It has no Three.js/CDN dependency and can run offline
@@ -38,7 +41,8 @@ with an editable rectangle/circle preset and both analytical load states.
 From a checkout, run `python3 tools/run_browser_app.py` to build, serve and open
 the workbench in your usual browser. It uses the browser’s existing GPU settings.
 
-[Run the browser application locally or prepare Pages](DIC/LucasKanadeICGN/docs/how-to/run-in-browser.rst).
+[Follow the visual UHD tutorial](DIC/LucasKanadeICGN/docs/tutorials/browser-experiment.rst),
+or [run the browser application locally or prepare Pages](DIC/LucasKanadeICGN/docs/how-to/run-in-browser.rst).
 The Pages workflow is ready; repository-owner activation/deployment is separate.
 Phone capture is a demonstration and field-screening tool, **not qualified for
 metrology**. Native NumPy-to-NumPy timings and browser worker/display timings

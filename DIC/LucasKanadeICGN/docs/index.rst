@@ -34,6 +34,8 @@ Start here
   The default full-window policy rejects any subset touching a forbidden pixel.
   :doc:`how-to/use-partial-roi` covers explicit boundary supports.
 * :doc:`reference/api` for exact defaults and public interfaces.
+* :doc:`tutorials/browser-experiment` for a guided visual UHD experiment,
+  saved-field analysis and NumPy interchange.
 
 New to GPU programming? Read :doc:`explanation/webgpu-fundamentals`, then
 :doc:`tutorials/first-gpu-kernel`, :doc:`reference/gpu-vocabulary`, and
@@ -57,7 +59,8 @@ The existing CLI and one-shot helper remain browser interfaces; their defaults
 have not changed. See :doc:`explanation/backend-selection`.
 
 The standalone :doc:`how-to/run-in-browser` application now provides a
-JavaScript supervisor for browser-local WebGPU camera/demo processing. It uses
+JavaScript supervisor for browser-local WebGPU camera, image-folder, video and
+demo processing, with saved-field post-processing and results projects. It uses
 the same portable core as the Python raw-WGSL adapter and supports full ROI,
 temporal history and GPU display. It does not use Three.js or WebGL fallback.
 Python browser binary transport still crosses a process boundary; see
@@ -103,6 +106,7 @@ when exporting a measurement with :doc:`how-to/export-results`.
    :caption: Tutorials
 
    tutorials/first-registration
+   tutorials/browser-experiment
    tutorials/realtime-sequence
    tutorials/first-gpu-kernel
 
