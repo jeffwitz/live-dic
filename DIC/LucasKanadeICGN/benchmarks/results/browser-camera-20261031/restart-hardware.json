@@ -1,0 +1,2623 @@
+{
+  "build": {
+    "commit": "eda186f15bd86d1aeb437eb3f311ec801e47369c",
+    "dirty": true,
+    "shaders": {
+      "full_pyramid.wgsl": "d00ef999c5dbc23013928e95ea6ca498a52fbb63850056c05bdbd3c963dc0401",
+      "icgn.wgsl": "a60231689fbc3d29953fd98eb8d04649ec93cbec0f5a89a65446df716152299b",
+      "icgn_subgroup.wgsl": "d68225b1b6b6b21071e59ea6109bbd24dc0fd8b6734b6ebc4f7d59356799a034",
+      "input.wgsl": "d269f8bf203e3363a6e753476c49de27188329409fa5a848358ea031bb554f7e",
+      "result.wgsl": "a587a3112670a702578df6c13f75addd4136e43fa6c7efba7959aa472d0e3267",
+      "subgroup_probe.wgsl": "6e4d149ed7f17969ede557a3062742d8da6c62cb6dd745d5510112c1489fed61"
+    },
+    "demo_manifest_sha256": "c78c445a38a8541d632f28e85ec1154e492b4195c7b8f5d4755597e07605f24a",
+    "plate_image_sha256": {
+      "reference.png": "26135118b554c5996443f07abd2a89273a344154338c4c7f428ab283f85f7192",
+      "frame_095.png": "af0f4c09d2e9292beb4cbbabe01c6651a2e914c1b36b569a5861a8be431d3faf",
+      "frame_225.png": "abe3693810e289b8a2029833011a0d59fdf7ff1ea975eea91b12dc5e708d2897"
+    },
+    "cache_version": "eda186f15bd86d1aeb437eb3f311ec801e47369c-dirty-958cbdb0c4b9"
+  },
+  "software": false,
+  "user_agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+  "kind": "simulated camera correctness; not physical camera or FPS qualification",
+  "temporary_capture": {
+    "format": "Y4M 4:2:0; original luma; neutral chroma",
+    "frame_rate": 10,
+    "images": [
+      {
+        "file": "reference.png",
+        "sha256": "26135118b554c5996443f07abd2a89273a344154338c4c7f428ab283f85f7192"
+      },
+      {
+        "file": "frame_095.png",
+        "sha256": "af0f4c09d2e9292beb4cbbabe01c6651a2e914c1b36b569a5861a8be431d3faf"
+      },
+      {
+        "file": "frame_225.png",
+        "sha256": "abe3693810e289b8a2029833011a0d59fdf7ff1ea975eea91b12dc5e708d2897"
+      }
+    ]
+  },
+  "initial": {
+    "source": "camera",
+    "paused": false,
+    "loadingSource": false,
+    "inFlight": 0,
+    "index": 0,
+    "fileCount": 0,
+    "localBusy": false,
+    "loop": false,
+    "settings": {
+      "source": "camera",
+      "deliveryState": "running",
+      "requested": {
+        "width": 3840,
+        "height": 2160,
+        "frameRate": 60
+      },
+      "initialSettings": {
+        "aspectRatio": 1.7777777777777777,
+        "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+        "frameRate": 10,
+        "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+        "height": 2160,
+        "resizeMode": "none",
+        "width": 3840
+      },
+      "actual": {
+        "aspectRatio": 1.7777777777777777,
+        "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+        "frameRate": 10,
+        "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+        "height": 2160,
+        "resizeMode": "none",
+        "width": 3840
+      },
+      "capabilities": {
+        "aspectRatio": {
+          "max": 3840,
+          "min": 0.000462962962962963
+        },
+        "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+        "facingMode": [],
+        "frameRate": {
+          "max": 10,
+          "min": 0
+        },
+        "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+        "height": {
+          "max": 2160,
+          "min": 1
+        },
+        "resizeMode": [
+          "none",
+          "crop-and-scale"
+        ],
+        "width": {
+          "max": 3840,
+          "min": 1
+        }
+      },
+      "locks": {
+        "exposureMode": "manual lock not exposed",
+        "focusMode": "manual lock not exposed",
+        "whiteBalanceMode": "manual lock not exposed"
+      },
+      "outputSize": [
+        3840,
+        2160
+      ],
+      "reference": {
+        "kind": "camera",
+        "timestampUs": 8438,
+        "capturedAt": "2026-10-31T13:07:48.021Z",
+        "coordinateFrame": "captured reference image",
+        "timestampClock": "HTMLVideoElement media timeline"
+      },
+      "frameDelivery": "MediaStreamTrackProcessor",
+      "lastComparison": {
+        "mode": "fixed",
+        "reference": {
+          "kind": "camera",
+          "timestampUs": 8438,
+          "capturedAt": "2026-10-31T13:07:48.021Z",
+          "coordinateFrame": "captured reference image",
+          "timestampClock": "HTMLVideoElement media timeline"
+        },
+        "target": {
+          "kind": "camera",
+          "ordinal": 3,
+          "timestampUs": 203693396700,
+          "timestampClock": "Track-processor VideoFrame clock; origin is browser/device defined"
+        },
+        "referenceAdmissible": 32281,
+        "requested": 32400,
+        "fixedImageCoordinateRoi": true
+      }
+    },
+    "comparison": "fixed",
+    "videoTime": 1.845879,
+    "videoPaused": false
+  },
+  "soak": [
+    {
+      "elapsed_seconds": 3.0046693600015715,
+      "completed": 34,
+      "errors": [],
+      "state": {
+        "source": "camera",
+        "paused": false,
+        "loadingSource": false,
+        "inFlight": 0,
+        "index": 0,
+        "fileCount": 0,
+        "localBusy": false,
+        "loop": false,
+        "settings": {
+          "source": "camera",
+          "deliveryState": "running",
+          "requested": {
+            "width": 3840,
+            "height": 2160,
+            "frameRate": 60
+          },
+          "initialSettings": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "actual": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "capabilities": {
+            "aspectRatio": {
+              "max": 3840,
+              "min": 0.000462962962962963
+            },
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "facingMode": [],
+            "frameRate": {
+              "max": 10,
+              "min": 0
+            },
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": {
+              "max": 2160,
+              "min": 1
+            },
+            "resizeMode": [
+              "none",
+              "crop-and-scale"
+            ],
+            "width": {
+              "max": 3840,
+              "min": 1
+            }
+          },
+          "locks": {
+            "exposureMode": "manual lock not exposed",
+            "focusMode": "manual lock not exposed",
+            "whiteBalanceMode": "manual lock not exposed"
+          },
+          "outputSize": [
+            3840,
+            2160
+          ],
+          "reference": {
+            "kind": "camera",
+            "timestampUs": 8438,
+            "capturedAt": "2026-10-31T13:07:48.021Z",
+            "coordinateFrame": "captured reference image",
+            "timestampClock": "HTMLVideoElement media timeline"
+          },
+          "frameDelivery": "MediaStreamTrackProcessor",
+          "lastComparison": {
+            "mode": "fixed",
+            "reference": {
+              "kind": "camera",
+              "timestampUs": 8438,
+              "capturedAt": "2026-10-31T13:07:48.021Z",
+              "coordinateFrame": "captured reference image",
+              "timestampClock": "HTMLVideoElement media timeline"
+            },
+            "target": {
+              "kind": "camera",
+              "ordinal": 33,
+              "timestampUs": 203696397800,
+              "timestampClock": "Track-processor VideoFrame clock; origin is browser/device defined"
+            },
+            "referenceAdmissible": 32281,
+            "requested": 32400,
+            "fixedImageCoordinateRoi": true
+          }
+        },
+        "comparison": "fixed",
+        "videoTime": 4.852434,
+        "videoPaused": false
+      },
+      "dropped": 0
+    },
+    {
+      "elapsed_seconds": 6.008847717981553,
+      "completed": 64,
+      "errors": [],
+      "state": {
+        "source": "camera",
+        "paused": false,
+        "loadingSource": false,
+        "inFlight": 0,
+        "index": 0,
+        "fileCount": 0,
+        "localBusy": false,
+        "loop": false,
+        "settings": {
+          "source": "camera",
+          "deliveryState": "running",
+          "requested": {
+            "width": 3840,
+            "height": 2160,
+            "frameRate": 60
+          },
+          "initialSettings": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "actual": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "capabilities": {
+            "aspectRatio": {
+              "max": 3840,
+              "min": 0.000462962962962963
+            },
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "facingMode": [],
+            "frameRate": {
+              "max": 10,
+              "min": 0
+            },
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": {
+              "max": 2160,
+              "min": 1
+            },
+            "resizeMode": [
+              "none",
+              "crop-and-scale"
+            ],
+            "width": {
+              "max": 3840,
+              "min": 1
+            }
+          },
+          "locks": {
+            "exposureMode": "manual lock not exposed",
+            "focusMode": "manual lock not exposed",
+            "whiteBalanceMode": "manual lock not exposed"
+          },
+          "outputSize": [
+            3840,
+            2160
+          ],
+          "reference": {
+            "kind": "camera",
+            "timestampUs": 8438,
+            "capturedAt": "2026-10-31T13:07:48.021Z",
+            "coordinateFrame": "captured reference image",
+            "timestampClock": "HTMLVideoElement media timeline"
+          },
+          "frameDelivery": "MediaStreamTrackProcessor",
+          "lastComparison": {
+            "mode": "fixed",
+            "reference": {
+              "kind": "camera",
+              "timestampUs": 8438,
+              "capturedAt": "2026-10-31T13:07:48.021Z",
+              "coordinateFrame": "captured reference image",
+              "timestampClock": "HTMLVideoElement media timeline"
+            },
+            "target": {
+              "kind": "camera",
+              "ordinal": 63,
+              "timestampUs": 203699397500,
+              "timestampClock": "Track-processor VideoFrame clock; origin is browser/device defined"
+            },
+            "referenceAdmissible": 32281,
+            "requested": 32400,
+            "fixedImageCoordinateRoi": true
+          }
+        },
+        "comparison": "fixed",
+        "videoTime": 7.856822,
+        "videoPaused": false
+      },
+      "dropped": 0
+    },
+    {
+      "elapsed_seconds": 9.013009791990044,
+      "completed": 94,
+      "errors": [],
+      "state": {
+        "source": "camera",
+        "paused": false,
+        "loadingSource": false,
+        "inFlight": 0,
+        "index": 0,
+        "fileCount": 0,
+        "localBusy": false,
+        "loop": false,
+        "settings": {
+          "source": "camera",
+          "deliveryState": "running",
+          "requested": {
+            "width": 3840,
+            "height": 2160,
+            "frameRate": 60
+          },
+          "initialSettings": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "actual": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "capabilities": {
+            "aspectRatio": {
+              "max": 3840,
+              "min": 0.000462962962962963
+            },
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "facingMode": [],
+            "frameRate": {
+              "max": 10,
+              "min": 0
+            },
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": {
+              "max": 2160,
+              "min": 1
+            },
+            "resizeMode": [
+              "none",
+              "crop-and-scale"
+            ],
+            "width": {
+              "max": 3840,
+              "min": 1
+            }
+          },
+          "locks": {
+            "exposureMode": "manual lock not exposed",
+            "focusMode": "manual lock not exposed",
+            "whiteBalanceMode": "manual lock not exposed"
+          },
+          "outputSize": [
+            3840,
+            2160
+          ],
+          "reference": {
+            "kind": "camera",
+            "timestampUs": 8438,
+            "capturedAt": "2026-10-31T13:07:48.021Z",
+            "coordinateFrame": "captured reference image",
+            "timestampClock": "HTMLVideoElement media timeline"
+          },
+          "frameDelivery": "MediaStreamTrackProcessor",
+          "lastComparison": {
+            "mode": "fixed",
+            "reference": {
+              "kind": "camera",
+              "timestampUs": 8438,
+              "capturedAt": "2026-10-31T13:07:48.021Z",
+              "coordinateFrame": "captured reference image",
+              "timestampClock": "HTMLVideoElement media timeline"
+            },
+            "target": {
+              "kind": "camera",
+              "ordinal": 93,
+              "timestampUs": 203702397300,
+              "timestampClock": "Track-processor VideoFrame clock; origin is browser/device defined"
+            },
+            "referenceAdmissible": 32281,
+            "requested": 32400,
+            "fixedImageCoordinateRoi": true
+          }
+        },
+        "comparison": "fixed",
+        "videoTime": 10.860957,
+        "videoPaused": false
+      },
+      "dropped": 0
+    },
+    {
+      "elapsed_seconds": 12.018563955993159,
+      "completed": 124,
+      "errors": [],
+      "state": {
+        "source": "camera",
+        "paused": false,
+        "loadingSource": false,
+        "inFlight": 0,
+        "index": 0,
+        "fileCount": 0,
+        "localBusy": false,
+        "loop": false,
+        "settings": {
+          "source": "camera",
+          "deliveryState": "running",
+          "requested": {
+            "width": 3840,
+            "height": 2160,
+            "frameRate": 60
+          },
+          "initialSettings": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "actual": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "capabilities": {
+            "aspectRatio": {
+              "max": 3840,
+              "min": 0.000462962962962963
+            },
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "facingMode": [],
+            "frameRate": {
+              "max": 10,
+              "min": 0
+            },
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": {
+              "max": 2160,
+              "min": 1
+            },
+            "resizeMode": [
+              "none",
+              "crop-and-scale"
+            ],
+            "width": {
+              "max": 3840,
+              "min": 1
+            }
+          },
+          "locks": {
+            "exposureMode": "manual lock not exposed",
+            "focusMode": "manual lock not exposed",
+            "whiteBalanceMode": "manual lock not exposed"
+          },
+          "outputSize": [
+            3840,
+            2160
+          ],
+          "reference": {
+            "kind": "camera",
+            "timestampUs": 8438,
+            "capturedAt": "2026-10-31T13:07:48.021Z",
+            "coordinateFrame": "captured reference image",
+            "timestampClock": "HTMLVideoElement media timeline"
+          },
+          "frameDelivery": "MediaStreamTrackProcessor",
+          "lastComparison": {
+            "mode": "fixed",
+            "reference": {
+              "kind": "camera",
+              "timestampUs": 8438,
+              "capturedAt": "2026-10-31T13:07:48.021Z",
+              "coordinateFrame": "captured reference image",
+              "timestampClock": "HTMLVideoElement media timeline"
+            },
+            "target": {
+              "kind": "camera",
+              "ordinal": 123,
+              "timestampUs": 203705397500,
+              "timestampClock": "Track-processor VideoFrame clock; origin is browser/device defined"
+            },
+            "referenceAdmissible": 32281,
+            "requested": 32400,
+            "fixedImageCoordinateRoi": true
+          }
+        },
+        "comparison": "fixed",
+        "videoTime": 13.866307,
+        "videoPaused": false
+      },
+      "dropped": 0
+    },
+    {
+      "elapsed_seconds": 15.023692644987023,
+      "completed": 154,
+      "errors": [],
+      "state": {
+        "source": "camera",
+        "paused": false,
+        "loadingSource": false,
+        "inFlight": 0,
+        "index": 0,
+        "fileCount": 0,
+        "localBusy": false,
+        "loop": false,
+        "settings": {
+          "source": "camera",
+          "deliveryState": "running",
+          "requested": {
+            "width": 3840,
+            "height": 2160,
+            "frameRate": 60
+          },
+          "initialSettings": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "actual": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "capabilities": {
+            "aspectRatio": {
+              "max": 3840,
+              "min": 0.000462962962962963
+            },
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "facingMode": [],
+            "frameRate": {
+              "max": 10,
+              "min": 0
+            },
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": {
+              "max": 2160,
+              "min": 1
+            },
+            "resizeMode": [
+              "none",
+              "crop-and-scale"
+            ],
+            "width": {
+              "max": 3840,
+              "min": 1
+            }
+          },
+          "locks": {
+            "exposureMode": "manual lock not exposed",
+            "focusMode": "manual lock not exposed",
+            "whiteBalanceMode": "manual lock not exposed"
+          },
+          "outputSize": [
+            3840,
+            2160
+          ],
+          "reference": {
+            "kind": "camera",
+            "timestampUs": 8438,
+            "capturedAt": "2026-10-31T13:07:48.021Z",
+            "coordinateFrame": "captured reference image",
+            "timestampClock": "HTMLVideoElement media timeline"
+          },
+          "frameDelivery": "MediaStreamTrackProcessor",
+          "lastComparison": {
+            "mode": "fixed",
+            "reference": {
+              "kind": "camera",
+              "timestampUs": 8438,
+              "capturedAt": "2026-10-31T13:07:48.021Z",
+              "coordinateFrame": "captured reference image",
+              "timestampClock": "HTMLVideoElement media timeline"
+            },
+            "target": {
+              "kind": "camera",
+              "ordinal": 153,
+              "timestampUs": 203708397200,
+              "timestampClock": "Track-processor VideoFrame clock; origin is browser/device defined"
+            },
+            "referenceAdmissible": 32281,
+            "requested": 32400,
+            "fixedImageCoordinateRoi": true
+          }
+        },
+        "comparison": "fixed",
+        "videoTime": 16.87178,
+        "videoPaused": false
+      },
+      "dropped": 0
+    },
+    {
+      "elapsed_seconds": 18.028399914997863,
+      "completed": 184,
+      "errors": [],
+      "state": {
+        "source": "camera",
+        "paused": false,
+        "loadingSource": false,
+        "inFlight": 0,
+        "index": 0,
+        "fileCount": 0,
+        "localBusy": false,
+        "loop": false,
+        "settings": {
+          "source": "camera",
+          "deliveryState": "running",
+          "requested": {
+            "width": 3840,
+            "height": 2160,
+            "frameRate": 60
+          },
+          "initialSettings": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "actual": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "capabilities": {
+            "aspectRatio": {
+              "max": 3840,
+              "min": 0.000462962962962963
+            },
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "facingMode": [],
+            "frameRate": {
+              "max": 10,
+              "min": 0
+            },
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": {
+              "max": 2160,
+              "min": 1
+            },
+            "resizeMode": [
+              "none",
+              "crop-and-scale"
+            ],
+            "width": {
+              "max": 3840,
+              "min": 1
+            }
+          },
+          "locks": {
+            "exposureMode": "manual lock not exposed",
+            "focusMode": "manual lock not exposed",
+            "whiteBalanceMode": "manual lock not exposed"
+          },
+          "outputSize": [
+            3840,
+            2160
+          ],
+          "reference": {
+            "kind": "camera",
+            "timestampUs": 8438,
+            "capturedAt": "2026-10-31T13:07:48.021Z",
+            "coordinateFrame": "captured reference image",
+            "timestampClock": "HTMLVideoElement media timeline"
+          },
+          "frameDelivery": "MediaStreamTrackProcessor",
+          "lastComparison": {
+            "mode": "fixed",
+            "reference": {
+              "kind": "camera",
+              "timestampUs": 8438,
+              "capturedAt": "2026-10-31T13:07:48.021Z",
+              "coordinateFrame": "captured reference image",
+              "timestampClock": "HTMLVideoElement media timeline"
+            },
+            "target": {
+              "kind": "camera",
+              "ordinal": 183,
+              "timestampUs": 203711396500,
+              "timestampClock": "Track-processor VideoFrame clock; origin is browser/device defined"
+            },
+            "referenceAdmissible": 32281,
+            "requested": 32400,
+            "fixedImageCoordinateRoi": true
+          }
+        },
+        "comparison": "fixed",
+        "videoTime": 19.876721,
+        "videoPaused": false
+      },
+      "dropped": 0
+    },
+    {
+      "elapsed_seconds": 21.033879859984154,
+      "completed": 214,
+      "errors": [],
+      "state": {
+        "source": "camera",
+        "paused": false,
+        "loadingSource": false,
+        "inFlight": 0,
+        "index": 0,
+        "fileCount": 0,
+        "localBusy": false,
+        "loop": false,
+        "settings": {
+          "source": "camera",
+          "deliveryState": "running",
+          "requested": {
+            "width": 3840,
+            "height": 2160,
+            "frameRate": 60
+          },
+          "initialSettings": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "actual": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "capabilities": {
+            "aspectRatio": {
+              "max": 3840,
+              "min": 0.000462962962962963
+            },
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "facingMode": [],
+            "frameRate": {
+              "max": 10,
+              "min": 0
+            },
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": {
+              "max": 2160,
+              "min": 1
+            },
+            "resizeMode": [
+              "none",
+              "crop-and-scale"
+            ],
+            "width": {
+              "max": 3840,
+              "min": 1
+            }
+          },
+          "locks": {
+            "exposureMode": "manual lock not exposed",
+            "focusMode": "manual lock not exposed",
+            "whiteBalanceMode": "manual lock not exposed"
+          },
+          "outputSize": [
+            3840,
+            2160
+          ],
+          "reference": {
+            "kind": "camera",
+            "timestampUs": 8438,
+            "capturedAt": "2026-10-31T13:07:48.021Z",
+            "coordinateFrame": "captured reference image",
+            "timestampClock": "HTMLVideoElement media timeline"
+          },
+          "frameDelivery": "MediaStreamTrackProcessor",
+          "lastComparison": {
+            "mode": "fixed",
+            "reference": {
+              "kind": "camera",
+              "timestampUs": 8438,
+              "capturedAt": "2026-10-31T13:07:48.021Z",
+              "coordinateFrame": "captured reference image",
+              "timestampClock": "HTMLVideoElement media timeline"
+            },
+            "target": {
+              "kind": "camera",
+              "ordinal": 213,
+              "timestampUs": 203714397300,
+              "timestampClock": "Track-processor VideoFrame clock; origin is browser/device defined"
+            },
+            "referenceAdmissible": 32281,
+            "requested": 32400,
+            "fixedImageCoordinateRoi": true
+          }
+        },
+        "comparison": "fixed",
+        "videoTime": 22.881642,
+        "videoPaused": false
+      },
+      "dropped": 0
+    },
+    {
+      "elapsed_seconds": 24.038706999999704,
+      "completed": 244,
+      "errors": [],
+      "state": {
+        "source": "camera",
+        "paused": false,
+        "loadingSource": false,
+        "inFlight": 0,
+        "index": 0,
+        "fileCount": 0,
+        "localBusy": false,
+        "loop": false,
+        "settings": {
+          "source": "camera",
+          "deliveryState": "running",
+          "requested": {
+            "width": 3840,
+            "height": 2160,
+            "frameRate": 60
+          },
+          "initialSettings": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "actual": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "capabilities": {
+            "aspectRatio": {
+              "max": 3840,
+              "min": 0.000462962962962963
+            },
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "facingMode": [],
+            "frameRate": {
+              "max": 10,
+              "min": 0
+            },
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": {
+              "max": 2160,
+              "min": 1
+            },
+            "resizeMode": [
+              "none",
+              "crop-and-scale"
+            ],
+            "width": {
+              "max": 3840,
+              "min": 1
+            }
+          },
+          "locks": {
+            "exposureMode": "manual lock not exposed",
+            "focusMode": "manual lock not exposed",
+            "whiteBalanceMode": "manual lock not exposed"
+          },
+          "outputSize": [
+            3840,
+            2160
+          ],
+          "reference": {
+            "kind": "camera",
+            "timestampUs": 8438,
+            "capturedAt": "2026-10-31T13:07:48.021Z",
+            "coordinateFrame": "captured reference image",
+            "timestampClock": "HTMLVideoElement media timeline"
+          },
+          "frameDelivery": "MediaStreamTrackProcessor",
+          "lastComparison": {
+            "mode": "fixed",
+            "reference": {
+              "kind": "camera",
+              "timestampUs": 8438,
+              "capturedAt": "2026-10-31T13:07:48.021Z",
+              "coordinateFrame": "captured reference image",
+              "timestampClock": "HTMLVideoElement media timeline"
+            },
+            "target": {
+              "kind": "camera",
+              "ordinal": 243,
+              "timestampUs": 203717398200,
+              "timestampClock": "Track-processor VideoFrame clock; origin is browser/device defined"
+            },
+            "referenceAdmissible": 32281,
+            "requested": 32400,
+            "fixedImageCoordinateRoi": true
+          }
+        },
+        "comparison": "fixed",
+        "videoTime": 25.886694,
+        "videoPaused": false
+      },
+      "dropped": 0
+    },
+    {
+      "elapsed_seconds": 27.042590848985128,
+      "completed": 274,
+      "errors": [],
+      "state": {
+        "source": "camera",
+        "paused": false,
+        "loadingSource": false,
+        "inFlight": 0,
+        "index": 0,
+        "fileCount": 0,
+        "localBusy": false,
+        "loop": false,
+        "settings": {
+          "source": "camera",
+          "deliveryState": "running",
+          "requested": {
+            "width": 3840,
+            "height": 2160,
+            "frameRate": 60
+          },
+          "initialSettings": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "actual": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "capabilities": {
+            "aspectRatio": {
+              "max": 3840,
+              "min": 0.000462962962962963
+            },
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "facingMode": [],
+            "frameRate": {
+              "max": 10,
+              "min": 0
+            },
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": {
+              "max": 2160,
+              "min": 1
+            },
+            "resizeMode": [
+              "none",
+              "crop-and-scale"
+            ],
+            "width": {
+              "max": 3840,
+              "min": 1
+            }
+          },
+          "locks": {
+            "exposureMode": "manual lock not exposed",
+            "focusMode": "manual lock not exposed",
+            "whiteBalanceMode": "manual lock not exposed"
+          },
+          "outputSize": [
+            3840,
+            2160
+          ],
+          "reference": {
+            "kind": "camera",
+            "timestampUs": 8438,
+            "capturedAt": "2026-10-31T13:07:48.021Z",
+            "coordinateFrame": "captured reference image",
+            "timestampClock": "HTMLVideoElement media timeline"
+          },
+          "frameDelivery": "MediaStreamTrackProcessor",
+          "lastComparison": {
+            "mode": "fixed",
+            "reference": {
+              "kind": "camera",
+              "timestampUs": 8438,
+              "capturedAt": "2026-10-31T13:07:48.021Z",
+              "coordinateFrame": "captured reference image",
+              "timestampClock": "HTMLVideoElement media timeline"
+            },
+            "target": {
+              "kind": "camera",
+              "ordinal": 273,
+              "timestampUs": 203720397300,
+              "timestampClock": "Track-processor VideoFrame clock; origin is browser/device defined"
+            },
+            "referenceAdmissible": 32281,
+            "requested": 32400,
+            "fixedImageCoordinateRoi": true
+          }
+        },
+        "comparison": "fixed",
+        "videoTime": 28.890599,
+        "videoPaused": false
+      },
+      "dropped": 0
+    },
+    {
+      "elapsed_seconds": 30.047266591980588,
+      "completed": 304,
+      "errors": [],
+      "state": {
+        "source": "camera",
+        "paused": false,
+        "loadingSource": false,
+        "inFlight": 0,
+        "index": 0,
+        "fileCount": 0,
+        "localBusy": false,
+        "loop": false,
+        "settings": {
+          "source": "camera",
+          "deliveryState": "running",
+          "requested": {
+            "width": 3840,
+            "height": 2160,
+            "frameRate": 60
+          },
+          "initialSettings": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "actual": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "capabilities": {
+            "aspectRatio": {
+              "max": 3840,
+              "min": 0.000462962962962963
+            },
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "facingMode": [],
+            "frameRate": {
+              "max": 10,
+              "min": 0
+            },
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": {
+              "max": 2160,
+              "min": 1
+            },
+            "resizeMode": [
+              "none",
+              "crop-and-scale"
+            ],
+            "width": {
+              "max": 3840,
+              "min": 1
+            }
+          },
+          "locks": {
+            "exposureMode": "manual lock not exposed",
+            "focusMode": "manual lock not exposed",
+            "whiteBalanceMode": "manual lock not exposed"
+          },
+          "outputSize": [
+            3840,
+            2160
+          ],
+          "reference": {
+            "kind": "camera",
+            "timestampUs": 8438,
+            "capturedAt": "2026-10-31T13:07:48.021Z",
+            "coordinateFrame": "captured reference image",
+            "timestampClock": "HTMLVideoElement media timeline"
+          },
+          "frameDelivery": "MediaStreamTrackProcessor",
+          "lastComparison": {
+            "mode": "fixed",
+            "reference": {
+              "kind": "camera",
+              "timestampUs": 8438,
+              "capturedAt": "2026-10-31T13:07:48.021Z",
+              "coordinateFrame": "captured reference image",
+              "timestampClock": "HTMLVideoElement media timeline"
+            },
+            "target": {
+              "kind": "camera",
+              "ordinal": 303,
+              "timestampUs": 203723397900,
+              "timestampClock": "Track-processor VideoFrame clock; origin is browser/device defined"
+            },
+            "referenceAdmissible": 32281,
+            "requested": 32400,
+            "fixedImageCoordinateRoi": true
+          }
+        },
+        "comparison": "fixed",
+        "videoTime": 31.894379,
+        "videoPaused": false
+      },
+      "dropped": 0
+    },
+    {
+      "elapsed_seconds": 33.052912835992174,
+      "completed": 334,
+      "errors": [],
+      "state": {
+        "source": "camera",
+        "paused": false,
+        "loadingSource": false,
+        "inFlight": 1,
+        "index": 0,
+        "fileCount": 0,
+        "localBusy": false,
+        "loop": false,
+        "settings": {
+          "source": "camera",
+          "deliveryState": "running",
+          "requested": {
+            "width": 3840,
+            "height": 2160,
+            "frameRate": 60
+          },
+          "initialSettings": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "actual": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "capabilities": {
+            "aspectRatio": {
+              "max": 3840,
+              "min": 0.000462962962962963
+            },
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "facingMode": [],
+            "frameRate": {
+              "max": 10,
+              "min": 0
+            },
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": {
+              "max": 2160,
+              "min": 1
+            },
+            "resizeMode": [
+              "none",
+              "crop-and-scale"
+            ],
+            "width": {
+              "max": 3840,
+              "min": 1
+            }
+          },
+          "locks": {
+            "exposureMode": "manual lock not exposed",
+            "focusMode": "manual lock not exposed",
+            "whiteBalanceMode": "manual lock not exposed"
+          },
+          "outputSize": [
+            3840,
+            2160
+          ],
+          "reference": {
+            "kind": "camera",
+            "timestampUs": 8438,
+            "capturedAt": "2026-10-31T13:07:48.021Z",
+            "coordinateFrame": "captured reference image",
+            "timestampClock": "HTMLVideoElement media timeline"
+          },
+          "frameDelivery": "MediaStreamTrackProcessor",
+          "lastComparison": {
+            "mode": "fixed",
+            "reference": {
+              "kind": "camera",
+              "timestampUs": 8438,
+              "capturedAt": "2026-10-31T13:07:48.021Z",
+              "coordinateFrame": "captured reference image",
+              "timestampClock": "HTMLVideoElement media timeline"
+            },
+            "target": {
+              "kind": "camera",
+              "ordinal": 333,
+              "timestampUs": 203726397800,
+              "timestampClock": "Track-processor VideoFrame clock; origin is browser/device defined"
+            },
+            "referenceAdmissible": 32281,
+            "requested": 32400,
+            "fixedImageCoordinateRoi": true
+          }
+        },
+        "comparison": "fixed",
+        "videoTime": 34.90035,
+        "videoPaused": false
+      },
+      "dropped": 0
+    },
+    {
+      "elapsed_seconds": 36.05803823698079,
+      "completed": 364,
+      "errors": [],
+      "state": {
+        "source": "camera",
+        "paused": false,
+        "loadingSource": false,
+        "inFlight": 1,
+        "index": 0,
+        "fileCount": 0,
+        "localBusy": false,
+        "loop": false,
+        "settings": {
+          "source": "camera",
+          "deliveryState": "running",
+          "requested": {
+            "width": 3840,
+            "height": 2160,
+            "frameRate": 60
+          },
+          "initialSettings": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "actual": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "capabilities": {
+            "aspectRatio": {
+              "max": 3840,
+              "min": 0.000462962962962963
+            },
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "facingMode": [],
+            "frameRate": {
+              "max": 10,
+              "min": 0
+            },
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": {
+              "max": 2160,
+              "min": 1
+            },
+            "resizeMode": [
+              "none",
+              "crop-and-scale"
+            ],
+            "width": {
+              "max": 3840,
+              "min": 1
+            }
+          },
+          "locks": {
+            "exposureMode": "manual lock not exposed",
+            "focusMode": "manual lock not exposed",
+            "whiteBalanceMode": "manual lock not exposed"
+          },
+          "outputSize": [
+            3840,
+            2160
+          ],
+          "reference": {
+            "kind": "camera",
+            "timestampUs": 8438,
+            "capturedAt": "2026-10-31T13:07:48.021Z",
+            "coordinateFrame": "captured reference image",
+            "timestampClock": "HTMLVideoElement media timeline"
+          },
+          "frameDelivery": "MediaStreamTrackProcessor",
+          "lastComparison": {
+            "mode": "fixed",
+            "reference": {
+              "kind": "camera",
+              "timestampUs": 8438,
+              "capturedAt": "2026-10-31T13:07:48.021Z",
+              "coordinateFrame": "captured reference image",
+              "timestampClock": "HTMLVideoElement media timeline"
+            },
+            "target": {
+              "kind": "camera",
+              "ordinal": 363,
+              "timestampUs": 203729398500,
+              "timestampClock": "Track-processor VideoFrame clock; origin is browser/device defined"
+            },
+            "referenceAdmissible": 32281,
+            "requested": 32400,
+            "fixedImageCoordinateRoi": true
+          }
+        },
+        "comparison": "fixed",
+        "videoTime": 37.905681,
+        "videoPaused": false
+      },
+      "dropped": 0
+    },
+    {
+      "elapsed_seconds": 39.06341607598006,
+      "completed": 394,
+      "errors": [],
+      "state": {
+        "source": "camera",
+        "paused": false,
+        "loadingSource": false,
+        "inFlight": 1,
+        "index": 0,
+        "fileCount": 0,
+        "localBusy": false,
+        "loop": false,
+        "settings": {
+          "source": "camera",
+          "deliveryState": "running",
+          "requested": {
+            "width": 3840,
+            "height": 2160,
+            "frameRate": 60
+          },
+          "initialSettings": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "actual": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "capabilities": {
+            "aspectRatio": {
+              "max": 3840,
+              "min": 0.000462962962962963
+            },
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "facingMode": [],
+            "frameRate": {
+              "max": 10,
+              "min": 0
+            },
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": {
+              "max": 2160,
+              "min": 1
+            },
+            "resizeMode": [
+              "none",
+              "crop-and-scale"
+            ],
+            "width": {
+              "max": 3840,
+              "min": 1
+            }
+          },
+          "locks": {
+            "exposureMode": "manual lock not exposed",
+            "focusMode": "manual lock not exposed",
+            "whiteBalanceMode": "manual lock not exposed"
+          },
+          "outputSize": [
+            3840,
+            2160
+          ],
+          "reference": {
+            "kind": "camera",
+            "timestampUs": 8438,
+            "capturedAt": "2026-10-31T13:07:48.021Z",
+            "coordinateFrame": "captured reference image",
+            "timestampClock": "HTMLVideoElement media timeline"
+          },
+          "frameDelivery": "MediaStreamTrackProcessor",
+          "lastComparison": {
+            "mode": "fixed",
+            "reference": {
+              "kind": "camera",
+              "timestampUs": 8438,
+              "capturedAt": "2026-10-31T13:07:48.021Z",
+              "coordinateFrame": "captured reference image",
+              "timestampClock": "HTMLVideoElement media timeline"
+            },
+            "target": {
+              "kind": "camera",
+              "ordinal": 393,
+              "timestampUs": 203732397300,
+              "timestampClock": "Track-processor VideoFrame clock; origin is browser/device defined"
+            },
+            "referenceAdmissible": 32281,
+            "requested": 32400,
+            "fixedImageCoordinateRoi": true
+          }
+        },
+        "comparison": "fixed",
+        "videoTime": 40.910584,
+        "videoPaused": false
+      },
+      "dropped": 0
+    },
+    {
+      "elapsed_seconds": 42.0711931999831,
+      "completed": 425,
+      "errors": [],
+      "state": {
+        "source": "camera",
+        "paused": false,
+        "loadingSource": false,
+        "inFlight": 0,
+        "index": 0,
+        "fileCount": 0,
+        "localBusy": false,
+        "loop": false,
+        "settings": {
+          "source": "camera",
+          "deliveryState": "running",
+          "requested": {
+            "width": 3840,
+            "height": 2160,
+            "frameRate": 60
+          },
+          "initialSettings": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "actual": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "capabilities": {
+            "aspectRatio": {
+              "max": 3840,
+              "min": 0.000462962962962963
+            },
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "facingMode": [],
+            "frameRate": {
+              "max": 10,
+              "min": 0
+            },
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": {
+              "max": 2160,
+              "min": 1
+            },
+            "resizeMode": [
+              "none",
+              "crop-and-scale"
+            ],
+            "width": {
+              "max": 3840,
+              "min": 1
+            }
+          },
+          "locks": {
+            "exposureMode": "manual lock not exposed",
+            "focusMode": "manual lock not exposed",
+            "whiteBalanceMode": "manual lock not exposed"
+          },
+          "outputSize": [
+            3840,
+            2160
+          ],
+          "reference": {
+            "kind": "camera",
+            "timestampUs": 8438,
+            "capturedAt": "2026-10-31T13:07:48.021Z",
+            "coordinateFrame": "captured reference image",
+            "timestampClock": "HTMLVideoElement media timeline"
+          },
+          "frameDelivery": "MediaStreamTrackProcessor",
+          "lastComparison": {
+            "mode": "fixed",
+            "reference": {
+              "kind": "camera",
+              "timestampUs": 8438,
+              "capturedAt": "2026-10-31T13:07:48.021Z",
+              "coordinateFrame": "captured reference image",
+              "timestampClock": "HTMLVideoElement media timeline"
+            },
+            "target": {
+              "kind": "camera",
+              "ordinal": 424,
+              "timestampUs": 203735498100,
+              "timestampClock": "Track-processor VideoFrame clock; origin is browser/device defined"
+            },
+            "referenceAdmissible": 32281,
+            "requested": 32400,
+            "fixedImageCoordinateRoi": true
+          }
+        },
+        "comparison": "fixed",
+        "videoTime": 43.91949,
+        "videoPaused": false
+      },
+      "dropped": 0
+    },
+    {
+      "elapsed_seconds": 45.095363405998796,
+      "completed": 455,
+      "errors": [],
+      "state": {
+        "source": "camera",
+        "paused": false,
+        "loadingSource": false,
+        "inFlight": 0,
+        "index": 0,
+        "fileCount": 0,
+        "localBusy": false,
+        "loop": false,
+        "settings": {
+          "source": "camera",
+          "deliveryState": "running",
+          "requested": {
+            "width": 3840,
+            "height": 2160,
+            "frameRate": 60
+          },
+          "initialSettings": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "actual": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "capabilities": {
+            "aspectRatio": {
+              "max": 3840,
+              "min": 0.000462962962962963
+            },
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "facingMode": [],
+            "frameRate": {
+              "max": 10,
+              "min": 0
+            },
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": {
+              "max": 2160,
+              "min": 1
+            },
+            "resizeMode": [
+              "none",
+              "crop-and-scale"
+            ],
+            "width": {
+              "max": 3840,
+              "min": 1
+            }
+          },
+          "locks": {
+            "exposureMode": "manual lock not exposed",
+            "focusMode": "manual lock not exposed",
+            "whiteBalanceMode": "manual lock not exposed"
+          },
+          "outputSize": [
+            3840,
+            2160
+          ],
+          "reference": {
+            "kind": "camera",
+            "timestampUs": 8438,
+            "capturedAt": "2026-10-31T13:07:48.021Z",
+            "coordinateFrame": "captured reference image",
+            "timestampClock": "HTMLVideoElement media timeline"
+          },
+          "frameDelivery": "MediaStreamTrackProcessor",
+          "lastComparison": {
+            "mode": "fixed",
+            "reference": {
+              "kind": "camera",
+              "timestampUs": 8438,
+              "capturedAt": "2026-10-31T13:07:48.021Z",
+              "coordinateFrame": "captured reference image",
+              "timestampClock": "HTMLVideoElement media timeline"
+            },
+            "target": {
+              "kind": "camera",
+              "ordinal": 454,
+              "timestampUs": 203738497700,
+              "timestampClock": "Track-processor VideoFrame clock; origin is browser/device defined"
+            },
+            "referenceAdmissible": 32281,
+            "requested": 32400,
+            "fixedImageCoordinateRoi": true
+          }
+        },
+        "comparison": "fixed",
+        "videoTime": 46.943252,
+        "videoPaused": false
+      },
+      "dropped": 0
+    },
+    {
+      "elapsed_seconds": 48.098784534988226,
+      "completed": 485,
+      "errors": [],
+      "state": {
+        "source": "camera",
+        "paused": false,
+        "loadingSource": false,
+        "inFlight": 0,
+        "index": 0,
+        "fileCount": 0,
+        "localBusy": false,
+        "loop": false,
+        "settings": {
+          "source": "camera",
+          "deliveryState": "running",
+          "requested": {
+            "width": 3840,
+            "height": 2160,
+            "frameRate": 60
+          },
+          "initialSettings": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "actual": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "capabilities": {
+            "aspectRatio": {
+              "max": 3840,
+              "min": 0.000462962962962963
+            },
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "facingMode": [],
+            "frameRate": {
+              "max": 10,
+              "min": 0
+            },
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": {
+              "max": 2160,
+              "min": 1
+            },
+            "resizeMode": [
+              "none",
+              "crop-and-scale"
+            ],
+            "width": {
+              "max": 3840,
+              "min": 1
+            }
+          },
+          "locks": {
+            "exposureMode": "manual lock not exposed",
+            "focusMode": "manual lock not exposed",
+            "whiteBalanceMode": "manual lock not exposed"
+          },
+          "outputSize": [
+            3840,
+            2160
+          ],
+          "reference": {
+            "kind": "camera",
+            "timestampUs": 8438,
+            "capturedAt": "2026-10-31T13:07:48.021Z",
+            "coordinateFrame": "captured reference image",
+            "timestampClock": "HTMLVideoElement media timeline"
+          },
+          "frameDelivery": "MediaStreamTrackProcessor",
+          "lastComparison": {
+            "mode": "fixed",
+            "reference": {
+              "kind": "camera",
+              "timestampUs": 8438,
+              "capturedAt": "2026-10-31T13:07:48.021Z",
+              "coordinateFrame": "captured reference image",
+              "timestampClock": "HTMLVideoElement media timeline"
+            },
+            "target": {
+              "kind": "camera",
+              "ordinal": 484,
+              "timestampUs": 203741497700,
+              "timestampClock": "Track-processor VideoFrame clock; origin is browser/device defined"
+            },
+            "referenceAdmissible": 32281,
+            "requested": 32400,
+            "fixedImageCoordinateRoi": true
+          }
+        },
+        "comparison": "fixed",
+        "videoTime": 49.946882,
+        "videoPaused": false
+      },
+      "dropped": 0
+    },
+    {
+      "elapsed_seconds": 51.10225104098208,
+      "completed": 515,
+      "errors": [],
+      "state": {
+        "source": "camera",
+        "paused": false,
+        "loadingSource": false,
+        "inFlight": 0,
+        "index": 0,
+        "fileCount": 0,
+        "localBusy": false,
+        "loop": false,
+        "settings": {
+          "source": "camera",
+          "deliveryState": "running",
+          "requested": {
+            "width": 3840,
+            "height": 2160,
+            "frameRate": 60
+          },
+          "initialSettings": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "actual": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "capabilities": {
+            "aspectRatio": {
+              "max": 3840,
+              "min": 0.000462962962962963
+            },
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "facingMode": [],
+            "frameRate": {
+              "max": 10,
+              "min": 0
+            },
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": {
+              "max": 2160,
+              "min": 1
+            },
+            "resizeMode": [
+              "none",
+              "crop-and-scale"
+            ],
+            "width": {
+              "max": 3840,
+              "min": 1
+            }
+          },
+          "locks": {
+            "exposureMode": "manual lock not exposed",
+            "focusMode": "manual lock not exposed",
+            "whiteBalanceMode": "manual lock not exposed"
+          },
+          "outputSize": [
+            3840,
+            2160
+          ],
+          "reference": {
+            "kind": "camera",
+            "timestampUs": 8438,
+            "capturedAt": "2026-10-31T13:07:48.021Z",
+            "coordinateFrame": "captured reference image",
+            "timestampClock": "HTMLVideoElement media timeline"
+          },
+          "frameDelivery": "MediaStreamTrackProcessor",
+          "lastComparison": {
+            "mode": "fixed",
+            "reference": {
+              "kind": "camera",
+              "timestampUs": 8438,
+              "capturedAt": "2026-10-31T13:07:48.021Z",
+              "coordinateFrame": "captured reference image",
+              "timestampClock": "HTMLVideoElement media timeline"
+            },
+            "target": {
+              "kind": "camera",
+              "ordinal": 514,
+              "timestampUs": 203744497900,
+              "timestampClock": "Track-processor VideoFrame clock; origin is browser/device defined"
+            },
+            "referenceAdmissible": 32281,
+            "requested": 32400,
+            "fixedImageCoordinateRoi": true
+          }
+        },
+        "comparison": "fixed",
+        "videoTime": 52.950441,
+        "videoPaused": false
+      },
+      "dropped": 0
+    },
+    {
+      "elapsed_seconds": 54.10688884797855,
+      "completed": 545,
+      "errors": [],
+      "state": {
+        "source": "camera",
+        "paused": false,
+        "loadingSource": false,
+        "inFlight": 0,
+        "index": 0,
+        "fileCount": 0,
+        "localBusy": false,
+        "loop": false,
+        "settings": {
+          "source": "camera",
+          "deliveryState": "running",
+          "requested": {
+            "width": 3840,
+            "height": 2160,
+            "frameRate": 60
+          },
+          "initialSettings": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "actual": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "capabilities": {
+            "aspectRatio": {
+              "max": 3840,
+              "min": 0.000462962962962963
+            },
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "facingMode": [],
+            "frameRate": {
+              "max": 10,
+              "min": 0
+            },
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": {
+              "max": 2160,
+              "min": 1
+            },
+            "resizeMode": [
+              "none",
+              "crop-and-scale"
+            ],
+            "width": {
+              "max": 3840,
+              "min": 1
+            }
+          },
+          "locks": {
+            "exposureMode": "manual lock not exposed",
+            "focusMode": "manual lock not exposed",
+            "whiteBalanceMode": "manual lock not exposed"
+          },
+          "outputSize": [
+            3840,
+            2160
+          ],
+          "reference": {
+            "kind": "camera",
+            "timestampUs": 8438,
+            "capturedAt": "2026-10-31T13:07:48.021Z",
+            "coordinateFrame": "captured reference image",
+            "timestampClock": "HTMLVideoElement media timeline"
+          },
+          "frameDelivery": "MediaStreamTrackProcessor",
+          "lastComparison": {
+            "mode": "fixed",
+            "reference": {
+              "kind": "camera",
+              "timestampUs": 8438,
+              "capturedAt": "2026-10-31T13:07:48.021Z",
+              "coordinateFrame": "captured reference image",
+              "timestampClock": "HTMLVideoElement media timeline"
+            },
+            "target": {
+              "kind": "camera",
+              "ordinal": 544,
+              "timestampUs": 203747497900,
+              "timestampClock": "Track-processor VideoFrame clock; origin is browser/device defined"
+            },
+            "referenceAdmissible": 32281,
+            "requested": 32400,
+            "fixedImageCoordinateRoi": true
+          }
+        },
+        "comparison": "fixed",
+        "videoTime": 55.95458,
+        "videoPaused": false
+      },
+      "dropped": 0
+    },
+    {
+      "elapsed_seconds": 57.1125606779824,
+      "completed": 575,
+      "errors": [],
+      "state": {
+        "source": "camera",
+        "paused": false,
+        "loadingSource": false,
+        "inFlight": 0,
+        "index": 0,
+        "fileCount": 0,
+        "localBusy": false,
+        "loop": false,
+        "settings": {
+          "source": "camera",
+          "deliveryState": "running",
+          "requested": {
+            "width": 3840,
+            "height": 2160,
+            "frameRate": 60
+          },
+          "initialSettings": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "actual": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "capabilities": {
+            "aspectRatio": {
+              "max": 3840,
+              "min": 0.000462962962962963
+            },
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "facingMode": [],
+            "frameRate": {
+              "max": 10,
+              "min": 0
+            },
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": {
+              "max": 2160,
+              "min": 1
+            },
+            "resizeMode": [
+              "none",
+              "crop-and-scale"
+            ],
+            "width": {
+              "max": 3840,
+              "min": 1
+            }
+          },
+          "locks": {
+            "exposureMode": "manual lock not exposed",
+            "focusMode": "manual lock not exposed",
+            "whiteBalanceMode": "manual lock not exposed"
+          },
+          "outputSize": [
+            3840,
+            2160
+          ],
+          "reference": {
+            "kind": "camera",
+            "timestampUs": 8438,
+            "capturedAt": "2026-10-31T13:07:48.021Z",
+            "coordinateFrame": "captured reference image",
+            "timestampClock": "HTMLVideoElement media timeline"
+          },
+          "frameDelivery": "MediaStreamTrackProcessor",
+          "lastComparison": {
+            "mode": "fixed",
+            "reference": {
+              "kind": "camera",
+              "timestampUs": 8438,
+              "capturedAt": "2026-10-31T13:07:48.021Z",
+              "coordinateFrame": "captured reference image",
+              "timestampClock": "HTMLVideoElement media timeline"
+            },
+            "target": {
+              "kind": "camera",
+              "ordinal": 574,
+              "timestampUs": 203750498000,
+              "timestampClock": "Track-processor VideoFrame clock; origin is browser/device defined"
+            },
+            "referenceAdmissible": 32281,
+            "requested": 32400,
+            "fixedImageCoordinateRoi": true
+          }
+        },
+        "comparison": "fixed",
+        "videoTime": 58.960458,
+        "videoPaused": false
+      },
+      "dropped": 0
+    },
+    {
+      "elapsed_seconds": 60.11649343598401,
+      "completed": 605,
+      "errors": [],
+      "state": {
+        "source": "camera",
+        "paused": false,
+        "loadingSource": false,
+        "inFlight": 0,
+        "index": 0,
+        "fileCount": 0,
+        "localBusy": false,
+        "loop": false,
+        "settings": {
+          "source": "camera",
+          "deliveryState": "running",
+          "requested": {
+            "width": 3840,
+            "height": 2160,
+            "frameRate": 60
+          },
+          "initialSettings": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "actual": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "capabilities": {
+            "aspectRatio": {
+              "max": 3840,
+              "min": 0.000462962962962963
+            },
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "facingMode": [],
+            "frameRate": {
+              "max": 10,
+              "min": 0
+            },
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": {
+              "max": 2160,
+              "min": 1
+            },
+            "resizeMode": [
+              "none",
+              "crop-and-scale"
+            ],
+            "width": {
+              "max": 3840,
+              "min": 1
+            }
+          },
+          "locks": {
+            "exposureMode": "manual lock not exposed",
+            "focusMode": "manual lock not exposed",
+            "whiteBalanceMode": "manual lock not exposed"
+          },
+          "outputSize": [
+            3840,
+            2160
+          ],
+          "reference": {
+            "kind": "camera",
+            "timestampUs": 8438,
+            "capturedAt": "2026-10-31T13:07:48.021Z",
+            "coordinateFrame": "captured reference image",
+            "timestampClock": "HTMLVideoElement media timeline"
+          },
+          "frameDelivery": "MediaStreamTrackProcessor",
+          "lastComparison": {
+            "mode": "fixed",
+            "reference": {
+              "kind": "camera",
+              "timestampUs": 8438,
+              "capturedAt": "2026-10-31T13:07:48.021Z",
+              "coordinateFrame": "captured reference image",
+              "timestampClock": "HTMLVideoElement media timeline"
+            },
+            "target": {
+              "kind": "camera",
+              "ordinal": 604,
+              "timestampUs": 203753497500,
+              "timestampClock": "Track-processor VideoFrame clock; origin is browser/device defined"
+            },
+            "referenceAdmissible": 32281,
+            "requested": 32400,
+            "fixedImageCoordinateRoi": true
+          }
+        },
+        "comparison": "fixed",
+        "videoTime": 61.96467,
+        "videoPaused": false
+      },
+      "dropped": 0
+    },
+    {
+      "elapsed_seconds": 63.121546509995824,
+      "completed": 635,
+      "errors": [],
+      "state": {
+        "source": "camera",
+        "paused": false,
+        "loadingSource": false,
+        "inFlight": 0,
+        "index": 0,
+        "fileCount": 0,
+        "localBusy": false,
+        "loop": false,
+        "settings": {
+          "source": "camera",
+          "deliveryState": "running",
+          "requested": {
+            "width": 3840,
+            "height": 2160,
+            "frameRate": 60
+          },
+          "initialSettings": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "actual": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "capabilities": {
+            "aspectRatio": {
+              "max": 3840,
+              "min": 0.000462962962962963
+            },
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "facingMode": [],
+            "frameRate": {
+              "max": 10,
+              "min": 0
+            },
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": {
+              "max": 2160,
+              "min": 1
+            },
+            "resizeMode": [
+              "none",
+              "crop-and-scale"
+            ],
+            "width": {
+              "max": 3840,
+              "min": 1
+            }
+          },
+          "locks": {
+            "exposureMode": "manual lock not exposed",
+            "focusMode": "manual lock not exposed",
+            "whiteBalanceMode": "manual lock not exposed"
+          },
+          "outputSize": [
+            3840,
+            2160
+          ],
+          "reference": {
+            "kind": "camera",
+            "timestampUs": 8438,
+            "capturedAt": "2026-10-31T13:07:48.021Z",
+            "coordinateFrame": "captured reference image",
+            "timestampClock": "HTMLVideoElement media timeline"
+          },
+          "frameDelivery": "MediaStreamTrackProcessor",
+          "lastComparison": {
+            "mode": "fixed",
+            "reference": {
+              "kind": "camera",
+              "timestampUs": 8438,
+              "capturedAt": "2026-10-31T13:07:48.021Z",
+              "coordinateFrame": "captured reference image",
+              "timestampClock": "HTMLVideoElement media timeline"
+            },
+            "target": {
+              "kind": "camera",
+              "ordinal": 634,
+              "timestampUs": 203756497600,
+              "timestampClock": "Track-processor VideoFrame clock; origin is browser/device defined"
+            },
+            "referenceAdmissible": 32281,
+            "requested": 32400,
+            "fixedImageCoordinateRoi": true
+          }
+        },
+        "comparison": "fixed",
+        "videoTime": 64.96932,
+        "videoPaused": false
+      },
+      "dropped": 0
+    },
+    {
+      "elapsed_seconds": 65.00382708798861,
+      "completed": 654,
+      "errors": [],
+      "state": {
+        "source": "camera",
+        "paused": false,
+        "loadingSource": false,
+        "inFlight": 0,
+        "index": 0,
+        "fileCount": 0,
+        "localBusy": false,
+        "loop": false,
+        "settings": {
+          "source": "camera",
+          "deliveryState": "running",
+          "requested": {
+            "width": 3840,
+            "height": 2160,
+            "frameRate": 60
+          },
+          "initialSettings": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "actual": {
+            "aspectRatio": 1.7777777777777777,
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "frameRate": 10,
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": 2160,
+            "resizeMode": "none",
+            "width": 3840
+          },
+          "capabilities": {
+            "aspectRatio": {
+              "max": 3840,
+              "min": 0.000462962962962963
+            },
+            "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+            "facingMode": [],
+            "frameRate": {
+              "max": 10,
+              "min": 0
+            },
+            "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+            "height": {
+              "max": 2160,
+              "min": 1
+            },
+            "resizeMode": [
+              "none",
+              "crop-and-scale"
+            ],
+            "width": {
+              "max": 3840,
+              "min": 1
+            }
+          },
+          "locks": {
+            "exposureMode": "manual lock not exposed",
+            "focusMode": "manual lock not exposed",
+            "whiteBalanceMode": "manual lock not exposed"
+          },
+          "outputSize": [
+            3840,
+            2160
+          ],
+          "reference": {
+            "kind": "camera",
+            "timestampUs": 8438,
+            "capturedAt": "2026-10-31T13:07:48.021Z",
+            "coordinateFrame": "captured reference image",
+            "timestampClock": "HTMLVideoElement media timeline"
+          },
+          "frameDelivery": "MediaStreamTrackProcessor",
+          "lastComparison": {
+            "mode": "fixed",
+            "reference": {
+              "kind": "camera",
+              "timestampUs": 8438,
+              "capturedAt": "2026-10-31T13:07:48.021Z",
+              "coordinateFrame": "captured reference image",
+              "timestampClock": "HTMLVideoElement media timeline"
+            },
+            "target": {
+              "kind": "camera",
+              "ordinal": 653,
+              "timestampUs": 203758397500,
+              "timestampClock": "Track-processor VideoFrame clock; origin is browser/device defined"
+            },
+            "referenceAdmissible": 32281,
+            "requested": 32400,
+            "fixedImageCoordinateRoi": true
+          }
+        },
+        "comparison": "fixed",
+        "videoTime": 66.851786,
+        "videoPaused": false
+      },
+      "dropped": 0
+    }
+  ],
+  "fixed_accepted": 31524,
+  "comparison": {
+    "mode": "consecutive",
+    "reference": {
+      "kind": "camera",
+      "ordinal": 656,
+      "timestampUs": 203760396300,
+      "timestampClock": "Track-processor VideoFrame clock; origin is browser/device defined"
+    },
+    "target": {
+      "kind": "camera",
+      "ordinal": 657,
+      "timestampUs": 203761696700,
+      "timestampClock": "Track-processor VideoFrame clock; origin is browser/device defined"
+    },
+    "referenceAdmissible": 32281,
+    "requested": 32400,
+    "fixedImageCoordinateRoi": true
+  },
+  "fallback": {
+    "source": "camera",
+    "paused": false,
+    "loadingSource": false,
+    "inFlight": 0,
+    "index": 0,
+    "fileCount": 0,
+    "localBusy": false,
+    "loop": false,
+    "settings": {
+      "source": "camera",
+      "deliveryState": "running",
+      "requested": {
+        "width": 3840,
+        "height": 2160,
+        "frameRate": 60
+      },
+      "initialSettings": {
+        "aspectRatio": 1.7777777777777777,
+        "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+        "frameRate": 10,
+        "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+        "height": 2160,
+        "resizeMode": "none",
+        "width": 3840
+      },
+      "actual": {
+        "aspectRatio": 1.7777777777777777,
+        "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+        "frameRate": 10,
+        "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+        "height": 2160,
+        "resizeMode": "none",
+        "width": 3840
+      },
+      "capabilities": {
+        "aspectRatio": {
+          "max": 3840,
+          "min": 0.000462962962962963
+        },
+        "deviceId": "b6608fd767b4231bf18ea5370ab626cc3ba2df115310b44e3b3d36e2242fa43b",
+        "facingMode": [],
+        "frameRate": {
+          "max": 10,
+          "min": 0
+        },
+        "groupId": "d5945bacf9caf276a33522cb868f820a7e0766a71ae5d38393afba24c64499fa",
+        "height": {
+          "max": 2160,
+          "min": 1
+        },
+        "resizeMode": [
+          "none",
+          "crop-and-scale"
+        ],
+        "width": {
+          "max": 3840,
+          "min": 1
+        }
+      },
+      "locks": {
+        "exposureMode": "manual lock not exposed",
+        "focusMode": "manual lock not exposed",
+        "whiteBalanceMode": "manual lock not exposed"
+      },
+      "outputSize": [
+        3840,
+        2160
+      ],
+      "reference": {
+        "kind": "camera",
+        "timestampUs": 5980,
+        "capturedAt": "2026-10-31T13:09:03.015Z",
+        "coordinateFrame": "captured reference image",
+        "timestampClock": "HTMLVideoElement media timeline"
+      },
+      "frameDelivery": "Video-frame callback fallback",
+      "lastComparison": {
+        "mode": "fixed",
+        "reference": {
+          "kind": "camera",
+          "timestampUs": 5980,
+          "capturedAt": "2026-10-31T13:09:03.015Z",
+          "coordinateFrame": "captured reference image",
+          "timestampClock": "HTMLVideoElement media timeline"
+        },
+        "target": {
+          "kind": "camera",
+          "ordinal": 4,
+          "timestampUs": 1894329,
+          "timestampClock": "HTMLVideoElement media timeline"
+        },
+        "referenceAdmissible": 32281,
+        "requested": 32400,
+        "fixedImageCoordinateRoi": true
+      }
+    },
+    "comparison": "fixed",
+    "videoTime": 1.950877,
+    "videoPaused": false
+  },
+  "all_tracks_closed": true,
+  "ended_restart": true,
+  "ended_event_kind": "synthetic ended event after stopping the fake track; not physical disconnect",
+  "errors": []
+}

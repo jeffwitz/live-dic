@@ -42,3 +42,9 @@ reference media-time and target track-processor clocks separately. Reference
 previews cannot be exported as target measurements. Source replacement clears
 old HUD values/drop counts; comparison/reference/ROI changes require a new
 target before field review/export is enabled.
+
+`restart-hardware.json` additionally stops the owned fake track and dispatches
+a synthetic ended event, then restarts through the actual Restart camera
+action. The reader checks its generation after awaiting a frame, so a replaced
+camera cannot inject a late old frame. The test is an explicit simulation of
+the UI recovery path, not physical disconnect/reconnect qualification.

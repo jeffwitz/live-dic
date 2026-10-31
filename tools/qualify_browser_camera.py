@@ -152,6 +152,24 @@ def main():
                     comparison["target"]["timestampUs"] > comparison["reference"]["timestampUs"]
                 ), comparison
                 assert np.isfinite(pair["parameters"]).all()
+                browser._evaluate(
+                    "const stopped=testCameraTracks.at(-1);stopped.stop();stopped.dispatchEvent(new Event('ended'));true"
+                )
+                wait(
+                    browser,
+                    "liveDicSourceState().settings.deliveryState==='stopped'&&liveDicSourceState().paused",
+                )
+                assert browser._evaluate(
+                    "document.getElementById('pause').textContent==='Restart camera'"
+                )
+                browser._evaluate("document.getElementById('pause').onclick().then(()=>true)")
+                wait(
+                    browser,
+                    "!liveDicSourceState().loadingSource&&liveDicSourceState().settings.deliveryState==='running'",
+                )
+                assert browser._evaluate(
+                    "testCameraTracks[0].readyState==='ended'&&testCameraTracks.at(-1).readyState==='live'"
+                )
                 fallback = None
                 if args.fallback:
                     browser._evaluate(
@@ -197,6 +215,8 @@ def main():
                     comparison=comparison,
                     fallback=fallback,
                     all_tracks_closed=True,
+                    ended_restart=True,
+                    ended_event_kind="synthetic ended event after stopping the fake track; not physical disconnect",
                     errors=browser._evaluate("liveDicStatus.errors"),
                 )
                 assert not report["errors"], report["errors"]

@@ -441,7 +441,10 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   $('import-result').onclick=()=>$('result-file').click();
   $('save-project').onclick=async()=>{
     stopReplay();try{
-      await beforeProjectExport();rememberView();
+      await beforeProjectExport();
+      // Snapshot the applied recipe after the last requested analysis, never its previous value.
+      while(reviewing&&(workerBusy||pendingAnalysis))await new Promise(resolve=>setTimeout(resolve,20));
+      rememberView();
       const snapshot=[...entries];
       const bytes=projectArchive(snapshot,{selectedId:selected});
       download('live-dic-results.dicproject',bytes,'application/zip');

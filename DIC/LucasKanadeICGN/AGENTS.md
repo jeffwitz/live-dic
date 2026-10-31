@@ -555,3 +555,17 @@ qualification rather than infer mobile coverage from desktop results.
   qualifies interchange and installed resources, not a new accuracy/performance
   campaign. The wheel contains all six canonical WGSL files and no first-party
   native binary.
+
+### Ended inputs and project snapshots
+
+- Camera frame readers re-check generation after await, close late frames and
+  mark ended/failed delivery explicitly. Restart is a new reference and mask
+  preparation; keep the last completed result available until then. Fake-track
+  ended-event recovery is tested, not physical camera disconnection.
+- Results-project export waits for the last requested derived analysis before
+  snapshotting applied recipes. This pause/readback/analysis barrier belongs to
+  explicit export, never the live frame loop. Both hardware/SwiftShader UHD
+  tests cover an edit followed immediately by export.
+- The complete remote CI on `57ef273` passed, including macOS launcher tests,
+  lavapipe and the software browser plus no-WebGPU review checks. Later revisions
+  still need their own observed result.

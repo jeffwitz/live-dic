@@ -9,6 +9,7 @@ import hashlib
 import io
 import json
 import tempfile
+import zipfile
 from pathlib import Path
 from urllib.parse import quote
 
@@ -309,6 +310,10 @@ def main():
                     and geometry["width"] == 3840
                     and geometry["height"] == 2160
                 ), geometry
+            # Export immediately after an edit: the archive must await that analysis recipe.
+            browser._evaluate(
+                "document.getElementById('post-window').value='9';document.getElementById('post-window').onchange();true"
+            )
             project_encoded = browser._evaluate("""(async()=>{
               const original=URL.createObjectURL;let saved;URL.createObjectURL=b=>{if(b.type==='application/zip')saved=b;return original(b);};
               try{await document.getElementById('save-project').onclick();const bytes=new Uint8Array(await saved.arrayBuffer()),parts=[];
@@ -320,6 +325,14 @@ def main():
                 "window.dispatchEvent(new Event('beforeunload',{cancelable:true}))"
             )
             project_payload = base64.b64decode(project_encoded)
+            with zipfile.ZipFile(io.BytesIO(project_payload)) as project_zip:
+                manifest = json.loads(project_zip.read("manifest.json"))
+                selected_recipe = next(
+                    field["recipe"]
+                    for field in manifest["fields"]
+                    if field["originalId"] == manifest["settings"]["selectedId"]
+                )
+                assert selected_recipe["window"] == 9, selected_recipe
             with tempfile.TemporaryDirectory(
                 prefix="live-dic-project-", dir=visible if visible.is_dir() else None
             ) as temp:

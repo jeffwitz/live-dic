@@ -99,3 +99,12 @@ browser flags (no skips). Tests still read their source/fixture/standalone-app
 files from the checkout; native and Python browser-engine imports/resources use
 the installed wheel. The standalone PWA remains outside the wheel by design.
 The wheel contains no first-party OS/architecture binary or SPIR-V.
+
+## Applied-recipe export barrier
+
+`project-barrier-hardware.json` / `project-barrier-software.json` repeat the
+actual UHD workbench test with a project export invoked immediately after an
+analysis-window edit. The script independently reads manifest.json and requires
+that selected field's new window (9) rather than the previous recipe. Export
+pauses acquisition and awaits the pending derived analysis outside the live loop.
+The existing NumPy field oracle and raw-array preservation checks still pass.
