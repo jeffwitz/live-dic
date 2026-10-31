@@ -62,8 +62,8 @@ with ICGNWGPUFullPyramid() as engine:
     result = engine.register(target)
     print(engine.adapter_info)
 
-print(result.mean_translation)   # Approximately (2, -1) pixels.
-print(result.parameters.shape)   # (32, 32, 6)
+print(result.mean_translation)  # Approximately (2, -1) pixels.
+print(result.parameters.shape)  # (32, 32, 6)
 print(result.accepted_mask.sum())
 result.save_npz("result.npz")
 ```

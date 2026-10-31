@@ -30,13 +30,15 @@ Instructions for work in `DIC/LucasKanadeICGN/`. See the root
 cd DIC/LucasKanadeICGN/python
 .venv/bin/python -m unittest discover -s tests                 # CPU-only tests
 ICGN_RUN_GPU_TESTS=1 .venv/bin/python -m unittest discover -s tests   # + GPU tests
-.venv/bin/ruff check src tests ../benchmarks
-.venv/bin/ruff format --check src tests ../benchmarks
+.venv/bin/ruff check . ../benchmarks ../../../tools ../docs
+.venv/bin/ruff format --check . ../benchmarks ../../../tools ../docs
 cd ../../.. && python3 -m sphinx -W --keep-going -b html \
   DIC/LucasKanadeICGN/docs DIC/LucasKanadeICGN/docs/_build/html
 ```
 
 Run these checks before finishing and report their actual outcomes.
+Include the complete package directory in style checks, as CI does: checking
+only `src` and `tests` omits Python examples in the package README.
 GPU tests must be explicitly enabled on available hardware or a software
 adapter; skipped GPU tests do not validate numerical execution.
 
