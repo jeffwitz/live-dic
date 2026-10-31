@@ -81,21 +81,103 @@ video-frame callbacks and ImageBitmap/VideoFrame capture. Input colour-to-gray
 conversion runs on GPU. The cold reference preparation reads grayscale once;
 target frames are not read into a CPU pixel array.
 
-Draw a full-window ROI
-----------------------
+Build and edit a mask with domains and holes
+--------------------------------------------
 
-Pause, choose rectangle or polygon, and select **Draw ROI**. Draw with a mouse,
-pen or touch. Finish a polygon by double-clicking or choosing **Apply ROI**.
-Apply the mask, then resume. **Full image** removes it. Reference geometry and
-temporal history are rebuilt between sequences.
+Choose **Edit mask**. Capture pauses and the viewer shows the fixed reference.
+Existing shapes stay in place. Select a tool to add rectangles, ellipses,
+circles or polygons; there is no fixed shape-count limit. Drag opposite corners
+for a rectangle/ellipse/circle. Click polygon vertices, then double-click or
+choose **Finish polygon**.
 
-The mask is defined at full reference resolution. A pixel centre inside the
-drawn shape becomes True. The square of every retained subset must lie entirely
-inside the mask; holes and forbidden pixels exclude it. Nothing tests the
-moving target against a fixed mask. Programmatic masks may contain holes;
-see :doc:`../reference/js-api` and :doc:`use-roi` for the exact geometry,
-conservative seed/neighbour links and preprocessing scope. Browser partial ROI
-and geometric truncation are explicitly unsupported.
+Start with an outer domain. A shape whose selected reference pixels lie wholly
+inside another becomes a **hole** automatically. A shape inside that hole
+becomes a kept **island**. Repeat for further nesting. Separate outer domains
+are united; overlapping outer domains are also united. Holes are subtracted
+after uniting outer domains, so another overlapping outer domain does not fill
+a hole silently. Islands are restored at the next depth. The region list names
+each domain/hole and indents its depth.
+
+Use **Select / move / resize**, select a region in the list or click it in the
+viewer, then drag its body or white handles. Polygon handles move individual
+vertices. The numeric left/top/width/height fields use full-resolution reference
+pixels; **Update geometry** applies them. A circle keeps equal width and height.
+Selecting equal dimensions also makes an ellipse circular. Delete removes the
+selected shape; its remaining nested shapes are reclassified. **Undo** restores
+previous geometry, including deletion. **Full image** removes the mask.
+
+Choose **Apply mask** when finished. The engine prepares the new static mask
+and history; no geometry work runs per video frame. To adjust it later, choose
+**Edit mask** again. Edits remain unapplied until that action. With no shapes,
+there is no mask. Rectangular/polygon scanlines use pixel centres and half-open
+edges; ellipse/circle interiors are strict. Classification checks the entire
+rasterized support, not just centres or corners. The mask does not depend on
+canvas antialiasing or drawing order. Equal pixel footprints are duplicates.
+
+**Zoom** and scrollbars help inspect or position small shapes; **Centre view**
+centres the observation window. Zoom changes presentation only. Numeric
+coordinates, masks and the DIC grid remain at the original resolution.
+
+The square of every retained subset must lie entirely inside the mask; holes
+exclude complete crossing subsets. Nothing tests the moving target against the
+fixed mask. Conservative seed/neighbour links and the preprocessing guarantee
+are documented in :doc:`use-roi`. Browser partial ROI and geometric truncation
+remain explicitly unsupported. Export metadata retains both the full binary
+mask and the applied vector geometry, allowing the mask to be reconstructed.
+
+Original UHD plate with a hole
+------------------------------
+
+Choose **Plate with hole · UHD**. This loads the original archived reference
+and frame 95 at **3840 × 2160**, without resampling, tiling or video encoding.
+The outlined outer rectangle and circular hole are already present and editable.
+Choose **Edit mask** to adjust them or add more regions. Applying the mask
+recalculates the selected image pair. **Plate load** selects frame 95
+(250/0 MPa) or frame 225 (250/80 MPa). **Capture reference** restores the
+original reference and preset for this case.
+
+The circle has radius 112 px. The preset uses a half-pixel vector offset so
+that rasterization matches the archived integer-index material mask exactly.
+Its four image edges are an observation window in an infinite medium, not free
+specimen edges. Only the circular boundary is traction free. The source
+manifest, image hashes, material constants and load state are retained offline.
+
+This is a static image-pair demonstration, not a video FPS benchmark. It
+performs an explicit full-field readback once to score against the analytical
+solution; video/camera targets keep their ordinary small-summary path. The
+analytic displacement error and equivalent-strain error use selected centres
+at radius at least 288 px, with a 32 px image margin. Coverage and the precise
+population appear in the details/export. These interior scores do not qualify
+near-hole strain precision. Analytical data are scoring inputs only and never
+enter IC-GN. Changing the drawn mask changes the scored population.
+
+Displacement vectors and equivalent strain
+------------------------------------------
+
+Enable **Displacement arrows**, then choose their subset spacing and length
+magnification. Arrows originate at accepted reference subset centres, read the
+GPU field directly, and use the calculated (u,v), in pixels. The same gain
+applies to both components; magnification is explicit, not normalization to
+unit arrows. Excluded/rejected points have no arrow. A magnified valid arrow
+may extend across a mask boundary; its origin identifies the measurement.
+
+Select **von Mises strain εVM (εzz = 0)** for nonnegative equivalent strain.
+It uses the same convention as the archived plane-strain plate analysis:
+
+.. math::
+
+   \varepsilon_{xx}=u_{,x},\quad \varepsilon_{yy}=v_{,y},\quad
+   \varepsilon_{xy}=\tfrac12(u_{,y}+v_{,x}),\qquad
+   \varepsilon_{VM}=\tfrac23\sqrt{\varepsilon_{xx}^2-
+   \varepsilon_{xx}\varepsilon_{yy}+\varepsilon_{yy}^2+3\varepsilon_{xy}^2}.
+
+These are direct infinitesimal affine strains with an explicit εzz = 0
+assumption, not stress or a general finite-strain invariant. The legend uses
+microstrain; manual scales are dimensionless (0.002 means 2,000 microstrain).
+Automatic VM scale is a conservative bound derived from the existing maximum
+gradient summary, rather than another field readback. **Field opacity** chooses
+an image blend, field only or image only. Invalid cells stay grey. Arrows and
+VM are visualization operations; they do not modify the calculated parameters.
 
 Profiles and device limits
 --------------------------

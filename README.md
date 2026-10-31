@@ -24,10 +24,12 @@ outside the numerical engine's timing boundary.
 ## Browser camera and analytic demo
 
 A standalone **WebGPU application** now provides browser-local camera/demo
-supervision, a bounded worker, full ROI, temporal prediction, GPU field display
+supervision, a bounded worker, editable multi-domain/full ROI with holes,
+temporal prediction, GPU field display with displacement arrows/equivalent strain
 and on-demand CSV/JSON export. It imports the same portable WGSL core as the
 Python raw-WebGPU adapter. It has no Three.js/CDN dependency and can run offline
-after its first installation.
+after its first installation. The original UHD plate-with-hole case loads
+with an editable rectangle/circle preset and both analytical load states.
 
 [Run the browser application locally or prepare Pages](DIC/LucasKanadeICGN/docs/how-to/run-in-browser.rst).
 The Pages workflow is ready; repository-owner activation/deployment is separate.

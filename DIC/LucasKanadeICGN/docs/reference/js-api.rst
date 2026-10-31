@@ -189,3 +189,26 @@ summary. Acquisition, main-to-worker delivery, display presentation and export
 readback are distinct boundaries. Timestamp queries remain disabled until a
 wall-time sanity test qualifies them. Retain raw age samples; FPS and result
 age are not interchangeable.
+
+Application mask and rendering options
+--------------------------------------
+
+The standalone app keeps editable rectangle/ellipse/circle/polygon geometry in
+reference pixels. Complete containment defines nested holes/islands; rasterized
+outer domains unite before holes are removed. The resulting binary mask is
+passed to the existing ``setReference(..., {roiMask})`` full-policy contract.
+Vector geometry is a UI representation, not a new IC-GN support model. Export
+``roiGeometry`` contains the applied shape list and composition version along
+with the binary ``roi`` data. Unapplied edits are not exported as applied data.
+
+The renderer accepts mode 7 for equivalent strain (plane strain, εzz = 0),
+``arrows``, ``arrowStep`` (grid samples) and ``arrowGain`` (pixels per pixel of
+measured displacement). These are display settings, not ``DICEngine``
+constructor options. ``opacity`` controls image blending; it does not affect
+correlation. Display settings are included in the application metadata.
+See :doc:`../how-to/run-in-browser` for the formula and editing workflow.
+
+The static plate demo maps its complete field to compare with analytic truth.
+Its selected far-field population is labelled in ``acquisition.analyticScore``;
+its scoring readback must not be confused with the camera/video small-summary
+path. The analytical helper and material constants never enter the solver.

@@ -110,3 +110,10 @@ Third-party browser assets are vendored for offline operation; see
 [THIRD_PARTY.md](THIRD_PARTY.md). The mathematical port also draws on the
 related SYCL DIC prototype; that provenance is documented in
 [acknowledgements](docs/explanation/acknowledgements.rst).
+
+The browser companion also includes an editable multi-domain mask (rectangles,
+polygons, ellipses, circles and nested holes/islands), displacement arrows and
+plane-strain von Mises strain display. The original UHD plate-with-hole case
+loads its editable rectangle/circle preset and both analytical load states.
+See the [browser guide](docs/how-to/run-in-browser.rst) for the scientific
+conventions and the distinction between static scoring and video timing.

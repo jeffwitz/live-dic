@@ -243,7 +243,7 @@ The CSP permits same-origin scripts and prohibits inline scripts/eval. There
 are no CDN, analytics, SharedArrayBuffer or COOP/COEP requirements.
 
 The service worker caches shell, modules, shaders and demonstration data,
-including range responses from its cached video. Cache namespaces include the
+including range responses from its cached video and the original UHD plate PNGs. Cache namespaces include the
 site scope. New workers wait for old clients to finish before activation;
 old caches are removed at activation. Dirty local builds add a content digest
 to the commit-derived version. The app can run offline after a successful first
@@ -289,3 +289,31 @@ The original lossless UHD fixtures remain unchanged.
 Portable OS CI and the prepared browser-software CI job do not certify those
 untested devices. Camera locks, optics, rolling shutter and hand-held motion
 remain separate metrology questions.
+
+Editable mask and scientific display
+------------------------------------
+
+The mask editor keeps a vector list separately from the last applied ROI.
+Reference-sized scanline spans determine complete containment. A hierarchy
+alternates domain/hole/island; layers are composed from lower to higher depth.
+Overlapping roots unite before holes are removed. This is geometric selection,
+not partial integration or a change to the IC-GN equations. Rasterization and
+reference preparation occur while paused. The binary mask and vector list
+are retained together in export metadata.
+
+The plate preset is checked against every original UHD material-mask pixel.
+The site assembler copies the three archived PNGs after checking their original
+hashes; the repository does not duplicate or regenerate those image fixtures.
+The small JS analytical helper is scoring-only and tested against the NumPy
+complex-potential/strain oracle. Both plate loads are image pairs, not a stream.
+Only this static scoring path maps the full field automatically.
+
+Equivalent strain is evaluated in the render fragment shader. Instanced arrow
+triangles fetch valid displacement vectors from the same field buffer in the
+vertex shader. Neither operation writes the field or adds a numerical kernel,
+mask upload or complete-field readback to the camera path. Arrow density and
+gain are explicit. A synthetic constant-field GPU test verifies the VM colour,
+visible arrows, unchanged source values and no arrows at invalid origins.
+Real DevTools pointer events qualify drawing, moving, numeric resizing,
+deletion/undo and applying a multi-hole UHD mask. These tests do not replace
+phone/touch-hardware qualification or renew the historical FPS measurements.
