@@ -1,6 +1,7 @@
 import { DEFAULT_RECIPE, analyzeField, componentValues, statistics, nearestIndex, extensometer, regionSummary, validateField } from './postprocess.js';
 import { fieldArchive, importFieldArchive, projectArchive, importProjectArchive } from './archive.js';
 import { extractHistory, sameAnalysis } from './history.js';
+import { resultFigure } from './figure.js';
 
 const $ = id => document.getElementById(id);
 const number = value => value == null || !Number.isFinite(value) ? 'unavailable' : value.toPrecision(5);
@@ -9,6 +10,8 @@ const LIMIT_BYTES = 128 * 1024 * 1024;
 const encoderBytes = value => new TextEncoder().encode(JSON.stringify(value)).byteLength;
 const STATUS = { '-3': 'Excluded by ROI', '-2': 'Rejected correlation', '-1': 'Unavailable reference / bounds',
   0: 'Not converged', 1: 'Accepted', 2: 'Flagged / replaced by solver policy' };
+const STATUS_COLOURS = { '-3':[160,170,178],'-2':[202,51,64],'-1':[71,86,96],0:[240,193,52],1:[36,151,110],2:[238,135,45] };
+const STATUS_ORDER = [-3,-2,-1,0,1,2];
 
 function download(name, content, type) {
   const url = URL.createObjectURL(new Blob([content], { type }));
@@ -43,7 +46,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   const entries = [], canvas = $('review-field'), overlay = $('inspection'), chart = $('profile-chart');
   document.querySelector('.viewer').append($('results-workbench'));
   let nextId = 1, selected = null, analysis = null, currentMask = null, reviewing = false;
-  let tool = 'probe', points = [], extraction = [], computedView = false;
+  let tool = 'probe', points = [], extraction = [], computedView = false, figureLegend = null;
   let requestId = 0, workerBusy = false, pendingAnalysis = false, workerFieldId = null, debounce = null;
   let pendingImport = null, importSerial = 0;
   let history = null, historyAbort = null, lastChartRows=[], lastChartOptions={};
@@ -219,6 +222,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   }
   function format(value, unit) { if (value == null) return 'unavailable'; return `${number(STRAIN_COMPONENTS.has($('review-component').value) ? value*1e6 : value)} ${STRAIN_COMPONENTS.has($('review-component').value) ? 'µε' : unit}`; }
   function render() {
+    figureLegend = null;
     if (!analysis) return;
     const component = $('review-component').value, { values, valid, unit, source } = componentValues(analysis, component);
     $('quantity-source').hidden=!source;$('quantity-source').textContent=source?`Computed coefficient (${unit}). Workbench displacement smoothing and VSG do not change these values. The solver's original spatial policy still applies.`:'';
@@ -248,7 +252,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     const context = small.getContext('2d'), image = context.createImageData(gw, gh);
     for (let i=0;i<values.length;i++) {
       let rgb = [71,86,96];
-      if (component === 'status') rgb = { '-3':[160,170,178],'-2':[202,51,64],'-1':[71,86,96],0:[240,193,52],1:[36,151,110],2:[238,135,45] }[Math.round(values[i])] ?? rgb;
+      if (component === 'status') rgb = STATUS_COLOURS[Math.round(values[i])] ?? rgb;
       else if (valid[i]) rgb=colour(values[i]);
       image.data.set([...rgb,255],i*4);
     }
@@ -286,8 +290,13 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     $('high').textContent = component==='status' ? 'Accepted / flagged' : format(high,unit);
     document.querySelector('.legend').classList.toggle('status',component==='status');
     document.querySelector('.legend').classList.toggle('magnitude',nonnegative);
-    document.querySelector('.legend div').style.background=component==='status'?'':`linear-gradient(90deg,${Array.from({length:11},(_,i)=>`rgb(${colour(low+(high-low)*i/10).join(',')}) ${i*10}%`).join(',')})`;
+    document.querySelector('.legend div').style.background=component==='status'
+      ? `linear-gradient(90deg,${STATUS_ORDER.map((code,i)=>`rgb(${STATUS_COLOURS[code].join(',')}) ${i*100/6}% ${(i+1)*100/6}%`).join(',')})`
+      : `linear-gradient(90deg,${Array.from({length:11},(_,i)=>`rgb(${colour(low+(high-low)*i/10).join(',')}) ${i*10}%`).join(',')})`;
     const clipped = Array.from(values).reduce((n,v,i)=>n+ +(valid[i] && (v<low||v>high)),0);
+    figureLegend = component==='status'
+      ? {categories:STATUS_ORDER.map(code=>({label:`${code} · ${STATUS[code]}`,colour:`rgb(${STATUS_COLOURS[code].join(',')})`}))}
+      : {low:format(low,unit),high:format(high,unit),stops:Array.from({length:11},(_,i)=>[i/10,`rgb(${colour(low+(high-low)*i/10).join(',')})`])};
     const summary = $('field-summary'); summary.replaceChildren();
     const summaryRows=component==='status'?Object.entries(STATUS).map(([code,label])=>[label,field.status.reduce((n,status)=>n+ +(status===Number(code)),0)]):[['Valid values',`${stats.count} / ${values.length}`],['Minimum',format(stats.min,unit)],['Mean',format(stats.mean,unit)],['Maximum',format(stats.max,unit)],['Colour clipping',`${clipped} values · ${scaleMode} scale`]];
     for (const [label,value] of summaryRows) {
@@ -521,7 +530,21 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   $('save-npz').onclick=()=>{if(!analysis)return;const entry=activeEntry();download(`live-dic-${entry.id}.npz`,fieldArchive(entry.field,{...entry.metadata,workbench:{view:viewSettings()},analysis:{recipe:analysis.recipe,processingWallMs:analysis.processingWallMs}},analysis,entry.mask),'application/octet-stream');};
   $('save-processed-csv').onclick=()=>{if(!analysis)return;const {values,valid,unit}=componentValues(analysis,$('review-component').value),lines=[`x_px,y_px,${$('review-component').value}_${unit},valid,solver_status`];for(let i=0;i<values.length;i++)lines.push([...pointPosition(i),valid[i]?values[i]:'',valid[i],analysis.field.status[i]].join(','));download('live-dic-displayed-field.csv',lines.join('\n'),'text/csv');};
   $('save-profile').onclick=()=>{if(!extraction.length)return;const columns=Object.keys(extraction[0]);download('live-dic-extraction.csv',[columns.join(','),...extraction.map(row=>columns.map(k=>row[k]??'').join(','))].join('\n'),'text/csv');download('live-dic-extraction.json',JSON.stringify({recipe:analysis.recipe,view:viewSettings(),valueUnit:(history?.tool??tool)==='gauge'?'strain':componentValues(analysis,$('review-component').value).unit,coordinateUnit:'px',distanceUnit:analysis.recipe.unit,comparison:activeEntry().metadata.comparison},null,2),'application/json');};
-  $('save-figure').onclick=()=>{if(!analysis)return;const figure=document.createElement('canvas');figure.width=Math.max(1600,canvas.width);const imageHeight=Math.round(canvas.height*figure.width/canvas.width);figure.height=imageHeight+160;const ctx=figure.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.drawImage(canvas,0,0,figure.width,imageHeight);ctx.drawImage(overlay,0,0,figure.width,imageHeight);ctx.fillStyle='#fff';ctx.fillRect(0,imageHeight,figure.width,160);ctx.fillStyle='#163540';ctx.font='32px system-ui';ctx.fillText(`${$('review-component').selectedOptions[0].textContent} · ${$('low').textContent} … ${$('high').textContent}`,40,imageHeight+50);ctx.font='22px system-ui';ctx.fillText($('review-component').value.startsWith('computed-p')?`Computed local model coefficient · unaffected by workbench smoothing / VSG · solver ${analysis.field.config.outlierPolicy}`:`${analysis.recipe.strainMeasure} strain · ${analysis.recipe.strainSource} · ${analysis.recipe.smoothing} smoothing · solver ${analysis.field.config.outlierPolicy}`,40,imageHeight+90);ctx.fillText('Reference image coordinates · live-dic · foundational work by Pierre Margerit',40,imageHeight+130);figure.toBlob(blob=>blob&&download('live-dic-field.png',blob,'image/png'),'image/png');};
+  $('save-figure').onclick=async()=>{
+    if(!analysis||!figureLegend)return;
+    const {field,recipe}=analysis,component=$('review-component').value,coefficient=component.startsWith('computed-p'),categorical=component==='status';
+    const details=[`${field.width} × ${field.height} reference pixels · ${field.config.motionModel} · window / step ${field.subsetSize} / ${field.subsetStride} px · grid ${field.grid.join(' × ')} · solver policy: ${field.config.outlierPolicy}`,
+      categorical?'Stored solver status: workbench smoothing and VSG do not alter categories.':coefficient?'Stored model coefficient: workbench smoothing and VSG do not alter these values.':`Displacement smoothing: ${recipe.smoothing} · ${recipe.window} × ${recipe.window} grid points · strain: ${recipe.strainSource} / ${recipe.strainMeasure} · nominal strain support: ${analysis.strainSpanPx} px`,
+      categorical?'Six categorical status colours; scalar colour limits do not apply.':`Length scale: ${recipe.unitsPerPixel} ${recipe.unit} / px (isotropic). Colour scale: ${$('review-scale').value}; displayed values are preserved in numerical exports.`];
+    if($('review-vectors').checked)details.push(`Arrows: processed displacements · magnification ×${$('review-vector-gain').value} · every ${$('review-vector-step').value} grid points.`);
+    if(points.length){
+      const centres=points.map(([x,y])=>{const i=nearestIndex(field,x,y);return i<0?'outside measured grid':`(${pointPosition(i).map(value=>value.toFixed(1)).join(', ')})`;}).join(' → ');
+      details.push(`Measurement: ${tool} · reference pixel indices ${centres}. ${$('probe-value').textContent}`);
+    }
+    const figure=resultFigure({field:canvas,annotations:overlay,title:$('review-component').selectedOptions[0].textContent,label:activeEntry().label,legend:figureLegend,details});
+    const blob=await new Promise(resolve=>figure.toBlob(resolve,'image/png'));
+    if(blob)download('live-dic-field.png',blob,'image/png');else error('The browser could not encode the figure; computed values remain available.');
+  };
   updateLibrary();
   return { add, returnLive, setMask(mask){currentMask=mask;}, get reviewing(){return reviewing;}, get recording(){return recording();},
     setReady(ready){$('freeze-field').disabled=!ready;$('record-fields').disabled=!ready;},

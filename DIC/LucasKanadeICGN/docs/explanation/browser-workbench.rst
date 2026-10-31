@@ -133,6 +133,14 @@ Sequential blue/green/gold, signed blue/white/red and grayscale palettes are
 presentation choices. Saturated values are counted but not removed or clipped
 in the data. Histograms use the valid population, not only the unsaturated range.
 
+PNG exports use the displayed palette and limits, or the six exact categorical
+status colours. A separate wrapped footer records the field label, subset
+geometry, applied processing, length scale and measurement text. The field and
+annotation pixels retain their original resolution. The browser qualification
+decodes each actual PNG and checks its image pixels against the composed field,
+caption bounds and legend colours. It covers strain, displacement and status;
+this is a presentation/interchange check, not a new metrology qualification.
+
 Saved-field history
 -------------------
 

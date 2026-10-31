@@ -188,8 +188,10 @@ Save an experiment for later review
   for NumPy. Computed and processed arrays have separate names and validity
   masks. ``parameter_order`` and metadata identify raw coefficients and units.
 * **Export displayed values CSV** exports the selected quantity. Unavailable
-  measurements remain empty. **Save figure PNG** includes quantity, scale,
-  processing convention and attribution.
+  measurements remain empty. **Save figure PNG** includes the quantitative colour
+  bar (or all six status categories), reference/target label, subset geometry,
+  processing convention, measurement annotation and attribution. Keep the NPZ
+  or project for numerical data and complete provenance.
 
 For example, an NPZ can be read with no pickle:
 

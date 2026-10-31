@@ -416,9 +416,13 @@ choose the field number explicitly. One field is added per import. The source
 archive SHA-256, geometry source and selected index are retained. An archive
 that declares an ROI but omits its binary mask is refused. The importer has a 256 MiB uncompressed limit and
 rejects pickle/object arrays. **Export displayed values CSV** leaves unavailable
-measurements empty and retains solver statuses. **Save figure PNG** includes
-quantity, scale, processing convention and attribution. Images are not included
-in saved fields; retain your original input sequence separately.
+measurements empty and retains solver statuses. **Save figure PNG** includes the
+full-resolution field and annotations, a quantitative colour bar or six labelled
+status categories, reference/target label, subset geometry, units, processing
+convention and attribution. Captions wrap; exceptionally long imported text is
+abbreviated with an ellipsis. Complete metadata remains in NPZ/project exports.
+The PNG is a presentation artifact, not a replacement for those numerical files.
+Images are not included in saved fields; retain your original sequence separately.
 
 Save a results project
 -----------------------

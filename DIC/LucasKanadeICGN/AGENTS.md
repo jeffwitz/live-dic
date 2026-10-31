@@ -585,3 +585,16 @@ qualification rather than infer mobile coverage from desktop results.
 - Remote CI completed successfully on `e5a52fa`; later changes still need their
   own observed result. Sphinx's illustrated tutorial was also rendered locally
   and all three archived figures loaded.
+
+### Quantitative figure exports
+
+- Keep PNG presentation separate from numerical archives. Export the full UHD
+  field/annotation pixels, actual palette/limits or all six categorical status
+  colours, and wrapped source/geometry/recipe/measurement captions. Very long
+  imported caption text is visibly abbreviated; archive metadata stays complete.
+- Status categories and computed coefficients are unaffected by workbench
+  smoothing/VSG. Never caption a categorical status as a scalar strain measure.
+- `browser-figures-20261031/` retains hardware PNGs and hardware/SwiftShader
+  records. The actual decoded PNG pixels match pre-export canvas composition;
+  footer bounds and legend colours are checked in the browser workbench CI tool.
+  This is export correctness, not a new live-FPS or metrology campaign.

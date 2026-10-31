@@ -21,6 +21,46 @@ from lucas_kanade_icgn import ICGNWebGL
 from lucas_kanade_icgn.engine import _StaticServer
 
 
+def export_figure(browser, path):
+    """Check the actual PNG, caption bounds and untouched full-resolution field pixels."""
+    result = browser._evaluate("""(async()=>{
+      const original=URL.createObjectURL,fillText=CanvasRenderingContext2D.prototype.fillText;
+      const field=document.getElementById('review-field'),overlay=document.getElementById('inspection'),texts=[];let saved;
+      URL.createObjectURL=b=>{if(b.type==='image/png')saved=b;return original(b);};
+      CanvasRenderingContext2D.prototype.fillText=function(text,x,y,...args){
+        if(this.canvas.width===field.width&&y>field.height){const width=this.measureText(text).width;
+          texts.push({text:String(text),x:this.textAlign==='right'?x-width:x,y,width});}
+        return fillText.call(this,text,x,y,...args);};
+      try{
+        const reference=document.createElement('canvas');reference.width=field.width;reference.height=field.height;
+        const context=reference.getContext('2d');context.drawImage(field,0,0);context.drawImage(overlay,0,0);
+        const digest=async bytes=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),v=>v.toString(16).padStart(2,'0')).join('');
+        const expected=await digest(context.getImageData(0,0,field.width,field.height).data);
+        await document.getElementById('save-figure').onclick();if(!saved)throw new Error('No figure PNG was downloaded');
+        const bitmap=await createImageBitmap(saved),read=document.createElement('canvas');read.width=bitmap.width;read.height=bitmap.height;
+        const pixels=read.getContext('2d');pixels.drawImage(bitmap,0,0);bitmap.close();
+        const actual=await digest(pixels.getImageData(0,0,field.width,field.height).data);
+        const scale=field.width/1600,colour=(x,y)=>[...pixels.getImageData(Math.round(x),Math.round(y),1,1).data].slice(0,3);
+        const low=colour(40*scale+2,field.height+30*scale+2),high=colour(field.width-40*scale-3,field.height+30*scale+2);
+        const categories=Array.from({length:6},(_,i)=>colour((40+(i%2)*760)*scale+2,field.height+(30+Math.floor(i/2)*34)*scale+2));
+        const bytes=new Uint8Array(await saved.arrayBuffer()),parts=[];for(let i=0;i<bytes.length;i+=32768)parts.push(String.fromCharCode(...bytes.subarray(i,i+32768)));
+        return {png:btoa(parts.join('')),size:[read.width,read.height],texts,expected,actual,low,high,categories};
+      }finally{URL.createObjectURL=original;CanvasRenderingContext2D.prototype.fillText=fillText;}
+    })()""")
+    payload = base64.b64decode(result.pop("png"))
+    path.write_bytes(payload)
+    assert result["size"][0] == 3840 and result["size"][1] > 2160, result["size"]
+    assert result["actual"] == result["expected"], "PNG changed measured field/annotation pixels"
+    assert result["texts"] and all(
+        row["x"] >= 0
+        and row["x"] + row["width"] <= result["size"][0]
+        and 2160 < row["y"] < result["size"][1]
+        for row in result["texts"]
+    ), result["texts"]
+    result["sha256"] = hashlib.sha256(payload).hexdigest()
+    return result
+
+
 def click(browser, selector, x, y):
     rect = browser._evaluate(
         f"(()=>{{const r=document.querySelector({json.dumps(selector)}).getBoundingClientRect();return {{x:r.x,y:r.y,width:r.width,height:r.height}};}})()"
@@ -231,6 +271,38 @@ def main():
                     atol=1e-12,
                     rtol=1e-10,
                 )
+            figures = {}
+            for component in ["vonMises", "status", "u"]:
+                browser._evaluate(
+                    f"document.getElementById('review-component').value={json.dumps(component)};document.getElementById('review-component').onchange();true"
+                )
+                figure = export_figure(browser, args.output / f"export-{component}.png")
+                caption = " ".join(row["text"] for row in figure["texts"])
+                assert "window / step 16 / 16" in caption and "Pierre Margerit" in caption
+                if component == "status":
+                    assert "Not converged" in caption and "Excluded by ROI" in caption
+                    assert figure["categories"] == [
+                        [160, 170, 178],
+                        [202, 51, 64],
+                        [71, 86, 96],
+                        [240, 193, 52],
+                        [36, 151, 110],
+                        [238, 135, 45],
+                    ], figure["categories"]
+                    background = browser._evaluate(
+                        "getComputedStyle(document.querySelector('.legend div')).backgroundImage"
+                    )
+                    assert all(
+                        f"rgb({r}, {g}, {b})" in background for r, g, b in figure["categories"]
+                    ), background
+                if component == "vonMises":
+                    np.testing.assert_allclose(figure["low"], [21, 57, 99], atol=1)
+                    np.testing.assert_allclose(figure["high"], [241, 206, 95], atol=1)
+                    assert "µε" in caption
+                figures[component] = figure
+            browser._evaluate(
+                "document.getElementById('review-component').value='vonMises';document.getElementById('review-component').onchange();true"
+            )
             # Comparing computed data is temporary; returning restores the explicit processing recipe.
             browser._evaluate("document.getElementById('compare-computed').onclick();true")
             wait(browser, "liveDicWorkbench.report().recipe?.smoothing==='none'")
@@ -423,6 +495,7 @@ def main():
                 archive_sha256=hashlib.sha256(payload).hexdigest(),
                 project_sha256=hashlib.sha256(project_payload).hexdigest(),
                 project_bytes=len(project_payload),
+                figures=figures,
                 screenshots=screenshots,
                 final=browser._evaluate("liveDicWorkbench.report()"),
                 errors=browser._evaluate("liveDicStatus.errors"),
