@@ -16,7 +16,7 @@ export function validateTemporal(options) {
   if (options.pyramidPolicy && options.pyramidPolicy !== 'fixed') throw new Error('Adaptive pyramids are experimental and not supported in this browser engine');
 }
 
-export async function createTemporalGraph(device, shader, levels, seedEdges, options, roiMask, size, stride) {
+export async function createTemporalGraph(device, shader, levels, seedEdges, options, roiMask, size, stride, shared = null) {
   if ((options.initialization ?? 'zero') === 'zero') return null;
   const owned = [], fine = levels[0], coarse = levels.at(-1);
   const velocity = options.temporalPrediction === 'velocity', correction = !!options.temporalFineCorrection;
@@ -30,18 +30,22 @@ export async function createTemporalGraph(device, shader, levels, seedEdges, opt
     config: data(new Uint32Array([level.gridCount, options.temporalMaxAge ?? 0xfffffffe,
       +(options.outlierPolicy === 'replace' && !velocity), coarseFlag]), GPUBufferUsage.UNIFORM),
   });
-  const current = history(fine), coarseHistory = correction ? history(coarse, 1) : null;
-  const previous = velocity ? history(fine) : null;
-  const prediction = velocity ? alloc(fine.gridCount * stateStride * 4) : null;
+  const current = shared?.current ?? history(fine), coarseHistory = shared?.coarseHistory ?? (correction ? history(coarse, 1) : null);
+  const previous = shared?.previous ?? (velocity ? history(fine) : null);
+  const prediction = shared?.prediction ?? (velocity ? alloc(fine.gridCount * stateStride * 4) : null);
   const counts = alloc(16, storage | GPUBufferUsage.COPY_SRC);
   const permissions = roiMask ? seedPermissions(fine.roi, coarse.roi, 1, 2 ** (levels.length - 1),
     size, stride, roiMask, fine.width, fine.height) : new Uint32Array(coarse.gridCount).fill(31);
-  const links = data(permissions, GPUBufferUsage.STORAGE);
+  const links = shared?.links ?? data(permissions, GPUBufferUsage.STORAGE);
   const seedBytes = new ArrayBuffer(32), u = new Uint32Array(seedBytes), f = new Float32Array(seedBytes);
   u.set([fine.gridWidth, fine.gridHeight, coarse.gridWidth, coarse.gridCount]); f.set([1, 2 ** (levels.length - 1)], 4);
-  const seedConfig = data(new Uint8Array(seedBytes), GPUBufferUsage.UNIFORM);
+  const seedConfig = shared?.seedConfig ?? data(new Uint8Array(seedBytes), GPUBufferUsage.UNIFORM);
+  const cache = shared?.cache ?? new Map();
   const empty = device.createBindGroupLayout({ entries: [] });
   async function operation(entryPoint, group, specifications, constants, count) {
+    const key = JSON.stringify([entryPoint, group, constants, specifications.map(([b, t]) => [b, t])]);
+    let compiled = cache.get(key);
+    if (!compiled) {
     const layout = device.createBindGroupLayout({ entries: specifications.map(([binding, type]) => ({
       binding, visibility: GPUShaderStage.COMPUTE, buffer: { type },
     })) });
@@ -49,6 +53,9 @@ export async function createTemporalGraph(device, shader, levels, seedEdges, opt
       layout: device.createPipelineLayout({ bindGroupLayouts: [...Array(group).fill(empty), layout] }),
       compute: { module: shader, entryPoint, constants: { MOTION_MODEL: model, ...constants } },
     });
+      compiled = { layout, pipeline }; cache.set(key, compiled);
+    }
+    const { layout, pipeline } = compiled;
     const bindGroup = device.createBindGroup({ layout, entries: specifications.map(([binding, , buffer]) => ({ binding, resource: { buffer } })) });
     return { pipeline, bindGroup, group, workgroups: [Math.ceil(count / 256), 1, 1] };
   }
@@ -94,8 +101,8 @@ export async function createTemporalGraph(device, shader, levels, seedEdges, opt
       device.queue.writeBuffer(h.ages, 0, new Uint32Array(count).fill(0xffffffff));
     }
   }
-  reset();
-  return { counts, before: [predict, projection].filter(Boolean), refine,
+  if (!shared) reset();
+  return { shared: { current, coarseHistory, previous, prediction, links, seedConfig, cache }, counts, before: [predict, projection].filter(Boolean), refine,
     after: [save, mergeFine, mergeCoarse].filter(Boolean), reset,
     destroy() { owned.forEach((b) => b.destroy()); } };
 }

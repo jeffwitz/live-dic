@@ -1,6 +1,8 @@
+import { createTargetSlot, attachExternalInput } from './ring.js';
 import { createTemporalGraph, validateTemporal } from './temporal.js';
 import { validateMask, planRoi, reduceMask, seedPermissions } from './roi.js';
-import { decodePacked } from './result.js';
+import { decodePacked, createResultReader } from './result.js';
+import { loadShader } from './shaders.js';
 /*
  * Raw browser WebGPU adapter for the same portable WGSL used by wgpu-py.
  *
@@ -17,6 +19,7 @@ import {
 } from './reference.js';
 
 export function createPyramidHost(options = {}) {
+const hostOptions = options;
 validateTemporal(options);
 const SUBSET_SIZE = Number(options.subsetSize ?? 16);
 if (![8, 15, 16, 17, 31, 32, 33].includes(SUBSET_SIZE)) {
@@ -67,6 +70,9 @@ const configuration = {
 let roiMask = null;
 let roiPlans = [];
 let temporal = null;
+let slots = [];
+let lastFieldBuffer = null;
+let lastSlot = null;
 let adapter = null;
 let device = null;
 let ownsDevice = false;
@@ -119,13 +125,16 @@ const createBufferWithData = (label, data, usage) => {
 };
 
 const destroyRuntimeResources = () => {
-  temporal?.destroy(); temporal = null;
-  levels.forEach((level) => {
-    level.sourceTexture.destroy();
-    Object.values(level.buffers).forEach((buffer) => buffer.destroy());
+  const contexts = slots.length ? slots : [{ levels, reductionEdges, seedEdges, temporal }];
+  const released = new Set();
+  const release = (resource) => { if (resource && !released.has(resource)) { resource.destroy(); released.add(resource); } };
+  contexts.forEach((slot) => {
+    slot.temporal?.destroy(); slot.resultReader?.destroy(); release(slot.readback);
+    slot.levels.forEach((level) => { release(level.sourceTexture); Object.values(level.buffers).forEach(release); });
+    slot.reductionEdges.forEach((edge) => release(edge.intermediate));
+    slot.seedEdges.forEach((edge) => { release(edge.config); release(edge.links); });
   });
-  reductionEdges.forEach((edge) => edge.intermediate.destroy());
-  seedEdges.forEach((edge) => { edge.config.destroy(); edge.links?.destroy(); });
+  slots = []; temporal = null; lastFieldBuffer = null;
   if (querySet) querySet.destroy();
   if (queryResolveBuffer) queryResolveBuffer.destroy();
   levels = [];
@@ -718,7 +727,7 @@ const setTarget = (image) => {
 };
 
 /** Upload an already-grayscale frame without decoding an intermediate image. */
-const setTargetBytes = (pixels, width, height) => {
+const setTargetBytes = (pixels, width, height, texture = sourceTexture) => {
   if (width !== FRAME_WIDTH || height !== FRAME_HEIGHT) {
     throw new Error(
       `Target dimensions ${width}x${height} do not match the reference ${FRAME_WIDTH}x${FRAME_HEIGHT}`,
@@ -728,16 +737,18 @@ const setTargetBytes = (pixels, width, height) => {
     throw new Error(`Expected ${PIXEL_COUNT} grayscale bytes`);
   }
   device.queue.writeTexture(
-    { texture: sourceTexture },
+    { texture },
     pixels,
     { bytesPerRow: FRAME_WIDTH, rowsPerImage: FRAME_HEIGHT },
     [FRAME_WIDTH, FRAME_HEIGHT, 1],
   );
 };
 
-const executePipeline = async ({ measureGpu = false } = {}) => {
+const executePipeline = async ({ measureGpu = false, slot = slots[0] } = {}) => {
+  const { levels, reductionEdges, seedEdges, temporal } = slot;
   if (roiPlans[0]?.count === 0) return null;
   const encoder = device.createCommandEncoder({ label: 'DIC-RT full-pyramid registration' });
+  if (slot.externalActive) slot.external.converter.encode(encoder);
   levels.forEach((level) => {
     encoder.clearBuffer(level.buffers.state);
     if (configuration.outlierPolicy !== 'disabled') {
@@ -749,7 +760,7 @@ const executePipeline = async ({ measureGpu = false } = {}) => {
   reductionEdges.forEach((edge) => {
     jobs.push({
       pipeline: pipelines.reduceY,
-      bindGroup: edge.verticalBindGroup,
+      bindGroup: slot.externalActive && edge.source.index === 0 ? slot.external.reduce : edge.verticalBindGroup,
       group: 1,
       workgroups: [
         Math.ceil(edge.destination.width / 16),
@@ -762,12 +773,12 @@ const executePipeline = async ({ measureGpu = false } = {}) => {
     if (configuration.interpolation === 'bspline') {
       jobs.push({
         pipeline: level.width < 44 ? pipelines.prefilterXSafe : pipelines.prefilterXFast,
-        bindGroup: level.prefilterBindGroup,
+        bindGroup: slot.externalActive && level.index === 0 ? slot.external.wide : level.prefilterBindGroup,
         group: 0,
         workgroups: [Math.ceil(level.width / 32), Math.ceil(level.height / 8), 1],
       }, {
         pipeline: level.height < 44 ? pipelines.prefilterYSafe : pipelines.prefilterYFast,
-        bindGroup: level.prefilterBindGroup,
+        bindGroup: slot.externalActive && level.index === 0 ? slot.external.wide : level.prefilterBindGroup,
         group: 0,
         workgroups: [Math.ceil(level.width / 8), Math.ceil(level.height / 32), 1],
       });
@@ -776,7 +787,9 @@ const executePipeline = async ({ measureGpu = false } = {}) => {
       pipeline: seeded
         ? (level.index === 0 ? pipelines.fineSeededSolvers : pipelines.seededSolvers)[configuration.interpolation]
         : (level.index === 0 ? pipelines.fineSolvers : pipelines.solvers)[configuration.interpolation],
-      bindGroup: seeded ? level.seededBindGroup : level.bindGroup,
+      bindGroup: slot.externalActive && level.index === 0
+        ? (seeded ? slot.external.seeded : slot.external.base)
+        : (seeded ? level.seededBindGroup : level.bindGroup),
       group: 0,
       workgroups: [level.gridWidth, level.gridHeight, 1],
     });
@@ -833,6 +846,19 @@ const executePipeline = async ({ measureGpu = false } = {}) => {
       timestampBytes,
     );
   }
+  if (slot.resultReader) {
+    const mode = options.readback ?? 'full', reader = slot.resultReader;
+    reader.encode(encoder, mode);
+    const output = configuration.outlierPolicy === 'disabled' ? slot.levels[0].buffers.state : slot.levels[0].buffers.filteredState;
+    let offset = 0;
+    if (mode === 'full') {
+      encoder.copyBufferToBuffer(output, 0, slot.readback, 0, output.size); offset = output.size;
+    } else {
+      encoder.copyBufferToBuffer(reader.summary, 0, slot.readback, 0, reader.summaryBytes); offset = reader.summaryBytes;
+      if (mode === 'decimated') { encoder.copyBufferToBuffer(reader.samples, 0, slot.readback, offset, reader.sampleBytes); offset += reader.sampleBytes; }
+    }
+    if (temporal) encoder.copyBufferToBuffer(temporal.counts, 0, slot.readback, offset, 16);
+  }
   device.queue.submit([encoder.finish()]);
   if (!timestampReadback) {
     await device.queue.onSubmittedWorkDone();
@@ -850,20 +876,22 @@ const executePipeline = async ({ measureGpu = false } = {}) => {
   return gpuMs;
 };
 
-const readResult = async (timing) => {
+const readResult = async (timing, slot = slots[0], forceFull = false) => {
+  if (!forceFull && slot.resultReader && (options.readback ?? 'full') !== 'full') return readDisplayResult(timing, slot);
+  const { temporal } = slot;
+  const buffers = slot.levels[0].buffers;
   const parameterCount = configuration.motionModel === 'quadratic' ? 12 : 6;
   const stateStride = configuration.motionModel === 'quadratic' ? 16 : 8;
   const size = GRID_COUNT * stateStride * 4;
-  const readback = device.createBuffer({
-    size: size + (temporal ? 16 : 0),
-    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
-  });
+  const readback = slot.readback;
   const encoder = device.createCommandEncoder({ label: 'DIC-RT shared WGSL readback' });
   const resultBuffer = configuration.outlierPolicy === 'disabled'
     ? buffers.state : buffers.filteredState;
+  if (forceFull || !slot.resultReader) {
   encoder.copyBufferToBuffer(resultBuffer, 0, readback, 0, size);
   if (temporal) encoder.copyBufferToBuffer(temporal.counts, 0, readback, size, 16);
   device.queue.submit([encoder.finish()]);
+  }
   await readback.mapAsync(GPUMapMode.READ);
   const mapped = readback.getMappedRange();
   const packed = new Float32Array(mapped, 0, size / 4);
@@ -876,11 +904,36 @@ const readResult = async (timing) => {
   }
   if (roiPlans[0]) result.roiSelected = roiPlans[0].selected;
   readback.unmap();
-  readback.destroy();
+  lastFieldBuffer = resultBuffer; lastSlot = slot;
   return result;
 };
 
-const setReference = async (dataUrl, options = {}) => {
+const readDisplayResult = async (timing, slot) => {
+  const reader = slot.resultReader, mode = options.readback ?? 'full';
+  await slot.readback.mapAsync(GPUMapMode.READ);
+  const mapped = slot.readback.getMappedRange(), stats = reader.decode(mapped);
+  let offset = reader.summaryBytes;
+  const result = { ...stats, width: FRAME_WIDTH, height: FRAME_HEIGHT, subsetSize: SUBSET_SIZE,
+    subsetStride: SUBSET_STRIDE, grid: [GRID_WIDTH, GRID_HEIGHT], config: { ...configuration }, timing,
+    readback: mode, roiSelected: roiPlans[0]?.selected ?? null };
+  if (mode === 'decimated') {
+    const stateStride = configuration.motionModel === 'quadratic' ? 16 : 8;
+    result.packed = new Float32Array(mapped, offset, reader.sampleCount * stateStride).slice();
+    result.sampleIndices = Uint32Array.from({ length: reader.sampleCount }, (_, i) => i * reader.step);
+    result.stateStride = stateStride; offset += reader.sampleBytes;
+  }
+  if (slot.temporal) {
+    const counts = new Uint32Array(mapped, offset, 4);
+    result.counters = { temporallySeededCoarseSubsets: counts[0], temporalAcceptedUpdates: counts[1], velocityPredictedSubsets: counts[2], temporalExpiredSubsets: counts[3] };
+  }
+  slot.readback.unmap();
+  lastFieldBuffer = configuration.outlierPolicy === 'disabled' ? slot.levels[0].buffers.state : slot.levels[0].buffers.filteredState;
+  lastSlot = slot;
+  return result;
+};
+
+const setReference = async (dataUrl, referenceOptions = {}) => {
+  const options = { ...hostOptions, ...referenceOptions };
   await ensureDevice();
   configure(options, true);
   const image = typeof dataUrl === 'string' ? await loadImage(dataUrl) : dataUrl;
@@ -945,6 +998,26 @@ const setReference = async (dataUrl, options = {}) => {
     image.close?.();
   }
   temporal = await createTemporalGraph(device, pyramidShaderModule, levels, seedEdges, { ...options, ...configuration }, roiMask, SUBSET_SIZE, SUBSET_STRIDE);
+  const primary = { levels, seedEdges, reductionEdges, temporal };
+  slots = [primary];
+  for (let i = 1; i < (options.pipelineDepth ?? 1); i++) {
+    const slot = createTargetSlot(device, primary, { base: bindGroupLayout, seeded: seededBindGroupLayout,
+      seedTransfer: seedTransferBindGroupLayout, reduce: reduceYBindGroupLayout }, configuration);
+    slot.temporal = await createTemporalGraph(device, pyramidShaderModule, slot.levels, slot.seedEdges,
+      { ...options, ...configuration }, roiMask, SUBSET_SIZE, SUBSET_STRIDE, temporal?.shared);
+    slots.push(slot);
+  }
+  const resultModule = options.inputConverterForSlot ? await loadShader(device, 'result.wgsl') : null;
+  for (const [i, slot] of slots.entries()) {
+    const converter = options.inputConverterForSlot?.(i);
+    if (converter) attachExternalInput(device, slot, { base: bindGroupLayout, seeded: seededBindGroupLayout, reduce: reduceYBindGroupLayout }, converter);
+    if (resultModule) slot.resultReader = await createResultReader(device, resultModule, slot.levels[0],
+      { ...configuration, subsetSize: SUBSET_SIZE, subsetStride: SUBSET_STRIDE },
+      configuration.outlierPolicy === 'disabled' ? slot.levels[0].buffers.state : slot.levels[0].buffers.filteredState);
+    const size = Math.max(slot.levels[0].buffers.state.size,
+      slot.resultReader ? slot.resultReader.summaryBytes + slot.resultReader.sampleBytes : 0) + (slot.temporal ? 16 : 0);
+    slot.readback = device.createBuffer({ size, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
+  }
   await device.queue.onSubmittedWorkDone();
   const referenceBuildWallMs = performance.now() - referenceStarted;
   referenceReady = true;
@@ -980,15 +1053,27 @@ const register = async (dataUrl, options = {}) => {
 };
 
 /** Register a raw contiguous uint8 grayscale frame received from Python. */
-const registerBytes = async (pixels, width, height, options = {}) => {
+const registerBytes = async (pixels, width, height, options = {}, slotIndex = 0) => {
   await ensureDevice();
   if (!referenceReady) throw new Error('A reference image must be configured first');
   configure(options);
-  setTargetBytes(pixels, width, height);
+  const slot = slots[slotIndex];
+  slot.externalActive = false;
+  setTargetBytes(pixels, width, height, slot.levels[0].sourceTexture);
   const started = performance.now();
-  const gpuMs = await executePipeline({ measureGpu: true });
+  const gpuMs = await executePipeline({ measureGpu: true, slot });
   const wallMs = performance.now() - started;
-  return readResult({ gpuMs, wallMs });
+  return readResult({ gpuMs, wallMs }, slot);
+};
+
+const registerExternal = async (frame, slotIndex = 0) => {
+  if (!referenceReady) throw new Error('A reference image must be configured first');
+  const slot = slots[slotIndex], started = performance.now();
+  if (!slot.external) throw new Error('External image input was not prepared');
+  slot.externalActive = true;
+  slot.external.converter.copy(frame);
+  const gpuMs = await executePipeline({ slot });
+  return readResult({ gpuMs, wallMs: performance.now() - started }, slot);
 };
 
 const percentile = (values, probability) => {
@@ -1069,10 +1154,13 @@ const info = async () => {
 
 configure(options, true);
 return {
-  info, configure, setReference, register, registerBytes, benchmark, ensureDevice,
+  info, configure, setReference, register, registerBytes, registerExternal, benchmark, ensureDevice,
   resetTemporalState() { temporal?.reset(); },
+  setAnalyticTruth(truth) { slots.forEach((slot) => slot.resultReader?.setTruth(truth)); },
+  exportField() { return readResult({ export: true }, lastSlot ?? slots[0], true); },
   get device() { return device; },
-  get fieldBuffer() { return configuration.outlierPolicy === 'disabled' ? buffers?.state : buffers?.filteredState; },
+  get imageTexture() { return lastSlot?.externalActive ? lastSlot.external.converter.source : (lastSlot?.levels[0].sourceTexture ?? sourceTexture); },
+  get fieldBuffer() { return lastFieldBuffer ?? (configuration.outlierPolicy === 'disabled' ? buffers?.state : buffers?.filteredState); },
   get configuration() { return { ...configuration }; },
   destroy() {
     destroyRuntimeResources();
