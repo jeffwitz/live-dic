@@ -93,3 +93,302 @@ adapter; skipped GPU tests do not validate numerical execution.
   environment outside the checkout, and exercise its packaged resources.
 - No automatic push, PR creation, dependency upgrade or default change is part
   of routine cleanup. The user's explicit instructions take precedence.
+
+## Current task: portable WebGPU front-end published on GitHub Pages
+
+### Goal
+
+Ship a static, installable web application (PWA) that runs live DIC on a phone,
+tablet or laptop camera, and on archived fixtures, from GitHub Pages. Reuse
+the qualified numerical engine instead of creating a third one. **The canonical
+WGSL in `python/src/lucas_kanade_icgn/shaders/` stays the single numerical
+source.** Only host orchestration is ported to JavaScript.
+
+### Non-goals
+
+- No change to Python defaults, the native engine's numerical behaviour, or
+  public Python names.
+- No GPU-IO, and no Three.js/TSL or WebGL2 path in the new app. Without WebGPU,
+  the app shows a clear unsupported-browser message. Three.js stays a separate
+  legacy browser backend for Python.
+- No metrology claim for hand-held phone capture. The app is a demonstration,
+  education and field-screening tool until a separate qualification says
+  otherwise. Say so in the UI and the docs.
+- No server and no remote compute. Everything runs client-side.
+- No `SharedArrayBuffer`. GitHub Pages cannot set COOP/COEP headers.
+- No CDN at runtime. Everything is served from the Pages origin.
+
+### Existing assets to reuse (read them first)
+
+| Asset | Role in the new design |
+|---|---|
+| `shaders/icgn.wgsl`, `shaders/full_pyramid.wgsl` | Unchanged math. All entry points, including temporal projection, merge, `predict_temporal_state`, `save_previous_temporal_state`, `refine_temporal_seed`, `reduce_fused`. |
+| `web/webgpu/LucasKanadeICGNWebGPU.js` (~1070 lines) | Starting point for the JS host. It already runs the full pyramid in Chromium, but it is a page-global script (`window.ICGNHeadless`) coupled to the Python `BinaryTransport`, with no temporal mode and no ROI. |
+| `web/common/ReferencePreparation.js` | Browser reference preparation (gradients, inverse Hessian, metadata). Must match native preparation. |
+| `full_pyramid_backend.py` | **Reference specification** for the host orchestration to port: slot ring, temporal buffers and reset/expiry, `_create_temporal_pipelines`, `_prepare_temporal_state`, `reset_temporal_state`, `_create_temporal_slot`, velocity prediction, fine correction, divergence stopping, counter readback, encode order. |
+| `roi.py`, `partial.py` | ROI validation, `reduce_mask`, `seed_permissions`, ROI seed links. Port `full` policy only in this task. |
+| `assets/uhd_tensile/`, `assets/uhd_plate_hole/` | Demo mode and parity fixtures. |
+| `engine.py` `ICGNWebGL` (Chromium driven via subprocess + DevTools) | Existing headless-browser harness. Reuse it for JS parity tests; do not add Playwright unless the harness cannot do the job, and justify it if you do. |
+
+### Target architecture
+
+```
+DIC/LucasKanadeICGN/
+  python/src/lucas_kanade_icgn/shaders/*.wgsl   # single source (unchanged location)
+  python/src/lucas_kanade_icgn/web/
+    core/                      # NEW: dic-rt-core, dependency-free ES modules
+      device.js                #   adapter/device acquisition, limits/feature probe, capability report
+      shaders.js               #   load WGSL by URL relative to import.meta.url, compile, report errors
+      reference.js             #   reference preparation (moved from common/ReferencePreparation.js)
+      pyramid.js               #   level resources, reduction, seed transfer, encode order
+      temporal.js              #   history buffers, projection, prediction, merge, reset, expiry
+      engine.js                #   public class DICEngine (see API)
+      ring.js                  #   bounded slot ring, readback, result ordering
+      roi.js                   #   full-policy ROI: validation, reduction, seed permissions
+      input.js                 #   frame sources: Uint8Array, ImageBitmap, VideoFrame, HTMLVideoElement
+      result.js                #   packed result decoding, typed-array result object
+    webgpu/                    # existing adapter, rewritten as a thin shim over core/ for Python
+  web-app/                     # NEW: the PWA (not packaged in the Python wheel)
+    index.html, app.js, worker.js, ui/, render/, manifest.webmanifest, sw.js
+```
+
+- `core/` is plain ES modules with no bundler requirement and no npm runtime
+  dependency. It must run in a page **and** in a dedicated Worker.
+- The Python `ICGNWebGL(backend="webgpu-wgsl")` page must be rebuilt on top of
+  `core/`. **The browser code tested by Python is then the code shipped on
+  Pages.** This is the main reuse lever. Keep `BinaryTransport` as the Python
+  adapter around `core/`, outside it.
+- `core/` must not read `window`, the DOM or `navigator.mediaDevices`. Inputs,
+  outputs and the device are injected or acquired through `navigator.gpu` only.
+
+### Public JS API (adjust names only with a reason)
+
+```js
+import { probeCapabilities, DICEngine } from './core/engine.js';
+
+const caps = await probeCapabilities();     // adapter info, limits, features, recommended profile, reasons
+const engine = await DICEngine.create({
+  device,                                   // optional: inject an existing GPUDevice
+  width, height,
+  subsetSize: 16, subsetStride: 16,
+  motionModel: 'affine', interpolation: 'bspline',
+  pyramidLevels: 2, iterationsPerLevel, tolerancePerLevel,
+  outlierPolicy: 'median',
+  initialization: 'temporal', temporalPrediction: 'velocity',
+  temporalFineCorrection: true, divergencePatience: 3, divergenceMinIterations: 4,
+  temporalMaxAge: null,
+  pipelineDepth: 1,
+  readback: 'full' | 'decimated' | 'none',  // 'none' = GPU-only display
+});
+await engine.setReference(source, { roiMask });   // source: Uint8Array | ImageBitmap | VideoFrame
+const result = await engine.register(source);      // ordered; returns typed arrays + timing + counters
+engine.resetTemporalState();
+engine.fieldBuffer;                                // GPUBuffer of the latest fine state, for rendering
+engine.destroy();                                  // idempotent
+```
+
+- Option names mirror the Python ones in camelCase. Defaults must equal the
+  Python `ICGNWGPUFullPyramid` defaults. The app chooses the qualified
+  latency profile from `benchmarks/results/latency-reduction-20261030/README.md`
+  explicitly; it does not become a core default.
+- Validation errors must match the Python error conditions. Unsupported options
+  (partial ROI, quadratic if not ported, Gaussian weighting if not ported)
+  must throw, never be silently ignored.
+- The result layout must equal `docs/reference/result-layout.rst`: parameter
+  order, status values, iterations, `-3` for excluded ROI windows.
+
+### Phase 0 — capability and binding audit (do this first, write it down)
+
+1. Count storage buffers, uniforms, textures and storage textures **per
+   pipeline layout, per shader stage, across all bind groups**, for every
+   pipeline in the default, temporal and qualified-latency graphs. The seeded
+   solver already declares 10 storage buffers in `icgn.wgsl` group 0. The
+   temporal pipelines combine group 2 and group 3 bindings in
+   `full_pyramid.wgsl`.
+2. The WebGPU guaranteed minimum `maxStorageBuffersPerShaderStage` is **8**,
+   and many mobile adapters expose exactly 8. Also check
+   `maxBindGroups` (4 guaranteed), `maxStorageBufferBindingSize`,
+   `maxBufferSize`, `maxComputeWorkgroupStorageSize`,
+   `maxComputeInvocationsPerWorkgroup` and `maxTextureDimension2D` against
+   UHD, 1080p and 720p grids.
+3. Record the table in `docs/explanation/browser-portability.rst` (new).
+
+### Phase 1 — binding budget ≤ 8 (shared WGSL change, highest risk)
+
+- Reduce every pipeline to at most 8 storage buffers per stage, by packing
+  buffers rather than forking the math. Candidates: merge read-only
+  `reference_data`, `inverse_hessian`, `metadata` into one buffer with offsets
+  in `Config`; move `fir_weights` to a uniform or constant array; merge history
+  state and ages; pack counters into one atomic buffer.
+- **This changes the native path too.** Required evidence:
+  - bit-for-bit parity of parameters, status and iterations against the
+    pre-change commit, for the three motion models, levels 1/2/3, full and
+    partial ROI, and zero/temporal/qualified-latency profiles, on the archived
+    UHD frames (reuse `verify_default_parity.py` style fingerprints);
+  - a native UHD no-regression timing campaign at one slot, alternating A/B,
+    in `benchmarks/results/binding-budget-<date>/`. A regression must be
+    reported, not hidden; if it exceeds noise, discuss whether to keep a
+    native-only layout.
+- Request device limits explicitly: only what the graph needs, never
+  `adapter.limits` wholesale.
+
+### Phase 2 — extract `core/` without behaviour change
+
+- Move the logic of `LucasKanadeICGNWebGPU.js` and `ReferencePreparation.js`
+  into `core/` modules. Turn the old file into a shim that keeps
+  `window.ICGNHeadless` for Python.
+- All existing Python browser tests must pass unchanged, including raw WGSL
+  native-UHD frame 40 (99.981% interior coverage, 0.02420 px RMSE recorded).
+- Package `core/` in the wheel (`[tool.setuptools.package-data]`). Verify with a
+  fresh-environment wheel install, as the conventions require.
+
+### Phase 3 — port temporal and qualified-latency host logic to `core/`
+
+- Port from `full_pyramid_backend.py` exactly: buffer allocation, reset on
+  `setReference`, `temporalMaxAge`, velocity prediction from raw history only,
+  fine correction, divergence stopping on the finest level only, encode order,
+  and counters.
+- Ordering contract: frame n+1 reads frame n's history through in-order queue
+  submission, at every `pipelineDepth`.
+- **Parity tests** (Python harness, Chromium; software adapter in CI). Native
+  `ICGNWGPUFullPyramid` vs JS `DICEngine` on a cropped tensile sequence
+  (≥ 60 ordered frames), plus the black-frame injection, reset and expiry.
+  Compare per frame: status equality, iteration equality, parameter max abs
+  difference. Prefer bit equality. If driver differences prevent it, set
+  tolerances *before* looking at results, write them in a `criteria.json`, and
+  report every exceedance.
+- Port `full` ROI (validation, reduction, seed permissions and links) with
+  parity against `roi.py` on the plate-hole fixture. `partial` throws
+  "not supported in the browser engine".
+
+### Phase 4 — input, worker and rendering (the app)
+
+- **Camera.** Use `getUserMedia({ video: { facingMode: 'environment', width, height, frameRate } })`.
+  Read the actual track settings; do not assume the requested ones.
+  Try to lock exposure, focus and white balance through `applyConstraints`
+  where `getCapabilities()` allows it. Report what could and could not be
+  locked. A drifting exposure must be visible in the UI (ZNCC/acceptance).
+- **GPU luminance.** Add a small `input.wgsl` kernel, separate from the solver
+  shaders: `copyExternalImageToTexture` (`ImageBitmap`/`VideoFrame`/video
+  element) to rgba8, then BT.709 luma rounded to the same `r8unorm`/`uint8`
+  convention the engine expects. Document the rounding. Test it against a CPU
+  reference on synthetic colour images. Never read the frame back to the CPU
+  on the hot path.
+- **Worker.** Run `DICEngine` in a dedicated Worker. Transfer `VideoFrame`s
+  (`postMessage` with transfer) or use `MediaStreamTrackProcessor` where it
+  exists, with a fallback to `requestVideoFrameCallback` plus `createImageBitmap`
+  on the main thread. Close every `VideoFrame`. Use backpressure: at most
+  `pipelineDepth` frames in flight, and drop and **count** frames otherwise,
+  never queue them unboundedly. Rendering uses `OffscreenCanvas` in the worker
+  when available, and the main thread otherwise.
+- **Rendering.** A render pipeline reads `engine.fieldBuffer` directly (no
+  readback): camera image plus a colour map of u, v, |u|, an affine strain
+  component, or status, with a legend and fixed or auto scale. Grey means
+  rejected/unavailable, as in the existing figures. Strains are direct affine
+  gradients; label them as such.
+- **ROI.** Touch/pointer polygon or rectangle drawn on the reference, converted
+  to a boolean mask at full resolution, passed to `setReference`.
+- **Controls.** Capture or replace the reference, reset history, choose a
+  resolution (720p/1080p/UHD within the probed limits), choose a profile, and
+  pause. Show FPS, result age (median/p95 over a sliding window), acceptance,
+  mean iterations, dropped frames, adapter name and limits.
+- **Export.** On demand: readback of the current field, then CSV and a small
+  JSON with configuration, adapter, timestamps and statuses. Use a download
+  link, with no server.
+- **Demo mode.** Without a camera, or by choice: replay the archived tensile
+  sequence. Ship a reduced 1080p crop or downsample generated by a checked-in
+  script, with hashes in a manifest. Do not regenerate the original fixtures.
+  Show the analytic truth error live. This mode is also the app's CI test.
+
+### Phase 5 — profile selection by capability
+
+- `probeCapabilities()` returns a recommended profile and the reasons behind
+  it, using measured limits and an on-device micro-benchmark (a few frames at
+  each candidate resolution). Do not use a vendor-name heuristic.
+- Profiles: `qualified-latency` (the native qualified configuration),
+  `portable` (same math, one slot, lower resolution), and `minimal` (one level
+  + temporal, only if it passed the native trajectory gates; cite the campaign).
+  Adaptive pyramid and `cubic` failed qualified trajectory gates: they may
+  appear only as labelled experimental options.
+- Subgroups are never required. Use the portable 16-lane solver.
+
+### Phase 6 — PWA and GitHub Pages deployment
+
+- New workflow `.github/workflows/pages.yml`: on push to `main` and on
+  `workflow_dispatch`, assemble `web-app/`, `core/`, the WGSL files (copied from
+  `python/src/.../shaders/` at build time, never committed twice) and the demo
+  fixtures into an artifact. Deploy with `actions/upload-pages-artifact` and
+  `actions/deploy-pages`, pinned to exact versions or SHAs. Add a job step that
+  fails if a served `.wgsl` differs from the canonical file (hash check).
+- All URLs are relative (`new URL(..., import.meta.url)`). The site works under
+  the `/<repo>/` subpath, not just at a domain root.
+- `manifest.webmanifest` with icons; `sw.js` precaches the app shell, WGSL and
+  demo data with a versioned cache name derived from the commit SHA, and
+  removes old caches on activate. Bypass the service worker for camera data
+  (there is none on the network anyway).
+- Serve over HTTPS (Pages does), so `navigator.gpu` and `getUserMedia` are in a
+  secure context. Also provide `python -m http.server`-based local instructions.
+- Strict Content-Security-Policy via `<meta>`: `script-src 'self'`, no
+  `unsafe-eval`. Avoid inline scripts.
+- No analytics or third-party requests.
+- Do not enable or deploy Pages yourself. Prepare the workflow and write in the
+  docs the one-time repository setting the user must change
+  (Settings → Pages → Source: GitHub Actions).
+
+### Testing and CI
+
+- Python harness: new `python/tests/test_browser_core.py` drives `core/` in
+  headless Chromium and checks parity against native (Phase 3), the input
+  kernel, the ROI port, and validation errors. GPU-gated like the other tests.
+  Add a CI job with Chromium's software WebGPU adapter if it is available in
+  the runner; otherwise state clearly that browser parity runs only locally.
+- App smoke test: headless Chromium loads the built site from a local static
+  server under a subpath, runs demo mode for N frames, and asserts finite
+  results, acceptance above a threshold and zero console errors.
+- Lint the JS with whatever the repo already uses. If nothing exists, do not
+  add a toolchain without asking; keep code ES2022 and dependency-free.
+- Manual matrix to report (do not claim untested devices): desktop Chrome,
+  Android Chrome, iOS/iPadOS Safari, desktop Safari, Firefox. Record, for each
+  device: browser version, adapter, limits, chosen profile, resolution, FPS,
+  result age and demo-mode error. List missing devices as untested.
+
+### Measurement rules for the browser
+
+- Boundary for app timings: camera frame available in the worker → field
+  available on the GPU (for display) and, separately, → field read back (for
+  export). Report both; do not compare them with the native NumPy boundary
+  without saying so.
+- Use timestamp queries only if they pass a wall-time sanity check (a previous
+  probe failed one). Otherwise report wall time only.
+- Mobile thermal throttling is expected. Report runs ≥ 60 s with the age
+  distribution over time, not only short bursts.
+
+### Documentation
+
+- `docs/how-to/run-in-browser.rst`: open the Pages URL, permissions, demo mode,
+  profiles, export, limitations.
+- `docs/explanation/browser-portability.rst`: architecture (core vs app vs
+  Python shim), single-WGSL-source rule, binding budget, input conversion,
+  worker model, ordering contract and capability-based profiles.
+- `docs/reference/js-api.rst`: the `DICEngine` API, options mapped to Python
+  names, result layout and errors.
+- Update `limitations.rst` (browser ROI is now `full` only, not rejected; still
+  no partial ROI; phone capture not qualified), the README landing section, and
+  the AGENTS.md contract line "A JavaScript stream supervisor is a future
+  integration" once it is implemented.
+
+### Commits and definition of done
+
+One focused commit per phase, at least: binding audit, binding budget plus
+parity campaign, core extraction, temporal port plus parity, input/worker,
+rendering/UI, demo fixtures, Pages/PWA, docs. Each commit leaves the tests
+green. Do not push and do not open a PR.
+
+Done when:
+- Phases 0–6 are implemented.
+- The native bit-for-bit parity and the no-regression campaign are recorded.
+- JS/native parity passes on the agreed criteria.
+- Demo mode runs in headless Chromium from a subpath.
+- The Pages workflow is ready, but not enabled by you.
+- The docs are written.
+- The device matrix states what ran, what didn't and why.
