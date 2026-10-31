@@ -1,3 +1,5 @@
+import { createTemporalGraph, validateTemporal } from './temporal.js';
+import { validateMask, planRoi, reduceMask, seedPermissions } from './roi.js';
 import { decodePacked } from './result.js';
 /*
  * Raw browser WebGPU adapter for the same portable WGSL used by wgpu-py.
@@ -15,6 +17,7 @@ import {
 } from './reference.js';
 
 export function createPyramidHost(options = {}) {
+validateTemporal(options);
 const SUBSET_SIZE = Number(options.subsetSize ?? 16);
 if (![8, 15, 16, 17, 31, 32, 33].includes(SUBSET_SIZE)) {
   throw new Error('Unsupported subsetSize');
@@ -61,6 +64,9 @@ const configuration = {
   outlierPolicy: 'replace',
 };
 
+let roiMask = null;
+let roiPlans = [];
+let temporal = null;
 let adapter = null;
 let device = null;
 let ownsDevice = false;
@@ -113,12 +119,13 @@ const createBufferWithData = (label, data, usage) => {
 };
 
 const destroyRuntimeResources = () => {
+  temporal?.destroy(); temporal = null;
   levels.forEach((level) => {
     level.sourceTexture.destroy();
     Object.values(level.buffers).forEach((buffer) => buffer.destroy());
   });
   reductionEdges.forEach((edge) => edge.intermediate.destroy());
-  seedEdges.forEach((edge) => edge.config.destroy());
+  seedEdges.forEach((edge) => { edge.config.destroy(); edge.links?.destroy(); });
   if (querySet) querySet.destroy();
   if (queryResolveBuffer) queryResolveBuffer.destroy();
   levels = [];
@@ -226,14 +233,14 @@ const createRuntime = async (width, height) => {
     label: 'DIC-RT shared WGSL bindings',
     entries: baseLayoutEntries,
   });
-  seededBindGroupLayout = levelCount > 1 ? device.createBindGroupLayout({
+  seededBindGroupLayout = device.createBindGroupLayout({
     label: 'DIC-RT shared seeded WGSL bindings',
     entries: [
       ...baseLayoutEntries,
       { binding: 10, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } },
       { binding: 11, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } },
     ],
-  }) : null;
+  });
   reduceXBindGroupLayout = device.createBindGroupLayout({
     entries: [
       { binding: 0, visibility: GPUShaderStage.COMPUTE, texture: { sampleType: 'float' } },
@@ -264,6 +271,7 @@ const createRuntime = async (width, height) => {
       { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
       { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
       { binding: 3, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } },
+      ...(roiMask ? [{ binding: 4, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } }] : []),
     ],
   });
   const layout = device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] });
@@ -308,12 +316,15 @@ const createRuntime = async (width, height) => {
   };
   const solvers = {};
   const seededSolvers = {};
+  const fineSolvers = {};
+  const fineSeededSolvers = {};
   for (const [mode, constant] of Object.entries(INTERPOLATION_CONSTANTS)) {
     const constants = {
       INTERPOLATION_MODE: constant,
       MOTION_MODEL: MOTION_MODEL_CONSTANTS[configuration.motionModel],
       SUBSET_SIZE,
       SUBSET_STRIDE,
+      ROI_ENABLED: +!!roiMask,
     };
     solvers[mode] = await pipeline(
       `DIC-RT shared ${mode} affine solver`, 'solve', shaderModule, layout, constants,
@@ -334,6 +345,14 @@ const createRuntime = async (width, height) => {
     'DIC-RT shared prefilter Y', 'prefilter_y', shaderModule, layout,
     { PREFILTER_CLAMP_HALO: 0 },
   );
+  for (const [mode, constant] of Object.entries(INTERPOLATION_CONSTANTS)) {
+    const constants = { INTERPOLATION_MODE: constant, MOTION_MODEL: MOTION_MODEL_CONSTANTS[configuration.motionModel],
+      SUBSET_SIZE, SUBSET_STRIDE, ROI_ENABLED: +!!roiMask,
+      DIVERGENCE_PATIENCE: options.divergencePatience ?? 0,
+      DIVERGENCE_MIN_ITERATIONS: options.divergenceMinIterations ?? 4 };
+    fineSolvers[mode] = options.divergencePatience ? await pipeline('Fine stagnation solver', 'solve', shaderModule, layout, constants) : solvers[mode];
+    fineSeededSolvers[mode] = options.divergencePatience ? await pipeline('Fine seeded stagnation solver', 'solve_seeded', shaderModule, seededLayout, constants) : seededSolvers[mode];
+  }
   const smallestScale = 2 ** (configuration.pyramidLevels - 1);
   const needsSafeX = Math.floor(FRAME_WIDTH / smallestScale) < 44;
   const needsSafeY = Math.floor(FRAME_HEIGHT / smallestScale) < 44;
@@ -352,11 +371,14 @@ const createRuntime = async (width, height) => {
     prefilterYSafe,
     solvers,
     seededSolvers,
+    fineSolvers,
+    fineSeededSolvers,
     median: await pipeline(
       'DIC-RT shared displacement UOD', 'median_filter', shaderModule, layout,
       {
         MOTION_MODEL: MOTION_MODEL_CONSTANTS[configuration.motionModel],
         OUTLIER_POLICY: OUTLIER_POLICY_CONSTANTS[configuration.outlierPolicy],
+        ROI_ENABLED: +!!roiMask,
         SUBSET_SIZE,
         SUBSET_STRIDE,
       },
@@ -365,10 +387,10 @@ const createRuntime = async (width, height) => {
       'DIC-RT pyramid reduce X', 'reduce_x', pyramidShaderModule, reduceXLayout,
     ),
     reduceY: await pipeline(
-      'DIC-RT pyramid reduce Y', 'reduce_y', pyramidShaderModule, reduceYLayout,
+      'DIC-RT fused pyramid reduction', 'reduce_fused', pyramidShaderModule, reduceYLayout,
     ),
     transferSeed: await pipeline(
-      'DIC-RT pyramid seed transfer', 'transfer_seed', pyramidShaderModule, seedLayout,
+      'DIC-RT pyramid seed transfer', roiMask ? 'transfer_seed_roi' : 'transfer_seed', pyramidShaderModule, seedLayout,
       {
         MOTION_MODEL: MOTION_MODEL_CONSTANTS[configuration.motionModel],
         SUBSET_SIZE,
@@ -415,7 +437,7 @@ const createRuntime = async (width, height) => {
       }),
       metadata: device.createBuffer({
         label: `DIC-RT metadata and inverse Hessians level ${levelIndex}`,
-        size: gridCount * (metadataStride + parameterCount * parameterCount) * 4,
+        size: gridCount * (metadataStride + (roiMask ? 4 : 0) + parameterCount * parameterCount) * 4,
         usage: storage | GPUBufferUsage.COPY_DST,
       }),
       state: device.createBuffer({
@@ -434,7 +456,7 @@ const createRuntime = async (width, height) => {
         usage: storage | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
       }),
     };
-    if (levelIndex < levelCount - 1) {
+    { // Coarsest temporal initialization also needs a seed buffer.
       levelBuffers.seedState = device.createBuffer({
         label: `DIC-RT seed state level ${levelIndex}`,
         size: gridCount * stateStride * 4,
@@ -459,14 +481,14 @@ const createRuntime = async (width, height) => {
       layout: bindGroupLayout,
       entries: baseEntries,
     });
-    const seededBindGroup = levelBuffers.seedState ? device.createBindGroup({
+    const seededBindGroup = device.createBindGroup({
       layout: seededBindGroupLayout,
       entries: [
         ...baseEntries,
         { binding: 10, resource: { buffer: levelBuffers.seedState } },
         { binding: 11, resource: { buffer: levelBuffers.activeMask } },
       ],
-    }) : null;
+    });
     levels.push({
       index: levelIndex,
       width: levelWidth,
@@ -478,6 +500,8 @@ const createRuntime = async (width, height) => {
       sourceTexture: levelSourceTexture,
       buffers: levelBuffers,
       bindGroup: levelBindGroup,
+      roi: roiPlans[levelIndex] ?? null,
+      inverseOffset: gridCount * (metadataStride + (roiMask ? 4 : 0)) / 4,
       seededBindGroup,
       prefilterBindGroup,
     });
@@ -506,7 +530,7 @@ const createRuntime = async (width, height) => {
       verticalBindGroup: device.createBindGroup({
         layout: reduceYBindGroupLayout,
         entries: [
-          { binding: 0, resource: intermediate.createView() },
+          { binding: 0, resource: source.sourceTexture.createView() },
           { binding: 1, resource: destination.sourceTexture.createView() },
         ],
       }),
@@ -527,8 +551,11 @@ const createRuntime = async (width, height) => {
       new Uint8Array(bytes),
       GPUBufferUsage.UNIFORM,
     );
+    const links = roiMask ? createBufferWithData('ROI seed links', seedPermissions(
+      source.roi, destination.roi, 2 ** source.index, 2 ** destination.index,
+      SUBSET_SIZE, SUBSET_STRIDE, roiMask, FRAME_WIDTH, FRAME_HEIGHT), GPUBufferUsage.STORAGE) : null;
     seedEdges.set(destinationIndex, {
-      config,
+      config, links,
       bindGroup: device.createBindGroup({
         layout: seedTransferBindGroupLayout,
         entries: [
@@ -542,6 +569,7 @@ const createRuntime = async (width, height) => {
           { binding: 1, resource: { buffer: destination.buffers.seedState } },
           { binding: 2, resource: { buffer: destination.buffers.activeMask } },
           { binding: 3, resource: { buffer: config } },
+          ...(links ? [{ binding: 4, resource: { buffer: links } }] : []),
         ],
       }),
     });
@@ -583,7 +611,7 @@ const updateConfig = () => {
     integers.forEach((value, index) => view.setUint32(index * 4, value, true));
     view.setFloat32(24, configuration.tolerancePerLevel[scheduleIndex], true);
     view.setFloat32(28, configuration.znccMin, true);
-    view.setUint32(32, level.gridCount * (configuration.motionModel === 'quadratic' ? 7 : 4), true);
+    view.setUint32(32, level.inverseOffset, true);
     device.queue.writeBuffer(level.buffers.config, 0, bytes);
   });
 };
@@ -708,6 +736,7 @@ const setTargetBytes = (pixels, width, height) => {
 };
 
 const executePipeline = async ({ measureGpu = false } = {}) => {
+  if (roiPlans[0]?.count === 0) return null;
   const encoder = device.createCommandEncoder({ label: 'DIC-RT full-pyramid registration' });
   levels.forEach((level) => {
     encoder.clearBuffer(level.buffers.state);
@@ -715,14 +744,9 @@ const executePipeline = async ({ measureGpu = false } = {}) => {
       encoder.clearBuffer(level.buffers.filteredState);
     }
   });
+  if (temporal) encoder.clearBuffer(temporal.counts);
   const jobs = [];
   reductionEdges.forEach((edge) => {
-    jobs.push({
-      pipeline: pipelines.reduceX,
-      bindGroup: edge.horizontalBindGroup,
-      group: 0,
-      workgroups: [Math.ceil(edge.destination.width / 16), Math.ceil(edge.source.height / 16), 1],
-    });
     jobs.push({
       pipeline: pipelines.reduceY,
       bindGroup: edge.verticalBindGroup,
@@ -750,8 +774,8 @@ const executePipeline = async ({ measureGpu = false } = {}) => {
     }
     jobs.push({
       pipeline: seeded
-        ? pipelines.seededSolvers[configuration.interpolation]
-        : pipelines.solvers[configuration.interpolation],
+        ? (level.index === 0 ? pipelines.fineSeededSolvers : pipelines.seededSolvers)[configuration.interpolation]
+        : (level.index === 0 ? pipelines.fineSolvers : pipelines.solvers)[configuration.interpolation],
       bindGroup: seeded ? level.seededBindGroup : level.bindGroup,
       group: 0,
       workgroups: [level.gridWidth, level.gridHeight, 1],
@@ -766,7 +790,8 @@ const executePipeline = async ({ measureGpu = false } = {}) => {
     }
   };
   const coarsestIndex = levels.length - 1;
-  appendLevel(levels[coarsestIndex], false);
+  if (temporal) jobs.push(...temporal.before);
+  appendLevel(levels[coarsestIndex], !!temporal);
   for (let destinationIndex = coarsestIndex - 1; destinationIndex >= 0; --destinationIndex) {
     const edge = seedEdges.get(destinationIndex);
     const destination = levels[destinationIndex];
@@ -776,8 +801,10 @@ const executePipeline = async ({ measureGpu = false } = {}) => {
       group: 2,
       workgroups: [Math.ceil(destination.gridCount / 256), 1, 1],
     });
+    if (destinationIndex === 0 && temporal?.refine) jobs.push(temporal.refine);
     appendLevel(destination, true);
   }
+  if (temporal) jobs.push(...temporal.after);
   jobs.forEach((job, index) => {
     const timestampWrites = measureGpu && timestampQueries ? {
       querySet,
@@ -828,19 +855,26 @@ const readResult = async (timing) => {
   const stateStride = configuration.motionModel === 'quadratic' ? 16 : 8;
   const size = GRID_COUNT * stateStride * 4;
   const readback = device.createBuffer({
-    size,
+    size: size + (temporal ? 16 : 0),
     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
   });
   const encoder = device.createCommandEncoder({ label: 'DIC-RT shared WGSL readback' });
   const resultBuffer = configuration.outlierPolicy === 'disabled'
     ? buffers.state : buffers.filteredState;
   encoder.copyBufferToBuffer(resultBuffer, 0, readback, 0, size);
+  if (temporal) encoder.copyBufferToBuffer(temporal.counts, 0, readback, size, 16);
   device.queue.submit([encoder.finish()]);
   await readback.mapAsync(GPUMapMode.READ);
-  const packed = new Float32Array(readback.getMappedRange());
+  const mapped = readback.getMappedRange();
+  const packed = new Float32Array(mapped, 0, size / 4);
   const result = decodePacked(packed, { width: FRAME_WIDTH, height: FRAME_HEIGHT,
     gridWidth: GRID_WIDTH, gridHeight: GRID_HEIGHT, subsetSize: SUBSET_SIZE,
     subsetStride: SUBSET_STRIDE, configuration, timing });
+  if (temporal) {
+    const counters = new Uint32Array(mapped, size, 4);
+    result.counters = { temporallySeededCoarseSubsets: counters[0], temporalAcceptedUpdates: counters[1], velocityPredictedSubsets: counters[2], temporalExpiredSubsets: counters[3] };
+  }
+  if (roiPlans[0]) result.roiSelected = roiPlans[0].selected;
   readback.unmap();
   readback.destroy();
   return result;
@@ -851,7 +885,18 @@ const setReference = async (dataUrl, options = {}) => {
   configure(options, true);
   const image = typeof dataUrl === 'string' ? await loadImage(dataUrl) : dataUrl;
   const started = performance.now();
+  const ownedMask = validateMask(options.roiMask, image.width, image.height, options.roiPolicy ?? 'full', configuration.motionModel);
+  roiMask = ownedMask && !ownedMask.every(Boolean) ? ownedMask : null;
+  roiPlans = [];
+  if (roiMask) {
+    let reduced = { mask: roiMask, width: image.width, height: image.height };
+    for (let i = 0; i < configuration.pyramidLevels; i++) {
+      roiPlans.push(planRoi(reduced.mask, reduced.width, reduced.height, SUBSET_SIZE, SUBSET_STRIDE));
+      if (i + 1 < configuration.pyramidLevels) reduced = reduceMask(reduced.mask, reduced.width, reduced.height);
+    }
+  }
   const runtimeStarted = performance.now();
+  destroyRuntimeResources();
   await createRuntime(image.width, image.height);
   const runtimeBuildWallMs = performance.now() - runtimeStarted;
   const referenceStarted = performance.now();
@@ -876,12 +921,30 @@ const setReference = async (dataUrl, options = {}) => {
         motionModel: configuration.motionModel,
       });
       device.queue.writeBuffer(level.buffers.reference, 0, prepared.reference);
-      device.queue.writeBuffer(level.buffers.metadata, prepared.metadata.byteLength, prepared.inverseHessian);
-      device.queue.writeBuffer(level.buffers.metadata, 0, prepared.metadata);
+      let metadata = prepared.metadata;
+      if (level.roi) {
+        metadata = new Float32Array(prepared.metadata.length + level.gridCount * 4);
+        metadata.set(prepared.metadata);
+        const metaStride = configuration.motionModel === 'quadratic' ? 28 : 16;
+        for (let i = 0; i < level.gridCount; i++) {
+          if (!level.roi.selected[i]) metadata[i * metaStride + 1] = -3;
+          metadata[prepared.metadata.length + i * 4] = level.roi.neighbours[i];
+        }
+        if (level.roi.count === 0) {
+          const stateStride = configuration.motionModel === 'quadratic' ? 16 : 8;
+          const state = new Float32Array(level.gridCount * stateStride);
+          for (let i = 0; i < level.gridCount; i++) state[i * stateStride + stateStride - 2] = -3;
+          device.queue.writeBuffer(level.buffers.state, 0, state);
+          device.queue.writeBuffer(level.buffers.filteredState, 0, state);
+        }
+      }
+      device.queue.writeBuffer(level.buffers.metadata, metadata.byteLength, prepared.inverseHessian);
+      device.queue.writeBuffer(level.buffers.metadata, 0, metadata);
     });
   } finally {
     image.close?.();
   }
+  temporal = await createTemporalGraph(device, pyramidShaderModule, levels, seedEdges, { ...options, ...configuration }, roiMask, SUBSET_SIZE, SUBSET_STRIDE);
   await device.queue.onSubmittedWorkDone();
   const referenceBuildWallMs = performance.now() - referenceStarted;
   referenceReady = true;
@@ -895,6 +958,7 @@ const setReference = async (dataUrl, options = {}) => {
     subsetStride: SUBSET_STRIDE,
     grid: [GRID_WIDTH, GRID_HEIGHT],
     config: { ...configuration },
+    roiSelected: roiPlans[0]?.selected ?? null,
     device: (await info()).device,
   };
 };
@@ -1006,6 +1070,7 @@ const info = async () => {
 configure(options, true);
 return {
   info, configure, setReference, register, registerBytes, benchmark, ensureDevice,
+  resetTemporalState() { temporal?.reset(); },
   get device() { return device; },
   get fieldBuffer() { return configuration.outlierPolicy === 'disabled' ? buffers?.state : buffers?.filteredState; },
   get configuration() { return { ...configuration }; },

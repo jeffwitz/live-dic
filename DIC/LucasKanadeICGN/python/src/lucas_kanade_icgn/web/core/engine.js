@@ -17,7 +17,6 @@ export class DICEngine {
       throw new Error('partial ROI is not supported in the browser engine');
     }
     if (!['full', 'decimated', 'none'].includes(options.readback ?? 'full')) throw new Error('Unknown readback mode');
-    if (options.initialization && options.initialization !== 'zero') throw new Error('Temporal initialization is not yet supported in this extraction stage');
     if (options.readback && options.readback !== 'full') throw new Error('Only full readback is supported in this extraction stage');
     this.options = { readback: 'full', ...options };
     this.ring = new SlotRing(options.pipelineDepth ?? 1);
@@ -28,12 +27,11 @@ export class DICEngine {
   async setReference(source, options = {}) {
     this.assertOpen();
     if (!this.ring.idle) throw new Error('Finish the current sequence before replacing the reference');
-    if (options.roiMask) throw new Error('ROI is not supported in this extraction stage');
     if (source instanceof Uint8Array) {
       if (!this.options.width || !this.options.height) throw new Error('Uint8Array input requires width and height');
       source = { pixels: source, width: this.options.width, height: this.options.height };
     }
-    this.reference = await this.host.setReference(source, this.options);
+    this.reference = await this.host.setReference(source, { ...this.options, ...options });
     return this.reference;
   }
   register(source) {

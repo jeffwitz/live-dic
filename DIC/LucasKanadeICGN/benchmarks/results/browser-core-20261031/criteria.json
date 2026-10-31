@@ -1,0 +1,14 @@
+{
+  "declared_before_temporal_browser_execution": true,
+  "scope": "Native wgpu-py versus Chromium portable WGSL; identical cropped archived tensile pixels, options and chronological sequence",
+  "preferred": "bit equality of every parameter, status and iteration",
+  "cross_runtime_tolerance": {
+    "common_accepted_parameter_rmse_max": 0.002,
+    "common_accepted_parameter_max_abs_max": 0.02,
+    "status_mismatch_fraction_max": 0.005,
+    "iteration_mismatch_fraction_max": 0.02
+  },
+  "basis": "Parameter bounds reuse the existing native specialized/portable qualification. Iteration and status disagreements are individually counted and reported; differences are not hidden by a global RMSE.",
+  "required": ["all outputs finite", "same dense shapes and parameter order", "same ROI selection and seed permissions", "no out-of-ROI acceptance", "all 60 frame rows retained including black, reset and expiry", "all exceedances explicitly reported"],
+  "performance": "No universal mobile FPS claim. Record >=60 seconds with worker-frame-available to GPU-field boundary separately from export readback. Hardware and browser version required."
+}

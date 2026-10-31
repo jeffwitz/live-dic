@@ -1,0 +1,2830 @@
+{
+  "commit": "5c17aedc44d07b7c8819750fbc107ca65f8d2530",
+  "image_sha256": [
+    "a92d306a131829675d1023abd6d95375baa86f317fcd108e797900caa7511b50",
+    "a92d306a131829675d1023abd6d95375baa86f317fcd108e797900caa7511b50",
+    "e4b5ece54228ecb59c30bf4b260c513e04f20aafb7152e200fbd8bb53af08ca0",
+    "a694f74b76c12e42972322e4f7454edb2ce54f29bead62565b55ef21a23d5c60"
+  ],
+  "mask_sha256": "02a22f51317d30d5a6bd97c70fbaaba49e21b04b1a6acf10b7db7bd1920b715a",
+  "cases": [
+    {
+      "name": "translation-l1-none-zero",
+      "config": {
+        "iterations": 30,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 1,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          30
+        ],
+        "tolerancePerLevel": [
+          0.005
+        ],
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "translation",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 31548,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "translation-l1-none-temporal",
+      "config": {
+        "iterations": 30,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 1,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          30
+        ],
+        "tolerancePerLevel": [
+          0.005
+        ],
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "translation",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 31651,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "translation-l1-full-zero",
+      "config": {
+        "iterations": 30,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 1,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          30
+        ],
+        "tolerancePerLevel": [
+          0.005
+        ],
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "full",
+          "truncation": "none",
+          "partial": 0,
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "translation",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 24894,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "translation-l1-full-temporal",
+      "config": {
+        "iterations": 30,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 1,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          30
+        ],
+        "tolerancePerLevel": [
+          0.005
+        ],
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "full",
+          "truncation": "none",
+          "partial": 0,
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "translation",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 24978,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "translation-l1-partial-zero",
+      "config": {
+        "iterations": 30,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 1,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          30
+        ],
+        "tolerancePerLevel": [
+          0.005
+        ],
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "partial",
+          "truncation": "none",
+          "partial": 0,
+          "supportConditionLimit": 100000000.0,
+          "supportContrastRmsMinimum": 1.0,
+          "supportConnectivity": 4,
+          "evenCenter": "all four central pixels required",
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "translation",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 24894,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "translation-l1-partial-temporal",
+      "config": {
+        "iterations": 30,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 1,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          30
+        ],
+        "tolerancePerLevel": [
+          0.005
+        ],
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "partial",
+          "truncation": "none",
+          "partial": 0,
+          "supportConditionLimit": 100000000.0,
+          "supportContrastRmsMinimum": 1.0,
+          "supportConnectivity": 4,
+          "evenCenter": "all four central pixels required",
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "translation",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 24978,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "translation-l2-none-zero",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "translation",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 31798,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "translation-l2-none-temporal",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "translation",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 31796,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "translation-l2-none-latency",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "divergencePatience": 3,
+        "divergenceMinIterations": 4,
+        "divergenceLevels": "finest",
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "temporalFineCorrection": true,
+        "temporalPrediction": "velocity",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "translation",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 31846,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "translation-l2-full-zero",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "full",
+          "truncation": "none",
+          "partial": 0,
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980,
+            5960
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "translation",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 24979,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "translation-l2-full-temporal",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "full",
+          "truncation": "none",
+          "partial": 0,
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980,
+            5960
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "translation",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 24979,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "translation-l2-full-latency",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "divergencePatience": 3,
+        "divergenceMinIterations": 4,
+        "divergenceLevels": "finest",
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "temporalFineCorrection": true,
+        "temporalPrediction": "velocity",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "full",
+          "truncation": "none",
+          "partial": 0,
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980,
+            5960
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "translation",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 24974,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "translation-l2-partial-zero",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "partial",
+          "truncation": "none",
+          "partial": 0,
+          "supportConditionLimit": 100000000.0,
+          "supportContrastRmsMinimum": 1.0,
+          "supportConnectivity": 4,
+          "evenCenter": "all four central pixels required",
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980,
+            6182
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "translation",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 24980,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "translation-l2-partial-temporal",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "partial",
+          "truncation": "none",
+          "partial": 0,
+          "supportConditionLimit": 100000000.0,
+          "supportContrastRmsMinimum": 1.0,
+          "supportConnectivity": 4,
+          "evenCenter": "all four central pixels required",
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980,
+            6182
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "translation",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 24980,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "translation-l2-partial-latency",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "divergencePatience": 3,
+        "divergenceMinIterations": 4,
+        "divergenceLevels": "finest",
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "temporalFineCorrection": true,
+        "temporalPrediction": "velocity",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "partial",
+          "truncation": "none",
+          "partial": 0,
+          "supportConditionLimit": 100000000.0,
+          "supportContrastRmsMinimum": 1.0,
+          "supportConnectivity": 4,
+          "evenCenter": "all four central pixels required",
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980,
+            6182
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "translation",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 24980,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "translation-l3-none-zero",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 3,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          6,
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.01,
+          0.005,
+          0.005
+        ],
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "translation",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 31800,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "translation-l3-none-temporal",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 3,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          6,
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.01,
+          0.005,
+          0.005
+        ],
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "translation",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 31800,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "translation-l3-full-zero",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 3,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          6,
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.01,
+          0.005,
+          0.005
+        ],
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "full",
+          "truncation": "none",
+          "partial": 0,
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980,
+            5960,
+            1488
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "translation",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 24979,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "translation-l3-full-temporal",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 3,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          6,
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.01,
+          0.005,
+          0.005
+        ],
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "full",
+          "truncation": "none",
+          "partial": 0,
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980,
+            5960,
+            1488
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "translation",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 24979,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "translation-l3-partial-zero",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 3,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          6,
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.01,
+          0.005,
+          0.005
+        ],
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "partial",
+          "truncation": "none",
+          "partial": 0,
+          "supportConditionLimit": 100000000.0,
+          "supportContrastRmsMinimum": 1.0,
+          "supportConnectivity": 4,
+          "evenCenter": "all four central pixels required",
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980,
+            6182,
+            1492
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "translation",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 24980,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "translation-l3-partial-temporal",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 3,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          6,
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.01,
+          0.005,
+          0.005
+        ],
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "partial",
+          "truncation": "none",
+          "partial": 0,
+          "supportConditionLimit": 100000000.0,
+          "supportContrastRmsMinimum": 1.0,
+          "supportConnectivity": 4,
+          "evenCenter": "all four central pixels required",
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980,
+            6182,
+            1492
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "translation",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 24980,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "affine-l1-none-zero",
+      "config": {
+        "iterations": 30,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 1,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          30
+        ],
+        "tolerancePerLevel": [
+          0.005
+        ],
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 1480,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "affine-l1-none-temporal",
+      "config": {
+        "iterations": 30,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 1,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          30
+        ],
+        "tolerancePerLevel": [
+          0.005
+        ],
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 1508,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "affine-l1-full-zero",
+      "config": {
+        "iterations": 30,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 1,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          30
+        ],
+        "tolerancePerLevel": [
+          0.005
+        ],
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "full",
+          "truncation": "none",
+          "partial": 0,
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 1012,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "affine-l1-full-temporal",
+      "config": {
+        "iterations": 30,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 1,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          30
+        ],
+        "tolerancePerLevel": [
+          0.005
+        ],
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "full",
+          "truncation": "none",
+          "partial": 0,
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 1042,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "affine-l1-partial-zero",
+      "config": {
+        "iterations": 30,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 1,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          30
+        ],
+        "tolerancePerLevel": [
+          0.005
+        ],
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "partial",
+          "truncation": "none",
+          "partial": 0,
+          "supportConditionLimit": 100000000.0,
+          "supportContrastRmsMinimum": 1.0,
+          "supportConnectivity": 4,
+          "evenCenter": "all four central pixels required",
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 1012,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "affine-l1-partial-temporal",
+      "config": {
+        "iterations": 30,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 1,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          30
+        ],
+        "tolerancePerLevel": [
+          0.005
+        ],
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "partial",
+          "truncation": "none",
+          "partial": 0,
+          "supportConditionLimit": 100000000.0,
+          "supportContrastRmsMinimum": 1.0,
+          "supportConnectivity": 4,
+          "evenCenter": "all four central pixels required",
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 1042,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "affine-l2-none-zero",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 2029,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "affine-l2-none-temporal",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 2115,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "affine-l2-none-latency",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "divergencePatience": 3,
+        "divergenceMinIterations": 4,
+        "divergenceLevels": "finest",
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "temporalFineCorrection": true,
+        "temporalPrediction": "velocity",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 2144,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "affine-l2-full-zero",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "full",
+          "truncation": "none",
+          "partial": 0,
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980,
+            5960
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 1660,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "affine-l2-full-temporal",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "full",
+          "truncation": "none",
+          "partial": 0,
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980,
+            5960
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 1739,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "affine-l2-full-latency",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "divergencePatience": 3,
+        "divergenceMinIterations": 4,
+        "divergenceLevels": "finest",
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "temporalFineCorrection": true,
+        "temporalPrediction": "velocity",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "full",
+          "truncation": "none",
+          "partial": 0,
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980,
+            5960
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 1770,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "affine-l2-partial-zero",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "partial",
+          "truncation": "none",
+          "partial": 0,
+          "supportConditionLimit": 100000000.0,
+          "supportContrastRmsMinimum": 1.0,
+          "supportConnectivity": 4,
+          "evenCenter": "all four central pixels required",
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980,
+            6182
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 1664,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "affine-l2-partial-temporal",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "partial",
+          "truncation": "none",
+          "partial": 0,
+          "supportConditionLimit": 100000000.0,
+          "supportContrastRmsMinimum": 1.0,
+          "supportConnectivity": 4,
+          "evenCenter": "all four central pixels required",
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980,
+            6182
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 1743,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "affine-l2-partial-latency",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "divergencePatience": 3,
+        "divergenceMinIterations": 4,
+        "divergenceLevels": "finest",
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "temporalFineCorrection": true,
+        "temporalPrediction": "velocity",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "partial",
+          "truncation": "none",
+          "partial": 0,
+          "supportConditionLimit": 100000000.0,
+          "supportContrastRmsMinimum": 1.0,
+          "supportConnectivity": 4,
+          "evenCenter": "all four central pixels required",
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980,
+            6182
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 1772,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "affine-l3-none-zero",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 3,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          6,
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.01,
+          0.005,
+          0.005
+        ],
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 5063,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "affine-l3-none-temporal",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 3,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          6,
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.01,
+          0.005,
+          0.005
+        ],
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 5317,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "affine-l3-full-zero",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 3,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          6,
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.01,
+          0.005,
+          0.005
+        ],
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "full",
+          "truncation": "none",
+          "partial": 0,
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980,
+            5960,
+            1488
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 4585,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "affine-l3-full-temporal",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 3,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          6,
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.01,
+          0.005,
+          0.005
+        ],
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "full",
+          "truncation": "none",
+          "partial": 0,
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980,
+            5960,
+            1488
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 4830,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "affine-l3-partial-zero",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 3,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          6,
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.01,
+          0.005,
+          0.005
+        ],
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "partial",
+          "truncation": "none",
+          "partial": 0,
+          "supportConditionLimit": 100000000.0,
+          "supportContrastRmsMinimum": 1.0,
+          "supportConnectivity": 4,
+          "evenCenter": "all four central pixels required",
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980,
+            6182,
+            1492
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 4595,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "affine-l3-partial-temporal",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 3,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          6,
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.01,
+          0.005,
+          0.005
+        ],
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "roi": {
+          "policy": "partial",
+          "truncation": "none",
+          "partial": 0,
+          "supportConditionLimit": 100000000.0,
+          "supportContrastRmsMinimum": 1.0,
+          "supportConnectivity": 4,
+          "evenCenter": "all four central pixels required",
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "gridTotal": 32400,
+          "selected": 24980,
+          "excluded": 7420,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool",
+          "selectedPerLevel": [
+            24980,
+            6182,
+            1492
+          ]
+        },
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 4843,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "quadratic-l1-none-zero",
+      "config": {
+        "iterations": 30,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 1,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          30
+        ],
+        "tolerancePerLevel": [
+          0.005
+        ],
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "quadratic",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 329,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "quadratic-l1-none-temporal",
+      "config": {
+        "iterations": 30,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 1,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          30
+        ],
+        "tolerancePerLevel": [
+          0.005
+        ],
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "quadratic",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 349,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "quadratic-l2-none-zero",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "quadratic",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 838,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "quadratic-l2-none-temporal",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "quadratic",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 874,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "quadratic-l2-none-latency",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "divergencePatience": 3,
+        "divergenceMinIterations": 4,
+        "divergenceLevels": "finest",
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "temporalFineCorrection": true,
+        "temporalPrediction": "velocity",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "quadratic",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 916,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "quadratic-l3-none-zero",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 3,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          6,
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.01,
+          0.005,
+          0.005
+        ],
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "quadratic",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 2398,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    {
+      "name": "quadratic-l3-none-temporal",
+      "config": {
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 3,
+        "pyramidStrategy": "full",
+        "iterationsPerLevel": [
+          6,
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.01,
+          0.005,
+          0.005
+        ],
+        "initialization": "temporal",
+        "temporalMaxAge": null,
+        "temporalSeedLevel": "coarsest",
+        "temporalSeedState": "raw",
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "deviceType": "gpu",
+        "executionDeviceType": "gpu",
+        "interpolation": "bspline",
+        "motionModel": "quadratic",
+        "outlierPolicy": "median",
+        "subsetStride": 16,
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "gaussianSigma": 4.0
+      },
+      "accepted": 2414,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    }
+  ],
+  "arrays": 441,
+  "bit_identical": true,
+  "scope": "UHD resource-layout parity, including rejected states; not a capture-range claim for late frames.",
+  "unsupported": "Quadratic ROI is rejected by contract and is not treated as supported."
+}

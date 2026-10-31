@@ -1,0 +1,6127 @@
+{
+  "commit": "5c17aedc44d07b7c8819750fbc107ca65f8d2530",
+  "dirty": true,
+  "criteria": {
+    "declared_before_temporal_browser_execution": true,
+    "scope": "Native wgpu-py versus Chromium portable WGSL; identical cropped archived tensile pixels, options and chronological sequence",
+    "preferred": "bit equality of every parameter, status and iteration",
+    "cross_runtime_tolerance": {
+      "common_accepted_parameter_rmse_max": 0.002,
+      "common_accepted_parameter_max_abs_max": 0.02,
+      "status_mismatch_fraction_max": 0.005,
+      "iteration_mismatch_fraction_max": 0.02
+    },
+    "basis": "Parameter bounds reuse the existing native specialized/portable qualification. Iteration and status disagreements are individually counted and reported; differences are not hidden by a global RMSE.",
+    "required": [
+      "all outputs finite",
+      "same dense shapes and parameter order",
+      "same ROI selection and seed permissions",
+      "no out-of-ROI acceptance",
+      "all 60 frame rows retained including black, reset and expiry",
+      "all exceedances explicitly reported"
+    ],
+    "performance": "No universal mobile FPS claim. Record >=60 seconds with worker-frame-available to GPU-field boundary separately from export readback. Hardware and browser version required."
+  },
+  "browser": {
+    "width": 384,
+    "height": 256,
+    "grid": [
+      24,
+      16
+    ],
+    "subsetSize": 16,
+    "subsetStride": 16,
+    "device": "Raw WebGPU shared WGSL (intel xe-2lpg)",
+    "timerQuery": false,
+    "backend": "raw-webgpu-wgsl",
+    "threeRevision": null,
+    "timestampQueries": false,
+    "vendor": "intel",
+    "architecture": "xe-2lpg",
+    "adapterDevice": null,
+    "description": null,
+    "subgroups": false,
+    "subgroupWidth": 0,
+    "pyramidLevels": 2,
+    "interpolation": "bspline",
+    "motionModel": "affine",
+    "outlierPolicy": "median",
+    "iterationsPerLevel": [
+      8,
+      16
+    ],
+    "tolerancePerLevel": [
+      0.005,
+      0.005
+    ],
+    "solver": "portable-workgroup-full-pyramid"
+  },
+  "reference_sha256": "5f3e5f0492f336887cff4c3f25332639ce61ee0185deb29270cc4c9a40ef8853",
+  "mask_sha256": "8aa112aece2f3e8a60993147c68d6e308ccaf1c214ba324903035d5f99671b59",
+  "frame_sha256": [
+    "5f3e5f0492f336887cff4c3f25332639ce61ee0185deb29270cc4c9a40ef8853",
+    "5c7d3005296ba56a89928181d289ffcc322cfc5939e6284c66dda5192ebed046",
+    "429b6a0d2673148c77cd26006579349a24455f37abc20243b2ed449db17ec0eb",
+    "e8f2d5bd1c84706431d3f589f338817570825e3d7d3002d4006a7c68e779b98e",
+    "774b77066126fcc02742371796e231dd34905122bb3124a60be612015bb3525a",
+    "734b573aad5a5e3ed16b9540dfb42acb8e1e515b283c6b779ab4da8c181df104",
+    "c994036373bf19c65878bdaae4a9c3c114bcf87ca9762e76a1041ae8bd6993ee",
+    "d68793b68476acfb4fbf051a2fe6511bfcfaba3fcfdf21684d1674946702b104",
+    "b0245ba9da655c73621cf64405fa186598ada53ea791b0a9e06c4fc1d71e04f0",
+    "af4c3fe14128a764b91a348ea519abfc9472c7e75f450ab52bb6f6f8501f8c2f",
+    "c9fbcaf15918e9f842e3ae8f7c844a78091b4f87dce1d7078fde4e5dafff88d6",
+    "7b09fa69b48f382dc49288733497ade7fe2384652e589a4ffea26b73f9e475a0",
+    "10a0ad4ccae2a07904eb7ab4f97f4c414a342179bb8eedfa28ea1621775cd5c0",
+    "d5a49bd40f0f27c798ac9e153f1fc962000d43e1ca4ce6a7486541bbd13ccf61",
+    "4aa9a91097541f1bf6f2f9c628b142083c8966784280c159e875cc2ae5ee94a8",
+    "3015beda2173be04cebcfa23f01ce6c189686cd2a0ef572e41e0c1850b26ee77",
+    "dea72339213542d417df0454bbe47675c21f5e7d8dd3bebcc5b26d8c8e37ab9d",
+    "6f70937b005defbea8881a23cd0ece1eb7fef7f77dd01825f503a42ccb57a7de",
+    "e68aae39d1fb5081ae98a9ab0afa82c08620f94c4c5c00ca398190358225db22",
+    "b75f41be076eff07ce83bd56a47c360d4d0f9f93035d0044c18c2bf778470c0d",
+    "3a3ed164e42500a1c5b2d0093f0a813d27dc50d038f330cc100a7e70ece2e6e4",
+    "3a3ed164e42500a1c5b2d0093f0a813d27dc50d038f330cc100a7e70ece2e6e4",
+    "3a3ed164e42500a1c5b2d0093f0a813d27dc50d038f330cc100a7e70ece2e6e4",
+    "2e627ab8598647fab14c1f274cb19bfb3ffeb690664909ed824efa85e58f8442",
+    "f92f2ea80096fcd97dd1d28aa7f72d11270b6d64eba8ad06a7c2fb653517008d",
+    "b922268b3ec295bd534af250afeec6930581beec62378bae0193fa22e9115731",
+    "d7eab8ef691b1688d9ddceb97e883c552d52921c3f73f23d2207320bbc684650",
+    "e99dd9196d983da82deb13bceb133a1c4e596b440e1747af9f7c4f28c91d10b1",
+    "ae690b442a97703a3efdf47c3016f9616e612858e7797eaf9e92649d8187a85b",
+    "2cc8df94c484f47bcc87fef66ef4f0e93a341bf46b0a29e5fb0ee5fb990c27ac",
+    "a1696eb9e1d1f742fde7c96d4be2227a5c4ec2f3e299889dc2301231fb5dc1c2",
+    "7d89256526f3c8c00724cbde3c8de02635960b64c8ae3eb257b5787e21ff19b6",
+    "a08d6f031eb40a4a427d265bd5613da6a52baf7410f3d376db51e831f3c513b8",
+    "73919ce968ee40f8fc62101724ce96996d8fde43cd3f643687d26fbffef36284",
+    "04ed224564409e6783e441338173f7040195c83206ab39fa03504e5c798d11a8",
+    "99caf76d21b6a717f6f416ab665536ddaf37422724408399b48481b59e9390c9",
+    "bd876f52cf9d117891fb35f01d2a7291ea824a17a052f3f450a550cbe47ff70e",
+    "0c168f3511b034cf87df85141a166dc49f9e4e6b96c7bb60ce7151f73b3dd180",
+    "776ac3dff1163578aa9e1a125135767df300f67b69ec101d04021c60b1d5b879",
+    "ca456d659af50de7706271be19e9e3259c3c1ec662edae48fec2f97ff94e053d",
+    "856b5846d298075380fabbcd24e5b2e798af83462d9867ad024c4868c7e0ea22",
+    "4b5f04001bff866eef4b185d1dcb4b26bf9b514c5255683c939c87c41f546893",
+    "d50dde84280767c3efd57a1455b436682968942257a1f5b06d1784612d2f54ac",
+    "8f459b52fe641d29286c27833539431648134c3e730bac579d9f457334419a2a",
+    "3f0a41ff4f3f670f02784daae98ead488b0a42f0651d9859bd29eedbba84e5a1",
+    "29bf7a2a1145cc6998d34ed9bc163e9da8b626c28d548dd482cded88abbf9d7c",
+    "b0b7bd259158f5161ccefd6bf1f5101d489d07dd5a8a6c02d03bed68ba404aec",
+    "5d7bdf8b703b86f76a65cfefa4352c270244cf86b3b164cf9c36a8ec7e74ebe6",
+    "451a28dbe7c616046663f59cd6b1066f51e0c461bfedd3fb5cddd9882d616f0e",
+    "87fe2af0a4904d3baf9eb44deb12271eebfef8661231859c8b4d95ec8789c92a",
+    "2c11ad90bbda2ad76cce6a9135cdaf0e766b5e2ae51e788c70eec4df02fa57c3",
+    "6fa91120c2e0772b195089bd4b83a01755cc389557ea292374dd948205f78d64",
+    "86c863fcbf4526a289673edb8455f122e16dbf8b4b95999145225d9a2172af9d",
+    "d281c5eac5e677eba747244c31f4f5c17c2fa2be5761bf27578e7df1aa81bcf8",
+    "fde8f91e446df1d2ac317c413bbfa99e6c02ccc258a1b54b137ad32ecc6ddbd1",
+    "1cecb6f9eafab762df6788991d1e650d0f1b9bff767739355f81afb71dca9bb7",
+    "393fedba0b2d48a189f122e902e1a5bd35a44556542b2af6efe200c4b77c046f",
+    "adb1097c12c85158846ad91503b7f054fff4c033c13a6335677d34e700034b16",
+    "4a1b3790a9672b4a59efc86e930e69adfdcdbaa6985c20cdf58db73a87b971a5",
+    "250779d0326695961db1834d5e96a0efedf386a4fe27ceece2f8cc9197932a25"
+  ],
+  "rows": [
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 0,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 5.6520725877362565e-08,
+      "parameter_max_abs": 3.3839629054455145e-07,
+      "parameter_all_max_abs": 3.3839629054455145e-07,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 0,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 0,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 1,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 9.709093973242489e-08,
+      "parameter_max_abs": 8.070027206485975e-07,
+      "parameter_all_max_abs": 8.070027206485975e-07,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 2,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 5.281865469441982e-07,
+      "parameter_max_abs": 6.822869181632996e-06,
+      "parameter_all_max_abs": 6.822869181632996e-06,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 3,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.5351164367748424e-06,
+      "parameter_max_abs": 2.958253026008606e-05,
+      "parameter_all_max_abs": 2.958253026008606e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 4,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.8307681532169227e-06,
+      "parameter_max_abs": 2.6135239750146866e-05,
+      "parameter_all_max_abs": 2.6135239750146866e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 5,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.985937044286402e-06,
+      "parameter_max_abs": 2.652965486049652e-05,
+      "parameter_all_max_abs": 2.652965486049652e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 6,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.2339244171453174e-06,
+      "parameter_max_abs": 2.8640031814575195e-05,
+      "parameter_all_max_abs": 2.8640031814575195e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 7,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.6794317566091195e-06,
+      "parameter_max_abs": 2.3064203560352325e-05,
+      "parameter_all_max_abs": 2.3064203560352325e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 8,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.246565711378935e-06,
+      "parameter_max_abs": 2.6594847440719604e-05,
+      "parameter_all_max_abs": 2.6594847440719604e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 9,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.352933845235384e-06,
+      "parameter_max_abs": 2.750009298324585e-05,
+      "parameter_all_max_abs": 2.750009298324585e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 10,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.038549266420887e-06,
+      "parameter_max_abs": 2.8211623430252075e-05,
+      "parameter_all_max_abs": 2.8211623430252075e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 11,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.1689066872786498e-06,
+      "parameter_max_abs": 2.7645379304885864e-05,
+      "parameter_all_max_abs": 2.7645379304885864e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 12,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.294623184046941e-06,
+      "parameter_max_abs": 2.7704983949661255e-05,
+      "parameter_all_max_abs": 2.7704983949661255e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 13,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.3638293643889483e-06,
+      "parameter_max_abs": 2.8479844331741333e-05,
+      "parameter_all_max_abs": 2.8479844331741333e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 14,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.243602350266883e-06,
+      "parameter_max_abs": 2.512708306312561e-05,
+      "parameter_all_max_abs": 2.512708306312561e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 15,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.1589986519975355e-06,
+      "parameter_max_abs": 2.718716859817505e-05,
+      "parameter_all_max_abs": 2.718716859817505e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 16,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.190766392435762e-06,
+      "parameter_max_abs": 2.934783697128296e-05,
+      "parameter_all_max_abs": 2.934783697128296e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 17,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.2015866509027546e-06,
+      "parameter_max_abs": 2.7626752853393555e-05,
+      "parameter_all_max_abs": 2.7626752853393555e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 18,
+      "status_mismatches": 0,
+      "iteration_mismatches": 1,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.2577395864354912e-05,
+      "parameter_max_abs": 0.00031818170100450516,
+      "parameter_all_max_abs": 0.00031818170100450516,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 19,
+      "status_mismatches": 0,
+      "iteration_mismatches": 1,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 7.695946806052234e-06,
+      "parameter_max_abs": 0.00017115473747253418,
+      "parameter_all_max_abs": 0.00017115473747253418,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 20,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 0,
+      "parameter_rmse": null,
+      "parameter_max_abs": null,
+      "parameter_all_max_abs": 0.006947539746761322,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 0,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 0,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 21,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 0,
+      "parameter_rmse": null,
+      "parameter_max_abs": null,
+      "parameter_all_max_abs": 0.006947539746761322,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 0,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 0,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 22,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 0,
+      "parameter_rmse": null,
+      "parameter_max_abs": null,
+      "parameter_all_max_abs": 0.006947539746761322,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 0,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 0,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 23,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.5636280750186415e-06,
+      "parameter_max_abs": 1.4865770936012268e-05,
+      "parameter_all_max_abs": 1.4865770936012268e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 0,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 0,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 24,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.6469812180730514e-06,
+      "parameter_max_abs": 2.699345350265503e-05,
+      "parameter_all_max_abs": 2.699345350265503e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 25,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.250636043754639e-06,
+      "parameter_max_abs": 2.5637447834014893e-05,
+      "parameter_all_max_abs": 2.5637447834014893e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 26,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.96090729534626e-06,
+      "parameter_max_abs": 2.754107117652893e-05,
+      "parameter_all_max_abs": 2.754107117652893e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 27,
+      "status_mismatches": 0,
+      "iteration_mismatches": 1,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 7.883266334829386e-06,
+      "parameter_max_abs": 0.0003025159239768982,
+      "parameter_all_max_abs": 0.0003025159239768982,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 28,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.053426553378813e-06,
+      "parameter_max_abs": 2.71722674369812e-05,
+      "parameter_all_max_abs": 2.71722674369812e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 29,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.350629413034767e-06,
+      "parameter_max_abs": 2.666562795639038e-05,
+      "parameter_all_max_abs": 2.666562795639038e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 30,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.3036012609954923e-06,
+      "parameter_max_abs": 2.7067959308624268e-05,
+      "parameter_all_max_abs": 2.7067959308624268e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 31,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.161657787131844e-06,
+      "parameter_max_abs": 2.7079135179519653e-05,
+      "parameter_all_max_abs": 2.7079135179519653e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 32,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.362726829436724e-06,
+      "parameter_max_abs": 2.5443732738494873e-05,
+      "parameter_all_max_abs": 2.5443732738494873e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 33,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.336246209073579e-06,
+      "parameter_max_abs": 2.2724270820617676e-05,
+      "parameter_all_max_abs": 2.2724270820617676e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 34,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.428051968512591e-06,
+      "parameter_max_abs": 2.543628215789795e-05,
+      "parameter_all_max_abs": 2.543628215789795e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 35,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.019278892679722e-06,
+      "parameter_max_abs": 2.7991831302642822e-05,
+      "parameter_all_max_abs": 2.7991831302642822e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 36,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.0151932151056826e-06,
+      "parameter_max_abs": 2.3476779460906982e-05,
+      "parameter_all_max_abs": 2.3476779460906982e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 37,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.705036306200782e-06,
+      "parameter_max_abs": 2.7880072593688965e-05,
+      "parameter_all_max_abs": 2.7880072593688965e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 38,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.6125916267337743e-06,
+      "parameter_max_abs": 2.7298927307128906e-05,
+      "parameter_all_max_abs": 2.7298927307128906e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 39,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.1749814297654666e-06,
+      "parameter_max_abs": 2.5659799575805664e-05,
+      "parameter_all_max_abs": 2.5659799575805664e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 40,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 8.452386168755766e-07,
+      "parameter_max_abs": 1.3589859008789062e-05,
+      "parameter_all_max_abs": 1.3589859008789062e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 0,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 0,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 41,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.6501436448379536e-06,
+      "parameter_max_abs": 2.549588680267334e-05,
+      "parameter_all_max_abs": 2.549588680267334e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 42,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.2153994905238505e-06,
+      "parameter_max_abs": 1.405179500579834e-05,
+      "parameter_all_max_abs": 1.405179500579834e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 43,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.754985871433746e-06,
+      "parameter_max_abs": 2.6434659957885742e-05,
+      "parameter_all_max_abs": 2.6434659957885742e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 44,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.6592256290314253e-06,
+      "parameter_max_abs": 2.6494264602661133e-05,
+      "parameter_all_max_abs": 2.6494264602661133e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 45,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.8378590286592953e-06,
+      "parameter_max_abs": 2.5093555450439453e-05,
+      "parameter_all_max_abs": 2.5093555450439453e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 46,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.2223961170529947e-06,
+      "parameter_max_abs": 2.8192996978759766e-05,
+      "parameter_all_max_abs": 2.8192996978759766e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 47,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.2689395084162243e-06,
+      "parameter_max_abs": 2.753734588623047e-05,
+      "parameter_all_max_abs": 2.753734588623047e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 48,
+      "status_mismatches": 0,
+      "iteration_mismatches": 1,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.557992749847472e-05,
+      "parameter_max_abs": 0.0010413378477096558,
+      "parameter_all_max_abs": 0.0010413378477096558,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 49,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.5456610021356028e-06,
+      "parameter_max_abs": 2.6464462280273438e-05,
+      "parameter_all_max_abs": 2.6464462280273438e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 50,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.394169425519067e-06,
+      "parameter_max_abs": 2.4437904357910156e-05,
+      "parameter_all_max_abs": 2.4437904357910156e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 51,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.189198650943581e-06,
+      "parameter_max_abs": 2.7060508728027344e-05,
+      "parameter_all_max_abs": 2.7060508728027344e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 52,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.04511718240974e-06,
+      "parameter_max_abs": 2.2590160369873047e-05,
+      "parameter_all_max_abs": 2.2590160369873047e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 53,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.147259576508077e-06,
+      "parameter_max_abs": 2.6226043701171875e-05,
+      "parameter_all_max_abs": 2.6226043701171875e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 54,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.2128955353982747e-06,
+      "parameter_max_abs": 2.467632293701172e-05,
+      "parameter_all_max_abs": 2.467632293701172e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 55,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.48923845194804e-06,
+      "parameter_max_abs": 2.9385089874267578e-05,
+      "parameter_all_max_abs": 2.9385089874267578e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 56,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.2031246064434526e-06,
+      "parameter_max_abs": 2.0503997802734375e-05,
+      "parameter_all_max_abs": 2.0503997802734375e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 57,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.7067844712291844e-06,
+      "parameter_max_abs": 2.7298927307128906e-05,
+      "parameter_all_max_abs": 2.7298927307128906e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 58,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.163919473081478e-06,
+      "parameter_max_abs": 2.4080276489257812e-05,
+      "parameter_all_max_abs": 2.4080276489257812e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 1,
+      "frame": 59,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.949685040221084e-06,
+      "parameter_max_abs": 2.3365020751953125e-05,
+      "parameter_all_max_abs": 2.3365020751953125e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 0,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 5.6520725877362565e-08,
+      "parameter_max_abs": 3.3839629054455145e-07,
+      "parameter_all_max_abs": 3.3839629054455145e-07,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 0,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 0,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 1,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 9.709093973242489e-08,
+      "parameter_max_abs": 8.070027206485975e-07,
+      "parameter_all_max_abs": 8.070027206485975e-07,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 2,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 5.281865469441982e-07,
+      "parameter_max_abs": 6.822869181632996e-06,
+      "parameter_all_max_abs": 6.822869181632996e-06,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 3,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.5351164367748424e-06,
+      "parameter_max_abs": 2.958253026008606e-05,
+      "parameter_all_max_abs": 2.958253026008606e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 4,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.8307681532169227e-06,
+      "parameter_max_abs": 2.6135239750146866e-05,
+      "parameter_all_max_abs": 2.6135239750146866e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 5,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.985937044286402e-06,
+      "parameter_max_abs": 2.652965486049652e-05,
+      "parameter_all_max_abs": 2.652965486049652e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 6,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.2339244171453174e-06,
+      "parameter_max_abs": 2.8640031814575195e-05,
+      "parameter_all_max_abs": 2.8640031814575195e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 7,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.6794317566091195e-06,
+      "parameter_max_abs": 2.3064203560352325e-05,
+      "parameter_all_max_abs": 2.3064203560352325e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 8,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.246565711378935e-06,
+      "parameter_max_abs": 2.6594847440719604e-05,
+      "parameter_all_max_abs": 2.6594847440719604e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 9,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.352933845235384e-06,
+      "parameter_max_abs": 2.750009298324585e-05,
+      "parameter_all_max_abs": 2.750009298324585e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 10,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.038549266420887e-06,
+      "parameter_max_abs": 2.8211623430252075e-05,
+      "parameter_all_max_abs": 2.8211623430252075e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 11,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.1689066872786498e-06,
+      "parameter_max_abs": 2.7645379304885864e-05,
+      "parameter_all_max_abs": 2.7645379304885864e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 12,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.294623184046941e-06,
+      "parameter_max_abs": 2.7704983949661255e-05,
+      "parameter_all_max_abs": 2.7704983949661255e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 13,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.3638293643889483e-06,
+      "parameter_max_abs": 2.8479844331741333e-05,
+      "parameter_all_max_abs": 2.8479844331741333e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 14,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.243602350266883e-06,
+      "parameter_max_abs": 2.512708306312561e-05,
+      "parameter_all_max_abs": 2.512708306312561e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 15,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.1589986519975355e-06,
+      "parameter_max_abs": 2.718716859817505e-05,
+      "parameter_all_max_abs": 2.718716859817505e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 16,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.190766392435762e-06,
+      "parameter_max_abs": 2.934783697128296e-05,
+      "parameter_all_max_abs": 2.934783697128296e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 17,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.2015866509027546e-06,
+      "parameter_max_abs": 2.7626752853393555e-05,
+      "parameter_all_max_abs": 2.7626752853393555e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 18,
+      "status_mismatches": 0,
+      "iteration_mismatches": 1,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.2577395864354912e-05,
+      "parameter_max_abs": 0.00031818170100450516,
+      "parameter_all_max_abs": 0.00031818170100450516,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 19,
+      "status_mismatches": 0,
+      "iteration_mismatches": 1,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 7.695946806052234e-06,
+      "parameter_max_abs": 0.00017115473747253418,
+      "parameter_all_max_abs": 0.00017115473747253418,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 20,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 0,
+      "parameter_rmse": null,
+      "parameter_max_abs": null,
+      "parameter_all_max_abs": 0.006947539746761322,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 0,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 0,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 21,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 0,
+      "parameter_rmse": null,
+      "parameter_max_abs": null,
+      "parameter_all_max_abs": 0.006947539746761322,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 0,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 0,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 22,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 0,
+      "parameter_rmse": null,
+      "parameter_max_abs": null,
+      "parameter_all_max_abs": 0.006947539746761322,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 0,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 0,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 23,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.5636280750186415e-06,
+      "parameter_max_abs": 1.4865770936012268e-05,
+      "parameter_all_max_abs": 1.4865770936012268e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 0,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 0,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 24,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.6469812180730514e-06,
+      "parameter_max_abs": 2.699345350265503e-05,
+      "parameter_all_max_abs": 2.699345350265503e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 25,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.250636043754639e-06,
+      "parameter_max_abs": 2.5637447834014893e-05,
+      "parameter_all_max_abs": 2.5637447834014893e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 26,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.96090729534626e-06,
+      "parameter_max_abs": 2.754107117652893e-05,
+      "parameter_all_max_abs": 2.754107117652893e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 27,
+      "status_mismatches": 0,
+      "iteration_mismatches": 1,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 7.883266334829386e-06,
+      "parameter_max_abs": 0.0003025159239768982,
+      "parameter_all_max_abs": 0.0003025159239768982,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 28,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.053426553378813e-06,
+      "parameter_max_abs": 2.71722674369812e-05,
+      "parameter_all_max_abs": 2.71722674369812e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 29,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.350629413034767e-06,
+      "parameter_max_abs": 2.666562795639038e-05,
+      "parameter_all_max_abs": 2.666562795639038e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 30,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.3036012609954923e-06,
+      "parameter_max_abs": 2.7067959308624268e-05,
+      "parameter_all_max_abs": 2.7067959308624268e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 31,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.161657787131844e-06,
+      "parameter_max_abs": 2.7079135179519653e-05,
+      "parameter_all_max_abs": 2.7079135179519653e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 32,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.362726829436724e-06,
+      "parameter_max_abs": 2.5443732738494873e-05,
+      "parameter_all_max_abs": 2.5443732738494873e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 33,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.336246209073579e-06,
+      "parameter_max_abs": 2.2724270820617676e-05,
+      "parameter_all_max_abs": 2.2724270820617676e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 34,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.428051968512591e-06,
+      "parameter_max_abs": 2.543628215789795e-05,
+      "parameter_all_max_abs": 2.543628215789795e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 35,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.019278892679722e-06,
+      "parameter_max_abs": 2.7991831302642822e-05,
+      "parameter_all_max_abs": 2.7991831302642822e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 36,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.0151932151056826e-06,
+      "parameter_max_abs": 2.3476779460906982e-05,
+      "parameter_all_max_abs": 2.3476779460906982e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 37,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.705036306200782e-06,
+      "parameter_max_abs": 2.7880072593688965e-05,
+      "parameter_all_max_abs": 2.7880072593688965e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 38,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.6125916267337743e-06,
+      "parameter_max_abs": 2.7298927307128906e-05,
+      "parameter_all_max_abs": 2.7298927307128906e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 39,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.1749814297654666e-06,
+      "parameter_max_abs": 2.5659799575805664e-05,
+      "parameter_all_max_abs": 2.5659799575805664e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 40,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 8.452386168755766e-07,
+      "parameter_max_abs": 1.3589859008789062e-05,
+      "parameter_all_max_abs": 1.3589859008789062e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 0,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 0,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 41,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.6501436448379536e-06,
+      "parameter_max_abs": 2.549588680267334e-05,
+      "parameter_all_max_abs": 2.549588680267334e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 42,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.2153994905238505e-06,
+      "parameter_max_abs": 1.405179500579834e-05,
+      "parameter_all_max_abs": 1.405179500579834e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 43,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.754985871433746e-06,
+      "parameter_max_abs": 2.6434659957885742e-05,
+      "parameter_all_max_abs": 2.6434659957885742e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 44,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.6592256290314253e-06,
+      "parameter_max_abs": 2.6494264602661133e-05,
+      "parameter_all_max_abs": 2.6494264602661133e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 45,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.8378590286592953e-06,
+      "parameter_max_abs": 2.5093555450439453e-05,
+      "parameter_all_max_abs": 2.5093555450439453e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 46,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.2223961170529947e-06,
+      "parameter_max_abs": 2.8192996978759766e-05,
+      "parameter_all_max_abs": 2.8192996978759766e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 47,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.2689395084162243e-06,
+      "parameter_max_abs": 2.753734588623047e-05,
+      "parameter_all_max_abs": 2.753734588623047e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 48,
+      "status_mismatches": 0,
+      "iteration_mismatches": 1,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.557992749847472e-05,
+      "parameter_max_abs": 0.0010413378477096558,
+      "parameter_all_max_abs": 0.0010413378477096558,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 49,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.5456610021356028e-06,
+      "parameter_max_abs": 2.6464462280273438e-05,
+      "parameter_all_max_abs": 2.6464462280273438e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 50,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.394169425519067e-06,
+      "parameter_max_abs": 2.4437904357910156e-05,
+      "parameter_all_max_abs": 2.4437904357910156e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 51,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.189198650943581e-06,
+      "parameter_max_abs": 2.7060508728027344e-05,
+      "parameter_all_max_abs": 2.7060508728027344e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 52,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.04511718240974e-06,
+      "parameter_max_abs": 2.2590160369873047e-05,
+      "parameter_all_max_abs": 2.2590160369873047e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 53,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.147259576508077e-06,
+      "parameter_max_abs": 2.6226043701171875e-05,
+      "parameter_all_max_abs": 2.6226043701171875e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 54,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.2128955353982747e-06,
+      "parameter_max_abs": 2.467632293701172e-05,
+      "parameter_all_max_abs": 2.467632293701172e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 55,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.48923845194804e-06,
+      "parameter_max_abs": 2.9385089874267578e-05,
+      "parameter_all_max_abs": 2.9385089874267578e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 56,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.2031246064434526e-06,
+      "parameter_max_abs": 2.0503997802734375e-05,
+      "parameter_all_max_abs": 2.0503997802734375e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 57,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.7067844712291844e-06,
+      "parameter_max_abs": 2.7298927307128906e-05,
+      "parameter_all_max_abs": 2.7298927307128906e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 58,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.163919473081478e-06,
+      "parameter_max_abs": 2.4080276489257812e-05,
+      "parameter_all_max_abs": 2.4080276489257812e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "translation",
+      "depth": 2,
+      "frame": 59,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.949685040221084e-06,
+      "parameter_max_abs": 2.3365020751953125e-05,
+      "parameter_all_max_abs": 2.3365020751953125e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 0,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.965776388919039e-07,
+      "parameter_max_abs": 2.2731940134690376e-06,
+      "parameter_all_max_abs": 2.2731940134690376e-06,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 0,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 0,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 1,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 5.246788532531355e-07,
+      "parameter_max_abs": 3.1419785955222324e-06,
+      "parameter_all_max_abs": 3.1419785955222324e-06,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 2,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.027398522841395e-06,
+      "parameter_max_abs": 1.7748097889125347e-05,
+      "parameter_all_max_abs": 1.7748097889125347e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 3,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.9295434867672157e-06,
+      "parameter_max_abs": 2.250727266073227e-05,
+      "parameter_all_max_abs": 2.250727266073227e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 4,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.5426875279445085e-06,
+      "parameter_max_abs": 1.200847327709198e-05,
+      "parameter_all_max_abs": 1.200847327709198e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 5,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.740733068800182e-06,
+      "parameter_max_abs": 1.9600644009187818e-05,
+      "parameter_all_max_abs": 1.9600644009187818e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 6,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.6532572999494732e-06,
+      "parameter_max_abs": 2.1836720407009125e-05,
+      "parameter_all_max_abs": 2.1836720407009125e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 7,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.707819592411397e-06,
+      "parameter_max_abs": 2.262881025671959e-05,
+      "parameter_all_max_abs": 2.262881025671959e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 8,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.0782540559594054e-06,
+      "parameter_max_abs": 3.827111140708439e-05,
+      "parameter_all_max_abs": 3.827111140708439e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 9,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.755547145876335e-06,
+      "parameter_max_abs": 1.8152175471186638e-05,
+      "parameter_all_max_abs": 1.8152175471186638e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 10,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.6123626664921176e-06,
+      "parameter_max_abs": 2.2158026695251465e-05,
+      "parameter_all_max_abs": 2.2158026695251465e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 11,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.3310245776665397e-06,
+      "parameter_max_abs": 1.9039958715438843e-05,
+      "parameter_all_max_abs": 1.9039958715438843e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 12,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.60460490405967e-06,
+      "parameter_max_abs": 3.107823431491852e-05,
+      "parameter_all_max_abs": 3.107823431491852e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 13,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.6826783166834502e-06,
+      "parameter_max_abs": 2.102181315422058e-05,
+      "parameter_all_max_abs": 2.102181315422058e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 14,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.6354562148990226e-06,
+      "parameter_max_abs": 3.19434329867363e-05,
+      "parameter_all_max_abs": 3.19434329867363e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 15,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.628786776564084e-06,
+      "parameter_max_abs": 1.9123777747154236e-05,
+      "parameter_all_max_abs": 1.9123777747154236e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 16,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.538254764454905e-06,
+      "parameter_max_abs": 1.9490718841552734e-05,
+      "parameter_all_max_abs": 1.9490718841552734e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 17,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.9243011593061965e-06,
+      "parameter_max_abs": 4.659965634346008e-05,
+      "parameter_all_max_abs": 4.659965634346008e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 18,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.7985952354138135e-06,
+      "parameter_max_abs": 4.0469225496053696e-05,
+      "parameter_all_max_abs": 4.0469225496053696e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 19,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.4401989574253093e-06,
+      "parameter_max_abs": 1.5418976545333862e-05,
+      "parameter_all_max_abs": 1.5418976545333862e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 20,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 0,
+      "parameter_rmse": null,
+      "parameter_max_abs": null,
+      "parameter_all_max_abs": 0.020232830196619034,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 0,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 0,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 21,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 0,
+      "parameter_rmse": null,
+      "parameter_max_abs": null,
+      "parameter_all_max_abs": 0.020232830196619034,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 0,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 0,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 22,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 0,
+      "parameter_rmse": null,
+      "parameter_max_abs": null,
+      "parameter_all_max_abs": 0.020232830196619034,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 0,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 0,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 23,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.3332245316632907e-06,
+      "parameter_max_abs": 1.5620142221450806e-05,
+      "parameter_all_max_abs": 1.5620142221450806e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 0,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 0,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 24,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.6365899000447826e-06,
+      "parameter_max_abs": 1.224130392074585e-05,
+      "parameter_all_max_abs": 1.224130392074585e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 25,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.4785601933908765e-06,
+      "parameter_max_abs": 1.271069049835205e-05,
+      "parameter_all_max_abs": 1.271069049835205e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 26,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.2595817224791972e-06,
+      "parameter_max_abs": 1.3224780559539795e-05,
+      "parameter_all_max_abs": 1.3224780559539795e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 27,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.5089506177901058e-06,
+      "parameter_max_abs": 1.934356987476349e-05,
+      "parameter_all_max_abs": 1.934356987476349e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 28,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.4563892136720824e-06,
+      "parameter_max_abs": 1.2677162885665894e-05,
+      "parameter_all_max_abs": 1.2677162885665894e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 29,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.6010120589271537e-06,
+      "parameter_max_abs": 2.119690179824829e-05,
+      "parameter_all_max_abs": 2.119690179824829e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 30,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.6596470686636167e-06,
+      "parameter_max_abs": 2.728775143623352e-05,
+      "parameter_all_max_abs": 2.728775143623352e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 31,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.301342081205803e-06,
+      "parameter_max_abs": 1.3459473848342896e-05,
+      "parameter_all_max_abs": 1.3459473848342896e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 32,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.5868959053477738e-06,
+      "parameter_max_abs": 2.5559216737747192e-05,
+      "parameter_all_max_abs": 2.5559216737747192e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 33,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.5210907804430462e-06,
+      "parameter_max_abs": 2.5821849703788757e-05,
+      "parameter_all_max_abs": 2.5821849703788757e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 34,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.3437886536848964e-06,
+      "parameter_max_abs": 1.3660639524459839e-05,
+      "parameter_all_max_abs": 1.3660639524459839e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 35,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.883366394395125e-06,
+      "parameter_max_abs": 2.9355287551879883e-05,
+      "parameter_all_max_abs": 2.9355287551879883e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 36,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.504927922724164e-06,
+      "parameter_max_abs": 1.695426180958748e-05,
+      "parameter_all_max_abs": 1.695426180958748e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 37,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.4405020465346752e-06,
+      "parameter_max_abs": 1.60951167345047e-05,
+      "parameter_all_max_abs": 1.60951167345047e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 38,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.9473709471640177e-06,
+      "parameter_max_abs": 2.9928982257843018e-05,
+      "parameter_all_max_abs": 2.9928982257843018e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 39,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.1705500355674303e-06,
+      "parameter_max_abs": 1.1280179023742676e-05,
+      "parameter_all_max_abs": 1.1280179023742676e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 40,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.2911262956549763e-06,
+      "parameter_max_abs": 1.566484570503235e-05,
+      "parameter_all_max_abs": 1.566484570503235e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 0,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 0,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 41,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.5381797311420087e-06,
+      "parameter_max_abs": 1.942366361618042e-05,
+      "parameter_all_max_abs": 1.942366361618042e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 42,
+      "status_mismatches": 0,
+      "iteration_mismatches": 1,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.5934936022385955e-05,
+      "parameter_max_abs": 0.0014806389808654785,
+      "parameter_all_max_abs": 0.0014806389808654785,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 43,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.571870257066621e-06,
+      "parameter_max_abs": 1.8715858459472656e-05,
+      "parameter_all_max_abs": 1.8715858459472656e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 44,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.3302482102517388e-06,
+      "parameter_max_abs": 1.2808013707399368e-05,
+      "parameter_all_max_abs": 1.2808013707399368e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 45,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.4128945622360334e-06,
+      "parameter_max_abs": 1.4297664165496826e-05,
+      "parameter_all_max_abs": 1.4297664165496826e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 46,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.494251250733214e-06,
+      "parameter_max_abs": 1.8715858459472656e-05,
+      "parameter_all_max_abs": 1.8715858459472656e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 47,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.52689722199284e-06,
+      "parameter_max_abs": 2.22623348236084e-05,
+      "parameter_all_max_abs": 2.22623348236084e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 48,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.646665737098374e-06,
+      "parameter_max_abs": 2.8398819267749786e-05,
+      "parameter_all_max_abs": 2.8398819267749786e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 49,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.5206421721813967e-06,
+      "parameter_max_abs": 1.8632039427757263e-05,
+      "parameter_all_max_abs": 1.8632039427757263e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 50,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.5184170933935093e-06,
+      "parameter_max_abs": 2.455897629261017e-05,
+      "parameter_all_max_abs": 2.455897629261017e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 51,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.5695443380536744e-06,
+      "parameter_max_abs": 3.6597251892089844e-05,
+      "parameter_all_max_abs": 3.6597251892089844e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 52,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.6293844257452292e-06,
+      "parameter_max_abs": 7.775425910949707e-05,
+      "parameter_all_max_abs": 7.775425910949707e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 53,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.402071006850747e-06,
+      "parameter_max_abs": 2.642720937728882e-05,
+      "parameter_all_max_abs": 2.642720937728882e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 54,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.6273257870125235e-06,
+      "parameter_max_abs": 2.193450927734375e-05,
+      "parameter_all_max_abs": 2.193450927734375e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 55,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.4046094065633952e-06,
+      "parameter_max_abs": 1.621246337890625e-05,
+      "parameter_all_max_abs": 1.621246337890625e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 56,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.6730366496631177e-06,
+      "parameter_max_abs": 1.7855316400527954e-05,
+      "parameter_all_max_abs": 1.7855316400527954e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 57,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.6458509435324231e-06,
+      "parameter_max_abs": 1.430511474609375e-05,
+      "parameter_all_max_abs": 1.430511474609375e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 58,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.8939443862109329e-06,
+      "parameter_max_abs": 4.792213439941406e-05,
+      "parameter_all_max_abs": 4.792213439941406e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 1,
+      "frame": 59,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.3662469175178558e-06,
+      "parameter_max_abs": 7.277727127075195e-05,
+      "parameter_all_max_abs": 7.277727127075195e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 0,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.965776388919039e-07,
+      "parameter_max_abs": 2.2731940134690376e-06,
+      "parameter_all_max_abs": 2.2731940134690376e-06,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 0,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 0,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 1,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 5.246788532531355e-07,
+      "parameter_max_abs": 3.1419785955222324e-06,
+      "parameter_all_max_abs": 3.1419785955222324e-06,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 2,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.027398522841395e-06,
+      "parameter_max_abs": 1.7748097889125347e-05,
+      "parameter_all_max_abs": 1.7748097889125347e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 3,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.9295434867672157e-06,
+      "parameter_max_abs": 2.250727266073227e-05,
+      "parameter_all_max_abs": 2.250727266073227e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 4,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.5426875279445085e-06,
+      "parameter_max_abs": 1.200847327709198e-05,
+      "parameter_all_max_abs": 1.200847327709198e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 5,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.740733068800182e-06,
+      "parameter_max_abs": 1.9600644009187818e-05,
+      "parameter_all_max_abs": 1.9600644009187818e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 6,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.6532572999494732e-06,
+      "parameter_max_abs": 2.1836720407009125e-05,
+      "parameter_all_max_abs": 2.1836720407009125e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 7,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.707819592411397e-06,
+      "parameter_max_abs": 2.262881025671959e-05,
+      "parameter_all_max_abs": 2.262881025671959e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 8,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.0782540559594054e-06,
+      "parameter_max_abs": 3.827111140708439e-05,
+      "parameter_all_max_abs": 3.827111140708439e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 9,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.755547145876335e-06,
+      "parameter_max_abs": 1.8152175471186638e-05,
+      "parameter_all_max_abs": 1.8152175471186638e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 10,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.6123626664921176e-06,
+      "parameter_max_abs": 2.2158026695251465e-05,
+      "parameter_all_max_abs": 2.2158026695251465e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 11,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.3310245776665397e-06,
+      "parameter_max_abs": 1.9039958715438843e-05,
+      "parameter_all_max_abs": 1.9039958715438843e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 12,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.60460490405967e-06,
+      "parameter_max_abs": 3.107823431491852e-05,
+      "parameter_all_max_abs": 3.107823431491852e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 13,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.6826783166834502e-06,
+      "parameter_max_abs": 2.102181315422058e-05,
+      "parameter_all_max_abs": 2.102181315422058e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 14,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.6354562148990226e-06,
+      "parameter_max_abs": 3.19434329867363e-05,
+      "parameter_all_max_abs": 3.19434329867363e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 15,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.628786776564084e-06,
+      "parameter_max_abs": 1.9123777747154236e-05,
+      "parameter_all_max_abs": 1.9123777747154236e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 16,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.538254764454905e-06,
+      "parameter_max_abs": 1.9490718841552734e-05,
+      "parameter_all_max_abs": 1.9490718841552734e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 17,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.9243011593061965e-06,
+      "parameter_max_abs": 4.659965634346008e-05,
+      "parameter_all_max_abs": 4.659965634346008e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 18,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.7985952354138135e-06,
+      "parameter_max_abs": 4.0469225496053696e-05,
+      "parameter_all_max_abs": 4.0469225496053696e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 19,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.4401989574253093e-06,
+      "parameter_max_abs": 1.5418976545333862e-05,
+      "parameter_all_max_abs": 1.5418976545333862e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 20,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 0,
+      "parameter_rmse": null,
+      "parameter_max_abs": null,
+      "parameter_all_max_abs": 0.020232830196619034,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 0,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 0,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 21,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 0,
+      "parameter_rmse": null,
+      "parameter_max_abs": null,
+      "parameter_all_max_abs": 0.020232830196619034,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 0,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 0,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 22,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 0,
+      "parameter_rmse": null,
+      "parameter_max_abs": null,
+      "parameter_all_max_abs": 0.020232830196619034,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 0,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 0,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 23,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.3332245316632907e-06,
+      "parameter_max_abs": 1.5620142221450806e-05,
+      "parameter_all_max_abs": 1.5620142221450806e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 0,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 0,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 24,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.6365899000447826e-06,
+      "parameter_max_abs": 1.224130392074585e-05,
+      "parameter_all_max_abs": 1.224130392074585e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 25,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.4785601933908765e-06,
+      "parameter_max_abs": 1.271069049835205e-05,
+      "parameter_all_max_abs": 1.271069049835205e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 26,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.2595817224791972e-06,
+      "parameter_max_abs": 1.3224780559539795e-05,
+      "parameter_all_max_abs": 1.3224780559539795e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 27,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.5089506177901058e-06,
+      "parameter_max_abs": 1.934356987476349e-05,
+      "parameter_all_max_abs": 1.934356987476349e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 28,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.4563892136720824e-06,
+      "parameter_max_abs": 1.2677162885665894e-05,
+      "parameter_all_max_abs": 1.2677162885665894e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 29,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.6010120589271537e-06,
+      "parameter_max_abs": 2.119690179824829e-05,
+      "parameter_all_max_abs": 2.119690179824829e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 30,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.6596470686636167e-06,
+      "parameter_max_abs": 2.728775143623352e-05,
+      "parameter_all_max_abs": 2.728775143623352e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 31,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.301342081205803e-06,
+      "parameter_max_abs": 1.3459473848342896e-05,
+      "parameter_all_max_abs": 1.3459473848342896e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 32,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.5868959053477738e-06,
+      "parameter_max_abs": 2.5559216737747192e-05,
+      "parameter_all_max_abs": 2.5559216737747192e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 33,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.5210907804430462e-06,
+      "parameter_max_abs": 2.5821849703788757e-05,
+      "parameter_all_max_abs": 2.5821849703788757e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 34,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.3437886536848964e-06,
+      "parameter_max_abs": 1.3660639524459839e-05,
+      "parameter_all_max_abs": 1.3660639524459839e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 35,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.883366394395125e-06,
+      "parameter_max_abs": 2.9355287551879883e-05,
+      "parameter_all_max_abs": 2.9355287551879883e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 36,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.504927922724164e-06,
+      "parameter_max_abs": 1.695426180958748e-05,
+      "parameter_all_max_abs": 1.695426180958748e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 37,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.4405020465346752e-06,
+      "parameter_max_abs": 1.60951167345047e-05,
+      "parameter_all_max_abs": 1.60951167345047e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 38,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.9473709471640177e-06,
+      "parameter_max_abs": 2.9928982257843018e-05,
+      "parameter_all_max_abs": 2.9928982257843018e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 39,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.1705500355674303e-06,
+      "parameter_max_abs": 1.1280179023742676e-05,
+      "parameter_all_max_abs": 1.1280179023742676e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 40,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.2911262956549763e-06,
+      "parameter_max_abs": 1.566484570503235e-05,
+      "parameter_all_max_abs": 1.566484570503235e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 0,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 0,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 41,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.5381797311420087e-06,
+      "parameter_max_abs": 1.942366361618042e-05,
+      "parameter_all_max_abs": 1.942366361618042e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 0
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 42,
+      "status_mismatches": 0,
+      "iteration_mismatches": 1,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 3.5934936022385955e-05,
+      "parameter_max_abs": 0.0014806389808654785,
+      "parameter_all_max_abs": 0.0014806389808654785,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 43,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.571870257066621e-06,
+      "parameter_max_abs": 1.8715858459472656e-05,
+      "parameter_all_max_abs": 1.8715858459472656e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 44,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.3302482102517388e-06,
+      "parameter_max_abs": 1.2808013707399368e-05,
+      "parameter_all_max_abs": 1.2808013707399368e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 45,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.4128945622360334e-06,
+      "parameter_max_abs": 1.4297664165496826e-05,
+      "parameter_all_max_abs": 1.4297664165496826e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 46,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.494251250733214e-06,
+      "parameter_max_abs": 1.8715858459472656e-05,
+      "parameter_all_max_abs": 1.8715858459472656e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 47,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.52689722199284e-06,
+      "parameter_max_abs": 2.22623348236084e-05,
+      "parameter_all_max_abs": 2.22623348236084e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 48,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.646665737098374e-06,
+      "parameter_max_abs": 2.8398819267749786e-05,
+      "parameter_all_max_abs": 2.8398819267749786e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 49,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.5206421721813967e-06,
+      "parameter_max_abs": 1.8632039427757263e-05,
+      "parameter_all_max_abs": 1.8632039427757263e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 50,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.5184170933935093e-06,
+      "parameter_max_abs": 2.455897629261017e-05,
+      "parameter_all_max_abs": 2.455897629261017e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 51,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.5695443380536744e-06,
+      "parameter_max_abs": 3.6597251892089844e-05,
+      "parameter_all_max_abs": 3.6597251892089844e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 52,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.6293844257452292e-06,
+      "parameter_max_abs": 7.775425910949707e-05,
+      "parameter_all_max_abs": 7.775425910949707e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 53,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.402071006850747e-06,
+      "parameter_max_abs": 2.642720937728882e-05,
+      "parameter_all_max_abs": 2.642720937728882e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 54,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.6273257870125235e-06,
+      "parameter_max_abs": 2.193450927734375e-05,
+      "parameter_all_max_abs": 2.193450927734375e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 55,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.4046094065633952e-06,
+      "parameter_max_abs": 1.621246337890625e-05,
+      "parameter_all_max_abs": 1.621246337890625e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 56,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.6730366496631177e-06,
+      "parameter_max_abs": 1.7855316400527954e-05,
+      "parameter_all_max_abs": 1.7855316400527954e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 57,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.6458509435324231e-06,
+      "parameter_max_abs": 1.430511474609375e-05,
+      "parameter_all_max_abs": 1.430511474609375e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 58,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 1.8939443862109329e-06,
+      "parameter_max_abs": 4.792213439941406e-05,
+      "parameter_all_max_abs": 4.792213439941406e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    },
+    {
+      "model": "affine",
+      "depth": 2,
+      "frame": 59,
+      "status_mismatches": 0,
+      "iteration_mismatches": 0,
+      "grid_total": 384,
+      "common_accepted": 288,
+      "parameter_rmse": 2.3662469175178558e-06,
+      "parameter_max_abs": 7.277727127075195e-05,
+      "parameter_all_max_abs": 7.277727127075195e-05,
+      "parameter_bit_equal": false,
+      "browser_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288,
+        "temporalExpiredSubsets": 0
+      },
+      "native_counters": {
+        "temporallySeededCoarseSubsets": 76,
+        "temporalAcceptedUpdates": 288,
+        "velocityPredictedSubsets": 288
+      },
+      "exceeds": false
+    }
+  ],
+  "exceedances": 0,
+  "browser_version": "Chromium 155.0.8059.79 snap"
+}

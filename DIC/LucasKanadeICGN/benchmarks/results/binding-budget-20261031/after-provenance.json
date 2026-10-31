@@ -1,0 +1,13 @@
+{
+  "commit": "5c17aedc44d07b7c8819750fbc107ca65f8d2530",
+  "source_sha256": {
+    "wgpu_backend.py": "0a23e7b233793daaeee55e887d35b77eca231353b39222b2df6aa19961068bb7",
+    "full_pyramid_backend.py": "af5e97758a92008bfbbe6f334af9e323ffeee7a1a96af3d3043f6c83ad793697",
+    "shaders/icgn.wgsl": "a60231689fbc3d29953fd98eb8d04649ec93cbec0f5a89a65446df716152299b",
+    "shaders/icgn_subgroup.wgsl": "d68225b1b6b6b21071e59ea6109bbd24dc0fd8b6734b6ebc4f7d59356799a034",
+    "shaders/full_pyramid.wgsl": "d00ef999c5dbc23013928e95ea6ca498a52fbb63850056c05bdbd3c963dc0401"
+  },
+  "exact_arrays": 441,
+  "cases": 49,
+  "all_gpu_tests": "197 tests, 196 passed and 1 browser opt-in skipped; browser opt-in executed separately"
+}
