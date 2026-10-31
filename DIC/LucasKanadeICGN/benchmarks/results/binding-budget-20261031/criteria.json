@@ -1,0 +1,9 @@
+{
+  "reference_repeatability": {
+    "throughput_fps": 0.04690800951292947,
+    "age_median_ms": 0.042784118080179456,
+    "age_p95_ms": 0.12677824516044678
+  },
+  "rule": "Matched candidate must stay within the observed baseline range expansion; otherwise report regression/indeterminate, do not claim equivalence.",
+  "accuracy": "All existing gates unchanged; native layout outputs must match exactly."
+}

@@ -6,7 +6,7 @@ The JavaScript host is being separated from the Python binary-transport shim;
 the equations must not acquire a second browser implementation.
 
 Phase 0: binding audit (pre-change b9d23a2)
-------------------------------------------
+-------------------------------------------
 
 WebGPU's core guaranteed limits include eight storage buffers per shader stage,
 four bind groups, 128 MiB per storage binding, a 256 MiB maximum buffer,
