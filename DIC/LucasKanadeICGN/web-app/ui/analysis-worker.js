@@ -2,6 +2,7 @@ import { analyzeField } from './postprocess.js';
 let field, mask;
 self.onmessage = ({ data }) => {
   try {
+    if (data.clear) { field = mask = null; return; }
     if (data.field) { field = data.field; mask = data.mask; }
     const { field: source, ...analysis } = analyzeField(field, data.recipe, mask);
     const transfer = [...Object.values(analysis.fields), analysis.valid, analysis.strainValid].map(v => v.buffer);

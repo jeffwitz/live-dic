@@ -38,7 +38,7 @@ const workbench = installWorkbench({
   pause: () => { pauseSource(); $('pause').textContent = 'Play'; },
   error: text => message(text, true),
   recordChange: enabled => send('recording', { enabled }).catch(e => message(e.message, true)),
-  liveChanged: reviewing => { $('run-state').textContent = reviewing ? 'Saved field · reference coordinates' : source ? `${source} · ${paused ? 'paused' : 'running'}` : 'No source selected'; },
+  liveChanged: (reviewing,restore) => { if(restore && transport && referenceInfo) send('display',{display:displayOptions()}).catch(e=>message(e.message,true)); $('run-state').textContent = reviewing ? 'Saved field · reference coordinates' : source ? `${source} · ${paused ? 'paused' : 'running'}` : 'No source selected'; },
   openResults: () => workspace.showPane('view'),
 });
 function details() { $('details').textContent = JSON.stringify({ capabilities, acquisition: { ...sourceSettings, files: sourceSettings.files ? `${sourceSettings.files.length} file records retained in export` : undefined },

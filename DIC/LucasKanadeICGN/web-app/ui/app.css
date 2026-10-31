@@ -142,3 +142,16 @@ dialog li { margin: 14px 0; line-height: 1.7; font-size: 13px; }
   .gray-key { display: none; }
   .analysis-controls { display: block; }
 }
+
+/* The saved-field controls stay beside the field; only charts and export are below it. */
+#review-controls .analysis-controls { border: 0; padding: 0; display: block; }
+#review-controls { border-top: 1px solid var(--line); padding-top: 16px; margin-top: 14px; }
+#recording-panel { border: 0; padding: 4px 0; margin: 12px 0; }
+#recording-panel summary { font-size: 11px; color: var(--accent); }
+.viewer .results-workbench { margin: 0; border: 0; border-radius: 0; border-top: 1px solid var(--line); padding: 18px; }
+.viewer .analysis-layout { display: block; }
+.viewer .section-heading h2 { font-size: 17px; }
+.viewer .section-heading { gap: 12px; }
+.viewer .section-heading > .buttons { margin: 0; }
+#cursor-value { position: absolute; z-index: 3; top: 12px; left: 12px; max-width: min(480px,75%); padding: 10px 12px; border-radius: 7px; background: #fffffff0; color: #163540; font-size: 11px; line-height: 1.7; white-space: pre-wrap; pointer-events: none; box-shadow: 0 2px 12px #1233; }
+@media(max-width:760px) { #cursor-value { font-size: 10px; padding: 7px 9px; top: 6px; left: 6px; }.viewer .section-heading{flex-direction:column;} }

@@ -259,8 +259,13 @@ background, never an older field overlaid on an unrelated current image.
 **Return to live view** restores GPU rendering. A saved field retains its own
 model, configuration, ROI and input pair even after changing the active source.
 
-Choose displacement, strain components, equivalent strain, principal strains,
-polar rotation, iteration count or solver status. Computed estimates are
+The analysis controls stay beside the saved field. Choose displacement, strain components, equivalent strain, principal strains,
+polar rotation, iteration count or solver status. Colour bounds can use robust
+2–98 percentiles, full range or explicit fixed limits in the legend units.
+Clipped colour values are counted; underlying measurements stay unchanged.
+Choose a signed diverging, sequential or grayscale palette. The histogram
+shows the valid value distribution whenever no line profile is selected.
+Computed estimates are
 preserved, including any solver median already applied. Optional displacement
 median/Gaussian smoothing and VSG plane-fit strain are separate analysis
 operations. **Show computed field** temporarily compares with the computed

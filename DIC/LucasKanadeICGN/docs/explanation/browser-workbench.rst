@@ -93,3 +93,17 @@ Gaussian weights, unit-aware extensometry, non-mutation and NumPy archive
 round trips. These validate the analysis operators, not an experimental noise
 floor or the precision of an uncalibrated browser camera. Browser end-to-end
 records must be reported separately from this numerical operator coverage.
+
+Presentation is separate from measurement
+-----------------------------------------
+
+Saved results use a separate reference-coordinate field canvas. Displaying them
+never overlays an old field on an unrelated current camera image. Point and
+gauge annotations also appear inside the viewer, while processing controls stay
+beside it. The solver's dense exclusions remain visible in status mode.
+
+Robust colour bounds use the 2nd/98th percentiles of valid measurements; signed
+fields use symmetric limits. Full range and fixed bounds are explicit options.
+Sequential blue/green/gold, signed blue/white/red and grayscale palettes are
+presentation choices. Saturated values are counted but not removed or clipped
+in the data. Histograms use the valid population, not only the unsaturated range.
