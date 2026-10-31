@@ -35,7 +35,7 @@ export function installRoi(canvas, tool, onChange) {
   }
   function update() {
     compiled = compileRoi(shapes, canvas.width, canvas.height); preview = null;
-    if (compiled.mask) {
+    if (active && compiled.mask) {
       preview = document.createElement('canvas'); preview.width = canvas.width; preview.height = canvas.height;
       const pc = preview.getContext('2d'), image = pc.createImageData(canvas.width, canvas.height);
       for (let i = 0; i < compiled.mask.length; i++) { const kept = compiled.mask[i], k = i * 4; image.data[k] = kept ? 220 : 50; image.data[k + 1] = kept ? 255 : 15; image.data[k + 2] = kept ? 242 : 20; image.data[k + 3] = kept ? 35 : 160; }
@@ -100,7 +100,7 @@ export function installRoi(canvas, tool, onChange) {
   canvas.addEventListener('dblclick', e => { if (active && draft?.type === 'polygon') { e.preventDefault(); finish(); tool.value = 'select'; } });
   return {
     start() { active = true; canvas.classList.add('drawing'); update(); },
-    stop() { if (draft) finish(); active = false; canvas.classList.remove('drawing'); paint(); onChange({shapes:compiled.shapes,selected,editing:active,canUndo:history.length>0}); },
+    stop() { if (draft) finish(); active = false; preview = null; canvas.classList.remove('drawing'); paint(); onChange({shapes:compiled.shapes,selected,editing:active,canUndo:history.length>0}); },
     finish,
     reset(width, height, preset = []) { canvas.width = width; canvas.height = height; shapes = validateShapes(preset); selected = shapes[0]?.id ?? null; draft = drag = null; history = []; serial += preset.length; active = false; canvas.classList.remove('drawing'); update(); },
     select(id) { selected = id; tool.value = 'select'; paint(); onChange({ shapes: compiled.shapes, selected, editing: active, canUndo: history.length > 0 }); },
