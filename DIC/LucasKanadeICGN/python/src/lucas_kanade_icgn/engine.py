@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import errno
 import io
 import json
 import operator
@@ -736,6 +737,24 @@ def _subprocess_session_arguments(platform: str) -> dict[str, bool]:
     if platform == "win32" or platform.startswith("cygwin"):
         return {}
     return {"start_new_session": True}
+
+
+def _cleanup_browser_profile(temporary: tempfile.TemporaryDirectory[str]) -> None:
+    """Allow a bounded grace period for Chromium's final profile writes.
+
+    Chromium children may finish writing after their parent has exited. Retry
+    only transient filesystem errors; persistent failures must remain visible.
+    This is shutdown work, never part of image processing.
+    """
+
+    for attempt in range(10):
+        try:
+            temporary.cleanup()
+            return
+        except OSError as error:
+            if error.errno not in {errno.ENOTEMPTY, errno.EBUSY, errno.EACCES} or attempt == 9:
+                raise
+            time.sleep(0.05)
 
 
 def _find_chromium(
@@ -1504,7 +1523,7 @@ class ICGNWebGL:
             self._log_handle.close()
             self._log_handle = None
         if self._temporary is not None:
-            self._temporary.cleanup()
+            _cleanup_browser_profile(self._temporary)
             self._temporary = None
         self._websocket_url = None
         self._devtools_origin = None

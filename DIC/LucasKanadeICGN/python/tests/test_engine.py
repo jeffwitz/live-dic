@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import errno
 import inspect
 import tempfile
 import threading
@@ -24,6 +25,7 @@ from lucas_kanade_icgn.engine import (
     _chromium_backend_arguments,
     _chromium_base_arguments,
     _chromium_candidates,
+    _cleanup_browser_profile,
     _find_chromium,
     _find_runtime_assets,
     _run_async_blocking,
@@ -348,6 +350,22 @@ class RuntimeAssetTests(unittest.TestCase):
         arguments = _chromium_backend_arguments("linux", "webgpu-wgsl", False)
         self.assertIn("--use-angle=vulkan", arguments)
         self.assertIn("--use-angle=gl", _chromium_base_arguments("linux"))
+
+    def test_browser_profile_cleanup_waits_for_late_child_writes(self) -> None:
+        temporary = mock.Mock()
+        temporary.cleanup.side_effect = [OSError(errno.ENOTEMPTY, "late Chromium write"), None]
+        with mock.patch("lucas_kanade_icgn.engine.time.sleep"):
+            _cleanup_browser_profile(temporary)
+        self.assertEqual(temporary.cleanup.call_count, 2)
+
+    def test_browser_profile_cleanup_keeps_persistent_and_unrelated_errors_visible(self) -> None:
+        for code, attempts in [(errno.ENOTEMPTY, 10), (errno.ENOENT, 1)]:
+            with self.subTest(code=code):
+                temporary = mock.Mock()
+                temporary.cleanup.side_effect = OSError(code, "cleanup failed")
+                with mock.patch("lucas_kanade_icgn.engine.time.sleep"), self.assertRaises(OSError):
+                    _cleanup_browser_profile(temporary)
+                self.assertEqual(temporary.cleanup.call_count, attempts)
 
     def test_browser_process_session_arguments_are_platform_safe(self) -> None:
         self.assertEqual(_subprocess_session_arguments("win32"), {})
