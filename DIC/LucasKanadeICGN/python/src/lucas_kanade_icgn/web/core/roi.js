@@ -80,3 +80,13 @@ export function seedPermissions(source, destination, sourceScale, destinationSca
   }
   return bits;
 }
+
+export async function hashMask(mask, width, height) {
+  const prefix = new TextEncoder().encode('live-dic-roi-v1\0');
+  const bytes = new Uint8Array(prefix.length + 16 + mask.length); bytes.set(prefix);
+  const dimensions = new DataView(bytes.buffer, prefix.length, 16);
+  dimensions.setBigUint64(0, BigInt(height), true); dimensions.setBigUint64(8, BigInt(width), true);
+  bytes.set(mask, prefix.length + 16);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+}

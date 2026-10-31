@@ -1,0 +1,11 @@
+{
+  "parameter_rmse_max": 0.002,
+  "parameter_max_abs_max": 0.02,
+  "status_mismatch_fraction_max": 0.005,
+  "tensile": {
+    "displacement_rmse_max": 0.05,
+    "displacement_p95_max": 0.1,
+    "coverage_min": 0.9
+  },
+  "scope": "UHD tensile frame 40 and plate-hole frame 95; same zero-initialized two-level affine/median configuration; geometric exclusions exact"
+}

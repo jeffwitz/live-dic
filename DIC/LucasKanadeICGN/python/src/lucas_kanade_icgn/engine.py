@@ -34,7 +34,7 @@ from PIL import Image
 from .interpolation import normalize_interpolation
 from .motion import AFFINE_PARAMETER_ORDER, normalize_motion_model, parameter_order
 from .outlier import normalize_outlier_policy
-from .roi import RoiPlan
+from .roi import RoiPlan, immutable, prepare_roi, validate_roi
 from .subset import DEFAULT_SUBSET_SIZE, normalize_subset_size, normalize_subset_stride
 
 MIN_FRAME_DIMENSION: Final = 16
@@ -994,6 +994,8 @@ class ICGNWebGL:
         self._websocket_url: str | None = None
         self._devtools_origin: str | None = None
         self._reference_ready = False
+        self.roi = None
+        self.reference_valid = None
         self._requested_dimensions: tuple[int, int] | None = None
         self._runtime_dimensions: tuple[int, int] | None = None
 
@@ -1213,7 +1215,9 @@ class ICGNWebGL:
     ) -> ReferenceInfo:
         """Upload and precompute all target-independent reference data."""
 
-        if roi_mask is not None or roi_policy != "full" or roi_truncation != "none":
+        if self.backend != "webgpu-wgsl" and (
+            roi_mask is not None or roi_policy != "full" or roi_truncation != "none"
+        ):
             raise ValueError(
                 "ROI policies and truncation are supported only by the native wgpu engines"
             )
@@ -1222,6 +1226,14 @@ class ICGNWebGL:
         encoding_start = time.perf_counter()
         array = _as_uint8_gray(image)
         height, width = array.shape
+        mask = None
+        if self.backend == "webgpu-wgsl":
+            if roi_policy != "full" or roi_truncation != "none":
+                raise ValueError(
+                    "partial ROI and truncation are not supported in the browser engine"
+                )
+            mask = validate_roi(roi_mask, roi_policy, array.shape, self.motion_model)
+        plan = prepare_roi(mask, self.subset_size, self.subset_stride)
         if self.backend == "gpuio":
             dimensions = (width, height)
             if width % 16 or height % 16:
@@ -1238,25 +1250,40 @@ class ICGNWebGL:
         data_url = _array_data_url(array)
         encoding_wall_ms = (time.perf_counter() - encoding_start) * 1_000.0
         options = self._options(iterations=iterations, tolerance=tolerance, zncc_min=zncc_min)
+        if mask is not None:
+            options["roiMaskBase64"] = base64.b64encode(mask.tobytes()).decode("ascii")
+            options["roiPolicy"] = roi_policy
         expression = (
             f"window.ICGNHeadless.setReference({json.dumps(data_url)}, {json.dumps(options)})"
         )
         payload = self._evaluate(expression)
         total_wall_ms = (time.perf_counter() - total_start) * 1_000.0
         self._reference_ready = True
+        self.roi = plan
+        validity = payload.get("referenceValid")
+        self.reference_valid = (
+            immutable(np.asarray(validity, dtype=bool).reshape(tuple(reversed(payload["grid"]))))
+            if validity is not None
+            else None
+        )
+        reference_config = dict(payload["config"])
+        if plan is not None:
+            reference_config["roi"] = {**reference_config.get("roi", {}), **plan.summary()}
         return ReferenceInfo(
             preparation_wall_ms=float(payload["preparationWallMs"]),
             runtime_build_wall_ms=float(payload["runtimeBuildWallMs"]),
             reference_build_wall_ms=float(payload["referenceBuildWallMs"]),
             encoding_wall_ms=encoding_wall_ms,
             total_wall_ms=total_wall_ms,
-            config=dict(payload["config"]),
+            config=reference_config,
             device=str(payload["device"]),
             grid=tuple(map(int, payload["grid"])),
             width=int(payload["width"]),
             height=int(payload["height"]),
             subset_size=int(payload["subsetSize"]),
             subset_stride=int(payload.get("subsetStride", payload["subsetSize"])),
+            roi=plan,
+            reference_valid=self.reference_valid,
         )
 
     def register(
@@ -1328,6 +1355,10 @@ class ICGNWebGL:
         raw = response[metadata_end:]
         result_started = time.perf_counter()
         result = RegistrationResult.from_packed_browser_result(raw, payload)
+        result.roi = getattr(self, "roi", None)
+        result.reference_valid = getattr(self, "reference_valid", None)
+        if result.roi is not None:
+            result.config["roi"] = {**result.config.get("roi", {}), **result.roi.summary()}
         result_build_wall_ms = (time.perf_counter() - result_started) * 1_000.0
         result.timing = {
             **result.timing,

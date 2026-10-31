@@ -80,7 +80,19 @@ class BrowserCoreExecutionTests(unittest.TestCase):
     def test_core_is_instantiable_without_page_globals_and_destroy_is_idempotent(self):
         from lucas_kanade_icgn import ICGNWebGL
 
-        with ICGNWebGL(backend="webgpu-wgsl") as browser:
+        with ICGNWebGL(
+            backend="webgpu-wgsl",
+            chromium_args=(
+                (
+                    "--use-angle=swiftshader",
+                    "--enable-unsafe-webgpu",
+                    "--use-webgpu-adapter=swiftshader",
+                    "--use-vulkan=swiftshader",
+                )
+                if os.environ.get("ICGN_BROWSER_SOFTWARE") == "1"
+                else ()
+            ),
+        ) as browser:
             value = browser._evaluate("""(async () => {
               const { DICEngine } = await import('../core/engine.js');
               const engine = await DICEngine.create({width: 64, height: 64});
@@ -99,7 +111,19 @@ class BrowserCoreExecutionTests(unittest.TestCase):
     def test_integer_bt709_conversion_and_gpu_only_results(self):
         from lucas_kanade_icgn import ICGNWebGL
 
-        with ICGNWebGL(backend="webgpu-wgsl") as browser:
+        with ICGNWebGL(
+            backend="webgpu-wgsl",
+            chromium_args=(
+                (
+                    "--use-angle=swiftshader",
+                    "--enable-unsafe-webgpu",
+                    "--use-webgpu-adapter=swiftshader",
+                    "--use-vulkan=swiftshader",
+                )
+                if os.environ.get("ICGN_BROWSER_SOFTWARE") == "1"
+                else ()
+            ),
+        ) as browser:
             actual = browser._evaluate("""(async () => {
               const {createInputConverter} = await import('../core/input.js');
               const {DICEngine} = await import('../core/engine.js');
@@ -123,3 +147,38 @@ class BrowserCoreExecutionTests(unittest.TestCase):
               return {matches,noField,finite};
             })()""")
         self.assertEqual(actual, dict(matches=True, noField=True, finite=True))
+
+    def test_full_roi_empty_and_missing_coarse_seed(self):
+        from lucas_kanade_icgn import ICGNWebGL
+
+        with ICGNWebGL(
+            backend="webgpu-wgsl",
+            chromium_args=(
+                (
+                    "--use-angle=swiftshader",
+                    "--enable-unsafe-webgpu",
+                    "--use-webgpu-adapter=swiftshader",
+                    "--use-vulkan=swiftshader",
+                )
+                if os.environ.get("ICGN_BROWSER_SOFTWARE") == "1"
+                else ()
+            ),
+        ) as browser:
+            actual = browser._evaluate("""(async () => {
+              const {DICEngine}=await import('../core/engine.js');
+              const pixels=Uint8Array.from({length:16384},(_,i)=>(i*7+i*i)%251);
+              const engine=await DICEngine.create({width:128,height:128});
+              await engine.setReference(pixels,{roiMask:new Uint8Array(16384)});
+              const empty=await engine.register(pixels);
+              const excluded=empty.status.every(v=>v===-3);
+              const band=new Uint8Array(16384);band.fill(1,32*128,64*128);
+              await engine.setReference(pixels,{roiMask:band});band.fill(0);
+              const result=await engine.register(pixels);
+              let partial=false;
+              try{await engine.setReference(pixels,{roiPolicy:'partial'});}catch(error){partial=error.message.includes('not supported');}
+              engine.destroy();
+              return {excluded,accepted:result.accepted,partial};
+            })()""")
+        self.assertTrue(actual["excluded"])
+        self.assertGreater(actual["accepted"], 0)
+        self.assertTrue(actual["partial"])

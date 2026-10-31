@@ -10,8 +10,11 @@ export function validateTemporal(options) {
   if (options.temporalFineCorrection && (initialization !== 'temporal' || (options.pyramidLevels ?? 2) < 2)) {
     throw new Error('temporalFineCorrection requires temporal initialization and at least two levels');
   }
-  if (options.temporalMaxAge != null && (!Number.isInteger(options.temporalMaxAge) || options.temporalMaxAge < 0)) {
+  if (options.temporalMaxAge != null && (!Number.isInteger(options.temporalMaxAge) || options.temporalMaxAge < 0 || options.temporalMaxAge > 0xfffffffe)) {
     throw new Error('temporalMaxAge must be a nonnegative integer or null');
+  }
+  for (const name of ['divergencePatience', 'divergenceMinIterations']) {
+    if (options[name] != null && (!Number.isInteger(options[name]) || options[name] < 1 || options[name] > 30)) throw new Error(`${name} must be an integer between 1 and 30`);
   }
   if (options.pyramidPolicy && options.pyramidPolicy !== 'fixed') throw new Error('Adaptive pyramids are experimental and not supported in this browser engine');
 }

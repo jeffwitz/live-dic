@@ -1,6 +1,6 @@
 import { createTargetSlot, attachExternalInput } from './ring.js';
 import { createTemporalGraph, validateTemporal } from './temporal.js';
-import { validateMask, planRoi, reduceMask, seedPermissions } from './roi.js';
+import { validateMask, planRoi, reduceMask, seedPermissions, hashMask } from './roi.js';
 import { decodePacked, createResultReader } from './result.js';
 import { loadShader } from './shaders.js';
 /*
@@ -55,7 +55,16 @@ const MOTION_MODEL_CONSTANTS = { affine: 0, translation: 1, quadratic: 2 };
 const OUTLIER_POLICY_CONSTANTS = { flag: 0, replace: 1, disabled: 2, median: 3 };
 
 const configuration = {
+  subsetSize: SUBSET_SIZE,
   subsetStride: SUBSET_STRIDE,
+  initialization: options.initialization ?? 'zero',
+  temporalPrediction: options.temporalPrediction ?? 'none',
+  temporalFineCorrection: options.temporalFineCorrection ?? false,
+  temporalMaxAge: options.temporalMaxAge ?? null,
+  divergencePatience: options.divergencePatience ?? null,
+  divergenceMinIterations: options.divergenceMinIterations ?? 4,
+  pyramidPolicy: 'fixed', spatialWeighting: 'uniform', solverWorkgroupSize: 16,
+  pipelineDepth: options.pipelineDepth ?? 1,
   iterations: DEFAULT_MAX_ITERATIONS,
   tolerance: DEFAULT_TOLERANCE,
   znccMin: DEFAULT_ZNCC_MIN,
@@ -420,6 +429,13 @@ const createRuntime = async (width, height) => {
     const gridWidth = 1 + Math.floor((levelWidth - SUBSET_SIZE) / SUBSET_STRIDE);
     const gridHeight = 1 + Math.floor((levelHeight - SUBSET_SIZE) / SUBSET_STRIDE);
     const gridCount = gridWidth * gridHeight;
+    for (const bytes of [pixelCount * 16, pixelCount * 8,
+      gridCount * (metadataStride + (roiMask ? 4 : 0) + parameterCount * parameterCount) * 4,
+      gridCount * stateStride * 4]) {
+      if (bytes > device.limits.maxStorageBufferBindingSize || bytes > device.limits.maxBufferSize) {
+        throw new Error(`Subset geometry at level ${levelIndex} exceeds the device buffer limits`);
+      }
+    }
     const gpuWritable = levelIndex > 0;
     const levelSourceTexture = device.createTexture({
       label: `DIC-RT target luma level ${levelIndex}`,
@@ -877,6 +893,18 @@ const executePipeline = async ({ measureGpu = false, slot = slots[0] } = {}) => 
 };
 
 const readResult = async (timing, slot = slots[0], forceFull = false) => {
+  if (roiPlans[0]?.count === 0) {
+    const stride = configuration.motionModel === 'quadratic' ? 16 : 8;
+    const packed = new Float32Array(GRID_COUNT * stride);
+    for (let i = 0; i < GRID_COUNT; i++) packed[i * stride + stride - 2] = -3;
+    lastSlot = slot; lastFieldBuffer = configuration.outlierPolicy === 'disabled' ? slot.levels[0].buffers.state : slot.levels[0].buffers.filteredState;
+    if (forceFull || (options.readback ?? 'full') === 'full') return decodePacked(packed, { width: FRAME_WIDTH, height: FRAME_HEIGHT,
+      gridWidth: GRID_WIDTH, gridHeight: GRID_HEIGHT, subsetSize: SUBSET_SIZE, subsetStride: SUBSET_STRIDE, configuration, timing });
+    return { width: FRAME_WIDTH, height: FRAME_HEIGHT, subsetSize: SUBSET_SIZE, subsetStride: SUBSET_STRIDE,
+      grid: [GRID_WIDTH, GRID_HEIGHT], config: { ...configuration }, timing, accepted: 0, selected: 0,
+      excluded: GRID_COUNT, acceptance: null, meanIterations: null, truthRmse: null, maxAbs: [0, 0, 0, 0],
+      readback: options.readback, roiSelected: roiPlans[0].selected };
+  }
   if (!forceFull && slot.resultReader && (options.readback ?? 'full') !== 'full') return readDisplayResult(timing, slot);
   const { temporal } = slot;
   const buffers = slot.levels[0].buffers;
@@ -939,6 +967,7 @@ const setReference = async (dataUrl, referenceOptions = {}) => {
   const image = typeof dataUrl === 'string' ? await loadImage(dataUrl) : dataUrl;
   const started = performance.now();
   const ownedMask = validateMask(options.roiMask, image.width, image.height, options.roiPolicy ?? 'full', configuration.motionModel);
+  const maskSha256 = ownedMask ? await hashMask(ownedMask, image.width, image.height) : null;
   roiMask = ownedMask && !ownedMask.every(Boolean) ? ownedMask : null;
   roiPlans = [];
   if (roiMask) {
@@ -951,6 +980,10 @@ const setReference = async (dataUrl, referenceOptions = {}) => {
   const runtimeStarted = performance.now();
   destroyRuntimeResources();
   await createRuntime(image.width, image.height);
+  delete configuration.roi;
+  if (ownedMask) configuration.roi = { policy: 'full', maskShape: [image.height, image.width], maskSha256,
+    selected: roiPlans[0]?.count ?? GRID_COUNT, excluded: GRID_COUNT - (roiPlans[0]?.count ?? GRID_COUNT),
+    gridTotal: GRID_COUNT, levelSelectedCounts: levels.map((level) => level.roi?.count ?? level.gridCount) };
   const runtimeBuildWallMs = performance.now() - runtimeStarted;
   const referenceStarted = performance.now();
   try {
@@ -974,6 +1007,7 @@ const setReference = async (dataUrl, referenceOptions = {}) => {
         motionModel: configuration.motionModel,
       });
       device.queue.writeBuffer(level.buffers.reference, 0, prepared.reference);
+      level.referenceValid = Uint8Array.from({ length: level.gridCount }, (_, i) => +(prepared.metadata[i * (configuration.motionModel === 'quadratic' ? 28 : 16) + 1] > .5));
       let metadata = prepared.metadata;
       if (level.roi) {
         metadata = new Float32Array(prepared.metadata.length + level.gridCount * 4);
@@ -1009,6 +1043,13 @@ const setReference = async (dataUrl, referenceOptions = {}) => {
   }
   const resultModule = options.inputConverterForSlot ? await loadShader(device, 'result.wgsl') : null;
   for (const [i, slot] of slots.entries()) {
+    if (roiPlans[0]?.count === 0) {
+      const stride = configuration.motionModel === 'quadratic' ? 16 : 8;
+      const state = new Float32Array(GRID_COUNT * stride);
+      for (let j = 0; j < GRID_COUNT; j++) state[j * stride + stride - 2] = -3;
+      device.queue.writeBuffer(slot.levels[0].buffers.state, 0, state);
+      device.queue.writeBuffer(slot.levels[0].buffers.filteredState, 0, state);
+    }
     const converter = options.inputConverterForSlot?.(i);
     if (converter) attachExternalInput(device, slot, { base: bindGroupLayout, seeded: seededBindGroupLayout, reduce: reduceYBindGroupLayout }, converter);
     if (resultModule) slot.resultReader = await createResultReader(device, resultModule, slot.levels[0],
@@ -1032,6 +1073,7 @@ const setReference = async (dataUrl, referenceOptions = {}) => {
     grid: [GRID_WIDTH, GRID_HEIGHT],
     config: { ...configuration },
     roiSelected: roiPlans[0]?.selected ?? null,
+    referenceValid: levels[0].referenceValid,
     device: (await info()).device,
   };
 };
@@ -1165,7 +1207,7 @@ return {
   destroy() {
     destroyRuntimeResources();
     if (ownsDevice) device?.destroy();
-    device = null;
+    device = null; adapter = null; shaderModule = null; pyramidShaderModule = null;
   },
 };
 }

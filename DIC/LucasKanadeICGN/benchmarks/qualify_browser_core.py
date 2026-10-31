@@ -29,6 +29,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--software-browser", action="store_true")
+    parser.add_argument("--native-device", choices=("gpu", "cpu", "auto"), default="gpu")
     args = parser.parse_args()
     criteria = json.loads(
         (ROOT / "benchmarks/results/browser-core-20261031/criteria.json").read_text()
@@ -42,7 +43,16 @@ def main():
     mask = np.ones(ref.shape, bool)
     mask[:, 190:192] = False
     mask[100:130, 80:100] = False
-    flags = ("--use-angle=swiftshader", "--enable-unsafe-webgpu") if args.software_browser else ()
+    flags = (
+        (
+            "--use-angle=swiftshader",
+            "--enable-unsafe-webgpu",
+            "--use-webgpu-adapter=swiftshader",
+            "--use-vulkan=swiftshader",
+        )
+        if args.software_browser
+        else ()
+    )
     rows = []
     with ICGNWebGL(backend="webgpu-wgsl", chromium_args=flags) as browser:
         for model in ("translation", "affine"):
@@ -56,7 +66,7 @@ def main():
                     divergence_patience=3,
                     divergence_min_iterations=4,
                     outlier_policy="median",
-                    device_type="gpu",
+                    device_type=args.native_device,
                 )
                 js_options = dict(
                     width=ref.shape[1],

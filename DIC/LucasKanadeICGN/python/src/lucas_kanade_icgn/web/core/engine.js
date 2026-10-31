@@ -1,3 +1,4 @@
+import { validateMask } from './roi.js';
 import { createInputConverter, frameSize } from './input.js';
 import { createPyramidHost } from './pyramid.js';
 import { SlotRing } from './ring.js';
@@ -30,7 +31,12 @@ export class DICEngine {
     if (!this.ring.idle) throw new Error('Finish the current sequence before replacing the reference');
     let pixels = source;
     const [width, height] = source instanceof Uint8Array ? [this.options.width, this.options.height] : frameSize(source);
-    if (!width || !height) throw new Error('Source dimensions are required');
+    const size = this.options.subsetSize ?? 16, scale = 2 ** ((this.options.pyramidLevels ?? 2) - 1);
+    if (!Number.isInteger(width) || !Number.isInteger(height) || Math.floor(width / scale) < size || Math.floor(height / scale) < size) throw new Error('Source dimensions must contain the coarsest subset');
+    if (source instanceof Uint8Array && source.length !== width * height) throw new Error('Expected width * height grayscale bytes');
+    if (options.roiTruncation && options.roiTruncation !== 'none') throw new Error('ROI truncation is not supported in the browser engine');
+    const ownedMask = validateMask(options.roiMask, width, height, options.roiPolicy ?? 'full', this.options.motionModel ?? 'affine');
+    this.reference = null;
     this.inputs.forEach((input) => input.destroy()); this.inputs = [];
     for (let i = 0; i < this.ring.depth; i++) this.inputs.push(await createInputConverter(this.device, width, height));
     if (!(source instanceof Uint8Array)) pixels = await this.inputs[0].referencePixels(source);
@@ -38,7 +44,7 @@ export class DICEngine {
       if (pixels.length !== width * height) throw new Error('Expected width * height grayscale bytes');
       source = { pixels, width, height };
     }
-    this.reference = await this.host.setReference(source, { ...this.options, ...options });
+    this.reference = await this.host.setReference(source, { ...this.options, ...options, roiMask: ownedMask });
     return this.reference;
   }
   register(source) {

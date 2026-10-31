@@ -1,0 +1,169 @@
+{
+  "commit": "ca898de4f6f1da563fbc4275a031f42eb3e59156",
+  "criteria": {
+    "parameter_rmse_max": 0.002,
+    "parameter_max_abs_max": 0.02,
+    "status_mismatch_fraction_max": 0.005,
+    "tensile": {
+      "displacement_rmse_max": 0.05,
+      "displacement_p95_max": 0.1,
+      "coverage_min": 0.9
+    },
+    "scope": "UHD tensile frame 40 and plate-hole frame 95; same zero-initialized two-level affine/median configuration; geometric exclusions exact"
+  },
+  "rows": [
+    {
+      "fixture": "uhd_tensile",
+      "reference_sha256": "a92d306a131829675d1023abd6d95375baa86f317fcd108e797900caa7511b50",
+      "target_sha256": "e4b5ece54228ecb59c30bf4b260c513e04f20aafb7152e200fbd8bb53af08ca0",
+      "mask_sha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+      "native_adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      },
+      "browser_device": "Raw WebGPU shared WGSL (intel xe-2lpg)",
+      "config": {
+        "subsetSize": 16,
+        "subsetStride": 16,
+        "initialization": "zero",
+        "temporalPrediction": "none",
+        "temporalFineCorrection": false,
+        "temporalMaxAge": null,
+        "divergencePatience": null,
+        "divergenceMinIterations": 4,
+        "pyramidPolicy": "fixed",
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "pipelineDepth": 1,
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median",
+        "roi": {
+          "policy": "full",
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "7a6e8a3d1f81019daf434196f082d97b12e6a5f57f9d2aabc20161000a93def8",
+          "selected": 24980,
+          "excluded": 7420,
+          "gridTotal": 32400,
+          "levelSelectedCounts": [
+            24980,
+            5960
+          ],
+          "truncation": "none",
+          "partial": 0,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool"
+        }
+      },
+      "selected": 24980,
+      "accepted_native": 24975,
+      "accepted_browser": 24975,
+      "status_mismatches": 0,
+      "iteration_mismatches": 32,
+      "parameter_rmse": 2.299746665812563e-05,
+      "parameter_max_abs": 0.0036026835441589355,
+      "passes": true,
+      "truth": {
+        "coverage": 0.9999168744804655,
+        "rmse": 0.024188812899153127,
+        "p95": 0.044991427954340385
+      }
+    },
+    {
+      "fixture": "uhd_plate_hole",
+      "reference_sha256": "2fd6ad63a5b774701a3af5322a504043741ce024fdf64a6b72febd0b9c635bd3",
+      "target_sha256": "4398da113115e191a16a9ba98148b63513c5ff77acbc628db9abaf6463b28b6a",
+      "mask_sha256": "aa6d18f677cf79a7a249449ad101b5b8da47c5446fc6da2af093efa23a6a454e",
+      "native_adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      },
+      "browser_device": "Raw WebGPU shared WGSL (intel xe-2lpg)",
+      "config": {
+        "subsetSize": 16,
+        "subsetStride": 16,
+        "initialization": "zero",
+        "temporalPrediction": "none",
+        "temporalFineCorrection": false,
+        "temporalMaxAge": null,
+        "divergencePatience": null,
+        "divergenceMinIterations": 4,
+        "pyramidPolicy": "fixed",
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "pipelineDepth": 1,
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median",
+        "roi": {
+          "policy": "full",
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "aa6d18f677cf79a7a249449ad101b5b8da47c5446fc6da2af093efa23a6a454e",
+          "selected": 32220,
+          "excluded": 180,
+          "gridTotal": 32400,
+          "levelSelectedCounts": [
+            32220,
+            7984
+          ],
+          "truncation": "none",
+          "partial": 0,
+          "hashFormat": "live-dic-roi-v1\\0 + uint64le(height,width) + C-order uint8 bool"
+        }
+      },
+      "selected": 32220,
+      "accepted_native": 31474,
+      "accepted_browser": 31474,
+      "status_mismatches": 0,
+      "iteration_mismatches": 9,
+      "parameter_rmse": 6.845877123851096e-06,
+      "parameter_max_abs": 0.0003905296325683594,
+      "passes": true
+    }
+  ]
+}
