@@ -7,6 +7,10 @@ struct Config {
     pixel_count: u32,
     tolerance: f32,
     zncc_min: f32,
+    inverse_offset: u32, // vec4 offset after metadata and optional ROI tables
+    padding0: u32,
+    padding1: u32,
+    padding2: u32,
 }
 
 struct FloatBuffer {
@@ -38,9 +42,7 @@ alias Matrix6 = array<array<f32, 6>, 6>;
 @group(0) @binding(0) var source_image: texture_2d<f32>;
 @group(0) @binding(1) var<uniform> config: Config;
 @group(0) @binding(2) var<storage, read_write> temporary: FloatBuffer;
-@group(0) @binding(3) var<storage, read_write> coefficients: FloatBuffer;
 @group(0) @binding(4) var<storage, read> reference_data: Float4Buffer;
-@group(0) @binding(5) var<storage, read> inverse_hessian: Float4Buffer;
 @group(0) @binding(6) var<storage, read> metadata: Float4Buffer;
 @group(0) @binding(7) var<storage, read_write> state: Float4Buffer;
 // FIR float bits followed, only in partial mode, by integer support tables.
@@ -166,7 +168,7 @@ fn prefilter_x(
         let sample = prefilter_tile[tile_index];
         result = result + bitcast<f32>(fir_weights.values[u32(tap + FIR_WEIGHT_RADIUS)]) * sample;
     }
-    temporary.values[u32(y * width + x)] = result;
+    temporary.values[config.pixel_count + u32(y * width + x)] = result;
 }
 
 @compute @workgroup_size(8, 32)
@@ -185,7 +187,7 @@ fn prefilter_y(
         let tile_y = i32(tile_index / u32(PREFILTER_Y_WIDTH));
         let sample_x = min(base_x + tile_x, width - 1);
         let sample_y = mirror_coordinate(base_y + tile_y - FIR_RADIUS, height);
-        prefilter_tile[tile_index] = temporary.values[u32(sample_y * width + sample_x)];
+        prefilter_tile[tile_index] = temporary.values[config.pixel_count + u32(sample_y * width + sample_x)];
     }
     workgroupBarrier();
 
@@ -201,7 +203,7 @@ fn prefilter_y(
         result = result + bitcast<f32>(fir_weights.values[u32(tap + FIR_WEIGHT_RADIUS)])
             * prefilter_tile[tile_index];
     }
-    coefficients.values[u32(y * width + x)] = result;
+    temporary.values[u32(y * width + x)] = result;
 }
 
 fn metadata_value(subset_index: u32, component: u32) -> f32 {
@@ -211,7 +213,7 @@ fn metadata_value(subset_index: u32, component: u32) -> f32 {
 
 fn hessian_value(subset_index: u32, component: u32) -> f32 {
     let stride = select(9u, 36u, MOTION_MODEL == 2u);
-    return inverse_hessian.values[subset_index * stride + component / 4u][component % 4u];
+    return metadata.values[config.inverse_offset + subset_index * stride + component / 4u][component % 4u];
 }
 
 fn state_vec4_stride() -> u32 {
@@ -243,7 +245,7 @@ fn sample_cubic(position: vec2<f32>) -> f32 {
         for (var xx = 0; xx < 4; xx = xx + 1) {
             let x = base.x + xx - 1;
             let y = base.y + yy - 1;
-            row = row + weight_x[xx] * coefficients.values[u32(y * width + x)];
+            row = row + weight_x[xx] * temporary.values[u32(y * width + x)];
         }
         value = value + weight_y[yy] * row;
     }

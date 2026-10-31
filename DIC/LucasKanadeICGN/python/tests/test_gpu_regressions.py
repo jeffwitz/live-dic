@@ -745,12 +745,14 @@ class GPURegressionTests(unittest.TestCase):
         for pipeline, workgroups in passes:
             compute_pass = encoder.begin_compute_pass()
             compute_pass.set_pipeline(pipeline)
-            compute_pass.set_bind_group(0, slot.bind_group)
+            compute_pass.set_bind_group(0, slot.prefilter_bind_group)
             compute_pass.dispatch_workgroups(*workgroups)
             compute_pass.end()
         root.device.queue.submit([encoder.finish()])
         actual = np.frombuffer(
-            root.device.queue.read_buffer(slot.buffers["coefficients"]),
+            root.device.queue.read_buffer(
+                slot.buffers["coefficients"], size=root.width * root.height * 4
+            ),
             dtype=np.float32,
         ).reshape(image.shape)
         np.testing.assert_allclose(actual, _cpu_prefilter(image), rtol=2e-6, atol=2e-5)
@@ -978,14 +980,26 @@ class GPURegressionTests(unittest.TestCase):
         active[5] = 1  # Interior subset (1, 1), surrounded by inactive neighbours.
         metadata = np.zeros((grid_count, 16), dtype=np.float32)
         metadata[5, :2] = 1.0  # Positive reference norm and valid reference.
-        config = struct.pack("<6I2f", width, height, grid_width, grid_count, 1, 4096, 1e-3, 0.8)
+        config = struct.pack(
+            "<6I2f4I",
+            width,
+            height,
+            grid_width,
+            grid_count,
+            1,
+            4096,
+            1e-3,
+            0.8,
+            metadata.size // 4,
+            0,
+            0,
+            0,
+        )
         data = {
             1: config,
-            2: np.zeros(width * height, dtype=np.float32),
-            3: np.zeros(width * height, dtype=np.float32),
+            2: np.zeros(width * height * 2, dtype=np.float32),
             4: np.zeros((width * height, 4), dtype=np.float32),
-            5: np.zeros((grid_count, 36), dtype=np.float32),
-            6: metadata,
+            6: np.concatenate((metadata.ravel(), np.zeros(grid_count * 36, dtype=np.float32))),
             7: previous,
             8: np.zeros(31, dtype=np.float32),
             9: np.zeros((grid_count, 8), dtype=np.float32),

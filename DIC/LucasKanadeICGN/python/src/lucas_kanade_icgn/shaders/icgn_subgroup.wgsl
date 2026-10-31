@@ -14,6 +14,10 @@ struct Config {
     pixel_count: u32,
     tolerance: f32,
     zncc_min: f32,
+    inverse_offset: u32, // vec4 offset after metadata and optional ROI tables
+    padding0: u32,
+    padding1: u32,
+    padding2: u32,
 }
 
 struct FloatBuffer {
@@ -25,9 +29,8 @@ struct Float4Buffer {
 }
 
 @group(0) @binding(1) var<uniform> config: Config;
-@group(0) @binding(3) var<storage, read_write> coefficients: FloatBuffer;
+@group(0) @binding(2) var<storage, read_write> temporary: FloatBuffer;
 @group(0) @binding(4) var<storage, read> reference_data: Float4Buffer;
-@group(0) @binding(5) var<storage, read> inverse_hessian: Float4Buffer;
 @group(0) @binding(6) var<storage, read> metadata: Float4Buffer;
 @group(0) @binding(7) var<storage, read_write> state: Float4Buffer;
 
@@ -42,7 +45,7 @@ fn metadata_value(subset_index: u32, component: u32) -> f32 {
 }
 
 fn hessian_value(subset_index: u32, component: u32) -> f32 {
-    return inverse_hessian.values[subset_index * 9u + component / 4u][component % 4u];
+    return metadata.values[config.inverse_offset + subset_index * 9u + component / 4u][component % 4u];
 }
 
 fn cubic_weights(value: f32) -> vec4<f32> {
@@ -69,7 +72,7 @@ fn sample_cubic(position: vec2<f32>) -> f32 {
             let x = base.x + ix;
             let y = base.y + iy;
             let index = u32(y * i32(config.width) + x);
-            result += coefficients.values[index] * weight_x[ix] * weight_y[iy];
+            result += temporary.values[index] * weight_x[ix] * weight_y[iy];
         }
     }
     return result;

@@ -20,6 +20,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--baseline", type=Path)
+    parser.add_argument("--case-prefix", default="")
     args = parser.parse_args()
     reference = np.array(Image.open(ROOT / "assets/uhd_tensile/reference.png"))
     targets = [
@@ -40,6 +41,8 @@ def main() -> None:
                         ("zero", "temporal", "latency") if levels == 2 else ("zero", "temporal")
                     ):
                         name = f"{model}-l{levels}-{roi}-{profile}"
+                        if not name.startswith(args.case_prefix):
+                            continue
                         options = dict(
                             motion_model=model,
                             pyramid_levels=levels,

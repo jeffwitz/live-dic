@@ -143,15 +143,11 @@ const ensureDevice = async () => {
   if (!navigator.gpu) throw new Error('WebGPU is unavailable in this browser');
   adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
   if (!adapter) throw new Error('No WebGPU adapter is available');
-  const requestedStorageBuffers = Math.min(
-    10,
-    adapter.limits.maxStorageBuffersPerShaderStage,
-  );
   timestampQueries = adapter.features.has('timestamp-query');
   device = await adapter.requestDevice({
     requiredFeatures: timestampQueries ? ['timestamp-query'] : [],
     requiredLimits: {
-      maxStorageBuffersPerShaderStage: requestedStorageBuffers,
+      maxStorageBuffersPerShaderStage: 8,
     },
   });
   const [shaderResponse, pyramidShaderResponse] = await Promise.all([
@@ -200,13 +196,6 @@ const createRuntime = async (width, height) => {
       && runtimeMotionModel === configuration.motionModel
       && runtimeOutlierPolicy === configuration.outlierPolicy) return false;
   await ensureDevice();
-  if (levelCount > 1 && device.limits.maxStorageBuffersPerShaderStage < 10) {
-    throw new Error(
-      'A multi-level pyramid requires at least 10 storage buffers per shader stage; '
-      + `this adapter exposes ${device.limits.maxStorageBuffersPerShaderStage}. `
-      + 'Use pyramidLevels=1 on this adapter.',
-    );
-  }
   destroyRuntimeResources();
   FRAME_WIDTH = width;
   FRAME_HEIGHT = height;
@@ -224,9 +213,7 @@ const createRuntime = async (width, height) => {
     { binding: 0, visibility: GPUShaderStage.COMPUTE, texture: { sampleType: 'float' } },
     { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } },
     { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
-    { binding: 3, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
     { binding: 4, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } },
-    { binding: 5, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } },
     { binding: 6, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } },
     { binding: 7, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
     { binding: 8, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } },
@@ -410,17 +397,12 @@ const createRuntime = async (width, height) => {
     const levelBuffers = {
       config: device.createBuffer({
         label: `DIC-RT configuration level ${levelIndex}`,
-        size: 32,
+        size: 48,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
       }),
       temporary: device.createBuffer({
-        label: `DIC-RT FIR temporary level ${levelIndex}`,
-        size: pixelCount * 4,
-        usage: storage,
-      }),
-      coefficients: device.createBuffer({
-        label: `DIC-RT target coefficients level ${levelIndex}`,
-        size: pixelCount * 4,
+        label: `DIC-RT packed FIR planes level ${levelIndex}`,
+        size: pixelCount * 8,
         usage: storage,
       }),
       reference: device.createBuffer({
@@ -428,14 +410,9 @@ const createRuntime = async (width, height) => {
         size: pixelCount * 16,
         usage: storage | GPUBufferUsage.COPY_DST,
       }),
-      inverse: device.createBuffer({
-        label: `DIC-RT inverse Hessians level ${levelIndex}`,
-        size: gridCount * parameterCount * parameterCount * 4,
-        usage: storage | GPUBufferUsage.COPY_DST,
-      }),
       metadata: device.createBuffer({
-        label: `DIC-RT metadata level ${levelIndex}`,
-        size: gridCount * metadataStride * 4,
+        label: `DIC-RT metadata and inverse Hessians level ${levelIndex}`,
+        size: gridCount * (metadataStride + parameterCount * parameterCount) * 4,
         usage: storage | GPUBufferUsage.COPY_DST,
       }),
       state: device.createBuffer({
@@ -468,12 +445,13 @@ const createRuntime = async (width, height) => {
     }
     const baseEntries = [
       { binding: 0, resource: levelSourceTexture.createView() },
-      ...['config', 'temporary', 'coefficients', 'reference', 'inverse', 'metadata', 'state', 'fir', 'filteredState']
-        .map((name, index) => ({
-          binding: index + 1,
-          resource: { buffer: levelBuffers[name] },
+      ...[[1, 'config'], [2, 'temporary'], [4, 'reference'], [6, 'metadata'],
+        [7, 'state'], [8, 'fir'], [9, 'filteredState']].map(([binding, name]) => ({
+          binding, resource: { buffer: levelBuffers[name] },
         })),
     ];
+    const prefilterBindGroup = device.createBindGroup({ layout: bindGroupLayout, entries: baseEntries });
+    baseEntries.find((e) => e.binding === 2).resource.size = pixelCount * 4;
     const levelBindGroup = device.createBindGroup({
       layout: bindGroupLayout,
       entries: baseEntries,
@@ -498,6 +476,7 @@ const createRuntime = async (width, height) => {
       buffers: levelBuffers,
       bindGroup: levelBindGroup,
       seededBindGroup,
+      prefilterBindGroup,
     });
   }
 
@@ -588,7 +567,7 @@ const updateConfig = () => {
   if (!levels.length) return;
   levels.forEach((level) => {
     const scheduleIndex = configuration.pyramidLevels - 1 - level.index;
-    const bytes = new ArrayBuffer(32);
+    const bytes = new ArrayBuffer(48);
     const view = new DataView(bytes);
     const integers = [
       level.width,
@@ -601,6 +580,7 @@ const updateConfig = () => {
     integers.forEach((value, index) => view.setUint32(index * 4, value, true));
     view.setFloat32(24, configuration.tolerancePerLevel[scheduleIndex], true);
     view.setFloat32(28, configuration.znccMin, true);
+    view.setUint32(32, level.gridCount * (configuration.motionModel === 'quadratic' ? 7 : 4), true);
     device.queue.writeBuffer(level.buffers.config, 0, bytes);
   });
 };
@@ -755,12 +735,12 @@ const executePipeline = async ({ measureGpu = false } = {}) => {
     if (configuration.interpolation === 'bspline') {
       jobs.push({
         pipeline: level.width < 44 ? pipelines.prefilterXSafe : pipelines.prefilterXFast,
-        bindGroup: level.bindGroup,
+        bindGroup: level.prefilterBindGroup,
         group: 0,
         workgroups: [Math.ceil(level.width / 32), Math.ceil(level.height / 8), 1],
       }, {
         pipeline: level.height < 44 ? pipelines.prefilterYSafe : pipelines.prefilterYFast,
-        bindGroup: level.bindGroup,
+        bindGroup: level.prefilterBindGroup,
         group: 0,
         workgroups: [Math.ceil(level.width / 8), Math.ceil(level.height / 32), 1],
       });
@@ -931,7 +911,7 @@ const setReference = async (dataUrl, options = {}) => {
         motionModel: configuration.motionModel,
       });
       device.queue.writeBuffer(level.buffers.reference, 0, prepared.reference);
-      device.queue.writeBuffer(level.buffers.inverse, 0, prepared.inverseHessian);
+      device.queue.writeBuffer(level.buffers.metadata, prepared.metadata.byteLength, prepared.inverseHessian);
       device.queue.writeBuffer(level.buffers.metadata, 0, prepared.metadata);
     });
   } finally {

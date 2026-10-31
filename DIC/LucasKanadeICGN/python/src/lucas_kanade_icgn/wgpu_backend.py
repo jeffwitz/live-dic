@@ -137,6 +137,7 @@ class _RegistrationSlot:
     bind_group: Any
     readback: Any
     seeded_bind_group: Any = None
+    prefilter_bind_group: Any = None
 
 
 @dataclass(slots=True)
@@ -928,6 +929,7 @@ class ICGNWGPU:
             self.device = adapter.request_device_sync(
                 label="DIC-RT native WebGPU",
                 required_features=required_features,
+                required_limits={"max-storage-buffers-per-shader-stage": 8},
             )
         except Exception as error:
             if not required_features:
@@ -937,7 +939,10 @@ class ICGNWGPU:
                     "The adapter advertises subgroups but the feature could not be enabled."
                 ) from error
             required_features.clear()
-            self.device = adapter.request_device_sync(label="DIC-RT native WebGPU")
+            self.device = adapter.request_device_sync(
+                label="DIC-RT native WebGPU",
+                required_limits={"max-storage-buffers-per-shader-stage": 8},
+            )
         self.device_name = f"wgpu-native {adapter.info['backend_type']} ({adapter.info['device']})"
         self.subgroup_probe_error = ""
         self.subgroup_width = 0
@@ -1249,8 +1254,8 @@ class ICGNWGPU:
                 "buffer": {"type": wgpu.BufferBindingType.uniform},
             },
         ]
-        for binding in range(2, 10):
-            read_only = binding in {4, 5, 6, 8}
+        for binding in (2, 4, 6, 7, 8, 9):
+            read_only = binding in {4, 6, 8}
             entries.append(
                 {
                     "binding": binding,
@@ -1463,10 +1468,12 @@ class ICGNWGPU:
         self._destroy_runtime()
         self._prefilter_x = self._prefilter_pipeline("x", safe_halo=self.width < 44)
         self._prefilter_y = self._prefilter_pipeline("y", safe_halo=self.height < 44)
+        self._inverse_offset = metadata.size // 4
+        packed_metadata = self._storage_buffer(np.concatenate((metadata.ravel(), inverse.ravel())))
         shared_buffers = {
             "reference": self._storage_buffer(reference),
-            "inverse": self._storage_buffer(inverse),
-            "metadata": self._storage_buffer(metadata),
+            "inverse": packed_metadata,
+            "metadata": packed_metadata,
             "fir": self._storage_buffer(filter_and_support_data(_fir_weights(), self.roi)),
         }
         primary = self._create_registration_slot(shared_buffers)
@@ -1500,13 +1507,10 @@ class ICGNWGPU:
         buffers = {
             **shared_buffers,
             "config": self.device.create_buffer(
-                size=32, usage=wgpu.BufferUsage.UNIFORM | wgpu.BufferUsage.COPY_DST
+                size=48, usage=wgpu.BufferUsage.UNIFORM | wgpu.BufferUsage.COPY_DST
             ),
             "temporary": self.device.create_buffer(
-                size=pixel_count * 4, usage=wgpu.BufferUsage.STORAGE
-            ),
-            "coefficients": self.device.create_buffer(
-                size=pixel_count * 4,
+                size=pixel_count * 8,
                 # COPY_SRC lets the opt-in GPU suite validate the tiled FIR
                 # coefficients directly without changing the production pass.
                 usage=wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_SRC,
@@ -1524,26 +1528,30 @@ class ICGNWGPU:
                 ),
             ),
         }
+        # First plane holds spline coefficients; second plane holds FIR scratch.
+        buffers["coefficients"] = buffers["temporary"]
         resources = [
             {"binding": 0, "resource": source_texture.create_view()},
             *(
                 self._buffer_resource(binding, buffers[name])
-                for binding, name in enumerate(
-                    (
-                        "config",
-                        "temporary",
-                        "coefficients",
-                        "reference",
-                        "inverse",
-                        "metadata",
-                        "state",
-                        "fir",
-                        "filtered_state",
-                    ),
-                    start=1,
+                for binding, name in (
+                    (1, "config"),
+                    (2, "temporary"),
+                    (4, "reference"),
+                    (6, "metadata"),
+                    (7, "state"),
+                    (8, "fir"),
+                    (9, "filtered_state"),
                 )
             ),
         ]
+        prefilter_bind_group = self.device.create_bind_group(
+            layout=self._bind_group_layout, entries=resources
+        )
+        # Retain the historical coefficient-array bounds even for diverged
+        # quadratic warps. FIR sees both planes; solvers see the first only.
+        resources[2] = self._buffer_resource(2, buffers["temporary"])
+        resources[2]["resource"]["size"] = pixel_count * 4
         bind_group = self.device.create_bind_group(
             layout=self._bind_group_layout, entries=resources
         )
@@ -1556,6 +1564,7 @@ class ICGNWGPU:
             buffers=buffers,
             bind_group=bind_group,
             readback=readback,
+            prefilter_bind_group=prefilter_bind_group,
         )
 
     @staticmethod
@@ -1586,24 +1595,20 @@ class ICGNWGPU:
             {"binding": 0, "resource": slot.source_texture.create_view()},
             *(
                 self._buffer_resource(binding, slot.buffers[name])
-                for binding, name in enumerate(
-                    (
-                        "config",
-                        "temporary",
-                        "coefficients",
-                        "reference",
-                        "inverse",
-                        "metadata",
-                        "state",
-                        "fir",
-                        "filtered_state",
-                        "seed_state",
-                        "active_mask",
-                    ),
-                    start=1,
+                for binding, name in (
+                    (1, "config"),
+                    (2, "temporary"),
+                    (4, "reference"),
+                    (6, "metadata"),
+                    (7, "state"),
+                    (8, "fir"),
+                    (9, "filtered_state"),
+                    (10, "seed_state"),
+                    (11, "active_mask"),
                 )
             ),
         ]
+        resources[2]["resource"]["size"] = self.width * self.height * 4
         slot.seeded_bind_group = self.device.create_bind_group(
             layout=self._seeded_bind_group_layout,
             entries=resources,
@@ -1611,7 +1616,7 @@ class ICGNWGPU:
 
     def _packed_config(self, config: dict[str, float | int]) -> bytes:
         return struct.pack(
-            "<6I2f",
+            "<6I2f4I",
             self.width,
             self.height,
             self.grid_width,
@@ -1620,6 +1625,10 @@ class ICGNWGPU:
             self.width * self.height,
             float(config["tolerance"]),
             float(config["znccMin"]),
+            getattr(self, "_inverse_offset", 0),
+            0,
+            0,
+            0,
         )
 
     def _update_slot_config(
@@ -1720,12 +1729,12 @@ class ICGNWGPU:
                     (
                         self._prefilter_x,
                         ((self.width + 31) // 32, (self.height + 7) // 8, 1),
-                        slot.bind_group,
+                        slot.prefilter_bind_group,
                     ),
                     (
                         self._prefilter_y,
                         ((self.width + 7) // 8, (self.height + 31) // 32, 1),
-                        slot.bind_group,
+                        slot.prefilter_bind_group,
                     ),
                 )
             )
@@ -1867,12 +1876,12 @@ class ICGNWGPU:
                     (
                         self._prefilter_x,
                         ((self.width + 31) // 32, (self.height + 7) // 8, 1),
-                        slot.bind_group,
+                        slot.prefilter_bind_group,
                     ),
                     (
                         self._prefilter_y,
                         ((self.width + 7) // 8, (self.height + 31) // 32, 1),
-                        slot.bind_group,
+                        slot.prefilter_bind_group,
                     ),
                 )
             )
