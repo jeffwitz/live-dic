@@ -40,7 +40,7 @@ lucas_kanade_icgn = [
   "web/*.html",
   "web/*.js",
   "web/LICENSES/*.txt",
-  "web/common/*.js",
+  "web/common/*.js", "web/core/*.js",
   "web/three/*.html",
   "web/three/*.js",
   "web/three/vendor/*.js",

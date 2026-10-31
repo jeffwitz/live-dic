@@ -1,0 +1,15 @@
+{
+  "accepted": 31648,
+  "coverage": 0.9997771504976972,
+  "rmse": 0.02457277734312725,
+  "p95": 0.04631785907019202,
+  "timing": {
+    "wallMs": 32.19999998807907,
+    "binaryInputWallMs": 9.5,
+    "binaryPackingWallMs": 1.0999999940395355,
+    "inputPreparationWallMs": 0.019230006728321314,
+    "resultBuildWallMs": 0.3959070018026978,
+    "encodingWallMs": 0.0,
+    "pythonCallWallMs": 62.80464099836536
+  }
+}
