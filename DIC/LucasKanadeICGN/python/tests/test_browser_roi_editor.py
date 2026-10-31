@@ -23,6 +23,19 @@ def javascript(script):
 
 @unittest.skipUnless(shutil.which("node"), "Node is needed for browser geometry contracts")
 class BrowserRoiEditorTests(unittest.TestCase):
+    def test_exact_circle_boundary_pixels_stay_outside(self):
+        radii = [5, 10, 13, 17]
+        masks = javascript(f"""
+          import {{compileRoi}} from {json.dumps((APP / "ui/roi-geometry.js").as_uri())};
+          console.log(JSON.stringify({radii}.map(r=>[...compileRoi([
+            {{id:'c',type:'circle',x:20.5-r,y:20.5-r,width:2*r,height:2*r}}],43,43).mask])));
+        """)
+        yy, xx = np.mgrid[:43, :43]
+        for radius, mask in zip(radii, masks, strict=True):
+            np.testing.assert_array_equal(
+                np.asarray(mask).reshape(43, 43), (xx - 20) ** 2 + (yy - 20) ** 2 < radius**2
+            )
+
     def test_overlapping_outer_domain_does_not_fill_a_hole(self):
         shapes = [
             dict(id="a", type="rectangle", x=0, y=0, width=40, height=40),

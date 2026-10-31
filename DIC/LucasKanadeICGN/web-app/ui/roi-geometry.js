@@ -30,8 +30,15 @@ function footprint(shape, width, height) {
       if (Math.abs(dy) >= 1) continue;
       const dx = w / 2 * Math.sqrt(1 - dy * dy);
       // Strict ellipse interior: boundary pixels are outside.
-      const left = Math.max(0, Math.floor(x + w / 2 - dx - .5) + 1);
-      const right = Math.min(width, Math.ceil(x + w / 2 + dx - .5));
+      let left = Math.max(0, Math.floor(x + w / 2 - dx - .5) + 1);
+      let right = Math.min(width, Math.ceil(x + w / 2 + dx - .5));
+      // Correct sqrt rounding at exact boundary pixels with the implicit conic.
+      const rx = w / 2, ry = h / 2, py = row + .5 - y - ry;
+      const inside = col => ((col + .5 - x - rx) * ry) ** 2 + (py * rx) ** 2 < (rx * ry) ** 2;
+      while (left < right && !inside(left)) left++;
+      while (left > 0 && inside(left - 1)) left--;
+      while (right < width && inside(right)) right++;
+      while (right > left && !inside(right - 1)) right--;
       if (right > left) { rows[row].push([left, right]); area += right - left; }
       continue;
     } else {
