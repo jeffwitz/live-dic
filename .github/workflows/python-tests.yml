@@ -13,6 +13,7 @@ on:
       - "DIC/LucasKanadeICGN/python/**"
       - "DIC/LucasKanadeICGN/benchmarks/*.py"
       - "DIC/LucasKanadeICGN/assets/**"
+      - "DIC/LucasKanadeICGN/web-app/**"
   pull_request:
     paths:
       - ".github/workflows/python-tests.yml"
@@ -23,6 +24,7 @@ on:
       - "DIC/LucasKanadeICGN/python/**"
       - "DIC/LucasKanadeICGN/benchmarks/*.py"
       - "DIC/LucasKanadeICGN/assets/**"
+      - "DIC/LucasKanadeICGN/web-app/**"
   workflow_dispatch:
 
 permissions:
@@ -190,3 +192,39 @@ jobs:
           -s DIC/LucasKanadeICGN/python/tests
           -p test_latency_options.py
           -v
+
+  browser-software:
+    name: Linux / Chromium SwiftShader and native CPU parity
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install CPU Vulkan driver and the Python package
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes mesa-vulkan-drivers
+          python -m pip install ./DIC/LucasKanadeICGN/python
+          command -v google-chrome || command -v chromium
+      - name: Execute browser core, ROI, input and readback contracts
+        env:
+          ICGN_RUN_BROWSER_TESTS: "1"
+          ICGN_BROWSER_SOFTWARE: "1"
+        run: python -m unittest discover -s DIC/LucasKanadeICGN/python/tests -p test_browser_core.py -v
+      - name: Compare sixty ordered frames per model and depth
+        run: >-
+          python DIC/LucasKanadeICGN/benchmarks/qualify_browser_core.py
+          --software-browser --native-device cpu --output browser-results/parity.json
+      - name: Assemble and exercise the demo under a subpath
+        run: |
+          python tools/build_pages.py --output _site
+          python tools/smoke_browser_app.py --site _site --software --frames 10 --report browser-results/app.json
+      - name: Retain raw browser qualification reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-software-reports
+          path: browser-results/
+          if-no-files-found: warn

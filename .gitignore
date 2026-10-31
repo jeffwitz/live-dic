@@ -13,3 +13,7 @@ wheel-dist/
 Thumbs.db
 *.swp
 *.swo
+
+# Assembled browser application
+/_site/
+/_browser-site/
