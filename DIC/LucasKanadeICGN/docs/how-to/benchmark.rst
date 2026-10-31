@@ -112,8 +112,9 @@ Interpret the timers
 Complete Python call
    Measure ``engine.register(frame)`` with ``time.perf_counter``. This includes
    the Python-to-browser and browser-to-Python path and is the correct boundary
-   for the current Python supervisor. A future JavaScript-supervised Three.js
-   stream would need a separate browser-native end-to-end benchmark.
+   for the Python supervisor. The standalone PWA has its own worker-frame-to-GPU
+   boundary and on-demand export measurement; use the browser campaign rather
+   than treating its display timings as full Python calls.
 
 Native timing fields
    ``ICGNWGPU.register`` reports ``uploadWallMs``,

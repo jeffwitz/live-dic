@@ -11,7 +11,8 @@ the deployment requirement.
 This loop is the Python supervisor: it owns frame timestamps, backpressure,
 reference lifetime, engine errors, and result consumption. If frames originate
 and remain in a browser, do not route every frame through this NumPy loop merely
-to call Three.js. A separate JavaScript supervisor is required to keep that
+to call Three.js. The standalone PWA supplies a JavaScript supervisor for the shared raw-WebGPU
+core to keep that
 data plane browser-native; see :doc:`../explanation/supervision`.
 
 Frame contract

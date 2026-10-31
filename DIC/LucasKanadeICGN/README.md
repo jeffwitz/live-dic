@@ -13,6 +13,12 @@ result consumption accounted for separately in the application.
 Start with the [project README](../../README.md) for installation and a native
 Python example, or the [package README](python/README.md) for API usage.
 
+The [browser companion](docs/how-to/run-in-browser.rst) runs a local camera or
+analytic demo through the shared WebGPU core, with worker backpressure, full
+ROI, temporal history, GPU display and offline assets. Pages deployment is
+prepared but requires the repository owner's setup. Hand-held camera use is
+not qualified for metrology. Python remains the primary NumPy supervisor.
+
 ## Algorithm and execution
 
 The native `ICGNWGPUFullPyramid` engine runs every configured pyramid level on
@@ -46,7 +52,8 @@ as displacement measurements.
 |---|---|
 | `python/src/lucas_kanade_icgn/` | Public API, native engines, ROI, CLI and result types |
 | `python/src/lucas_kanade_icgn/shaders/` | Canonical portable WGSL and native subgroup specialization |
-| `python/src/lucas_kanade_icgn/web/` | Canonical packaged browser assets and local vendor modules |
+| `python/src/lucas_kanade_icgn/web/` | Packaged shared JS core, compatibility adapters and local vendor modules |
+| `web-app/` | Standalone camera/demo PWA; assembled with the canonical core and WGSL |
 | `three/` | Checkout entry point delegating to the packaged Three.js source |
 | `LucasKanadeICGN.js`, `headless.html` | Historical GPU-IO checkout runtime |
 | `python/tests/` | Portable, GPU and analytic-UHD regression tests |
@@ -67,11 +74,12 @@ unrelated to subset size, stream depth or pyramid levels.
 `ICGNWGPU` is single-scale by default, with the older selective-recovery path
 available explicitly. `ICGNWebGL` retains Three.js as its browser default,
 including a WebGL2 fallback. Raw browser WGSL has a full pyramid; Three.js and
-historical GPU-IO are single-scale. Browser ROI requests are rejected.
+historical GPU-IO are single-scale. Raw WGSL supports full ROI; Three.js/GPU-IO
+still reject masks.
 
 The browser adapter transports raw target bytes and packed fields, but still
-crosses the Python/Chromium process boundary. A JavaScript supervisor for a
-browser-native streaming deployment remains future work. The existing CLI and
+crosses the Python/Chromium process boundary. The standalone PWA supplies a
+JavaScript supervisor for browser-local raw WebGPU processing and GPU display. The existing CLI and
 one-shot helper are browser interfaces; their defaults have not been changed.
 
 Use native engines as context managers or call `close()`. Native close is

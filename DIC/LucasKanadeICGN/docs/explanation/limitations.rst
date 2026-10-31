@@ -39,11 +39,12 @@ planned for GPU-IO.
 Three.js/TSL is the supported browser path. Its automatic WebGL2 fallback
 removes the need to select GPU-IO merely because WebGPU is unavailable.
 
-The supported application supervisor is currently Python. The repository does
-not provide a persistent JavaScript supervisor for browser-native acquisition,
-bounded frame scheduling, and local result consumption. Consequently,
-``ICGNWebGL`` performance includes the Python/Chromium process boundary. Direct
-Three.js GPU timings must not be presented as complete Python-stream timing.
+Python remains the primary supervisor for NumPy acquisition and complete NumPy
+fields. The standalone PWA now supplies a JavaScript supervisor for raw WebGPU
+camera/demo acquisition, bounded scheduling and GPU display. It is separate
+from Three.js. ``ICGNWebGL`` still includes the Python/Chromium process boundary;
+neither direct Three.js GPU times nor PWA worker timings are full Python-stream
+times. See :doc:`browser-portability` for the browser qualification matrix.
 
 Geometry and input
 ------------------
@@ -88,15 +89,16 @@ remain single-scale.
 
 ``ICGNWGPUFullPyramid(initialization="temporal")`` projects the last accepted
 fine field onto the coarsest grid, then solves every configured level on every
-image under the default fixed policy. It is opt-in and also supports a single level. Other backends do not
-provide temporal initialization. Native full-pyramid constant-velocity
+image under the default fixed policy. It is opt-in and also supports a single
+level. The standalone JS core now has equivalent temporal controls; the Python
+browser compatibility interface does not expose them. Native full-pyramid constant-velocity
 prediction is opt-in; no backend provides other extrapolated initialization,
 Aitken acceleration, predictive tolerance, or automatic retry from the last
 accepted state. Temporal history requires
 ordered inputs and cannot guarantee recovery after discontinuous motion or
 accepted wrong-basin solutions. See :doc:`temporal-initialization`.
 
-``temporal_fine_correction=True`` is an additional native-only, two-level
+``temporal_fine_correction=True`` is an additional two-level
 option. It preserves fine history while applying the measured coarse change,
 using the absolute seed if complete age-matched history is unavailable. It is
 not a motion predictor or a recovery guarantee. The native-UHD performance
@@ -189,3 +191,25 @@ Accepted status indicates numerical convergence and the configured ZNCC/spatial
 tests. It is not by itself a complete uncertainty estimate. Experiments should
 retain calibration, image quality, subset texture, timing, and rejected-region
 information alongside displacement fields.
+
+Standalone browser companion
+----------------------------
+
+The PWA requires WebGPU and a secure context. It has no WebGL fallback,
+CDN/runtime toolchain, remote solver or SharedArrayBuffer dependency. Limits
+are checked and the seeded layout fits eight storage buffers, but formal
+limits do not guarantee adequate memory or sustained UHD speed on a phone.
+The portable width is 16; subgroups are not required.
+
+Full ROI supports translation and affine. Browser partial supports, truncation,
+Gaussian integration and adaptive pyramids are explicitly rejected. The app
+uses an explicit median/temporal latency configuration; core and Python
+defaults have not changed. Minimal and cubic trajectory profiles are not
+presented as qualified alternatives.
+
+Phone capture is not qualified for metrology. Rolling shutter, optics, motion,
+illumination and exposure locks require separate validation. Demo video is a
+derived compressed asset; lossless UHD fixtures remain the scientific tests.
+Only desktop Linux Chromium execution has been exercised locally. Android,
+iOS/iPadOS Safari, desktop Safari and Firefox remain untested. Portable Python
+CI is not evidence of camera or GPU qualification on those platforms.

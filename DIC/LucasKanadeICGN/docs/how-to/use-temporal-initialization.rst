@@ -70,7 +70,9 @@ the fine seed. It requires complete admissible coarse stencils with histories
 from the same accepted frame as the fine estimate; otherwise the existing
 absolute coarse-to-fine seed is used. Reset clears both histories.
 
-This is native-only and disabled by default. Translation, affine and quadratic
+The Python option is native and disabled by default. The shared browser core
+exposes its equivalent as ``temporalFineCorrection`` for exactly two levels.
+Translation, affine and quadratic
 retain their existing configuration domains; ROI is still restricted to
 translation and affine. Neither iteration ceilings nor tolerances are reduced.
 Compare timing and quality on the actual sequence: lower iteration counts do

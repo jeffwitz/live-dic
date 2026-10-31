@@ -55,11 +55,11 @@ The Three.js GPU graph can therefore be much faster than the complete
 ``engine.register(frame)`` call observed by Python. Kernel timestamps and
 complete-call latency answer different questions.
 
-What a JavaScript supervisor would change
+The JavaScript supervisor now provided
 -----------------------------------------
 
-A competitive browser-native stream needs a persistent JavaScript supervisor
-in the same process as Three.js. It should:
+The standalone PWA now has a persistent JavaScript supervisor around the
+portable WGSL core. It runs in a dedicated worker and performs these tasks:
 
 * receive browser-native video or image frames without a Python round trip;
 * prepare the reference once and retain all GPU resources;
@@ -74,11 +74,17 @@ run, monitor health and timing, and collect reduced outputs. It should not be
 the per-frame transport for every UHD image and complete field if browser
 throughput is the objective.
 
-This repository does not currently provide that JavaScript supervisor. The
-browser implementations expose the numerical kernels and a headless Python
-adapter, which are the prerequisites for it. Adding a supervisor would be a
-separate integration layer and must be qualified at the same complete
-acquisition-to-consumer boundary as the Python path.
+The shared ``web/core`` engine is imported by both the PWA and Python's raw
+WebGPU shim. Its bounded target ring, temporal projection/prediction/merge,
+full ROI and GPU field renderer keep the hot path in the browser. A separate
+camera input kernel performs integer BT.709 luminance conversion. Only small
+statistics return to JavaScript during display; complete fields are read on
+explicit export. This is a raw WebGPU supervisor, not a Three.js stream layer.
+See :doc:`../how-to/run-in-browser` and :doc:`../reference/js-api`.
+
+Its timing starts when a frame reaches the worker. That boundary differs from
+both NumPy-to-NumPy registration and camera-acquisition-to-display latency.
+Keep them separate when evaluating an application.
 
 Decision rule
 -------------
@@ -95,9 +101,9 @@ Decision rule
      - Avoids the Chromium process boundary and matches the intended product
        model.
    * - Browser-native input and browser-local output
-     - JavaScript supervisor + Three.js or raw WebGPU
+     - PWA JavaScript supervisor + portable WebGPU
      - Keeps the stream and result consumers in the browser process; this
-       supervisor remains future work.
+       supervisor is implemented by the PWA. Three.js remains a separate Python backend.
    * - NumPy input with browser compatibility required
      - Python + ``ICGNWebGL``
      - Functional and useful for qualification, but the binary process copies

@@ -67,14 +67,16 @@ width as the grayscale reference is accepted. Conversion, thresholding,
 cropping, and resizing are never implicit. Invalid masks and policies fail
 before reference GPU execution. ``roi_mask=None`` preserves the historical
 path. An all-true mask uses the same GPU resources, pipelines and arithmetic
-as no mask. An all-false mask is valid and returns an empty dense field without
-per-frame GPU upload, submission, solve, or readback.
+as no mask. An all-false mask is valid. Native engines return an empty dense field without
+per-frame GPU upload, submission, solve, or readback. Browser display may still
+copy a colour frame for presentation, but does not launch correlation.
 
 The optional ``partial`` policy retains connected local supports at boundaries;
 see :doc:`use-partial-roi` for its separate numerical and geometric contracts.
 A ROI with the quadratic model is rejected; quadratic
-processing without a ROI is preserved. Browser engines and the browser-only
-``register_pair`` helper explicitly reject ROI requests.
+processing without a ROI is preserved. Three.js/GPU-IO explicitly reject ROI.
+The browser-only ``register_pair`` helper retains its Three.js default; choose
+``backend="webgpu-wgsl"`` explicitly to use a full mask.
 
 Pyramids, seeds, and neighbourhoods
 -----------------------------------
@@ -154,3 +156,14 @@ The benchmark warms the actual stream and reports image-to-field latency,
 result age, median/p95/p99, sustained throughput, selected population, iteration
 distribution and raw samples. Preparation is reported separately. Lavapipe
 checks correctness; its times do not qualify hardware GPU real-time operation.
+
+Raw browser core
+----------------
+
+``ICGNWebGL(backend="webgpu-wgsl")`` also accepts ``roi_mask`` with full policy
+at reference preparation. Its results and NPZ exports retain the same static
+ROI plan. The standalone JavaScript engine accepts row-major 0/1 Uint8Array
+masks; its UI builds these from a polygon or rectangle. Both use the canonical
+ROI-enabled WGSL, conservative reduction and prepared link permissions.
+Partial supports, Gaussian weighting and truncation remain native features.
+Three.js and GPU-IO continue to reject ROI explicitly.

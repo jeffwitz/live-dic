@@ -13,6 +13,12 @@ The engineering goal is qualified **4K60**, with throughput and result age
 reported separately. See the [performance and hardware coverage reference](https://github.com/jeffwitz/live-dic/blob/main/DIC/LucasKanadeICGN/docs/reference/performance.rst)
 for measured workloads and limitations.
 
+A separate [browser application](https://github.com/jeffwitz/live-dic/blob/main/DIC/LucasKanadeICGN/docs/how-to/run-in-browser.rst)
+now supervises camera/demo frames locally in JavaScript, using the same
+portable WGSL core. It provides worker backpressure, full ROI and GPU display;
+its UI/demo assets are assembled separately from this Python wheel. It does
+not change the native Python defaults or qualify phone metrology.
+
 ## Installation and stable names
 
 With Python 3.11 or newer, from this `python/` directory:
@@ -113,7 +119,8 @@ with ICGNWGPUFullPyramid() as engine:
 
 `True` retains pixels. The default `full` policy selects a subset only when
 all pixels of its nominal square are allowed. Explicit `partial` uses fixed
-connected boundary supports. Browser engines reject ROI options.
+connected boundary supports. Raw `webgpu-wgsl` also accepts full ROI;
+Three.js/GPU-IO reject it, and browser partial ROI is unsupported.
 `roi_selected`, `reference_valid` and `accepted_mask` represent different
 populations; excluded points are not measurements of zero motion. NPZ exports
 include mask data, selection and strict `config_json`, readable with
@@ -158,7 +165,8 @@ the API does not silently map an arbitrary 12/16-bit range.
 `backend="webgpu-wgsl"` selects the shared WGSL full pyramid. Historical
 `backend="gpuio"` is deprecated. Browser targets use binary transport, but
 images and full fields still cross between Python and Chromium. A separate
-JavaScript stream supervisor is not provided by live-dic.
+standalone PWA supplies a JavaScript supervisor for the shared raw-WebGPU
+core. It consumes browser-local frames and keeps the field on GPU for display.
 
 The one-shot `register_pair()` and existing `icgn-webgl` CLI retain their
 browser defaults. Native applications should use the persistent classes.

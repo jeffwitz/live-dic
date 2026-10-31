@@ -7,7 +7,8 @@ translation and affine models. Results expose ``roi_selected``,
 ``reference_valid``, ``populations`` and ``save_npz(path)``. See
 :doc:`../how-to/use-roi` for selection, pyramid, filtering and export contracts.
 The optional ``partial`` policy and ``roi_truncation="visibility"`` are described
-in :doc:`../how-to/use-partial-roi`. Browser engines reject ROI requests.
+in :doc:`../how-to/use-partial-roi`. Raw ``webgpu-wgsl`` supports full ROI; Three.js and GPU-IO reject ROI.
+Browser partial supports and truncation remain unsupported.
 
 Supervision contract
 --------------------

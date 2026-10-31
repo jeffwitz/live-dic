@@ -49,9 +49,12 @@ adapter; skipped GPU tests do not validate numerical execution.
   `ICGNWGPUFullPyramid` is recommended and has two fixed levels by default.
   `ICGNWGPU` is single-scale by default; selective retry is a distinct optional
   compatibility path. Do not silently substitute one policy for another.
-- `ICGNWebGL` and the existing CLI retain their browser defaults. Browser ROI
-  requests must be rejected, never ignored. A JavaScript stream supervisor is
-  a future integration, not an implemented component.
+- `ICGNWebGL` and the existing CLI retain their browser defaults. Raw
+  `webgpu-wgsl` supports full ROI; Three.js/GPU-IO reject masks. Browser partial
+  supports/truncation/Gaussian integration remain unsupported. The standalone
+  PWA implements a JavaScript supervisor around `web/core`; it does not add a
+  Three.js stream layer or WebGL fallback. Keep both the Python shim and PWA
+  on the same canonical core and WGSL sources.
 - The distribution is `lucas-kanade-icgn-webgl`, the import is
   `lucas_kanade_icgn`, and the CLI is `icgn-webgl`. Keep these stable unless a
   separate migration is requested. `wgpu` is a standard dependency.

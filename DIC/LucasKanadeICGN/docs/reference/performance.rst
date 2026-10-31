@@ -1004,3 +1004,132 @@ include both fixed and own populations, rejected counts, all timing samples,
 preparation times, hardware and input hashes. The campaign README in the same
 directory provides the command, the complete two-slot table, image-formation
 error convention and limitations. See :doc:`../how-to/use-temporal-initialization`.
+
+.. _browser-core-qualification:
+
+Shared browser core and binding migration (2026-10-31)
+------------------------------------------------------
+
+This campaign starts at ``b9d23a2`` and qualifies the shared packing and
+JavaScript host extraction. It does not change Python defaults. The ordinary
+layout now uses six storage buffers and seeded solving eight, with unchanged
+WGSL equations. Metadata/Hessians and the two FIR planes are packed separately
+from the large reference. Solver coefficient views keep their original bounds.
+
+Native parameters, statuses and iterations are **bit-identical in all 441
+arrays from 49 UHD configurations**. Coverage includes all three models,
+levels 1/2/3, zero/temporal initialization, the admissible two-level latency
+profile and translation/affine full/partial ROI. Late frames verify layout
+parity, not capture range. See the
+`binding-budget protocol, repeatability criteria and raw reports
+<https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/binding-budget-20261031>`_.
+
+.. list-table:: Alternating native A/B, NumPy UHD image to materialized NumPy field
+   :header-rows: 1
+
+   * - Pair
+     - Before / after FPS
+     - Before / after age median (ms)
+     - Before / after age p95 (ms)
+   * - 0
+     - 83.62 / 86.96
+     - 12.095 / 11.809
+     - 13.755 / 12.857
+   * - 1
+     - 86.25 / 88.46
+     - 11.840 / 11.307
+     - 12.772 / 13.010
+   * - 2
+     - 79.85 / 87.22
+     - 12.688 / 11.620
+     - 14.916 / 12.509
+
+Intel Lunar Lake Vulkan/Mesa 25.2.8, performance power profile, affine 16/16,
+B-spline, median, two fixed levels, raw-history velocity/fine correction,
+finest stopping 3/4, one slot, 20 warmups and 180 measured changing frames.
+Input hashes and numerical quality match across each pair. No regression
+exceeds the repeatability margin declared before modification. Existing desktop
+applications remained open; no tests/builds ran during the timed pairs.
+These runs do not isolate a universal speedup or qualify mobile performance.
+
+Browser/native correctness
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The temporal comparison uses sixty ordered frames per model/depth, a cropped
+archived tensile texture with replayed stretch history, three black frames,
+expiry and reset. Translation/affine and depths 1/2 give 240 frame rows per
+runtime comparison. Criteria were declared before execution: common-accepted
+parameter RMSE at most 0.002, maximum absolute difference 0.02, status mismatch
+fraction at most 0.005 and iteration mismatch fraction at most 0.02 per frame.
+Every difference and exceedance is retained. These are cross-runtime parity
+criteria, not metrology uncertainty bounds.
+
+.. list-table:: Observed cross-runtime differences
+   :header-rows: 1
+
+   * - Comparison
+     - Status disagreements
+     - Iteration disagreements, total
+     - Largest common-accepted parameter difference
+   * - Native Intel Vulkan / Chromium Intel WebGPU, 240 rows
+     - 0
+     - 10
+     - 0.001481
+   * - Native CPU Vulkan / Chromium SwiftShader, 240 rows
+     - 0
+     - 16
+     - 0.001451
+   * - Native / browser UHD tensile frame 40, full ROI
+     - 0
+     - 32
+     - 0.003603
+   * - Native / browser UHD plate-hole frame 95, full ROI
+     - 0
+     - 9
+     - 0.000391
+
+UHD tensile browser output accepts 24,975 of 24,980 selected subsets. On the
+specified selected interior population its displacement RMSE is 0.02419 px,
+p95 0.04499 px and coverage 99.992%. This is not the same population as the
+unmasked browser extraction result. UHD plate output accepts 31,474 of 32,220
+selected positions, equal to native. The remaining outer interpolation ring
+is a numerical-domain rejection, not an ROI exclusion.
+
+The core is not bit-identical across runtimes. JavaScript reference inversion
+and backend floating-point lowering are potential contributors; their effects
+were not isolated. No scientific gate was relaxed. Geometry tests separately
+compare exact selection, conservative mask reduction, neighbour bits and seed
+permissions against Python. GPU tests cover luminance, empty/thin masks,
+bounded admission and GPU sampling for decimated readback.
+
+`Browser protocol and per-frame reports
+<https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/browser-core-20261031>`_
+retain input hashes, configurations and the actual runtime identity. Software
+execution establishes correctness, not hardware FPS. The browser-software CI
+job is prepared; local success does not assert a GitHub Actions result for
+unpublished commits.
+
+Browser display boundary
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+The PWA is a separate timing boundary: frame available in the worker to an
+observable GPU field plus small HUD summaries. Rendering/presentation, camera
+acquisition and complete-field export are separate. The demo source is a
+30 Hz, derived compressed 1080p movie; its completed FPS cannot prove 60 Hz
+acquisition. It is not a replacement for native-UHD fixtures.
+
+The browser campaign retains a sustained run, age samples over time, decoded
+frame indices, acceptance/error and an offline reload after stopping the
+static server. See :doc:`../explanation/browser-portability` for the tested
+browser/adapter and the untested mobile/Safari/Firefox matrix. The full field
+stays on GPU during display; CSV export performs an explicit full readback.
+
+The whole-accepted-field demo metric exposes a retained limitation: frames
+146--148 contain an accepted wrong-basin vector near the left image edge,
+raising global displacement RMSE to approximately 0.687 px. Native replay of
+the decoded movie reproduces the same errors. The reference centre
+(55.5, 567.5) truly moves outside the observable image; the accepted estimate
+is about 59 px from truth. This is not a JS/native discrepancy. The reports
+retain it, with no output filtering or population change to hide the failure.
+It reinforces the distinction between the qualified interior UHD tests and
+an unqualified whole-image demonstration/camera measurement.

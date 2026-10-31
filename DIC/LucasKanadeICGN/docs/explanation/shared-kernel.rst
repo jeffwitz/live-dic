@@ -136,22 +136,16 @@ GPU buffers
      - ``texture_2d<f32>``, ``r8unorm``
    * - 1
      - configuration
-     - six ``u32`` followed by two ``f32`` values, 32 bytes
+     - six ``u32``, two ``f32``, then inverse-offset and three padding ``u32`` values, 48 bytes
    * - 2
-     - horizontal FIR temporary
-     - one ``f32`` per pixel
-   * - 3
-     - cubic target coefficients
-     - one ``f32`` per pixel
+     - packed target coefficients and horizontal FIR temporary
+     - first plane: one coefficient ``f32`` per pixel; second plane: one temporary ``f32`` per pixel
    * - 4
      - reference data
      - ``vec4(F, gx, gy, padding)`` per pixel
-   * - 5
-     - inverse Hessian
-     - 1, 9, or 36 ``vec4`` values per subset for translation, affine, or quadratic
    * - 6
-     - reference metadata
-     - two, four, or seven ``vec4`` values per subset
+     - metadata, optional static ROI tables, then inverse Hessians
+     - metadata: four ``vec4`` per translation/affine subset, seven for quadratic; inverse: nine or 36 ``vec4`` per subset, starting at ``config.inverse_offset``
    * - 7
      - solver state
      - two ``vec4`` values, or four in quadratic mode
@@ -223,7 +217,8 @@ subsets leave the iteration loop without violating barrier uniformity.
 The shared ``solve_seeded`` entry point calls the same ``solve_subset`` body
 with bindings 10 and 11. The ordinary ``solve`` entry point does not reference
 those bindings, so one-scale browser and native pipelines retain their original
-ten-entry bind-group layout. Optional selective recovery allocates seed
+eight-entry bind-group layout (six storage buffers). Seeded solving adds
+two storage entries and stays within the guaranteed eight-storage-buffer budget. Optional selective recovery allocates seed
 resources lazily; the recommended full-pyramid browser and native adapters
 allocate them once for every finer level. The ``retry_seeded`` entry point uses the same equations
 and seed bindings, but preserves the existing state of disabled subsets.
@@ -233,16 +228,19 @@ for a disabled subset, so a cleared buffer cannot be mistaken for a computed
 partial estimate.
 
 ``full_pyramid.wgsl`` orchestrates the pyramid without duplicating IC-GN
-equations. The browser uses ``reduce_x`` and ``reduce_y``; native uses the
-pixel-equivalent tiled ``reduce_fused`` entry point without an intermediate
-texture. ``transfer_seed`` interpolates, recentres and rescales the coarser
+equations. Native and the extracted browser core use the pixel-equivalent tiled
+``reduce_fused`` entry point. The separable reference entry points remain
+available for numerical regression. ``transfer_seed`` interpolates, recentres and rescales the coarser
 polynomial field; its ROI variant applies prepared link permissions.
-Native temporal entry points project and merge accepted history. The optional
+Canonical temporal entry points project and merge accepted history in native
+and JavaScript hosts. The optional
 ``refine_temporal_seed`` entry point applies the measured coarse change to
 fine history when complete age-matched stencils exist. All numerical solve
 operations remain in ``icgn.wgsl``. Native records ordered dispatches in one
 compute pass; the browser retains its separate compute passes. Both submit
-one command buffer and read back only the final field.
+one command buffer. The Python bridge reads the final field; the PWA can keep
+it on GPU and read only small display summaries. See
+:doc:`browser-portability` for input conversion, packing and ordering.
 
 Change policy
 -------------

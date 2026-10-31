@@ -9,10 +9,10 @@ live-dic's primary deployment is Python-supervised: Python owns acquisition
 integration, engine lifetime, bounded queues, timing, and NumPy outputs. The
 native wgpu path is the reference performance architecture for that boundary.
 The browser adapter is deliberately measured as a complete Python call, not
-only as a Three.js timestamp. A future JavaScript supervisor could remove the
-per-frame Python/Chromium copies by keeping browser-native frames and result
-consumers in Chromium; it is not currently implemented. See
-:doc:`supervision`.
+only as a Three.js timestamp. The standalone PWA now removes the per-frame
+Python/Chromium path for browser-native acquisition and GPU display. Its worker
+frame-to-field boundary and explicit export cost are measured separately; they
+are not NumPy-to-NumPy times. See :doc:`supervision`.
 
 Latency boundaries
 ------------------

@@ -2,7 +2,7 @@ Portable browser engine and resource budget
 ===========================================
 
 The browser front-end uses the canonical WGSL sources packaged with Python.
-The JavaScript host is being separated from the Python binary-transport shim;
+The JavaScript host is separated from the Python binary-transport shim;
 the equations must not acquire a second browser implementation.
 
 Phase 0: binding audit (pre-change b9d23a2)
@@ -115,3 +115,173 @@ showed no regression outside the predeclared repeatability margin. Quality
 reports were identical. See the reproducible
 `binding-budget report <https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/binding-budget-20261031>`_.
 These are native NumPy-to-NumPy measurements, not browser camera timings.
+
+Three layers, one solver source
+-------------------------------
+
+.. image:: ../_static/browser-flow.svg
+   :alt: Bounded worker, GPU luminance, canonical WGSL and direct field display
+
+``web/core`` is a dependency-free ES-module library. ``web-app`` owns camera
+permissions, controls, worker admission, rendering and downloads. The Python
+``webgpu-wgsl`` page is a thin compatibility shim around that same core;
+BinaryTransport remains outside it. Three.js/TSL and historical GPU-IO are
+separate backends and are not dependencies of the application.
+
+An engineer can think of a shader as a function run many times on the GPU.
+The CPU host prepares arrays and records the ordered calls. The solver
+workgroup cooperatively processes a subset: with 16 lanes and 256 pixels,
+each lane handles 16 pixels before sums are reduced. This is distinct from
+a 256-lane FIR/input/median workgroup and from the number of frames in flight.
+See :doc:`webgpu-fundamentals` for the underlying vocabulary.
+
+Only the host was ported. ``icgn.wgsl`` owns the IC-GN equations, model updates,
+convergence and spatial policies. ``full_pyramid.wgsl`` owns reduction, seed
+transfer and temporal equations. ``input.wgsl`` converts colour and
+``result.wgsl`` computes diagnostic summaries; neither rewrites LK.
+``reference.js`` is the cold CPU preparation, moved from the common browser
+helper; Python retains its NumPy preparation. Floating-point preparation and
+backend lowering can differ, so sharing WGSL is not a promise of bit-identical
+JavaScript/Python fields. The cross-runtime tests report these differences.
+
+Input without a pixel round trip
+--------------------------------
+
+A transferred VideoFrame/ImageBitmap retains browser-managed image ownership.
+``copyExternalImageToTexture`` copies its colour image to a GPU texture.
+The luminance kernel first recovers the three uint8 channel values, then uses
+
+.. code-block:: text
+
+   gray = floor((2126*R + 7152*G + 722*B + 5000) / 10000)
+
+This is BT.709 rounding to nearest byte with ties upward. The integer numerator
+avoids ambiguous floating-point half-byte rounding. The storage output is
+``rgba8unorm`` with the same gray byte in RGB; the solver reads its red channel,
+just as it reads an ``r8unorm`` NumPy upload. The kernel is tested against an
+independent CPU integer formula, including odd dimensions.
+
+The hot external-image path never constructs a JavaScript CPU pixel image or
+reads target pixels back. The cold reference reads luminance once for reference
+preparation. A Uint8Array still uploads directly through the original r8 path.
+The Python compatibility shim retains its existing monochrome reference
+convention. RGB camera luminance is explicit and should not be assumed equal
+to Pillow's different RGB-to-L conversion.
+
+This does not certify hardware decoding or zero-copy acquisition. Browsers and
+drivers may stage or copy external images internally. Transfers of browser
+image objects avoid an application-level pixel serialization; they are not
+cross-process shared NumPy memory.
+
+Slots, history and presentation
+-------------------------------
+
+Reference buffers, metadata, Hessians, static ROI links and uniform schedules
+are shared. Every admitted frame has separate target textures, FIR scratch,
+state, seed/activity buffers, counters and mapped readback. These resources and
+pipelines are prepared before the sequence. A full ring rejects new admission;
+the application drops and closes the incoming frame rather than growing a
+promise queue.
+
+Submission n updates the shared history before submission n+1 reads it through
+the ordered GPU queue. Velocity uses accepted raw history, never predicted or
+median-smoothed output as its own observation. Fine correction and age-matched
+stencils use the canonical temporal entry points. Only the finest solve has
+stagnation stopping. Every configured fixed-pyramid level runs on every frame.
+Reset and reference replacement wait for pending work.
+
+The renderer reads ``fieldBuffer`` on that device. It renders into an
+OffscreenCanvas in the worker and transfers an ImageBitmap for main-thread
+presentation, without CPU field readback. This also avoids a headless Vulkan
+surface-presentation limitation observed in the local harness. A platform
+without OffscreenCanvas uses the same session and GPU renderer on the main
+thread; that fallback is implemented but is not part of the local worker
+performance qualification.
+
+GPU-only display returns small per-workgroup sums/maxima and temporal counters
+for the HUD. This is a small-readback path, not a zero-byte claim. Full export
+is explicit and measured separately. See :doc:`../reference/js-api` for typed
+full/decimated results and lifetime rules.
+
+ROI and resource limits
+-----------------------
+
+Full ROI uses the native selection, reflected five-tap mask reduction and
+closed-box neighbour/seed permissions. Geometry and hashes are prepared in
+reference coordinates once. A fine selected point remains active without a
+coarse seed and falls back to zero. Empty masks produce exclusions, not failed
+correlations. Full/partial supports must not be conflated: partial and
+truncation are explicitly unavailable in the browser. Gaussian integration is
+also native-only. The full-policy preprocessing scope is explained once in
+:doc:`../how-to/use-roi`.
+
+The audit table counts binding limits per actual pipeline layout. It does not
+measure total memory. UHD uses almost the guaranteed 128 MiB for the reference
+alone; input colour/gray textures, scratch, histories, slots and cold CPU
+preparation add substantial memory. The formal limits can fit while allocation
+fails on a mobile device. Do not copy every advertised adapter limit into a
+device request or infer an optimal workgroup width from a vendor name.
+
+``probeCapabilities`` combines checked limits with a short on-device graph
+benchmark. It tries only fitting resolutions, keeps raw samples and reports
+its recommendation and reasons. A static zero-motion benchmark is advisory;
+thermal throttling, motion, video decoding and display require longer runs.
+No subgroup feature is required. Minimal/adaptive/cubic trajectory shortcuts
+are not promoted after failed or missing native gates.
+
+Static distribution and offline coherence
+-----------------------------------------
+
+The assembler copies core and canonical WGSL to a static tree, checks shader
+and demo hashes, and embeds the source revision in the service-worker version.
+The site uses relative module URLs, including when hosted under ``/live-dic/``.
+The CSP permits same-origin scripts and prohibits inline scripts/eval. There
+are no CDN, analytics, SharedArrayBuffer or COOP/COEP requirements.
+
+The service worker caches shell, modules, shaders and demonstration data,
+including range responses from its cached video. Cache namespaces include the
+site scope. New workers wait for old clients to finish before activation;
+old caches are removed at activation. Dirty local builds add a content digest
+to the commit-derived version. The app can run offline after a successful first
+installation, subject to browser storage quotas.
+
+Qualification scope and device matrix
+-------------------------------------
+
+Native layout parity, hardware/CPU browser parity, UHD ROI and demo reports
+are linked from :ref:`browser-core-qualification`. Tolerances were declared
+before the temporal comparisons; complete frame rows retain all status,
+iteration and parameter differences. No tolerance was relaxed to pass the port.
+The original lossless UHD fixtures remain unchanged.
+
+.. list-table:: Actual coverage, not inferred device support
+   :header-rows: 1
+
+   * - Platform/browser
+     - Execution
+     - Qualification scope
+   * - Desktop Linux Chromium, Intel Lunar Lake Vulkan
+     - Local headless browser, dedicated worker and GPU display snapshot
+     - Core parity, UHD fixtures, demo. Camera hardware and interactive capture not qualified.
+   * - Desktop Linux Chromium, SwiftShader
+     - Local software WebGPU
+     - Core/input/ROI tests and demo smoke. Software times do not qualify live GPU performance.
+   * - Native Linux lavapipe
+     - CPU Vulkan adapter
+     - Software reference for cross-runtime correctness, not hardware timing.
+   * - Android Chrome
+     - Untested
+     - No device/browser/adapter/FPS evidence.
+   * - iOS/iPadOS Safari
+     - Untested
+     - No device/browser/adapter/FPS evidence.
+   * - Desktop Safari
+     - Untested
+     - No Metal/browser-camera qualification.
+   * - Firefox
+     - Untested
+     - No browser WebGPU execution evidence for this application.
+
+Portable OS CI and the prepared browser-software CI job do not certify those
+untested devices. Camera locks, optics, rolling shutter and hand-held motion
+remain separate metrology questions.

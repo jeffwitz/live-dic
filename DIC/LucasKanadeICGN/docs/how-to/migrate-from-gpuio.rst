@@ -9,7 +9,8 @@ temporarily for historical reproducibility and replacement qualification.
 This guide concerns browser compatibility only. For the intended
 Python-supervised NumPy pipeline, ``ICGNWGPUFullPyramid`` remains the
 recommended execution path. A performance-oriented browser-native stream
-would need the JavaScript supervisor described in :doc:`../explanation/supervision`.
+uses the standalone raw-WebGPU supervisor described in
+:doc:`../explanation/supervision`. Three.js remains the compatibility backend.
 
 Update Python code
 ------------------

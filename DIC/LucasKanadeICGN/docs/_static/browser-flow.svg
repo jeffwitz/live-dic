@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="330" viewBox="0 0 1000 330" role="img" aria-label="Frames enter a bounded worker; GPU conversion, shared WGSL and rendering stay local. Only small statistics and explicit exports return to CPU.">
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="none" stroke="#3c7773" stroke-width="1.5"/></marker></defs>
+<rect width="1000" height="330" fill="white"/>
+<rect x="210" y="24" width="770" height="270" rx="14" fill="#edf5f2" stroke="#94b8ad"/>
+<g font-family="sans-serif" text-anchor="middle" fill="#183b47" font-size="16">
+<text x="593" y="54" font-size="18" font-weight="bold">Bounded worker · one ordered GPU queue</text>
+<rect x="14" y="97" width="162" height="86" rx="8" fill="#f0f3f5" stroke="#9aafb5"/><text x="95" y="130">Camera / demo</text><text x="95" y="155" font-size="13">VideoFrame ownership</text>
+<rect x="237" y="97" width="180" height="86" rx="8" fill="white" stroke="#94b8ad"/><text x="327" y="130">GPU luminance</text><text x="327" y="155" font-size="13">integer BT.709 → gray</text>
+<rect x="474" y="97" width="206" height="86" rx="8" fill="white" stroke="#94b8ad"/><text x="577" y="125">Canonical WGSL</text><text x="577" y="150" font-size="13">pyramid · temporal · IC-GN</text><text x="577" y="170" font-size="13">same source as Python</text>
+<rect x="738" y="97" width="210" height="86" rx="8" fill="#173e49"/><text x="843" y="130" fill="white">GPU field → overlay</text><text x="843" y="155" fill="white" font-size="13">ImageBitmap presentation</text>
+<text x="577" y="235" font-size="13">Small HUD summaries each frame</text><text x="577" y="260" font-size="13">Full field + metadata only on explicit export</text>
+<text x="106" y="265" font-size="12">Reference / ROI</text><text x="106" y="284" font-size="12">prepared once, while idle</text>
+</g><g stroke="#3c7773" stroke-width="2" fill="none" marker-end="url(#arrow)"><path d="M176 140h61"/><path d="M417 140h57"/><path d="M680 140h58"/><path d="M577 183v32"/><path d="M170 265h55V205h250"/></g>
+</svg>

@@ -21,6 +21,20 @@ This is evidence for the recorded configurations, not certification of every
 GPU, OS or architecture. Camera acquisition and downstream processing remain
 outside the numerical engine's timing boundary.
 
+## Browser camera and analytic demo
+
+A standalone **WebGPU application** now provides browser-local camera/demo
+supervision, a bounded worker, full ROI, temporal prediction, GPU field display
+and on-demand CSV/JSON export. It imports the same portable WGSL core as the
+Python raw-WebGPU adapter. It has no Three.js/CDN dependency and can run offline
+after its first installation.
+
+[Run the browser application locally or prepare Pages](DIC/LucasKanadeICGN/docs/how-to/run-in-browser.rst).
+The Pages workflow is ready; repository-owner activation/deployment is separate.
+Phone capture is a demonstration and field-screening tool, **not qualified for
+metrology**. Native NumPy-to-NumPy timings and browser worker/display timings
+have different boundaries; consult the performance reference.
+
 ## Start with the native Python engine
 
 From the repository root, with Python 3.11 or newer:
@@ -83,7 +97,7 @@ remain usable.
 - **ROI:** native translation and affine accept a reference-sized boolean
   mask. `True` means retain. Default `roi_policy="full"` selects only complete
   nominal windows; explicit `"partial"` uses qualified connected boundary
-  supports. Browser backends reject ROI requests.
+  supports. Raw browser WGSL also supports full ROI; Three.js/GPU-IO reject it.
 - **Spatial policy:** default `outlier_policy="replace"` detects displacement
   outliers and replaces the complete local state. `"flag"` preserves raw
   values, `"disabled"` omits the pass, and `"median"` explicitly smooths every
@@ -122,8 +136,8 @@ distribution is still `lucas-kanade-icgn-webgl`, imported as
 
 Browser calls transfer images and fields between Python and Chromium. Binary
 transport removes per-frame PNG/JSON encoding, but does not share NumPy memory.
-A competitive browser-native Three.js stream would need a **JavaScript
-supervisor**, which is not provided here. See
+The standalone app now supplies that supervisor for the portable raw-WebGPU
+core. Three.js remains a separate Python compatibility backend. See
 [supervision](DIC/LucasKanadeICGN/docs/explanation/supervision.rst).
 
 ## Documentation and evidence

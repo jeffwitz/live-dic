@@ -10,8 +10,9 @@ The project itself does have a primary supervision model: Python owns the
 measurement workflow. For NumPy input and NumPy fields, native wgpu is the
 recommended data plane. A browser backend can be controlled from Python for
 compatibility and qualification, but competitive browser-native streaming
-requires a JavaScript supervisor that keeps the per-frame path inside
-Chromium. See :doc:`supervision`.
+uses the standalone PWA supervisor around the shared raw-WebGPU core.
+It keeps frames and display in the browser; see :doc:`supervision` and
+:doc:`../how-to/run-in-browser`.
 
 Current recommendation
 ----------------------

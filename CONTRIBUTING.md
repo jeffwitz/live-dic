@@ -18,7 +18,7 @@ The examples below use `python3`, `ruff` and `node` from the intended environmen
 Activate it or use the corresponding executable paths. On Windows, activate
 `.venv-icgn\Scripts\Activate.ps1` and use `python` instead of `python3`.
 Native execution needs a GPU/software-adapter driver; only browser integration
-needs Chromium. Node is needed only for JavaScript syntax checks.
+needs Chromium. Node is needed for JavaScript syntax and CPU geometry/queue contract tests.
 
 ## Required local checks
 
@@ -36,6 +36,17 @@ remove that variable for a portable-only run. A skipped GPU test is not proof
 of execution. With GPU tests enabled, missing adapters or shader errors are
 failures. Lifecycle tests also run on a software adapter. Performance campaigns
 must explicitly use hardware and record the actual selected adapter.
+
+Browser execution is separately enabled with `ICGN_RUN_BROWSER_TESTS=1`.
+The native and browser flags can be combined. For Chromium SwiftShader use
+`ICGN_BROWSER_SOFTWARE=1`; its times are correctness evidence only. The
+`browser-software` CI job also compares sixty chronological frames per model
+and slot depth, then exercises the assembled demo under a subpath.
+
+Build the static companion with `python3 tools/build_pages.py --output _site`.
+`tools/smoke_browser_app.py` checks it through the existing Chromium harness;
+see the browser guide for the complete command and timing boundaries. The
+Pages workflow is prepared; enabling publication is a repository-owner action.
 
 For changed JavaScript, run `node --check` on each affected module. At minimum,
 check the packaged GPU-IO, Three.js and raw-WebGPU entry modules when changing

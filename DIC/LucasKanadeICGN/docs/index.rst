@@ -51,14 +51,17 @@ One slot minimizes result age; the API default of two prioritizes throughput.
 
 ``ICGNWebGL()`` retains Three.js/TSL as its browser default, with WebGPU and
 WebGL2 fallback. Raw browser ``webgpu-wgsl`` loads the common WGSL full
-pyramid. GPU-IO is deprecated. Browser ROI requests are rejected explicitly.
+pyramid. GPU-IO is deprecated. Full ROI is supported by the raw WGSL core;
+Three.js and GPU-IO still reject ROI requests.
 The existing CLI and one-shot helper remain browser interfaces; their defaults
 have not changed. See :doc:`explanation/backend-selection`.
 
-Browser binary transport removes per-frame PNG and JSON encoding, but still
-copies images and fields between Python and Chromium. A competitive
-browser-native Three.js stream would need its own JavaScript supervisor,
-which is not implemented here. See :doc:`explanation/supervision`.
+The standalone :doc:`how-to/run-in-browser` application now provides a
+JavaScript supervisor for browser-local WebGPU camera/demo processing. It uses
+the same portable core as the Python raw-WGSL adapter and supports full ROI,
+temporal history and GPU display. It does not use Three.js or WebGL fallback.
+Python browser binary transport still crosses a process boundary; see
+:doc:`explanation/supervision` for the distinct data-ownership choices.
 
 Current numerical scope
 -----------------------
@@ -108,6 +111,7 @@ when exporting a measurement with :doc:`how-to/export-results`.
    :caption: How-to guides
 
    how-to/install
+   how-to/run-in-browser
    how-to/migrate-from-gpuio
    how-to/process-live-frames
    how-to/benchmark
@@ -124,6 +128,7 @@ when exporting a measurement with :doc:`how-to/export-results`.
    :caption: Reference
 
    reference/api
+   reference/js-api
    reference/result-layout
    reference/command-line
    reference/performance
