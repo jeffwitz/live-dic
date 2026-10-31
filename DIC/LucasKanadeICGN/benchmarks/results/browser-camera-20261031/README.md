@@ -23,3 +23,16 @@ This is correctness and ownership evidence under development load, not an
 isolated timing campaign, a 60 FPS claim, a physical camera test, or mobile
 qualification. Manual exposure/focus/white balance are not exposed by this fake
 device and are reported as unavailable.
+
+`software.json` repeats the controls and ownership checks on SwiftShader,
+including both capture paths. It needs a long observation interval: the retained
+`software-short-negative.txt` shows an initial 10-second run in which an in-flight
+UHD solve did not complete before the observation ended. The 65-second run
+progressed from 3 to 7 completed results and passed the finite-field/lifecycle
+checks. This is not hardware performance evidence. Different camera capture
+phases choose different references/targets, so accepted counts between these
+reports are not numerical parity measurements.
+
+The local Python CI for `7f6fe65` completed successfully, including the UHD
+local-source, results-workbench and mask-image SwiftShader jobs. This fake-camera
+follow-up was tested locally; it is not asserted to be part of that CI run.
