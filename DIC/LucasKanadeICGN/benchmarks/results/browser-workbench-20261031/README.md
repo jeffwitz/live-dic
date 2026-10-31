@@ -49,3 +49,24 @@ is not physical mobile hardware qualification.
 
 The complete local suite passed 242 tests with native GPU and browser tests
 enabled, no skips. These tests exercise correctness, not isolated live FPS.
+
+## Navigation and review-only follow-up
+
+`navigation-hardware.json` / `navigation-software.json` additionally exercise
+compatible-analysis batch recipes, bounded two-hertz result replay and the
+saved-field slider. `mobile-chart.png` shows the responsive region histogram.
+These are UI correctness runs, not acquisition-rate measurements.
+
+`review-no-webgpu.json` simulates a missing navigator.gpu and OffscreenCanvas
+before app startup, then opens the actual archived-output UHD NPZ. It recovers
+31,474 valid equivalent-strain values with statistics checked against NumPy.
+`review-no-worker.json` also removes Worker, exercising pure CPU main-thread
+analysis and an ordinary HTML canvas. The harness initially bootstraps Chromium
+using SwiftShader; no correlation is run in the review-only application page.
+These checks do not certify an untested browser or provide CPU IC-GN fallback.
+
+```bash
+python tools/qualify_browser_review.py --site _site --software \
+  --field /tmp/workbench/processed-field.npz --output /tmp/review
+# Add --no-worker to exercise main-thread analysis.
+```

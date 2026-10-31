@@ -47,6 +47,8 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   let requestId = 0, workerBusy = false, pendingAnalysis = false, workerFieldId = null, debounce = null;
   let pendingImport = null, importSerial = 0;
   let history = null, historyAbort = null, lastChartRows=[], lastChartOptions={};
+  let replaying=false,replayTimer=null,replayIds=[];
+  function stopReplay(){replaying=false;clearTimeout(replayTimer);replayTimer=null;$('replay-results').textContent='Replay matching results · 2 Hz';}
   let projectRevision=0, downloadedRevision=0;
   const hasUnsaved=()=>entries.length>0&&projectRevision!==downloadedRevision;
   const changed=()=>{projectRevision++;};
@@ -112,6 +114,9 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     $('save-project').disabled=!entries.length;
     const index=entries.findIndex(entry=>entry.id===selected);
     $('previous-result').disabled=index<=0;$('next-result').disabled=index<0||index>=entries.length-1;
+    $('result-seek').max=Math.max(0,entries.length-1);$('result-seek').value=Math.max(0,index);$('result-seek').disabled=!entries.length;
+    $('result-order').textContent=index>=0?`${index+1} / ${entries.length} · saved order`:`${entries.length} saved fields`;
+    const base=activeEntry()??entries[0];$('replay-results').disabled=!base||entries.filter(entry=>sameAnalysis(base,entry)).length<2;
   }
   function add(field, metadata = {}, { select = false, mask = currentMask, recipe = null } = {}) {
     validateField(field);
@@ -128,7 +133,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     return entry;
   }
   function returnLive(restore = false) {
-    rememberView();
+    stopReplay();rememberView();
     historyAbort?.abort();history=null;
     reviewing = false; requestId++; pendingAnalysis = false; clearTimeout(debounce);
     analysis=null;workerFieldId=null;worker?.postMessage({clear:true});
@@ -138,7 +143,8 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     document.querySelector('.legend div').style.background='';
     liveChanged(false, restore);
   }
-  function selectEntry(id) {
+  function selectEntry(id,{replay=false}={}) {
+    if(!replay)stopReplay();
     const entry = entries.find(value => value.id === Number(id)); if (!entry) return;
     rememberView();
     historyAbort?.abort();history=null;$('spatial-view').hidden=true;$('history-state').textContent='';
@@ -149,7 +155,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     for(const id of ['measure-ax','measure-bx'])$(id).max=entry.field.width-1;
     for(const id of ['measure-ay','measure-by'])$(id).max=entry.field.height-1;
     $('roi').hidden=true;$('review-controls').hidden=false;$('live-appearance').hidden=true;$('recording-panel').open=false;
-    const index=entries.indexOf(entry);$('previous-result').disabled=index<=0;$('next-result').disabled=index>=entries.length-1;
+    updateLibrary();$('processing-batch-state').textContent='';
     $('result-title').textContent = entry.label;
     $('result-provenance').textContent = `${entry.field.width} × ${entry.field.height} · ${entry.field.config.motionModel} · ${entry.field.subsetSize}/${entry.field.subsetStride} · solver spatial policy: ${entry.field.config.outlierPolicy ?? 'unspecified'} · ${entry.metadata.comparison?.mode ?? 'imported'} reference. No image is stored behind this field.`;
     setRecipe(entry.recipe ?? { ...DEFAULT_RECIPE, strainSource: entry.field.config.motionModel === 'translation' ? 'vsg' : 'direct' });
@@ -172,7 +178,8 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
           : `${result.recipe.smoothing} displacement smoothing · ${result.recipe.strainSource === 'vsg' ? 'VSG strain' : 'direct gradients'} · ${result.recipe.window} × ${result.recipe.window} grid points · nominal displacement span ${result.smoothingSpanPx} px / strain span ${result.strainSpanPx} px. No filling across gaps.`;
         render();
       }
-      for (const id of ['save-npz','save-processed-csv','save-figure','measurement-inputs']) $(id).disabled = !analysis;
+      for (const id of ['save-npz','save-processed-csv','save-figure','measurement-inputs','apply-recipe-analysis']) $(id).disabled = !analysis;
+      $('apply-recipe-analysis').disabled=!analysis||computedView;
     }
     if (pendingAnalysis && reviewing) runAnalysis();
   }
@@ -200,7 +207,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     clearHistory();
     requestId++; pendingAnalysis = true; clearTimeout(debounce); analysis = null;
     $('analysis-state').textContent = 'Updating analysis…';
-    for (const id of ['save-npz','save-processed-csv','save-figure','measurement-inputs']) $(id).disabled = true;
+    for (const id of ['save-npz','save-processed-csv','save-figure','measurement-inputs','apply-recipe-analysis']) $(id).disabled = true;
     debounce = setTimeout(runAnalysis, 60);
   }
   function format(value, unit) { if (value == null) return 'unavailable'; return `${number(STRAIN_COMPONENTS.has($('review-component').value) ? value*1e6 : value)} ${STRAIN_COMPONENTS.has($('review-component').value) ? 'µε' : unit}`; }
@@ -229,7 +236,8 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
       const f=Math.max(0,Math.min(1,value<0?-value/Math.max(1e-12,-low):value/Math.max(1e-12,high))),endpoint=value<0?[39,91,171]:[187,56,54];
       return endpoint.map(v=>Math.round(247+(v-247)*f));
     }
-    const small = new OffscreenCanvas(gw, gh), context = small.getContext('2d'), image = context.createImageData(gw, gh);
+    const small = typeof OffscreenCanvas==='function'?new OffscreenCanvas(gw,gh):Object.assign(document.createElement('canvas'),{width:gw,height:gh});
+    const context = small.getContext('2d'), image = context.createImageData(gw, gh);
     for (let i=0;i<values.length;i++) {
       let rgb = [71,86,96];
       if (component === 'status') rgb = { '-3':[160,170,178],'-2':[202,51,64],'-1':[71,86,96],0:[240,193,52],1:[36,151,110],2:[238,135,45] }[Math.round(values[i])] ?? rgb;
@@ -345,9 +353,9 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
       const bins=new Uint32Array(40),span=Math.max(1e-14,stats.max-stats.min);
       values.forEach((v,i)=>{if(chosen[i])bins[Math.min(39,Math.floor((v-stats.min)/span*40))]++;});
       const highest=Math.max(...bins,1);ctx.fillStyle='#2d8b83';bins.forEach((n,i)=>ctx.fillRect(76+i*(w-108)/40,h-48-n/highest*(h-90),(w-108)/40-1,n/highest*(h-90)));
-      ctx.fillStyle='#607782';ctx.fillText(`${options.regionBounds?'Region distribution':'Distribution'} · ${stats.count} valid samples · ${$('review-component').selectedOptions[0].textContent}`,24,25);
+      ctx.fillStyle='#607782';ctx.fillText(`${options.regionBounds?'Region distribution':'Distribution'} · ${stats.count} valid samples`,24,25);
       const factor=STRAIN_COMPONENTS.has($('review-component').value)?1e6:1;
-      ctx.fillText(`${number(stats.min*factor)} ${factor===1e6?'µε':''}`,76,h-16);ctx.fillText(`${number(stats.max*factor)} ${factor===1e6?'µε':''}`,w-190,h-16);return;
+      ctx.fillText(`${number(stats.min*factor)} ${factor===1e6?'µε':''}`,76,h-16);ctx.textAlign='right';ctx.fillText(`${number(stats.max*factor)} ${factor===1e6?'µε':''}`,w-32,h-16);ctx.textAlign='left';return;
     }
     let low=Math.min(...finite.map(r=>r.value)),high=Math.max(...finite.map(r=>r.value));const span=Math.max(1e-12,Math.abs(high)*1e-9,high-low),xmax=Math.max(...rows.map(r=>r.distance),1e-12);
     low-=.08*span;high+=.08*span;const x=v=>76+v/xmax*(w-108),y=v=>h-48-(v-low)/(high-low)*(h-82);
@@ -366,21 +374,21 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     chartResizeFrame=requestAnimationFrame(()=>drawChart(lastChartRows,lastChartOptions));
   }):null;chartResize?.observe(chart);
   overlay.onpointerdown = event => {
-    clearHistory();
+    stopReplay();clearHistory();
     if(!analysis)return;const rect=overlay.getBoundingClientRect(),point=[(event.clientX-rect.left)/rect.width*overlay.width-.5,(event.clientY-rect.top)/rect.height*overlay.height-.5];
     if(tool==='probe'||points.length>=2)points=[];points.push(point);updateInspection();
   };
   overlay.classList.add('inspecting');
   $('measurement-position').onsubmit=event=>{
-    event.preventDefault();if(!analysis)return;
+    event.preventDefault();stopReplay();if(!analysis)return;
     const positions=[['measure-ax','measure-ay'],...(tool==='probe'?[]:[['measure-bx','measure-by']])].map(ids=>ids.map(id=>Number($(id).value)));
     if(positions.some(([x,y])=>!Number.isFinite(x)||!Number.isFinite(y)||x<0||y<0||x>=analysis.field.width||y>=analysis.field.height)){$('inspection-hint').textContent='Use coordinates inside the reference image.';return;}
     clearHistory();points=positions;updateInspection();
   };
-  document.querySelectorAll('[data-inspect]').forEach(button=>button.onclick=()=>{clearHistory();tool=button.dataset.inspect;points=[];document.querySelectorAll('[data-inspect]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));$('inspection-hint').textContent=tool==='probe'?'Click a subset to inspect values and solver status.':tool==='region'?'Click two opposite rectangle corners; valid subset centres are equally weighted.':'Click two endpoints on the field; measurements snap to subset centres.';updateInspection();});
-  $('clear-inspection').onclick=()=>{clearHistory();points=[];updateInspection();};
+  document.querySelectorAll('[data-inspect]').forEach(button=>button.onclick=()=>{stopReplay();clearHistory();tool=button.dataset.inspect;points=[];document.querySelectorAll('[data-inspect]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));$('inspection-hint').textContent=tool==='probe'?'Click a subset to inspect values and solver status.':tool==='region'?'Click two opposite rectangle corners; valid subset centres are equally weighted.':'Click two endpoints on the field; measurements snap to subset centres.';updateInspection();});
+  $('clear-inspection').onclick=()=>{stopReplay();clearHistory();points=[];updateInspection();};
   $('extract-history').onclick=async()=>{
-    if(!analysis)return;
+    stopReplay();if(!analysis)return;
     const entry=activeEntry(),candidates=entries.filter(candidate=>sameAnalysis(entry,candidate));
     const controller=new AbortController();historyAbort?.abort();historyAbort=controller;
     const recipe=analysis.recipe,component=$('review-component').value,selection=points.map(point=>[...point]),selectedTool=tool;
@@ -400,12 +408,34 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   $('return-live').onclick=()=>returnLive(true);
   $('record-fields').onchange=()=>recordChange(recording());
   $('saved-fields').onchange=()=>selectEntry($('saved-fields').value);
+  $('result-seek').oninput=()=>{const entry=entries[Number($('result-seek').value)];if(entry)selectEntry(entry.id);};
+  $('replay-results').onclick=()=>{
+    if(replaying){stopReplay();return;}
+    const base=activeEntry()??entries[0];if(!base)return;
+    replayIds=entries.filter(entry=>sameAnalysis(base,entry)).map(entry=>entry.id);if(replayIds.length<2)return;
+    if(!reviewing||selected===replayIds.at(-1))selectEntry(replayIds[0]);
+    replaying=true;$('replay-results').textContent='Pause result replay';
+    const next=()=>{
+      if(!replaying)return;
+      if(workerBusy||pendingAnalysis){replayTimer=setTimeout(next,100);return;}
+      if(!analysis){stopReplay();return;}
+      const index=replayIds.indexOf(selected),id=replayIds[index+1];
+      if(!id){stopReplay();return;}
+      selectEntry(id,{replay:true});replayTimer=setTimeout(next,500);
+    };replayTimer=setTimeout(next,500);
+  };
+  $('apply-recipe-analysis').onclick=()=>{
+    stopReplay();if(!analysis||computedView)return;
+    const candidates=entries.filter(entry=>sameAnalysis(activeEntry(),entry));
+    for(const entry of candidates)entry.recipe={...analysis.recipe};
+    changed();updateLibrary();$('processing-batch-state').textContent=`Applied recipe to ${candidates.length} matching field(s); ${entries.length-candidates.length} unrelated field(s) unchanged. Computed arrays are preserved.`;
+  };
   for(const [id,delta] of [['previous-result',-1],['next-result',1]])$(id).onclick=()=>{const index=entries.findIndex(e=>e.id===selected);if(entries[index+delta])selectEntry(entries[index+delta].id);};
-  $('delete-field').onclick=()=>{const index=entries.findIndex(e=>e.id===Number($('saved-fields').value));if(index<0)return;const active=entries[index].id===selected;entries.splice(index,1);changed();if(active){returnLive(true);selected=null;}updateLibrary();};
-  $('clear-fields').onclick=()=>{if(!entries.length||confirm('Delete saved fields from this tab? Export NPZ first if needed.')){returnLive(true);entries.length=0;selected=null;updateLibrary();}};
+  $('delete-field').onclick=()=>{stopReplay();const index=entries.findIndex(e=>e.id===Number($('saved-fields').value));if(index<0)return;const active=entries[index].id===selected;entries.splice(index,1);changed();if(active){returnLive(true);selected=null;}updateLibrary();};
+  $('clear-fields').onclick=()=>{stopReplay();if(!entries.length||confirm('Delete saved fields from this tab? Export NPZ first if needed.')){returnLive(true);entries.length=0;selected=null;updateLibrary();}};
   $('import-result').onclick=()=>$('result-file').click();
   $('save-project').onclick=async()=>{
-    try{
+    stopReplay();try{
       await beforeProjectExport();rememberView();
       const snapshot=[...entries];
       const bytes=projectArchive(snapshot,{selectedId:selected});
@@ -465,15 +495,16 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     finally{$('confirm-import').disabled=false;}
   };
   for(const id of ['post-smoothing','strain-source','post-window','strain-measure','exclude-flagged','length-unit','length-scale'])$(id).onchange=()=>{
+    stopReplay();$('processing-batch-state').textContent='';
     if($('post-smoothing').value!=='none')$('strain-source').value='vsg';
     if(activeEntry()?.field.config.motionModel==='translation')$('strain-source').value='vsg';
     $('length-scale').disabled=$('length-unit').value==='px';if($('length-scale').disabled)$('length-scale').value=1;
     computedView=false;$('compare-computed').textContent='Show computed field';scheduleAnalysis();
   };
-  $('reset-processing').onclick=()=>{setRecipe({...DEFAULT_RECIPE,strainSource:activeEntry()?.field.config.motionModel==='translation'?'vsg':'direct'});computedView=false;scheduleAnalysis();};
-  $('compare-computed').onclick=()=>{computedView=!computedView;$('compare-computed').textContent=computedView?'Restore processing recipe':'Show computed field';scheduleAnalysis();};
-  $('review-component').onchange=()=>{clearHistory();$('review-scale').value='robust';$('manual-limits').hidden=true;render();};
-  for(const id of ['review-scale','review-min','review-max','review-palette','review-vectors','review-vector-step','review-vector-gain','review-contour'])$(id).onchange=()=>{$('manual-limits').hidden=$('review-scale').value!=='manual';render();};
+  $('reset-processing').onclick=()=>{stopReplay();setRecipe({...DEFAULT_RECIPE,strainSource:activeEntry()?.field.config.motionModel==='translation'?'vsg':'direct'});computedView=false;scheduleAnalysis();};
+  $('compare-computed').onclick=()=>{stopReplay();computedView=!computedView;$('compare-computed').textContent=computedView?'Restore processing recipe':'Show computed field';scheduleAnalysis();};
+  $('review-component').onchange=()=>{stopReplay();clearHistory();$('review-scale').value='robust';$('manual-limits').hidden=true;render();};
+  for(const id of ['review-scale','review-min','review-max','review-palette','review-vectors','review-vector-step','review-vector-gain','review-contour'])$(id).onchange=()=>{stopReplay();$('manual-limits').hidden=$('review-scale').value!=='manual';render();};
   $('save-npz').onclick=()=>{if(!analysis)return;const entry=activeEntry();download(`live-dic-${entry.id}.npz`,fieldArchive(entry.field,{...entry.metadata,workbench:{view:viewSettings()},analysis:{recipe:analysis.recipe,processingWallMs:analysis.processingWallMs}},analysis,entry.mask),'application/octet-stream');};
   $('save-processed-csv').onclick=()=>{if(!analysis)return;const {values,valid,unit}=componentValues(analysis,$('review-component').value),lines=[`x_px,y_px,${$('review-component').value}_${unit},valid,solver_status`];for(let i=0;i<values.length;i++)lines.push([...pointPosition(i),valid[i]?values[i]:'',valid[i],analysis.field.status[i]].join(','));download('live-dic-displayed-field.csv',lines.join('\n'),'text/csv');};
   $('save-profile').onclick=()=>{if(!extraction.length)return;const columns=Object.keys(extraction[0]);download('live-dic-extraction.csv',[columns.join(','),...extraction.map(row=>columns.map(k=>row[k]??'').join(','))].join('\n'),'text/csv');download('live-dic-extraction.json',JSON.stringify({recipe:analysis.recipe,view:viewSettings(),valueUnit:(history?.tool??tool)==='gauge'?'strain':componentValues(analysis,$('review-component').value).unit,coordinateUnit:'px',distanceUnit:analysis.recipe.unit,comparison:activeEntry().metadata.comparison},null,2),'application/json');};
@@ -482,7 +513,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   return { add, returnLive, setMask(mask){currentMask=mask;}, get reviewing(){return reviewing;}, get recording(){return recording();},
     setReady(ready){$('freeze-field').disabled=!ready;$('record-fields').disabled=!ready;},
     stopRecording(){ $('record-fields').checked=false;recordChange(false); },
-    clearInspection(){clearHistory();points=[];updateInspection();},
-    report(){const values=analysis?componentValues(analysis,$('review-component').value):null;return{count:entries.length,selected,reviewing,unsavedProject:hasUnsaved(),memoryBytes:memoryBytes(),provenance:activeEntry()?{analysisEpoch:activeEntry().metadata.analysisEpoch,archiveSha256:activeEntry().metadata.archiveSha256,importGeometry:activeEntry().metadata.importGeometry}:null,recipe:analysis?.recipe??null,statistics:values?statistics(values.values,values.valid):null,extraction};},
-    destroy(){historyAbort?.abort();clearTimeout(debounce);chartResize?.disconnect();cancelAnimationFrame(chartResizeFrame);worker?.terminate();window.removeEventListener('beforeunload',beforeUnload);} };
+    clearInspection(){stopReplay();clearHistory();points=[];updateInspection();},
+    report(){const values=analysis?componentValues(analysis,$('review-component').value):null;return{count:entries.length,selected,reviewing,replaying,unsavedProject:hasUnsaved(),memoryBytes:memoryBytes(),provenance:activeEntry()?{analysisEpoch:activeEntry().metadata.analysisEpoch,archiveSha256:activeEntry().metadata.archiveSha256,importGeometry:activeEntry().metadata.importGeometry}:null,recipe:analysis?.recipe??null,statistics:values?statistics(values.values,values.valid):null,extraction};},
+    destroy(){stopReplay();historyAbort?.abort();clearTimeout(debounce);chartResize?.disconnect();cancelAnimationFrame(chartResizeFrame);worker?.terminate();window.removeEventListener('beforeunload',beforeUnload);} };
 }

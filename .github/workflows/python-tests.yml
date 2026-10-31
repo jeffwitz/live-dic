@@ -233,6 +233,10 @@ jobs:
         run: >-
           python tools/qualify_browser_workbench.py --site _site --software
           --output browser-results/workbench
+      - name: Review an actual UHD field without WebGPU or OffscreenCanvas
+        run: |
+          python tools/qualify_browser_review.py --site _site --software --field browser-results/workbench/processed-field.npz --output browser-results/review-only
+          python tools/qualify_browser_review.py --site _site --software --no-worker --field browser-results/workbench/processed-field.npz --output browser-results/review-main-thread
       - name: Exercise UHD mask-image input, vector clipping and PNG export
         run: >-
           python tools/qualify_browser_mask_images.py --site _site --software

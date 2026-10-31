@@ -1,0 +1,82 @@
+{
+  "build": {
+    "commit": "b47a3b45bdbc88f5ce7e8087a3557f3c72ddc15a",
+    "dirty": true,
+    "shaders": {
+      "full_pyramid.wgsl": "d00ef999c5dbc23013928e95ea6ca498a52fbb63850056c05bdbd3c963dc0401",
+      "icgn.wgsl": "a60231689fbc3d29953fd98eb8d04649ec93cbec0f5a89a65446df716152299b",
+      "icgn_subgroup.wgsl": "d68225b1b6b6b21071e59ea6109bbd24dc0fd8b6734b6ebc4f7d59356799a034",
+      "input.wgsl": "d269f8bf203e3363a6e753476c49de27188329409fa5a848358ea031bb554f7e",
+      "result.wgsl": "a587a3112670a702578df6c13f75addd4136e43fa6c7efba7959aa472d0e3267",
+      "subgroup_probe.wgsl": "6e4d149ed7f17969ede557a3062742d8da6c62cb6dd745d5510112c1489fed61"
+    },
+    "demo_manifest_sha256": "c78c445a38a8541d632f28e85ec1154e492b4195c7b8f5d4755597e07605f24a",
+    "plate_image_sha256": {
+      "reference.png": "26135118b554c5996443f07abd2a89273a344154338c4c7f428ab283f85f7192",
+      "frame_095.png": "af0f4c09d2e9292beb4cbbabe01c6651a2e914c1b36b569a5861a8be431d3faf",
+      "frame_225.png": "abe3693810e289b8a2029833011a0d59fdf7ff1ea975eea91b12dc5e708d2897"
+    },
+    "cache_version": "b47a3b45bdbc88f5ce7e8087a3557f3c72ddc15a-dirty-2558f70fcadc"
+  },
+  "kind": "WebGPU API absence simulated in application page; CPU saved-field analysis only",
+  "no_worker": true,
+  "software_bootstrap": true,
+  "source_sha256": "c1cc447cf762bef5bb758b1e7fefa320bfc898de9bee37b6f14f5962afe213e9",
+  "field": {
+    "count": 1,
+    "selected": 1,
+    "reviewing": true,
+    "replaying": false,
+    "unsavedProject": true,
+    "memoryBytes": 9337452,
+    "provenance": {
+      "analysisEpoch": "2c017611-4b94-4923-b4cf-2f0fc085c1bf",
+      "archiveSha256": "c1cc447cf762bef5bb758b1e7fefa320bfc898de9bee37b6f14f5962afe213e9",
+      "importGeometry": {
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "subsetStride": 16,
+        "frameIndex": 0,
+        "frameCount": 1,
+        "imageExtentSource": "archive scalars"
+      }
+    },
+    "recipe": {
+      "smoothing": "gaussian",
+      "window": 5,
+      "strainSource": "vsg",
+      "strainMeasure": "green",
+      "excludeFlagged": false,
+      "unitsPerPixel": 1,
+      "unit": "px"
+    },
+    "statistics": {
+      "count": 31474,
+      "min": 0.00028096804176539874,
+      "max": 0.0013709044127784601,
+      "mean": 0.0009126696196797362,
+      "standardDeviation": 7.017979646157721e-05,
+      "p02": 0.0007451321599937356,
+      "p98": 0.0010454209130996775
+    },
+    "extraction": [
+      {
+        "x0": 807.5,
+        "y0": 807.5,
+        "x1": 1399.5,
+        "y1": 1095.5,
+        "valid": 722,
+        "selected": 722,
+        "total": 722,
+        "mean": 0.0008923866485403703,
+        "standardDeviation": 3.0188923026818748e-05,
+        "minimum": 0.0008356385039249537,
+        "maximum": 0.0009859131323759244,
+        "p02": 0.0008481425990453379,
+        "p98": 0.000960325531856066
+      }
+    ]
+  },
+  "errors": []
+}

@@ -528,3 +528,15 @@ qualification rather than infer mobile coverage from desktop results.
   The complete remote Python/browser/lavapipe CI passed on `7f6fe65`. Later commits
   require their own observed CI result. The one-command local launcher is
   `python3 tools/run_browser_app.py`; it retains the user's browser GPU settings.
+
+### Saved-result navigation and review without WebGPU
+
+- Result replay and batch recipes use the same epoch/ROI/grid/reference-mode
+  predicate as histories. Replay waits for one CPU analysis and uses a display
+  rate, never an inferred acquisition clock. It stops on manual inspection.
+- Without WebGPU, expose NPZ/project import and CPU post-processing; disable
+  new correlations. Ordinary HTML canvas and main-thread fallbacks are tested.
+  This is not a second IC-GN solver. Keep these roles explicit.
+- A prepared reference preview is not a measured target. Clear stale readiness
+  and HUD values on reference/ROI/comparison changes. Label camera timestamp
+  origins instead of subtracting video media time from track-processor clocks.

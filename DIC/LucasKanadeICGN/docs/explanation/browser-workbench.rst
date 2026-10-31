@@ -186,3 +186,15 @@ reuses the core's full-window selection, conservative links and canonical hash.
 A failed import leaves the existing geometry/calculation intact. Source and
 reference operations share one admission gate, drain pending work and invalidate
 stale video seeks before replacing resources.
+
+Saved-result replay uses the same compatibility predicate as history extraction.
+It holds at most one analysis request, pauses at missing/unanalysable results and
+stops at the end. Its fixed two-hertz presentation rate is independent of the
+experiment clock. Batch recipe application changes derived-analysis settings
+only; it never recomputes or rewrites IC-GN results.
+
+The saved-field review/analysis path is independent of WebGPU. A missing API
+disables new acquisition/correlation while keeping NPZ/project import and CPU
+post-processing available. HTML canvas substitutes for OffscreenCanvas; without
+workers the same pure analysis functions run on the main thread. This fallback
+is not a second correlation solver.

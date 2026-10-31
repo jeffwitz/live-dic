@@ -36,3 +36,9 @@ reports are not numerical parity measurements.
 The local Python CI for `7f6fe65` completed successfully, including the UHD
 local-source, results-workbench and mask-image SwiftShader jobs. This fake-camera
 follow-up was tested locally; it is not asserted to be part of that CI run.
+
+`clocks-hardware.json` repeats the long hardware control run after labelling
+reference media-time and target track-processor clocks separately. Reference
+previews cannot be exported as target measurements. Source replacement clears
+old HUD values/drop counts; comparison/reference/ROI changes require a new
+target before field review/export is enabled.

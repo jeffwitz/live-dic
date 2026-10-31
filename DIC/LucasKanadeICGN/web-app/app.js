@@ -111,7 +111,8 @@ async function init() {
   }
   details();
   if (!capabilities.supported) {
-    message(`WebGPU is unavailable. ${capabilities.reasons.join('. ')} Use a supported secure browser; this app has no WebGL fallback.`, true);
+    message(`WebGPU is unavailable for correlation. ${capabilities.reasons.join('. ')} You can still open saved NPZ fields or results projects for CPU post-processing.`, true);
+    workspace.showPane('view');$('placeholder').textContent='Open a saved NPZ field or results project. New correlations require WebGPU.';
     sourceButtons.forEach(id => $(id).disabled = true); return;
   }
   for (const option of $('resolution').options) {
@@ -119,6 +120,7 @@ async function init() {
     option.disabled = !capabilities.resolutions.some(([x, y]) => x === w && y === h);
   }
   sourceButtons.forEach(id => $(id).disabled = false);
+  $('placeholder').textContent='Open images, a video or a camera. Try the plate demo to explore.';
   $('profile').value = capabilities.recommendedProfile;
   const recommended = capabilities.recommendedResolution ?? capabilities.resolutions[0];
   if (recommended) $('resolution').value = recommended.join('x');
@@ -148,7 +150,9 @@ async function stop() {
   stream?.getTracks().forEach(track => track.stop()); stream = null;
   video.pause(); video.srcObject = null; video.removeAttribute('src'); video.load();
   if (localVideoUrl) URL.revokeObjectURL(localVideoUrl); localVideoUrl = null;
-  localImages = []; imageIndex = 0; receivedOrdinal = 0;
+  localImages = []; imageIndex = 0; receivedOrdinal = 0;sourceSettings={};
+  dropped=0;$('drops').textContent='0';clearLiveMetrics();
+  $('run-state').textContent='No source selected';$('placeholder').hidden=false;$('camera-summary').hidden=true;
   referenceInfo = null; ['reference','pause','reset','draw','clear-roi','export','import-mask','save-mask'].forEach(id => $(id).disabled = true);
   $('comparison').disabled=false; source = null; roiEditing = false; $('roi-editor').hidden = true; $('plate-load-label').hidden = true; $('local-controls').hidden = true;
 }
@@ -166,24 +170,28 @@ async function updateReferenceControls() {
   if (translationOnly && [3,4,5,7].includes(Number($('component').value))) { $('component').value='2'; await send('display',{display:displayOptions()}); }
 }
 async function captureReference(frame = null) {
+  let requested;try{requested=options();}catch(error){frame?.close();throw error;}
   workbench.returnLive();
+  clearLiveMetrics();$('run-state').textContent='Preparing reference · no target field yet';
   pauseSource(); await drain(); workbench.setMask(null); workbench.setReady(false); roiEditing = false; $('roi-editor').hidden = true;
   frame ??= await frameFromVideo();
   if (source === 'camera') { sourceSettings.actual = stream?.getVideoTracks()[0]?.getSettings(); sourceSettings.outputSize = [video.videoWidth, video.videoHeight]; }
-  if(source==='camera')sourceSettings.reference={kind:'camera',timestampUs:frame.timestamp??null,capturedAt: new Date().toISOString(),coordinateFrame:'captured reference image'};
-  referenceInfo = (await send('reference', { frame, options: options() }, [frame])).info; appliedShapes = []; draftMaskSource = appliedMaskSource = null; $('mask-import-summary').textContent='White pixels are kept; black pixels are excluded. Imported images must match the reference dimensions.';
+  if(source==='camera')sourceSettings.reference={kind:'camera',timestampUs:frame.timestamp??null,capturedAt: new Date().toISOString(),coordinateFrame:'captured reference image',timestampClock:'HTMLVideoElement media timeline'};
+  try {referenceInfo = (await send('reference', { frame, options: requested }, [frame])).info;}catch(error){frame.close();throw error;} appliedShapes = []; draftMaskSource = appliedMaskSource = null; $('mask-import-summary').textContent='White pixels are kept; black pixels are excluded. Imported images must match the reference dimensions.';
   $('placeholder').hidden = true; $('image-viewport').style.aspectRatio = `${referenceInfo.width}/${referenceInfo.height}`;
   roi.reset(referenceInfo.width, referenceInfo.height); appliedEditorState=roi.state(); $('apply-roi').disabled = true;
   for (const id of ['reference', 'pause', 'reset', 'draw', 'clear-roi', 'export', 'import-mask', 'save-mask']) $(id).disabled = false;
-  if ($('comparison').value === 'consecutive' && source !== 'plate') $('export').disabled = true;
+  $('export').disabled = true; // Reference preview is not a measured target field.
   await updateReferenceControls();
   previousFrame = -1; details(); message('Reference captured. Camera and results stay on this device.');
 }
+function clearLiveMetrics() {for(const id of ['fps','age','acceptance','iterations','error'])$(id).textContent='—';delete sourceSettings.lastComparison;}
 function countDrop() { dropped++; $('drops').textContent = dropped; }
 async function processFrame(frame, frameIndex = null, { force = false, reset = false, input = null, referenceFrame = null, referenceInput = null } = {}) {
   const token = generation, mode = source === 'plate' ? 'fixed' : $('comparison').value;
   if (paused && !force) { frame.close(); referenceFrame?.close(); return false; }
-  input = { kind:source, ordinal:++receivedOrdinal, timestampUs:frame.timestamp ?? null, ...input };
+  input = { kind:source, ordinal:++receivedOrdinal, timestampUs:frame.timestamp ?? null,
+    timestampClock:frame.timestamp==null?null:source==='camera'&&sourceSettings.frameDelivery==='MediaStreamTrackProcessor'?'Track-processor VideoFrame clock; origin is browser/device defined':'HTMLVideoElement media timeline', ...input };
   if (mode === 'consecutive' && !referenceFrame) {
     if (captureBusy) { frame.close(); countDrop(); return false; }
     captureBusy = true;
@@ -475,7 +483,7 @@ $('local-seek').onchange = () => localSeek($('local-seek').value);
 $('image-rate').onchange = () => { sourceSettings.replayRateCapHz = Number($('image-rate').value); };
 $('video-rate').onchange = () => {video.playbackRate=Number($('video-rate').value);sourceSettings.playbackRate=video.playbackRate;};
 $('comparison').onchange = () => sourceChange(async () => {
-  pauseSource();await imageTask?.catch(()=>{});await drain();$('export').disabled=true;$('pause').textContent='Play';
+  pauseSource();await imageTask?.catch(()=>{});await drain();$('export').disabled=true;workbench.setReady(false);clearLiveMetrics();$('run-state').textContent='Comparison changed · awaiting a target field';$('pause').textContent='Play';
   sourceSettings.requestedComparison=$('comparison').value;
   if(source==='images')$('image-reference-controls').hidden=$('comparison').value==='consecutive';
   if(referenceInfo)await send('comparison',{mode:$('comparison').value,options:options()});
@@ -492,7 +500,7 @@ $('reference').onclick = () => sourceChange(async () => {
   if (source === 'images') return setImageReference(imageIndex);
   pauseSource(); await drain();
   await captureReference();
-  sourceSettings.reference = { kind:source, file:sourceSettings.file, timeSeconds:source === 'video-file' ? video.currentTime : null };
+  if(source!=='camera')sourceSettings.reference = { kind:source, file:sourceSettings.file, timeSeconds:source === 'video-file' ? video.currentTime : null };
   if (source !== 'video-file') { paused = false; $('pause').textContent = 'Pause'; }
   else $('pause').textContent = 'Play';
 });
@@ -536,14 +544,14 @@ $('save-mask').onclick=async()=>{
 };
 $('draw').onclick = () => sourceChange(async () => { workspace.showPane('mask'); workbench.returnLive(); pauseSource(); await drain(); roiEditing = true; $('pause').textContent = 'Resume'; await send('show-reference', { show: true }); $('roi-editor').hidden = false; $('shape').value = 'select'; roi.start(); });
 $('apply-roi').onclick = () => sourceChange(async () => {
-  try { workbench.setReady(false); const mask = roi.mask(), ownedMask = mask?.slice() ?? null; appliedShapes = roi.shapes(); referenceInfo = (await send('roi', { mask, options: options() }, mask ? [mask.buffer] : [])).info; workbench.setMask(ownedMask); appliedMaskSource = draftMaskSource; appliedEditorState=roi.state(); await updateReferenceControls();
+  try { workbench.setReady(false);$('export').disabled=true;clearLiveMetrics(); const mask = roi.mask(), ownedMask = mask?.slice() ?? null,nextShapes=roi.shapes(); referenceInfo = (await send('roi', { mask, options: options() }, mask ? [mask.buffer] : [])).info;appliedShapes=nextShapes; workbench.setMask(ownedMask); appliedMaskSource = draftMaskSource; appliedEditorState=roi.state(); await updateReferenceControls();
     roiEditing = false; roi.stop(); $('roi-editor').hidden = true; $('apply-roi').disabled = true;
     message('Mask applied. Its geometry stays editable; all complete selected subsets are used.'); details();
     if (source === 'plate') await runPlateTarget();
     else if (source === 'images') await runImage(imageIndex,true);
   } catch (error) { message(error.message, true); }
 });
-$('clear-roi').onclick = () => sourceChange(async () => { workbench.returnLive(); pauseSource(); await drain(); workbench.setMask(null); workbench.setReady(false); roiEditing = false; roi.reset(referenceInfo.width, referenceInfo.height); appliedShapes = []; draftMaskSource = appliedMaskSource = null; $('roi-editor').hidden = true;
+$('clear-roi').onclick = () => sourceChange(async () => { workbench.returnLive(); pauseSource(); await drain(); workbench.setMask(null); workbench.setReady(false);$('export').disabled=true;clearLiveMetrics(); roiEditing = false; roi.reset(referenceInfo.width, referenceInfo.height); appliedShapes = []; draftMaskSource = appliedMaskSource = null; $('roi-editor').hidden = true;
   referenceInfo = (await send('roi', { mask: null, options: options() })).info; await updateReferenceControls(); appliedEditorState=roi.state(); $('mask-import-summary').textContent='Full image · no imported base mask.'; $('pause').textContent = 'Resume'; details(); if (source === 'plate') await runPlateTarget(); });
 function displayOptions() { return { mode: Number($('component').value), scale: $('scale').value === 'auto' ? null : Number($('scale').value),
   opacity: Number($('opacity').value), arrows: $('arrows').checked, arrowStep: Number($('arrow-step').value), arrowGain: Number($('arrow-gain').value) }; }

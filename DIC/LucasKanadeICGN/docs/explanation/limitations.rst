@@ -264,3 +264,9 @@ integrals; overlapping subsets remain overlapping measurements. A region mean
 can change when its valid population changes. History exports retain its sample
 count and null gaps. Browser unload warnings may be suppressed by platform
 policy and cannot replace saving and checking a project file.
+
+Saved-field replay is a bounded presentation of compatible stored results, not
+a physical-time movie or a numerical performance benchmark. Browser CPU review
+works without WebGPU; new correlations still require WebGPU. Main-thread review
+can stall interaction on large analyses. Camera media and track-processor clocks
+can have different origins and must not be combined into exposure-latency claims.

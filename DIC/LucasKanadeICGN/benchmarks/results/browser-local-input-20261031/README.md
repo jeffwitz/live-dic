@@ -29,3 +29,9 @@ video: 20 repeated original reference frames at 10 Hz, encoded temporarily with
 FFmpeg (not a replacement fixture). It checks full-size seek, decoded dimensions,
 play and pause, with no console errors. The file hash is recorded. This static
 negative-motion video qualifies the input path, not deformation precision/FPS.
+
+`cold-state-hardware.json` repeats UHD image-folder fixed/consecutive parity,
+failure recovery, dimension admission and local UHD video after clearing stale
+HUD/export readiness on reference/comparison changes. The status arrays still
+match native exactly on the compared image pairs. This is correctness evidence,
+not an isolated image-to-field timing campaign.

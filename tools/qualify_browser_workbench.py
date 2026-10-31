@@ -232,6 +232,14 @@ def main():
                             ),
                         ),
                         ("Page.captureScreenshot", dict(format="png", captureBeyondViewport=False)),
+                        (
+                            "Runtime.evaluate",
+                            dict(
+                                expression="(async()=>{document.getElementById('profile-chart').scrollIntoView({block:'center'});await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));return true;})()",
+                                awaitPromise=True,
+                            ),
+                        ),
+                        ("Page.captureScreenshot", dict(format="png", captureBeyondViewport=False)),
                         ("Emulation.clearDeviceMetricsOverride", {}),
                     ],
                 )
@@ -239,6 +247,7 @@ def main():
             viewport = mobile[1]["result"]["value"]
             assert viewport["width"] == 390 and viewport["pageWidth"] <= 390, viewport
             (args.output / "mobile-analysis.png").write_bytes(base64.b64decode(mobile[2]["data"]))
+            (args.output / "mobile-chart.png").write_bytes(base64.b64decode(mobile[4]["data"]))
             browser._evaluate(
                 "document.getElementById('return-live').onclick();document.getElementById('record-fields').checked=true;document.getElementById('record-fields').onchange();true"
             )
@@ -327,6 +336,26 @@ def main():
             wait(browser, "liveDicWorkbench.report().recipe?.smoothing==='gaussian'")
             restored_region = browser._evaluate("liveDicWorkbench.report().extraction")[0]
             assert restored_region == region, (restored_region, region)
+            browser._evaluate("document.getElementById('apply-recipe-analysis').onclick();true")
+            assert "6 matching" in browser._evaluate(
+                "document.getElementById('processing-batch-state').textContent"
+            )
+            start_selected = browser._evaluate("liveDicWorkbench.report().selected")
+            browser._evaluate("document.getElementById('replay-results').onclick();true")
+            wait(
+                browser,
+                f"liveDicWorkbench.report().selected!=={start_selected}&&liveDicWorkbench.report().recipe?.smoothing==='gaussian'",
+            )
+            browser._evaluate(
+                "if(liveDicWorkbench.report().replaying)document.getElementById('replay-results').onclick();true"
+            )
+            browser._evaluate(
+                "document.getElementById('result-seek').value=0;document.getElementById('result-seek').oninput();true"
+            )
+            wait(
+                browser,
+                "liveDicWorkbench.report().selected===1&&liveDicWorkbench.report().recipe?.smoothing==='gaussian'",
+            )
             report = dict(
                 build=json.loads((site / "build.json").read_text()),
                 software=args.software,

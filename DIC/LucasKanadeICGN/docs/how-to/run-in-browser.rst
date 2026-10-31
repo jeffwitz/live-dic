@@ -89,7 +89,15 @@ Use a camera
    visible. Watch acceptance and iteration counts when illumination changes.
 5. Use **Pause**, **Capture reference** or **Reset history** deliberately.
    Changing resolution restarts camera capture and prepares a new reference.
-   A profile change takes effect at the next reference capture.
+   A profile change takes effect at the next reference capture. After reference,
+   mask or comparison changes, target exports/review remain disabled until a new
+   target field arrives; old metrics are cleared. Drop counts restart on source
+   replacement.
+
+Timestamp origins are labelled: a reference captured from the video element
+uses its media timeline, whereas track-processor frames use the browser/device's
+VideoFrame clock. Do not subtract timestamps from these different origins to
+claim camera exposure latency. Engine age starts at worker arrival.
 
 The camera stays local. Frames are transferred to a dedicated worker as
 ``VideoFrame`` or ``ImageBitmap`` objects and closed after use. Where a track
@@ -399,6 +407,22 @@ invalid project leaves the library unchanged. The current stored-data limit is
 128 MiB; archive input is limited to 256 MiB uncompressed. Single-field NPZ is
 still the simplest direct NumPy interchange format.
 
+Browse and reuse processing
+---------------------------
+
+Use the saved-result slider, dropdown or Previous/Next buttons. **Replay matching
+results · 2 Hz** only visits fields compatible with the selected analysis epoch,
+ROI, grid and reference mode. It waits for each CPU analysis before advancing;
+it never queues an experiment's fields at once. Two hertz is a presentation
+rate, not the acquisition clock. Selecting a measurement, changing processing
+or returning to live view stops replay.
+
+**Apply recipe to matching fields** copies the current applied recipe to that
+same compatible population. It changes no computed parameter, status or iteration.
+Other analyses keep their recipes. This action is unavailable during a temporary
+"Show computed field" comparison. Each field is recomputed on demand when viewed;
+the project stores the recipes. Fixed colour limits are useful for comparison.
+
 Extract a measurement through saved fields
 -------------------------------------------
 
@@ -435,6 +459,16 @@ explicit message; existing fields are not discarded. Export or delete results
 before continuing. There is no automatic disk persistence: save NPZ before
 closing the tab. Switching sources preserves saved fields but disables recording
 until you explicitly enable it again. No image stream or result is uploaded.
+
+Review without WebGPU
+---------------------
+
+New correlations require WebGPU. Opening saved NPZ fields and results projects
+uses CPU analysis and a 2D canvas, so these tools remain available when the
+application reports WebGPU unavailable. The Results pane opens automatically.
+OffscreenCanvas and worker absence also have explicit main-thread fallbacks for
+this review path. Heavy processing can then block interaction temporarily.
+This is not a CPU implementation of IC-GN inside the browser.
 
 Profiles and device limits
 --------------------------

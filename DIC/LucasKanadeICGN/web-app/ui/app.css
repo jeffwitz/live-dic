@@ -59,7 +59,7 @@ main { max-width: 1688px; padding: 22px 24px; margin: auto; }
 #roi.drawing { pointer-events: auto; touch-action: none; cursor: crosshair; }
 #inspection { z-index: 3; }
 #inspection.inspecting { pointer-events: auto; touch-action: none; cursor: crosshair; }
-#placeholder { position: absolute; inset: 0; display: grid; place-content: center; color: #c5d5dc; text-align: center; padding: 24px; pointer-events: none; }
+#placeholder { position: absolute; inset: 0; display: grid; place-content: center; color: #c5d5dc; text-align: center; padding: 24px; pointer-events: none; background:#152a34; }
 .legend { padding: 10px 12px; background: #fff; display: flex; gap: 10px; align-items: center; font-size: 10px; min-height: 38px; }
 .legend div { height: 10px; width: 150px; border-radius: 3px; background: linear-gradient(90deg, #1f52cc, #fafafa, #d62e1f); }
 .legend.magnitude div { background: linear-gradient(90deg, #fafafa, #d62e1f); }
@@ -161,3 +161,6 @@ dialog li { margin: 14px 0; line-height: 1.7; font-size: 13px; }
 #mask-toolbar { flex-wrap: wrap; color: #734b19; background: #fff6dd; }
 #mask-toolbar strong { font-size: 11px; margin-right: auto; }
 @media(max-width:760px) { button { min-height:44px; } select,input[type=number] { font-size:16px;min-height:44px; } }
+
+#result-seek {width:100%;accent-color:var(--accent);min-height:32px;}
+#result-order {display:block;font-weight:400;margin-top:5px;}

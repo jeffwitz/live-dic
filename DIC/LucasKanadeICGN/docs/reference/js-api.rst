@@ -300,3 +300,10 @@ percentiles use equal weights. Status quantities return category counts with
 null scalar statistics. ``extractHistory`` accepts ``tool: 'region'`` and
 records ``validRegionSamples`` and ``regionGridPositions`` beside each mean.
 Status codes cannot be averaged through a region history.
+
+Application review does not require a WebGPU device. The core ``DICEngine`` still
+does. Saved-result replay and batch recipes share ``sameAnalysis`` compatibility;
+neither changes live engine options or computed field arrays. Presentation
+advances only after the current derived analysis finishes. Camera acquisition
+metadata keeps requested/initial/actual settings and explicit timestamp-clock
+labels; target export is unavailable after a new preparation until a target runs.
