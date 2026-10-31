@@ -110,6 +110,7 @@ def main():
             ) as temp,
             ICGNWebGL(
                 backend="webgpu-wgsl",
+                startup_timeout=60,
                 chromium_args=(*flags, "--window-size=1600,1200"),
                 call_timeout=240,
             ) as browser,

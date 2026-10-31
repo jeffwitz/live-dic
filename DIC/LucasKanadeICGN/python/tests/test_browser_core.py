@@ -95,6 +95,7 @@ class BrowserCoreExecutionTests(unittest.TestCase):
 
         with ICGNWebGL(
             backend="webgpu-wgsl",
+            startup_timeout=60,
             chromium_args=(
                 (
                     "--use-angle=swiftshader",
@@ -126,6 +127,7 @@ class BrowserCoreExecutionTests(unittest.TestCase):
 
         with ICGNWebGL(
             backend="webgpu-wgsl",
+            startup_timeout=60,
             chromium_args=(
                 (
                     "--use-angle=swiftshader",
@@ -166,6 +168,7 @@ class BrowserCoreExecutionTests(unittest.TestCase):
 
         with ICGNWebGL(
             backend="webgpu-wgsl",
+            startup_timeout=60,
             chromium_args=(
                 (
                     "--use-angle=swiftshader",
