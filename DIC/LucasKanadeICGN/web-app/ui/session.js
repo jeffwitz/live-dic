@@ -1,5 +1,6 @@
 import { DICEngine, probeCapabilities } from '../web/core/engine.js';
 import { LATENCY_OPTIONS } from '../web/core/device.js';
+import { scorePlate } from './plate-truth.js';
 import { FieldRenderer } from '../render/field.js';
 
 /** The same session runs in a worker, or on the main thread without OffscreenCanvas. */
@@ -67,6 +68,8 @@ export function createSession(send) {
             engine.setAnalyticTruth(message.truth ?? null);
             last = await engine.register(message.frame);
             const age = performance.now() - available;
+            const plateScore = message.plate ? scorePlate(await engine.exportField(), message.plate, engine.reference.roiSelected ?? new Uint8Array(last.grid[0] * last.grid[1]).fill(1)) : null;
+            if (plateScore) last.truthRmse = plateScore.displacementRmsePx;
             showingReference = false;
             const scale = renderer?.draw(engine, last, display);
             completed++; completionTimes.push(performance.now());
@@ -82,7 +85,7 @@ export function createSession(send) {
               ageP95: sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * .95))],
               accepted: last.accepted, selected: last.selected, meanIterations: last.meanIterations,
               truthRmse: last.truthRmse, scale, counters: last.counters, timing: last.timing,
-              frameIndex: message.frameIndex });
+              frameIndex: message.frameIndex, plateScore });
           } finally { message.frame.close(); }
         })();
         outstanding.add(operation); try { await operation; } finally { outstanding.delete(operation); }

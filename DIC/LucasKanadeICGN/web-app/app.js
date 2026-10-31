@@ -1,10 +1,12 @@
 import { installRoi } from './ui/roi.js';
+import { bounds, platePreset } from './ui/roi-geometry.js';
 const $ = (id) => document.getElementById(id);
 const query = new URLSearchParams(location.search), smoke = query.has('smoke');
 let transport, stream, reader, manifest, source = null, paused = true, inFlight = 0, dropped = 0;
+let roiEditing = false, appliedShapes = [], plateManifest = null;
 let generation = 0, previousFrame = -1, referenceInfo, capabilities, sourceSettings = {}, requests = 0;
 const pending = new Map(), video = $('video');
-$('demo').disabled = $('camera').disabled = true;
+$('demo').disabled = $('plate').disabled = $('camera').disabled = true;
 const status = globalThis.liveDicStatus = { ready: false, completed: 0, errors: [], results: [] };
 function message(text, error = false) { $('message').textContent = text; $('message').classList.toggle('error', error); }
 function send(type, data = {}, transfer = []) {
@@ -25,12 +27,12 @@ function details() { $('details').textContent = JSON.stringify({ capabilities, a
 function updateScale(scale) {
   if (!Number.isFinite(scale)) return;
   const mode = Number($('component').value);
-  document.querySelector('.legend').classList.toggle('magnitude', mode === 2);
+  document.querySelector('.legend').classList.toggle('magnitude', mode === 2 || mode === 7);
   document.querySelector('.legend').classList.toggle('status', mode === 6);
   if (mode === 6) { $('low').textContent = 'Accepted'; $('high').textContent = 'Flagged / replaced'; return; }
   const strain = Number($('component').value) >= 3 && Number($('component').value) <= 5;
-  $('low').textContent = mode === 2 ? '0' : `−${scale.toPrecision(3)}`;
-  $('high').textContent = `+${scale.toPrecision(3)}${strain ? ' (gradient)' : ' px'}`;
+  $('low').textContent = mode === 2 || mode === 7 ? '0' : `−${scale.toPrecision(3)}`;
+  $('high').textContent = mode === 7 ? `${(scale * 1e6).toPrecision(3)} με` : `+${scale.toPrecision(3)}${strain ? ' (gradient)' : ' px'}`;
 }
 function receive({ data }) {
   if (data.bitmap) {
@@ -44,8 +46,9 @@ function receive({ data }) {
     paused = true; return;
   }
   if (data.type === 'result') {
+    if (data.plateScore) { sourceSettings.analyticScore = data.plateScore; details(); }
     status.completed++; status.results.push(data); if (status.results.length > (smoke ? 18000 : 120)) status.results.shift();
-    $('fps').textContent = data.fps.toFixed(1);
+    $('fps').textContent = source === 'plate' ? 'Static pair' : data.fps.toFixed(1);
     $('age').textContent = `${data.ageMedian.toFixed(1)} / ${data.ageP95.toFixed(1)} ms`;
     $('acceptance').textContent = `${data.accepted} / ${data.selected}`;
     $('iterations').textContent = data.meanIterations?.toFixed(2) ?? '—';
@@ -75,18 +78,18 @@ async function init() {
   details();
   if (!capabilities.supported) {
     message(`WebGPU is unavailable. ${capabilities.reasons.join('. ')} Use a supported secure browser; this app has no WebGL fallback.`, true);
-    $('camera').disabled = $('demo').disabled = true; return;
+    $('camera').disabled = $('demo').disabled = $('plate').disabled = true; return;
   }
   for (const option of $('resolution').options) {
     const [w, h] = option.value.split('x').map(Number);
     option.disabled = !capabilities.resolutions.some(([x, y]) => x === w && y === h);
   }
-  $('demo').disabled = $('camera').disabled = false;
+  $('demo').disabled = $('plate').disabled = $('camera').disabled = false;
   $('profile').value = capabilities.recommendedProfile;
   const recommended = capabilities.recommendedResolution ?? capabilities.resolutions[0];
   if (recommended) $('resolution').value = recommended.join('x');
   message(`Ready. ${capabilities.reasons.join('. ')}`); status.ready = true;
-  if (smoke) await startDemo();
+  if (smoke) await (query.get('case') === 'plate' ? startPlate() : startDemo());
 }
 async function drain() {
   while (inFlight) await new Promise((resolve) => setTimeout(resolve, 10));
@@ -95,7 +98,7 @@ async function stop() {
   paused = true; generation++; await drain();
   await reader?.cancel(); reader = null;
   stream?.getTracks().forEach((track) => track.stop()); stream = null;
-  video.pause(); video.srcObject = null; source = null;
+  video.pause(); video.srcObject = null; source = null; roiEditing = false; $('roi-editor').hidden = true; $('plate-load-label').hidden = true;
 }
 async function frameFromVideo() {
   const [width, height] = source === 'camera' ? [video.videoWidth, video.videoHeight] : sourceSettings.outputSize ?? [video.videoWidth, video.videoHeight];
@@ -105,12 +108,12 @@ async function frameFromVideo() {
   return createImageBitmap(video, { resizeWidth: width, resizeHeight: height });
 }
 async function captureReference(frame = null) {
-  paused = true; await drain();
+  paused = true; await drain(); roiEditing = false; $('roi-editor').hidden = true;
   frame ??= await frameFromVideo();
   if (source === 'camera') { sourceSettings.actual = stream?.getVideoTracks()[0]?.getSettings(); sourceSettings.outputSize = [video.videoWidth, video.videoHeight]; }
-  referenceInfo = (await send('reference', { frame, options: options() }, [frame])).info;
-  $('placeholder').hidden = true;
-  $('roi').width = referenceInfo.width; $('roi').height = referenceInfo.height; roi.clear(); $('apply-roi').disabled = true;
+  referenceInfo = (await send('reference', { frame, options: options() }, [frame])).info; appliedShapes = [];
+  $('placeholder').hidden = true; $('image-viewport').style.aspectRatio = `${referenceInfo.width}/${referenceInfo.height}`;
+  roi.reset(referenceInfo.width, referenceInfo.height); $('apply-roi').disabled = true;
   for (const id of ['reference', 'pause', 'reset', 'draw', 'clear-roi', 'export']) $(id).disabled = false;
   previousFrame = -1; details(); message('Reference captured. Camera and results stay on this device.');
 }
@@ -165,6 +168,31 @@ async function startDemo() {
   await video.play(); paused = false; $('pause').textContent = 'Pause'; scheduleVideo(generation);
   message('Analytic tensile demo · compressed 1080p replay. Live error includes image formation and video decoding.');
 }
+async function startPlate() {
+  if (!capabilities.resolutions.some(([w,h]) => w === 3840 && h === 2160)) throw new Error('The original plate requires UHD device capacity');
+  await stop(); manifest = null; source = 'plate'; $('resolution').disabled = true; $('plate-load-label').hidden = false;
+  plateManifest = await fetch(new URL('./demo/plate.json', import.meta.url)).then(r => r.json());
+  const reference = await createImageBitmap(await fetch(new URL('./demo/plate/reference.png', import.meta.url)).then(r => r.blob()));
+  sourceSettings = { source: 'original native-UHD analytic plate', outputSize: [3840, 2160], mechanics: plateManifest.geometry };
+  $('resolution').value = '3840x2160';
+  await captureReference(reference);
+  roi.reset(3840, 2160, platePreset()); appliedShapes = roi.shapes();
+  const mask = roi.mask(); referenceInfo = (await send('roi', { mask, options: options() }, [mask.buffer])).info;
+  $('component').value = '7'; $('scale').value = '0.002'; $('arrows').checked = true; $('arrow-gain').value = '50'; $('opacity').value = '1';
+  await send('display', { display: displayOptions() });
+  await runPlateTarget();
+  // Show editable outer rectangle and circular hole on the fixed reference.
+  message('Original UHD plate · equivalent strain and displacement arrows. Edit mask to move/resize the outlined rectangle or hole, or add regions.');
+}
+async function runPlateTarget() {
+  if (roiEditing) { message('Apply the edited mask before recalculating the plate.'); return; }
+  paused = true; await drain();
+  const frame = Number($('plate-load').value), record = plateManifest.images.find(r => r.frame === frame);
+  const bitmap = await createImageBitmap(await fetch(new URL(`./demo/plate/${record.file}`, import.meta.url)).then(r => r.blob()));
+  sourceSettings.load = { frame, primary: record.primary_MPa, secondary: record.secondary_MPa };
+  await send('frame', { frame: bitmap, frameIndex: frame, reset: true, plate: sourceSettings.load }, [bitmap]);
+  $('pause').textContent = 'Recalculate'; details();
+}
 async function lockCamera(track) {
   const caps = track.getCapabilities?.() ?? {}, settings = track.getSettings(), locks = {};
   for (const key of ['exposureMode', 'focusMode', 'whiteBalanceMode']) {
@@ -193,20 +221,47 @@ async function startCamera() {
   } else scheduleVideo(token);
   details(); message('Camera active. Actual settings and available manual locks are shown below.');
 }
-const roi = installRoi($('roi'), $('shape'), (ready) => { $('apply-roi').disabled = !ready; });
+const roi = installRoi($('roi'), $('shape'), (state) => {
+  const list = $('regions'); list.replaceChildren();
+  state.shapes.forEach(s => { const option = document.createElement('option'); option.value = s.id;
+    option.textContent = `${'  '.repeat(s.depth)}${s.role === 'hole' ? '− Hole' : '+ Domain'} · ${s.label ?? s.type}`;
+    option.selected = s.id === state.selected; list.append(option); });
+  const selected = state.shapes.find(s => s.id === state.selected);
+  $('shape-properties').disabled = !selected; $('delete-roi').disabled = !selected;
+  $('undo-roi').disabled = !state.canUndo;
+  if (selected) bounds(selected).forEach((v, i) => { $(['roi-x','roi-y','roi-width','roi-height'][i]).value = Math.round(v * 1000) / 1000; });
+  $('roi-height').disabled = selected?.type === 'circle';
+  $('roi-summary').textContent = state.shapes.length ? `${state.shapes.filter(s => s.role === 'domain').length} domain(s), ${state.shapes.filter(s => s.role === 'hole').length} hole(s)${roiEditing ? ' · unapplied edits' : ''}` : 'Full image · no mask.';
+  $('apply-roi').disabled = !roiEditing;
+});
+$('zoom').onchange = () => { $('scene').style.width = `${Number($('zoom').value)*100}%`; };
+$('centre-view').onclick = () => { const view=$('image-viewport'); view.scrollLeft=(view.scrollWidth-view.clientWidth)/2; view.scrollTop=(view.scrollHeight-view.clientHeight)/2; };
+$('regions').onchange = () => roi.select($('regions').value);
+$('delete-roi').onclick = () => roi.remove();
+$('undo-roi').onclick = () => roi.undo();
+$('finish-shape').onclick = () => { try { roi.finish(); $('shape').value = 'select'; } catch (e) { message(e.message, true); } };
+$('update-shape').onclick = () => { try { roi.edit(['roi-x','roi-y','roi-width','roi-height'].map(id => Number($(id).value))); } catch (e) { message(e.message, true); } };
+$('shape').onchange = () => { try { roi.finish(); } catch (e) { message(e.message, true); } };
+$('plate').onclick = () => startPlate().catch(e => message(e.message, true));
+$('plate-load').onchange = () => runPlateTarget().catch(e => message(e.message, true));
 $('demo').onclick = () => startDemo().catch((error) => message(error.message, true));
 $('camera').onclick = () => startCamera().catch((error) => message(error.message, true));
-$('reference').onclick = async () => { await captureReference(); paused = false; $('pause').textContent = 'Pause'; };
-$('pause').onclick = () => { paused = !paused; $('pause').textContent = paused ? 'Resume' : 'Pause'; if (!paused) send('show-reference', { show: false }); };
+$('reference').onclick = async () => { if (source === 'plate') { await startPlate(); return; } await captureReference(); paused = false; $('pause').textContent = 'Pause'; };
+$('pause').onclick = () => { if (source === 'plate') { runPlateTarget().catch(e => message(e.message, true)); return; } if (roiEditing) { message('Apply the mask before resuming.'); return; } paused = !paused; $('pause').textContent = paused ? 'Resume' : 'Pause'; if (!paused) send('show-reference', { show: false }); };
 $('reset').onclick = () => send('reset');
-$('draw').onclick = async () => { paused = true; await drain(); $('pause').textContent = 'Resume'; await send('show-reference', { show: true }); roi.start(referenceInfo.width, referenceInfo.height); $('apply-roi').disabled = false; };
+$('draw').onclick = async () => { paused = true; await drain(); roiEditing = true; $('pause').textContent = 'Resume'; await send('show-reference', { show: true }); $('roi-editor').hidden = false; $('shape').value = 'select'; roi.start(); };
 $('apply-roi').onclick = async () => {
-  try { roi.finish(); const mask = roi.mask(); referenceInfo = (await send('roi', { mask, options: options() }, [mask.buffer])).info;
-    message('Full-window ROI applied. Resume to continue.'); details(); }
-  catch (error) { message(error.message, true); }
+  try { const mask = roi.mask(); appliedShapes = roi.shapes(); referenceInfo = (await send('roi', { mask, options: options() }, mask ? [mask.buffer] : [])).info;
+    roiEditing = false; roi.stop(); $('roi-editor').hidden = true; $('apply-roi').disabled = true;
+    message('Mask applied. Its geometry stays editable; all complete selected subsets are used.'); details();
+    if (source === 'plate') await runPlateTarget();
+  } catch (error) { message(error.message, true); }
 };
-$('clear-roi').onclick = async () => { paused = true; await drain(); roi.clear(); referenceInfo = (await send('roi', { mask: null, options: options() })).info; $('pause').textContent = 'Resume'; details(); };
-for (const id of ['component', 'scale']) $(id).onchange = () => send('display', { display: { mode: Number($('component').value), scale: $('scale').value === 'auto' ? null : Number($('scale').value) } });
+$('clear-roi').onclick = async () => { paused = true; await drain(); roiEditing = false; roi.reset(referenceInfo.width, referenceInfo.height); appliedShapes = []; $('roi-editor').hidden = true;
+  referenceInfo = (await send('roi', { mask: null, options: options() })).info; $('pause').textContent = 'Resume'; details(); if (source === 'plate') await runPlateTarget(); };
+function displayOptions() { return { mode: Number($('component').value), scale: $('scale').value === 'auto' ? null : Number($('scale').value),
+  opacity: Number($('opacity').value), arrows: $('arrows').checked, arrowStep: Number($('arrow-step').value), arrowGain: Number($('arrow-gain').value) }; }
+for (const id of ['component', 'scale', 'opacity', 'arrows', 'arrow-step', 'arrow-gain']) $(id).onchange = () => send('display', { display: displayOptions() });
 function download(name, content, type) {
   const url = URL.createObjectURL(new Blob([content], { type })), link = document.createElement('a');
   link.href = url; link.download = name; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -221,7 +276,7 @@ $('export').onclick = async () => {
     Math.floor(i / field.grid[0]) * field.subsetStride + (field.subsetSize - 1) / 2,
     field.status[i], field.iterations[i], ...field.parameters.slice(i * parameters, (i + 1) * parameters),
   ].join(','));
-  metadata.acquisition = sourceSettings;
+  metadata.acquisition = sourceSettings; metadata.roiGeometry = { version: 1, composition: 'union of roots; exact pixel-containment alternates domain/hole/island', shapes: appliedShapes }; metadata.display = displayOptions();
   download('live-dic-field.csv', lines.join('\n'), 'text/csv');
   download('live-dic-metadata.json', JSON.stringify(metadata, null, 2), 'application/json');
 };
@@ -230,6 +285,6 @@ $('profile').onchange = () => { if (referenceInfo) message('Profile change takes
 window.addEventListener('pagehide', () => { stream?.getTracks().forEach((t) => t.stop()); transport?.postMessage({ type: 'destroy' }); });
 window.addEventListener('error', (event) => { status.errors.push(event.message); message(event.message, true); });
 window.addEventListener('unhandledrejection', (event) => { const text = String(event.reason); status.errors.push(text); message(text, true); });
-if (smoke) globalThis.liveDicReport = () => send('report');
+if (smoke) { globalThis.liveDicReport = () => send('report'); globalThis.liveDicRoi = roi; }
 init().catch((error) => { status.errors.push(error.message); message(error.message, true); });
 if ('serviceWorker' in navigator && (!smoke || query.has('offline'))) navigator.serviceWorker.register(new URL('./sw.js', import.meta.url)).catch((error) => message(`Offline installation unavailable: ${error.message}`, true));

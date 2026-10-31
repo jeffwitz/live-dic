@@ -20,6 +20,9 @@ def main():
     parser.add_argument("--frames", type=int, default=60)
     parser.add_argument("--duration", type=float, default=0)
     parser.add_argument("--software", action="store_true")
+    parser.add_argument(
+        "--plate", action="store_true", help="use the original UHD plate instead of the movie"
+    )
     parser.add_argument("--offline", action="store_true")
     parser.add_argument(
         "--export",
@@ -46,6 +49,8 @@ def main():
         browser = ICGNWebGL(backend="webgpu-wgsl", chromium_args=flags, call_timeout=180)
         with browser:
             url = f"http://127.0.0.1:{server.port}/{quote(site.name)}/?smoke=1"
+            if args.plate:
+                url += "&case=plate"
             if args.software:
                 url += "&rate=0.0625"
             if args.offline:
@@ -87,7 +92,7 @@ def main():
                     const finite=lines.slice(1).every(line=>line.split(',').every(v=>Number.isFinite(Number(v))));
                     return {rows:lines.length-1, finite, grid:metadata.grid,
                       readbackWallMs:metadata.readbackWallMs, configuration:metadata.configuration,
-                      adapter:metadata.capabilities.adapter, roi:metadata.roi,
+                      adapter:metadata.capabilities.adapter, roi:metadata.roi, roiGeometry:metadata.roiGeometry, acquisition:metadata.acquisition,
                       timingBoundary:'Explicit export request while paused -> full field mapped and decoded; acquisition age excluded'};
                   } finally {URL.createObjectURL=original;}
                 })()""")
@@ -107,10 +112,10 @@ def main():
                     )
                     if offline and offline["errors"]:
                         raise RuntimeError(offline["errors"])
-                    if offline and offline["completed"] >= 10:
+                    if offline and offline["completed"] >= (1 if args.plate else 10):
                         break
                     if time.monotonic() > offline_deadline:
-                        raise RuntimeError("Offline reload did not complete ten fields")
+                        raise RuntimeError("Offline reload did not complete the requested fields")
                     time.sleep(0.5)
             visual = browser._evaluate("""(async()=>{
               const image=await createImageBitmap(document.getElementById('field'));

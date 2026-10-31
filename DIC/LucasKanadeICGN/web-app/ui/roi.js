@@ -1,47 +1,114 @@
-/** ROI work happens only while paused, in full reference coordinates. */
-export function installRoi(canvas, shape, onChange) {
-  let points = [], active = false, anchor;
-  const context = canvas.getContext('2d');
-  const point = (event) => { const box = canvas.getBoundingClientRect();
-    return [(event.clientX - box.left) * canvas.width / box.width,
-      (event.clientY - box.top) * canvas.height / box.height]; };
-  function paint() {
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    if (!points.length) return;
-    context.beginPath(); context.moveTo(...points[0]); points.slice(1).forEach((p) => context.lineTo(...p));
-    context.closePath(); context.fillStyle = '#ffffff35'; context.fill();
-    context.strokeStyle = '#f1d75b'; context.lineWidth = Math.max(2, canvas.width / 400); context.stroke();
+import { bounds, compileRoi, transformShape, validateShapes } from './roi-geometry.js';
+
+/** Persistent vector editor. Rasterization happens only while paused. */
+export function installRoi(canvas, tool, onChange) {
+  const ctx = canvas.getContext('2d');
+  let shapes = [], selected = null, active = false, draft = null, drag = null, serial = 0;
+  let compiled = { mask: null, shapes: [] }, preview = null, history = [];
+  const getPoint = e => { const b = canvas.getBoundingClientRect(); return [
+    Math.max(0, Math.min(canvas.width, (e.clientX - b.left) * canvas.width / b.width)),
+    Math.max(0, Math.min(canvas.height, (e.clientY - b.top) * canvas.height / b.height))]; };
+  const current = () => shapes.find(s => s.id === selected);
+  const checkpoint = () => { history.push(structuredClone(shapes)); if (history.length > 50) history.shift(); };
+  function path(s) {
+    ctx.beginPath();
+    if (s.type === 'polygon') { ctx.moveTo(...s.points[0]); s.points.slice(1).forEach(p => ctx.lineTo(...p)); ctx.closePath(); }
+    else if (s.type === 'rectangle') ctx.rect(s.x, s.y, s.width, s.height);
+    else ctx.ellipse(s.x + s.width / 2, s.y + s.height / 2, Math.abs(s.width / 2), Math.abs(s.height / 2), 0, 0, Math.PI * 2);
   }
-  function finish() { active = false; canvas.classList.remove('drawing'); onChange(points.length >= 3); paint(); }
-  canvas.addEventListener('pointerdown', (event) => {
-    if (!active) return; event.preventDefault();
-    if (shape.value === 'rectangle') { anchor = point(event); points = [anchor, anchor, anchor, anchor]; canvas.setPointerCapture(event.pointerId); }
-    else { points.push(point(event)); paint(); }
-  });
-  canvas.addEventListener('pointermove', (event) => {
-    if (!active || !anchor || shape.value !== 'rectangle') return;
-    const p = point(event); points = [anchor, [p[0], anchor[1]], p, [anchor[0], p[1]]]; paint();
-  });
-  canvas.addEventListener('pointerup', () => { if (anchor) { anchor = null; finish(); } });
-  canvas.addEventListener('dblclick', (event) => { if (active) { event.preventDefault(); finish(); } });
-  return {
-    start(width, height) { canvas.width = width; canvas.height = height; points = []; active = true; canvas.classList.add('drawing'); paint(); },
-    finish,
-    clear() { points = []; active = false; canvas.classList.remove('drawing'); paint(); },
-    mask() {
-      if (points.length < 3) throw new Error('Draw a complete polygon or rectangle');
-      const mask = new Uint8Array(canvas.width * canvas.height);
-      // Pixel centres: no antialiasing threshold or hidden erosion.
-      for (let y = 0; y < canvas.height; y++) for (let x = 0; x < canvas.width; x++) {
-        let inside = false;
-        for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
-          const a = points[i], b = points[j];
-          if ((a[1] > y + .5) !== (b[1] > y + .5)
-              && x + .5 < (b[0] - a[0]) * (y + .5 - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside;
-        }
-        mask[y * canvas.width + x] = +inside;
+  function handles(s) {
+    if (s.type === 'polygon') return s.points;
+    const [x, y, w, h] = bounds(s); return [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
+  }
+  function paint() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (active && preview) ctx.drawImage(preview, 0, 0);
+    for (const s of [...shapes, ...(draft ? [draft] : [])]) {
+      const record = compiled.shapes.find(p => p.id === s.id);
+      path(s); ctx.strokeStyle = s.id === selected ? '#f9cc45' : record?.role === 'hole' ? '#fc8271' : '#62ecce';
+      ctx.lineWidth = canvas.width / 500; ctx.stroke();
+      if (active && s.id === selected) {
+        const size = canvas.width / 100;
+        handles(s).forEach(([x, y]) => { ctx.fillStyle = '#fff'; ctx.fillRect(x - size / 2, y - size / 2, size, size); ctx.strokeRect(x - size / 2, y - size / 2, size, size); });
       }
-      return mask;
-    },
+    }
+  }
+  function update() {
+    compiled = compileRoi(shapes, canvas.width, canvas.height); preview = null;
+    if (compiled.mask) {
+      preview = document.createElement('canvas'); preview.width = canvas.width; preview.height = canvas.height;
+      const pc = preview.getContext('2d'), image = pc.createImageData(canvas.width, canvas.height);
+      for (let i = 0; i < compiled.mask.length; i++) { const kept = compiled.mask[i], k = i * 4; image.data[k] = kept ? 220 : 50; image.data[k + 1] = kept ? 255 : 15; image.data[k + 2] = kept ? 242 : 20; image.data[k + 3] = kept ? 35 : 160; }
+      pc.putImageData(image, 0, 0);
+    }
+    paint(); onChange({ shapes: compiled.shapes, selected, editing: active, canUndo: history.length > 0 });
+  }
+  function finish() {
+    if (draft) {
+      if (draft.type === 'polygon' && draft.points.length < 3) throw new Error('Add at least three polygon vertices');
+      checkpoint(); shapes.push(draft); selected = draft.id; draft = null;
+    }
+    drag = null; update();
+  }
+  function hit(s, p) {
+    if (s.type === 'polygon') { path(s); return ctx.isPointInPath(...p); }
+    const [x, y, w, h] = bounds(s);
+    return s.type === 'rectangle' ? p[0] >= x && p[0] <= x + w && p[1] >= y && p[1] <= y + h
+      : ((p[0] - x - w / 2) / (w / 2)) ** 2 + ((p[1] - y - h / 2) / (h / 2)) ** 2 <= 1;
+  }
+  canvas.addEventListener('pointerdown', e => {
+    if (!active || e.button > 0) return; e.preventDefault(); const p = getPoint(e);
+    if (tool.value === 'select') {
+      const s = current(), tolerance = canvas.width / canvas.getBoundingClientRect().width * 12;
+      const handle = s ? handles(s).findIndex(q => Math.hypot(q[0] - p[0], q[1] - p[1]) < tolerance) : -1;
+      if (handle < 0) selected = [...shapes].reverse().find(s => hit(s, p))?.id ?? null;
+      if (current()) { checkpoint(); drag = { point: p, original: structuredClone(current()), handle }; canvas.setPointerCapture(e.pointerId); }
+      paint(); onChange({ shapes: compiled.shapes, selected, editing: active, canUndo: history.length > 0 });
+    } else if (tool.value === 'polygon') {
+      if (!draft) draft = { id: `region-${++serial}`, label: `Polygon ${serial}`, type: 'polygon', points: [] };
+      if (e.detail < 2) draft.points.push(p); paint();
+    } else {
+      draft = { id: `region-${++serial}`, label: `${tool.value} ${serial}`, type: tool.value, x: p[0], y: p[1], width: 0, height: 0 };
+      drag = { point: p }; canvas.setPointerCapture(e.pointerId);
+    }
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (!active || !drag) return;
+    const p = getPoint(e), [ax, ay] = drag.point;
+    if (draft) {
+      let w = Math.abs(p[0] - ax), h = Math.abs(p[1] - ay);
+      if (draft.type === 'circle') w = h = Math.min(w, h);
+      Object.assign(draft, { x: p[0] < ax ? ax - w : ax, y: p[1] < ay ? ay - h : ay, width: w, height: h });
+    } else if (drag.original) {
+      const original = drag.original, index = shapes.findIndex(s => s.id === selected), b = bounds(original);
+      if (original.type === 'polygon' && drag.handle >= 0) { shapes[index] = structuredClone(original); shapes[index].points[drag.handle] = p; }
+      else if (drag.handle >= 0) {
+        const opposite = [[b[0] + b[2], b[1] + b[3]], [b[0], b[1] + b[3]], [b[0], b[1]], [b[0] + b[2], b[1]]][drag.handle];
+        let w = Math.max(1, Math.abs(p[0] - opposite[0])), h = Math.max(1, Math.abs(p[1] - opposite[1]));
+        if (original.type === 'circle') w = h = Math.min(w, h);
+        shapes[index] = transformShape(original, [p[0] < opposite[0] ? opposite[0] - w : opposite[0], p[1] < opposite[1] ? opposite[1] - h : opposite[1], w, h]);
+      } else shapes[index] = transformShape(original, [Math.max(0, Math.min(canvas.width - b[2], b[0] + p[0] - ax)), Math.max(0, Math.min(canvas.height - b[3], b[1] + p[1] - ay)), b[2], b[3]]);
+    }
+    paint();
+  });
+  canvas.addEventListener('pointerup', () => {
+    if (!drag) return;
+    if (draft && (draft.width < 1 || draft.height < 1)) draft = null;
+    finish(); tool.value = 'select';
+  });
+  canvas.addEventListener('pointercancel', () => { draft = null; drag = null; update(); });
+  canvas.addEventListener('dblclick', e => { if (active && draft?.type === 'polygon') { e.preventDefault(); finish(); tool.value = 'select'; } });
+  return {
+    start() { active = true; canvas.classList.add('drawing'); update(); },
+    stop() { if (draft) finish(); active = false; canvas.classList.remove('drawing'); paint(); onChange({shapes:compiled.shapes,selected,editing:active,canUndo:history.length>0}); },
+    finish,
+    reset(width, height, preset = []) { canvas.width = width; canvas.height = height; shapes = validateShapes(preset); selected = shapes[0]?.id ?? null; draft = drag = null; history = []; serial += preset.length; active = false; canvas.classList.remove('drawing'); update(); },
+    select(id) { selected = id; tool.value = 'select'; paint(); onChange({ shapes: compiled.shapes, selected, editing: active, canUndo: history.length > 0 }); },
+    edit(box) { if (!current()) return; checkpoint(); shapes[shapes.findIndex(s => s.id === selected)] = transformShape(current(), box); update(); },
+    remove() { if (!selected) return; checkpoint(); shapes = shapes.filter(s => s.id !== selected); selected = shapes.at(-1)?.id ?? null; update(); },
+    undo() { if (!history.length) return; shapes = history.pop(); selected = shapes.at(-1)?.id ?? null; draft = drag = null; update(); },
+    clear() { checkpoint(); shapes = []; selected = null; draft = drag = null; update(); },
+    mask() { if (draft) finish(); return compiled.mask?.slice() ?? null; },
+    shapes() { return structuredClone(shapes); },
   };
 }

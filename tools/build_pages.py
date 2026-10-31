@@ -40,6 +40,15 @@ def assemble(output: Path) -> dict:
     for name, digest in demo["files"].items():
         if hashlib.sha256((output / "demo" / name).read_bytes()).hexdigest() != digest:
             raise RuntimeError(f"Demo asset hash mismatch: {name}")
+    plate_root = PROJECT / "assets/uhd_plate_hole"
+    plate = json.loads((plate_root / "manifest.json").read_text())
+    (output / "demo/plate").mkdir()
+    for record in plate["images"]:
+        source = plate_root / record["file"]
+        if hashlib.sha256(source.read_bytes()).hexdigest() != record["file_sha256"]:
+            raise RuntimeError(f"Original plate fixture hash mismatch: {source.name}")
+        shutil.copyfile(source, output / "demo/plate" / source.name)
+    (output / "demo/plate.json").write_text(json.dumps(plate, indent=2) + "\n")
     report = dict(
         commit=commit,
         dirty=bool(
@@ -49,6 +58,7 @@ def assemble(output: Path) -> dict:
         demo_manifest_sha256=hashlib.sha256(
             (output / "demo/manifest.json").read_bytes()
         ).hexdigest(),
+        plate_image_sha256={r["file"]: r["file_sha256"] for r in plate["images"]},
     )
     if report["dirty"]:
         fingerprint = hashlib.sha256()
