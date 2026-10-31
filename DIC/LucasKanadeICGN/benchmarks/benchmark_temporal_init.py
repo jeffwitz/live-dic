@@ -75,8 +75,7 @@ def scores(result, stretch, translation):
                     np.sqrt(
                         np.mean(
                             np.sum(
-                                (result.displacement[accepted] - truth_d[accepted])
-                                ** 2,
+                                (result.displacement[accepted] - truth_d[accepted]) ** 2,
                                 axis=-1,
                             )
                         )
@@ -84,9 +83,7 @@ def scores(result, stretch, translation):
                 )
                 if n
                 else None,
-                f"{name}_strain_rmse": float(
-                    np.sqrt(np.mean((strain[accepted] - truth_e) ** 2))
-                )
+                f"{name}_strain_rmse": float(np.sqrt(np.mean((strain[accepted] - truth_e) ** 2)))
                 if n
                 else None,
             }
@@ -109,9 +106,7 @@ def capture(reference, targets, stretches, outlier):
                     "stretch_x": float(stretches[i, 0]),
                     "stretch_y": float(stretches[i, 1]),
                     "mean_iterations": result.mean_iterations,
-                    "temporal_seeded_coarse": result.timing.get(
-                        "temporallySeededCoarseSubsets", 0
-                    ),
+                    "temporal_seeded_coarse": result.timing.get("temporallySeededCoarseSubsets", 0),
                     "preparation_ms": preparation.total_wall_ms,
                     **scores(result, stretches[i], (0, 0)),
                 }
@@ -138,17 +133,13 @@ def timing(reference, targets, model, outlier, campaigns):
                     list(engine.register_stream(targets[:20], pipeline_depth=depth))
                     fields, completed = [], []
                     start = time.perf_counter()
-                    for result in engine.register_stream(
-                        targets[20:], pipeline_depth=depth
-                    ):
+                    for result in engine.register_stream(targets[20:], pipeline_depth=depth):
                         fields.append(result)
                         completed.append(time.perf_counter())
                     wall_ms = (time.perf_counter() - start) * 1000
                 # All reductions, scoring and serialization happen after timing.
                 ages = [r.timing["resultAgeWallMs"] for r in fields]
-                iterations = np.concatenate(
-                    [r.iterations[r.accepted_mask] for r in fields]
-                )
+                iterations = np.concatenate([r.iterations[r.accepted_mask] for r in fields])
                 stretches = tensile_stretches() if model == "affine" else None
                 quality = [
                     {
@@ -174,12 +165,8 @@ def timing(reference, targets, model, outlier, campaigns):
                     "age_p95_ms": float(np.percentile(ages, 95)),
                     "age_p99_ms": float(np.percentile(ages, 99)),
                     "age_samples_ms": ages,
-                    "completion_period_samples_ms": (
-                        np.diff(completed) * 1000
-                    ).tolist(),
-                    "mean_iterations": float(np.mean(iterations))
-                    if iterations.size
-                    else None,
+                    "completion_period_samples_ms": (np.diff(completed) * 1000).tolist(),
+                    "mean_iterations": float(np.mean(iterations)) if iterations.size else None,
                     "iteration_histogram": np.bincount(
                         iterations.astype(int), minlength=31
                     ).tolist(),
@@ -254,9 +241,7 @@ def main():
     )
     targets = [warp(reference, stretch, center=(1920, 1080)) for stretch in stretches]
     baseline = capture(reference, targets, stretches, args.outlier_policy)
-    timing_rows = timing(
-        reference, targets, "affine", args.outlier_policy, args.campaigns
-    )
+    timing_rows = timing(reference, targets, "affine", args.outlier_policy, args.campaigns)
     robust = corruption(reference, targets, stretches, baseline, args.outlier_policy)
     target_hashes = [hashlib.sha256(t).hexdigest() for t in targets]
     # Translation is qualified on pure translations, never on tensile strain.
@@ -270,13 +255,10 @@ def main():
         engine.set_reference(reference)
         fields = list(engine.register_stream(targets, pipeline_depth=2))
     translation_quality = [
-        {"frame": i, **scores(r, (1, 1), (i * 0.2, -i * 0.1))}
-        for i, r in enumerate(fields)
+        {"frame": i, **scores(r, (1, 1), (i * 0.2, -i * 0.1))} for i, r in enumerate(fields)
     ]
     report = {
-        "commit": subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], text=True
-        ).strip(),
+        "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
         "dirty": bool(
             subprocess.check_output(
                 ["git", "status", "--porcelain", "--untracked-files=no"], text=True
@@ -285,19 +267,12 @@ def main():
         "command": [sys.executable, *sys.argv],
         "platform": platform.platform(),
         "versions": {
-            name: importlib.metadata.version(name)
-            for name in ("numpy", "wgpu", "Pillow")
+            name: importlib.metadata.version(name) for name in ("numpy", "wgpu", "Pillow")
         },
-        "reference_sha256": hashlib.sha256(
-            (FIXTURES / "reference.png").read_bytes()
-        ).hexdigest(),
-        "truth_sha256": hashlib.sha256(
-            (FIXTURES / "machine_truth.csv").read_bytes()
-        ).hexdigest(),
+        "reference_sha256": hashlib.sha256((FIXTURES / "reference.png").read_bytes()).hexdigest(),
+        "truth_sha256": hashlib.sha256((FIXTURES / "machine_truth.csv").read_bytes()).hexdigest(),
         "tensile_target_pixel_sha256": target_hashes,
-        "translation_target_pixel_sha256": [
-            hashlib.sha256(t).hexdigest() for t in targets
-        ],
+        "translation_target_pixel_sha256": [hashlib.sha256(t).hexdigest() for t in targets],
         "configuration": {
             "subset_size": 16,
             "subset_stride": 16,
@@ -314,9 +289,7 @@ def main():
         "corruption": robust,
         "translation_quality": translation_quality,
     }
-    (args.output / "report.json").write_text(
-        json.dumps(report, indent=2, allow_nan=False) + "\n"
-    )
+    (args.output / "report.json").write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
     with (args.output / "metrics.csv").open("w", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=list(baseline[0]))
         writer.writeheader()

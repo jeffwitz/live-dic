@@ -1,0 +1,15 @@
+# Generated Python files and local development environments.
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.venv*/
+wheelhouse/
+wheel-dist/
+
+# Platform/editor state, never scientific fixtures or benchmark reports.
+.DS_Store
+Thumbs.db
+*.swp
+*.swo

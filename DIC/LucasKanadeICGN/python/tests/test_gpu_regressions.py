@@ -245,7 +245,8 @@ class GPURegressionTests(unittest.TestCase):
         retained = []
         for engine_type in (ICGNWGPU, ICGNWGPUFullPyramid):
             for _ in range(3):
-                engine = engine_type(device_type="gpu")
+                # Lifecycle correctness also applies to CI software adapters.
+                engine = engine_type(device_type="auto")
                 self.addCleanup(engine.close)
                 retained.append(engine)
                 device = weakref.ref(engine.device)
@@ -260,7 +261,7 @@ class GPURegressionTests(unittest.TestCase):
 
     def test_closing_shared_level_keeps_owning_device_usable(self) -> None:
         reference, target = _fractional_pair(128, 128, (0.3, -0.2))
-        with ICGNWGPU(device_type="gpu", prefer_subgroups=False) as engine:
+        with ICGNWGPU(device_type="auto", prefer_subgroups=False) as engine:
             engine.set_reference(reference)
             before = engine.register(target)
             shared = engine._new_shared_level()

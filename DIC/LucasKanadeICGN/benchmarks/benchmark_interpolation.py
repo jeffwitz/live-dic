@@ -146,9 +146,7 @@ def main() -> int:
                     options["tolerance_per_level"] = tuple(args.tolerance_per_level)
             else:
                 if args.levels != 1:
-                    raise ValueError(
-                        "The Three.js backend currently supports one scale"
-                    )
+                    raise ValueError("The Three.js backend currently supports one scale")
                 options.update(
                     backend="three-tsl",
                     force_three_webgl=args.backend == "three-webgl",

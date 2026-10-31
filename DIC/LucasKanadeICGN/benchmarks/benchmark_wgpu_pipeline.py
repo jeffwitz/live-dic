@@ -93,9 +93,7 @@ def _measure_pipeline(
     depth: int,
 ) -> tuple[dict[str, Any], RegistrationResult]:
     started = time.perf_counter()
-    results = list(
-        engine.register_stream((target for _ in range(repeats)), pipeline_depth=depth)
-    )
+    results = list(engine.register_stream((target for _ in range(repeats)), pipeline_depth=depth))
     sequence_ms = (time.perf_counter() - started) * 1_000.0
     latencies = [result.timing["totalWallMs"] for result in results]
     return (
@@ -113,9 +111,7 @@ def _measure_pipeline(
 def main() -> int:
     args = _arguments()
     if args.repeats < 1 or args.warmups < 0 or args.campaigns < 1:
-        raise ValueError(
-            "repeats and campaigns must be positive; warmups must be non-negative"
-        )
+        raise ValueError("repeats and campaigns must be positive; warmups must be non-negative")
     if any(depth < 1 for depth in args.depths):
         raise ValueError("all pipeline depths must be positive")
     reference, target = _make_pair(args.texture)
@@ -131,9 +127,7 @@ def main() -> int:
             engine.register(target)
         for depth in args.depths:
             list(
-                engine.register_stream(
-                    (target for _ in range(args.warmups)), pipeline_depth=depth
-                )
+                engine.register_stream((target for _ in range(args.warmups)), pipeline_depth=depth)
             )
 
         final_results: dict[str, RegistrationResult] = {}
@@ -159,12 +153,8 @@ def main() -> int:
     for method, samples in campaigns.items():
         result = final_results[method]
         summary[method] = {
-            "period_median_ms": _percentile(
-                [sample["period_ms"] for sample in samples], 50
-            ),
-            "period_p95_ms": _percentile(
-                [sample["period_ms"] for sample in samples], 95
-            ),
+            "period_median_ms": _percentile([sample["period_ms"] for sample in samples], 50),
+            "period_p95_ms": _percentile([sample["period_ms"] for sample in samples], 95),
             "throughput_median_fps": _percentile(
                 [sample["throughput_fps"] for sample in samples],
                 50,

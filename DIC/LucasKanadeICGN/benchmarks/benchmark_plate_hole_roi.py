@@ -51,9 +51,7 @@ def image(path):
 def score(result, truth, population):
     """Scores retain the fixed population and report its missing measurements."""
     selected = (
-        np.ones(population.shape, bool)
-        if result.roi_selected is None
-        else result.roi_selected
+        np.ones(population.shape, bool) if result.roi_selected is None else result.roi_selected
     )
     accepted = population & selected & result.accepted_mask
     count, requested, valid = (
@@ -158,10 +156,7 @@ def main():
     assets = ROOT / "assets/uhd_plate_hole"
     manifest = json.loads((assets / "manifest.json").read_text())
     for row in manifest["images"]:
-        if (
-            hashlib.sha256((assets / row["file"]).read_bytes()).hexdigest()
-            != row["file_sha256"]
-        ):
+        if hashlib.sha256((assets / row["file"]).read_bytes()).hexdigest() != row["file_sha256"]:
             raise ValueError(f"Fixture hash mismatch: {row['file']}")
     reference = image(assets / "reference.png")
     mask = hole_mask()
@@ -210,9 +205,7 @@ def main():
                     else {
                         "roi_mask": mask,
                         "roi_policy": "full" if variant == "full" else "partial",
-                        "roi_truncation": "visibility"
-                        if variant == "visibility"
-                        else "none",
+                        "roi_truncation": "visibility" if variant == "visibility" else "none",
                     }
                 )
                 info = engine.set_reference(reference, **kwargs)
@@ -274,9 +267,7 @@ def main():
             snapshot["regions"]["common_near_hole"] = score(
                 result, truths[frame], common & (radius < 288)
             )
-            snapshot["regions"]["added_partial_centres"] = score(
-                result, truths[frame], added
-            )
+            snapshot["regions"]["added_partial_centres"] = score(result, truths[frame], added)
             for name, metrics in snapshot["regions"].items():
                 rows.append(
                     {
@@ -294,9 +285,7 @@ def main():
     source = Path(lucas_kanade_icgn.__file__).parent
     report = {
         "command": sys.argv,
-        "commit": subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], text=True
-        ).strip(),
+        "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
         "git_dirty": bool(
             subprocess.check_output(
                 ["git", "status", "--porcelain", "--untracked-files=no"], text=True
@@ -326,9 +315,7 @@ def main():
             "No material law, load or analytical field enters registration.",
         ],
     }
-    (args.output / "report.json").write_text(
-        json.dumps(report, indent=2, allow_nan=False)
-    )
+    (args.output / "report.json").write_text(json.dumps(report, indent=2, allow_nan=False))
 
 
 if __name__ == "__main__":

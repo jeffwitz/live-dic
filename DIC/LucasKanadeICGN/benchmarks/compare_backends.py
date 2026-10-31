@@ -15,12 +15,8 @@ from lucas_kanade_icgn import ICGNWebGL
 def _arguments() -> argparse.Namespace:
     module_root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--reference", type=Path, default=module_root / "assets/frame_000.png"
-    )
-    parser.add_argument(
-        "--target", type=Path, default=module_root / "assets/frame_010.png"
-    )
+    parser.add_argument("--reference", type=Path, default=module_root / "assets/frame_000.png")
+    parser.add_argument("--target", type=Path, default=module_root / "assets/frame_010.png")
     parser.add_argument("--repeats", type=int, default=30)
     parser.add_argument("--warmups", type=int, default=5)
     return parser.parse_args()
@@ -82,8 +78,7 @@ def main() -> int:
         "translation_rmse_px": float(np.sqrt(np.mean(translation_difference**2))),
         "translation_max_abs_px": float(np.max(np.abs(translation_difference))),
         "parameter_rmse": [
-            float(np.sqrt(np.mean(parameter_difference[:, index] ** 2)))
-            for index in range(6)
+            float(np.sqrt(np.mean(parameter_difference[:, index] ** 2))) for index in range(6)
         ],
     }
     report["three_to_gpuio_gpu_ratio"] = (

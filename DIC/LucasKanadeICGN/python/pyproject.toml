@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "lucas-kanade-icgn-webgl"
 version = "0.1.0"
-description = "Headless Python interface for GPU IC-GN motion solvers"
+description = "Python-supervised real-time digital image correlation with native WebGPU"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -23,7 +23,9 @@ icgn-webgl = "lucas_kanade_icgn.cli:main"
 
 [project.urls]
 "Original tests_gpuio project by Pierre Margerit" = "https://github.com/MargeritPierre/tests_gpuio"
-"Python DIC fork" = "https://github.com/jeffwitz/tests_gpuio"
+"Source" = "https://github.com/jeffwitz/live-dic"
+"Documentation" = "https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/docs"
+"Issues" = "https://github.com/jeffwitz/live-dic/issues"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -49,8 +51,10 @@ lucas_kanade_icgn = [
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["B", "E4", "E7", "E9", "F", "I", "SIM", "UP"]
 
+[tool.ruff.lint.isort]
+known-first-party = ["lucas_kanade_icgn"]

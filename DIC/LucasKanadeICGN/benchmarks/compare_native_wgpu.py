@@ -21,12 +21,8 @@ from lucas_kanade_icgn import ICGNWGPU, ICGNWebGL, RegistrationResult
 def _arguments() -> argparse.Namespace:
     module_root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--reference", type=Path, default=module_root / "assets/frame_000.png"
-    )
-    parser.add_argument(
-        "--target", type=Path, default=module_root / "assets/frame_010.png"
-    )
+    parser.add_argument("--reference", type=Path, default=module_root / "assets/frame_000.png")
+    parser.add_argument("--target", type=Path, default=module_root / "assets/frame_010.png")
     parser.add_argument("--repeats", type=int, default=30)
     parser.add_argument("--warmups", type=int, default=5)
     parser.add_argument("--output", type=Path, help="write the complete JSON report")
@@ -107,9 +103,7 @@ def _percentile(samples: list[float], percentile: float) -> float:
     return float(np.percentile(np.asarray(samples, dtype=np.float64), percentile))
 
 
-def _result_summary(
-    results: list[RegistrationResult], total_key: str
-) -> dict[str, Any]:
+def _result_summary(results: list[RegistrationResult], total_key: str) -> dict[str, Any]:
     final = results[-1]
     totals = [result.timing[total_key] for result in results]
     summary: dict[str, Any] = {
@@ -125,9 +119,7 @@ def _result_summary(
     }
     gpu_samples = [result.timing.get("gpuMs") for result in results]
     if all(value is not None for value in gpu_samples):
-        finite_gpu_samples = [
-            float(value) for value in gpu_samples if value is not None
-        ]
+        finite_gpu_samples = [float(value) for value in gpu_samples if value is not None]
         summary["gpu_median_ms"] = _percentile(finite_gpu_samples, 50)
         summary["gpu_samples_ms"] = finite_gpu_samples
     return summary
@@ -173,9 +165,7 @@ def main() -> int:
         "webgpu_wgsl_pyramid_levels": args.webgpu_wgsl_pyramid_levels,
     }
 
-    solver_preference = {"auto": None, "portable": False, "subgroup": True}[
-        args.native_solver
-    ]
+    solver_preference = {"auto": None, "portable": False, "subgroup": True}[args.native_solver]
     with ICGNWGPU(prefer_subgroups=solver_preference) as engine:
         preparation = engine.set_reference(reference)
         for _ in range(args.warmups):
@@ -195,10 +185,7 @@ def main() -> int:
                     [result.timing["uploadWallMs"] for result in native_results], 50
                 ),
                 "execute_readback_median_ms": _percentile(
-                    [
-                        result.timing["executeReadbackWallMs"]
-                        for result in native_results
-                    ],
+                    [result.timing["executeReadbackWallMs"] for result in native_results],
                     50,
                 ),
             }
@@ -232,15 +219,11 @@ def main() -> int:
                     }
                 )
                 report[backend] = summary
-        report["native_vs_three_agreement"] = _agreement(
-            native, browser_results["three-tsl"]
-        )
+        report["native_vs_three_agreement"] = _agreement(native, browser_results["three-tsl"])
         report["native_vs_shared_wgsl_agreement"] = _agreement(
             native, browser_results["webgpu-wgsl"]
         )
-        report["native_vs_gpuio_agreement"] = _agreement(
-            native, browser_results["gpuio"]
-        )
+        report["native_vs_gpuio_agreement"] = _agreement(native, browser_results["gpuio"])
 
     serialized = json.dumps(report, indent=2, allow_nan=False)
     if args.output is not None:

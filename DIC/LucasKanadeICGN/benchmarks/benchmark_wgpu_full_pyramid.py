@@ -54,9 +54,7 @@ def _pair(path: Path, width: int, height: int) -> tuple[np.ndarray, np.ndarray]:
     return np.ascontiguousarray(reference), np.ascontiguousarray(target)
 
 
-def _measure(
-    engine: Any, target: np.ndarray, warmups: int, repeats: int
-) -> dict[str, Any]:
+def _measure(engine: Any, target: np.ndarray, warmups: int, repeats: int) -> dict[str, Any]:
     for _ in range(warmups):
         engine.register(target)
     samples = []

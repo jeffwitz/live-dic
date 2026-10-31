@@ -6,12 +6,22 @@ on:
       - main
     paths:
       - ".github/workflows/python-tests.yml"
+      - ".ruff.toml"
+      - "tools/**"
+      - "README.md"
+      - "CONTRIBUTING.md"
       - "DIC/LucasKanadeICGN/python/**"
+      - "DIC/LucasKanadeICGN/benchmarks/*.py"
       - "DIC/LucasKanadeICGN/assets/**"
   pull_request:
     paths:
       - ".github/workflows/python-tests.yml"
+      - ".ruff.toml"
+      - "tools/**"
+      - "README.md"
+      - "CONTRIBUTING.md"
       - "DIC/LucasKanadeICGN/python/**"
+      - "DIC/LucasKanadeICGN/benchmarks/*.py"
       - "DIC/LucasKanadeICGN/assets/**"
   workflow_dispatch:
 
@@ -31,6 +41,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - os: ubuntu-latest
+            python: "3.11"
           - os: ubuntu-latest
             python: "3.12"
           - os: windows-latest
@@ -52,6 +64,13 @@ jobs:
       - name: Install package and development tools
         run: python -m pip install "./DIC/LucasKanadeICGN/python[dev]"
 
+      - name: Build and validate the distributed wheel
+        run: |
+          python -m pip wheel --no-deps ./DIC/LucasKanadeICGN/python --wheel-dir wheel-dist
+          python tools/check_repository.py --wheel-dir wheel-dist
+          python -c "import pathlib, subprocess, sys; wheel = next(pathlib.Path('wheel-dist').glob('*.whl')); subprocess.run([sys.executable, '-m', 'pip', 'install', '--force-reinstall', '--no-deps', str(wheel)], check=True)"
+          python -I -c "import lucas_kanade_icgn; from importlib.resources import files; assert files('lucas_kanade_icgn').joinpath('shaders/icgn.wgsl').is_file(); print(lucas_kanade_icgn.__file__)"
+
       - name: Run portable unit tests
         run: >-
           python -m unittest discover
@@ -60,8 +79,8 @@ jobs:
 
       - name: Check Python style
         run: |
-          ruff check DIC/LucasKanadeICGN/python
-          ruff format --check DIC/LucasKanadeICGN/python
+          ruff check DIC/LucasKanadeICGN/python DIC/LucasKanadeICGN/benchmarks tools DIC/LucasKanadeICGN/docs
+          ruff format --check DIC/LucasKanadeICGN/python DIC/LucasKanadeICGN/benchmarks tools DIC/LucasKanadeICGN/docs
 
   gpu-lavapipe:
     name: Linux / lavapipe GPU regressions

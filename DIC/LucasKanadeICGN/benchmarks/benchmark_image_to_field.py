@@ -61,9 +61,7 @@ def _arguments() -> argparse.Namespace:
         help="boolean .npy reference mask; no implicit thresholding",
     )
     parser.add_argument("--roi-policy", choices=("full", "partial"), default="full")
-    parser.add_argument(
-        "--roi-truncation", choices=("none", "visibility"), default="none"
-    )
+    parser.add_argument("--roi-truncation", choices=("none", "visibility"), default="none")
     parser.add_argument(
         "--device-type",
         choices=("auto", "gpu", "cpu"),
@@ -133,30 +131,18 @@ def _arguments() -> argparse.Namespace:
     if args.pipeline_depth < 1:
         parser.error("--pipeline-depth must be positive")
     args.backends = tuple(args.backends or DEFAULT_BACKENDS)
-    if args.roi_mask is not None and any(
-        backend != "native-pyramid" for backend in args.backends
-    ):
+    if args.roi_mask is not None and any(backend != "native-pyramid" for backend in args.backends):
         parser.error("ROI requires --backend native-pyramid")
-    if args.roi_truncation != "none" and (
-        args.roi_mask is None or args.roi_policy != "partial"
-    ):
+    if args.roi_truncation != "none" and (args.roi_mask is None or args.roi_policy != "partial"):
         parser.error("--roi-truncation requires --roi-policy partial and --roi-mask")
-    if args.device_type != "auto" and any(
-        backend != "native-pyramid" for backend in args.backends
-    ):
+    if args.device_type != "auto" and any(backend != "native-pyramid" for backend in args.backends):
         parser.error("--device-type requires --backend native-pyramid")
-    if args.pipeline_depth > 1 and any(
-        backend != "native-pyramid" for backend in args.backends
-    ):
-        parser.error(
-            "--pipeline-depth greater than 1 currently requires --backend native-pyramid"
-        )
+    if args.pipeline_depth > 1 and any(backend != "native-pyramid" for backend in args.backends):
+        parser.error("--pipeline-depth greater than 1 currently requires --backend native-pyramid")
     if args.spatial_weighting != "uniform" and any(
         backend != "native-pyramid" for backend in args.backends
     ):
-        parser.error(
-            "Gaussian spatial weighting currently requires --backend native-pyramid"
-        )
+        parser.error("Gaussian spatial weighting currently requires --backend native-pyramid")
     return args
 
 
@@ -255,9 +241,9 @@ def _support_quality(results: list[Any], truths: list[Any]) -> dict:
                 y, x = np.indices(result.status.shape)
                 x = x * result.subset_stride + (result.subset_size - 1) / 2
                 y = y * result.subset_stride + (result.subset_size - 1) / 2
-                expected = np.stack(
-                    (truth["ex"] * (x - 1920), truth["ey"] * (y - 1080)), axis=-1
-                )[mask]
+                expected = np.stack((truth["ex"] * (x - 1920), truth["ey"] * (y - 1080)), axis=-1)[
+                    mask
+                ]
                 gradients = [truth["ex"], 0.0, 0.0, truth["ey"]]
             else:
                 expected, gradients = np.asarray(truth), [0.0, 0.0, 0.0, 0.0]
@@ -274,9 +260,7 @@ def _support_quality(results: list[Any], truths: list[Any]) -> dict:
             "accepted_fraction_min": min(counts) / count if count else None,
             "displacement_rmse_max_px": max(rmses) if rmses else None,
             "displacement_p95_max_px": max(p95s) if p95s else None,
-            "gradient_component_rmse_max": max(gradient_errors)
-            if gradient_errors
-            else None,
+            "gradient_component_rmse_max": max(gradient_errors) if gradient_errors else None,
         }
     return output
 
@@ -315,9 +299,7 @@ def _measure(
             completion_times.append(completed)
             results.append(result)
             truths.append(truth)
-        execution = (
-            "synchronous persistent engine; one result completed before the next input"
-        )
+        execution = "synchronous persistent engine; one result completed before the next input"
     else:
         target_images = (target for target, _, _ in selected)
         for result, (_, truth, _) in zip(
@@ -327,16 +309,13 @@ def _measure(
         ):
             completed = time.perf_counter()
             samples.append(
-                float(
-                    result.timing.get("resultAgeWallMs", result.timing["totalWallMs"])
-                )
+                float(result.timing.get("resultAgeWallMs", result.timing["totalWallMs"]))
             )
             completion_times.append(completed)
             results.append(result)
             truths.append(truth)
         execution = (
-            "bounded native full-pyramid stream; "
-            f"{pipeline_depth} independent target(s) in flight"
+            f"bounded native full-pyramid stream; {pipeline_depth} independent target(s) in flight"
         )
     stream_wall_ms = (time.perf_counter() - stream_started) * 1_000.0
 
@@ -353,24 +332,13 @@ def _measure(
             y, x = np.indices(result.status.shape)
             x = x * result.subset_stride + (result.subset_size - 1) / 2
             y = y * result.subset_stride + (result.subset_size - 1) / 2
-            expected = np.stack(
-                (truth["ex"] * (x - 1920), truth["ey"] * (y - 1080)), axis=-1
-            )
-            error = (
-                result.displacement[result.accepted_mask]
-                - expected[result.accepted_mask]
-            )
-            rmses.append(
-                float(np.sqrt(np.mean(np.sum(error**2, axis=-1))))
-                if error.size
-                else None
-            )
+            expected = np.stack((truth["ex"] * (x - 1920), truth["ey"] * (y - 1080)), axis=-1)
+            error = result.displacement[result.accepted_mask] - expected[result.accepted_mask]
+            rmses.append(float(np.sqrt(np.mean(np.sum(error**2, axis=-1)))) if error.size else None)
         else:
             rmses.append(result.rmse(truth))
     accepted = [result.accepted for result in results]
-    finite_rmses = [
-        value for value in rmses if value is not None and np.isfinite(value)
-    ]
+    finite_rmses = [value for value in rmses if value is not None and np.isfinite(value)]
     return {
         "boundary": "resident uint8 NumPy image to materialized NumPy parameter field",
         "execution": execution,
@@ -389,9 +357,7 @@ def _measure(
             str(int(key)): int(count)
             for key, count in zip(
                 *np.unique(
-                    np.concatenate(
-                        [result.iterations[result.accepted_mask] for result in results]
-                    ),
+                    np.concatenate([result.iterations[result.accepted_mask] for result in results]),
                     return_counts=True,
                 ),
                 strict=True,
@@ -433,18 +399,14 @@ def _aggregate_campaigns(campaigns: list[dict[str, Any]]) -> dict[str, Any]:
     result["accepted_min"] = min(campaign["accepted_min"] for campaign in campaigns)
     result["accepted_max"] = max(campaign["accepted_max"] for campaign in campaigns)
     errors = [
-        campaign["rmse_max_px"]
-        for campaign in campaigns
-        if campaign["rmse_max_px"] is not None
+        campaign["rmse_max_px"] for campaign in campaigns if campaign["rmse_max_px"] is not None
     ]
     result["rmse_max_px"] = max(errors) if errors else None
     result["raw_campaigns"] = campaigns
     component_keys = campaigns[0]["component_timing_medians_ms"]
     result["component_timing_medians_ms"] = {
         key: float(
-            np.median(
-                [campaign["component_timing_medians_ms"][key] for campaign in campaigns]
-            )
+            np.median([campaign["component_timing_medians_ms"][key] for campaign in campaigns])
         )
         for key in component_keys
     }
@@ -477,12 +439,8 @@ def main() -> int:
                 "Original UHD tensile images require 3840x2160; no resizing is applied"
             )
         assets = args.assets / "uhd_tensile"
-        with (assets / "machine_truth.csv").open(
-            newline="", encoding="utf-8"
-        ) as stream:
-            state = next(
-                row for row in csv.DictReader(stream) if int(row["frame"]) == 40
-            )
+        with (assets / "machine_truth.csv").open(newline="", encoding="utf-8") as stream:
+            state = next(row for row in csv.DictReader(stream) if int(row["frame"]) == 40)
         with Image.open(assets / "reference.png") as image:
             reference = np.array(image, dtype=np.uint8)
         with Image.open(assets / "frame_040.png") as image:
@@ -551,9 +509,7 @@ def main() -> int:
             measurements[backend] = {
                 "device": preparation.device,
                 "adapter_info": dict(getattr(engine, "adapter_info", {})),
-                "execution_device_type": getattr(
-                    engine, "execution_device_type", "browser"
-                ),
+                "execution_device_type": getattr(engine, "execution_device_type", "browser"),
                 "preparation_ms": preparation.total_wall_ms,
                 **_aggregate_campaigns(campaigns),
             }
@@ -576,9 +532,7 @@ def main() -> int:
             {
                 "commit": revision,
                 "source_hashes": {
-                    str(path.relative_to(source_dir)): hashlib.sha256(
-                        path.read_bytes()
-                    ).hexdigest()
+                    str(path.relative_to(source_dir)): hashlib.sha256(path.read_bytes()).hexdigest()
                     for path in sorted(
                         [*source_dir.glob("*.py"), *source_dir.glob("shaders/*.wgsl")]
                     )
@@ -598,9 +552,7 @@ def main() -> int:
                 "camera_or_decoder_included": False,
                 "fixture_hashes": {
                     filename: digest
-                    for filename, (_, _, digest) in zip(
-                        fixture_names, targets, strict=True
-                    )
+                    for filename, (_, _, digest) in zip(fixture_names, targets, strict=True)
                 },
                 "fixture_set": args.fixture_set,
                 "pyramid_levels": args.pyramid_levels,

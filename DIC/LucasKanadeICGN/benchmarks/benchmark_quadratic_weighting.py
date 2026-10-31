@@ -106,18 +106,8 @@ def _pair(
 
 def _truth(result, parameters: np.ndarray) -> np.ndarray:
     grid_y, grid_x = np.mgrid[: result.status.shape[0], : result.status.shape[1]]
-    x = (
-        0.5 * result.subset_size
-        - 0.5
-        + result.subset_stride * grid_x
-        - 0.5 * (result.width - 1)
-    )
-    y = (
-        0.5 * result.subset_size
-        - 0.5
-        + result.subset_stride * grid_y
-        - 0.5 * (result.height - 1)
-    )
+    x = 0.5 * result.subset_size - 0.5 + result.subset_stride * grid_x - 0.5 * (result.width - 1)
+    y = 0.5 * result.subset_size - 0.5 + result.subset_stride * grid_y - 0.5 * (result.height - 1)
     expected = np.empty((*result.status.shape, 12), dtype=np.float64)
     expected[..., 0] = (
         parameters[0]

@@ -1,21 +1,24 @@
-"""Sphinx configuration for the Python-supervised DIC-RT documentation."""
+"""Sphinx configuration for the Python-supervised live-dic documentation."""
 
 from __future__ import annotations
 
 import sys
+import tomllib
 from pathlib import Path
-
 
 DOCUMENTATION_ROOT = Path(__file__).resolve().parent
 PROJECT_ROOT = DOCUMENTATION_ROOT.parent
 PYTHON_SOURCE = PROJECT_ROOT / "python" / "src"
 sys.path.insert(0, str(PYTHON_SOURCE))
 
-project = "Python-supervised DIC-RT"
-author = "Real-Time DIC contributors"
+project = "live-dic"
+author = "live-dic contributors; foundational work by Pierre Margerit"
 copyright = "2026, Real-Time DIC contributors"
-version = "0.1"
-release = "0.1.0"
+project_metadata = tomllib.loads(
+    (PROJECT_ROOT / "python/pyproject.toml").read_text(encoding="utf-8")
+)
+release = project_metadata["project"]["version"]
+version = ".".join(release.split(".")[:2])
 
 extensions = [
     "sphinx.ext.autodoc",
@@ -33,7 +36,7 @@ autosectionlabel_prefix_document = True
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 html_theme = "sphinx_rtd_theme"
-html_title = "Python-supervised DIC-RT"
+html_title = "live-dic: Python-supervised real-time DIC"
 html_theme_options = {
     "collapse_navigation": False,
     "navigation_depth": 4,

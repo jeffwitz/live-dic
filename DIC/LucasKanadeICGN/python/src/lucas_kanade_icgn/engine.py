@@ -1147,7 +1147,7 @@ class ICGNWebGL:
             self.start()
         try:
             return _run_async_blocking(self._evaluate_async(expression))
-        except asyncio.TimeoutError as error:
+        except TimeoutError as error:
             raise ICGNError(
                 f"The computation exceeded the {self.call_timeout:g} s timeout."
             ) from error

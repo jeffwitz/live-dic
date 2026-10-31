@@ -78,9 +78,7 @@ def _arguments() -> argparse.Namespace:
     return args
 
 
-def _make_pair(
-    texture_path: Path, truth: tuple[int, int]
-) -> tuple[np.ndarray, np.ndarray]:
+def _make_pair(texture_path: Path, truth: tuple[int, int]) -> tuple[np.ndarray, np.ndarray]:
     with Image.open(texture_path) as image:
         texture = np.asarray(image.convert("L"), dtype=np.uint8)
     repeat_y = (UHD_HEIGHT + texture.shape[0] - 1) // texture.shape[0]
@@ -174,9 +172,7 @@ def _native_report(
         solver_tuning_ms = engine.solver_tuning_ms
 
     registration = results[-1]
-    total_times = np.asarray(
-        [result.timing["totalWallMs"] for result in results], dtype=np.float64
-    )
+    total_times = np.asarray([result.timing["totalWallMs"] for result in results], dtype=np.float64)
     upload_times = np.asarray(
         [result.timing["uploadWallMs"] for result in results], dtype=np.float64
     )

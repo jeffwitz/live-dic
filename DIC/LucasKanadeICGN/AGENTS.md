@@ -1,6 +1,7 @@
-# AGENTS.md — DIC-RT (LucasKanadeICGN)
+# live-dic development conventions
 
-Instructions for coding agents working in `DIC/LucasKanadeICGN/`.
+Instructions for work in `DIC/LucasKanadeICGN/`. See the root
+[CONTRIBUTING.md](../../CONTRIBUTING.md) for the complete workflow.
 
 ## Project conventions
 
@@ -30,89 +31,63 @@ cd DIC/LucasKanadeICGN/python
 .venv/bin/python -m unittest discover -s tests                 # CPU-only tests
 ICGN_RUN_GPU_TESTS=1 .venv/bin/python -m unittest discover -s tests   # + GPU tests
 .venv/bin/ruff check src tests ../benchmarks
+.venv/bin/ruff format --check src tests ../benchmarks
 cd ../../.. && python3 -m sphinx -W --keep-going -b html \
   DIC/LucasKanadeICGN/docs DIC/LucasKanadeICGN/docs/_build/html
 ```
 
-All four must pass before you finish. Say which of them you could actually run.
+Run these checks before finishing and report their actual outcomes.
+GPU tests must be explicitly enabled on available hardware or a software
+adapter; skipped GPU tests do not validate numerical execution.
 
----
 
-## Current task: reduce result age in temporal mode
+## Architecture and public contracts
 
-Temporal initialization is done (see
-`benchmarks/results/temporal-init-20261030/` and
-`realtime-optimization-20261030/`). Affine p95 result age is still not
-consistently below 16.67 ms. The goal is a qualified p95 below 16.67 ms at one
-slot, affine, native UHD, on the 200-frame tensile trajectory.
+- The product is a Python-supervised NumPy image-to-field engine. Native
+  `ICGNWGPUFullPyramid` is recommended and has two fixed levels by default.
+  `ICGNWGPU` is single-scale by default; selective retry is a distinct optional
+  compatibility path. Do not silently substitute one policy for another.
+- `ICGNWebGL` and the existing CLI retain their browser defaults. Browser ROI
+  requests must be rejected, never ignored. A JavaScript stream supervisor is
+  a future integration, not an implemented component.
+- The distribution is `lucas-kanade-icgn-webgl`, the import is
+  `lucas_kanade_icgn`, and the CLI is `icgn-webgl`. Keep these stable unless a
+  separate migration is requested. `wgpu` is a standard dependency.
+- No first-party native extension or external shader compiler is required.
+  Preserve the pure-Python wheel with packaged WGSL and local browser assets.
+- Use context managers or `close()`. Native close is permanent and idempotent;
+  it releases GPU references and destroys only an owning device. Shared levels
+  must not destroy their parent's device. Cleanup must stay outside live loops.
+- Portable native widths are 16 (default), 32, and experimental 128 invocations
+  per workgroup. Width, subset size, subset stride and stream depth are
+  independent. Never infer the fastest width solely from a vendor name or limit.
+- Temporal initialization, velocity prediction, fine correction and stagnation
+  stopping are opt-in. Fixed pyramids still solve all levels on every frame.
+  Stagnation stopping applies only to the finest level. Adaptive pyramids and
+  direct interpolation have failed some qualified trajectory cases; do not
+  present their speed alone as a successful optimization.
 
-### Measured cost model (indicative, not qualified)
+## Numerical and performance evidence
 
-Archived `uhd_tensile/frame_040.png`, repeated target, one slot, 60 samples,
-Intel LNL. Total ms is resident NumPy → NumPy field.
-
-| Config | Total | GPU wait |
-|---|---:|---:|
-| bspline, 2 levels, default | 12.00 | 10.37 |
-| bspline, 2 levels, iterations (1,1) | 8.76 | 7.45 |
-| bspline, 1 level, 1 iteration | 7.00 | 5.68 |
-| cubic, 1 level, 1 iteration | 4.49 | 3.19 |
-
-Derived: about 1.4 ms per mean solver iteration, about 2.5 ms for the fine
-B-spline prefilter, about 1.8 ms for the coarse level, and about 1.5 ms of host
-time. The CPU is idle during `map_sync` (no busy wait). At frame 199, 2,060
-fine windows reach the 16-iteration ceiling without converging: 28% of fine
-iterations. Reproduce this table first and record it in the campaign.
-
-### Work items (each opt-in, defaults bit-for-bit unchanged)
-
-1. **Constant-velocity seed.** `initialization="temporal"` with
-   `temporal_prediction="velocity"`. The seed is 2·uₙ − uₙ₋₁ for each subset
-   when both states are accepted and within `temporal_max_age`; otherwise use
-   the current seed. Use a second GPU-resident history buffer. History must
-   keep storing raw solver states, never predictions. Measure the reduction in
-   mean fine iterations.
-2. **Early divergence abort** in `shaders/icgn.wgsl`, as a pipeline constant so
-   the default shader path is unchanged. Stop when the corner-update norm has
-   not decreased for k consecutive iterations after a minimum count. The final
-   status is 0, as at the ceiling. Report how many windows would have converged
-   late (status 1) without the abort; that is the cost of this option.
-3. **Adaptive pyramid.** For example `pyramid_policy="adaptive"`: run one level
-   while the previous frame's temporal acceptance is ≥ a threshold, and two
-   levels after a reset, expiry, or an acceptance drop. Decide on the host from
-   counters already read back; do not add a readback or a CPU/GPU sync. Report
-   the level used for each frame. Results must stay deterministic across
-   `pipeline_depth` 1/2/3 (the decision may lag by depth−1 frames; document
-   this).
-4. **Interpolation choice.** Qualify `interpolation="cubic"` against `bspline`
-   on the tensile trajectory, measuring both displacement and strain errors.
-   Do not change the recommendation unless the error is shown to be acceptable.
-
-Do not retry 32/64-lane solvers, wider FIR tiles, or extra slots for latency;
-they were already rejected.
-
-### Campaign
-
-`benchmarks/benchmark_latency_reduction.py`, with results in
-`benchmarks/results/latency-reduction-<date>/`, following
-`realtime-optimization-20261030/README.md`: the same trajectory, three
-alternating repeats, one slot, plus depth 2 for reference. Run an ablation
-adding each item cumulatively to the current temporal/2-level baseline. For
-each step report: FPS, age median/p95/p99 (per run and pooled), mean
-fine/coarse iterations over all windows (not only accepted ones), and coverage
-plus RMSE on the fixed 26,924 support and on the whole grid. State plainly
-whether p95 < 16.67 ms is reached. Negative results are kept.
-
-### Tests
-
-Defaults keep bit-for-bit parity. Velocity prediction falls back correctly
-after reset, expiry and corrupted frames. The divergence abort never changes a
-window that converges before k stalled iterations. The adaptive policy switches
-levels as specified and is deterministic across depths. A cropped tensile
-sequence goes in the unit tests; native UHD is used only in the campaign.
-
-### Done when
-
-Commands pass (state which ran), docs are updated (API, how-to, temporal
-explanation, limitations, performance), there are focused commits per item,
-and nothing is pushed.
+- Preserve existing accuracy gates, model conventions, parameter ordering and
+  explicit distinctions between ROI selection, reference validity and status.
+  Do not relax tolerances or drop difficult points to make a change pass.
+- Use small cases for unit tests and native 3840 x 2160 fixtures for performance
+  claims. The archived tensile and plate-hole images must not be downloaded or
+  regenerated as a substitute for the checked-in fixtures.
+- Measure resident NumPy input to materialized NumPy field and statistics.
+  Separate preparation/compilation from steady state, GPU time from full calls,
+  throughput from result age, and acquisition from the numerical engine.
+- Keep warmups, input hashes, exact configuration, source revision/hashes,
+  hardware/driver, selected variant, timing samples and quality populations.
+  Alternate repeated A/B runs and do not run tests/builds during timed campaigns.
+- Preserve immutable reports in `benchmarks/results/`, including negative
+  controls. Do not reformat their scripts, alter their numbers, overwrite
+  baselines or call historical measurements a fresh validation.
+- Keep numerical tables in `docs/reference/performance.rst`; landing pages
+  should link to the relevant campaign rather than duplicate stale numbers.
+  Hardware execution on Linux/Vulkan does not qualify every OS or architecture.
+- After packaging/resource changes, build a wheel, install it in a fresh
+  environment outside the checkout, and exercise its packaged resources.
+- No automatic push, PR creation, dependency upgrade or default change is part
+  of routine cleanup. The user's explicit instructions take precedence.

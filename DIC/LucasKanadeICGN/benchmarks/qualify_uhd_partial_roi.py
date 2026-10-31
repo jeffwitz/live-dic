@@ -28,9 +28,7 @@ from uhd_partial_cases import TRANSLATION, boundary_mask, translation_pair
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument(
-        "--scene", choices=("analytic-wave", "archived-speckle"), required=True
-    )
+    parser.add_argument("--scene", choices=("analytic-wave", "archived-speckle"), required=True)
     parser.add_argument("--frames", type=int, default=160)
     parser.add_argument("--campaigns", type=int, default=3)
     args = parser.parse_args()
@@ -129,9 +127,7 @@ def main() -> None:
             str(p.relative_to(source)): hashlib.sha256(p.read_bytes()).hexdigest()
             for p in sorted([*source.glob("*.py"), *source.glob("shaders/*.wgsl")])
         },
-        "qualification_script_sha256": hashlib.sha256(
-            Path(__file__).read_bytes()
-        ).hexdigest(),
+        "qualification_script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "fixture_helper_hashes": {
             name: hashlib.sha256((helpers / name).read_bytes()).hexdigest()
             for name in ("uhd_partial_cases.py", "test_gpu_regressions.py")
@@ -140,9 +136,7 @@ def main() -> None:
         "scope": "Resident NumPy input to full NumPy output; acquisition, decoding, setup and post-timing quality evaluation excluded. No universal deadline or non-regression claim.",
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(
-        json.dumps(report, indent=2, allow_nan=False), encoding="utf-8"
-    )
+    args.output.write_text(json.dumps(report, indent=2, allow_nan=False), encoding="utf-8")
 
 
 if __name__ == "__main__":

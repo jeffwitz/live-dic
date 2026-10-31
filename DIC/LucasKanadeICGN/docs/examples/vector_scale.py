@@ -25,9 +25,7 @@ def main() -> None:
     if adapter is None:
         raise RuntimeError("No WebGPU adapter is available")
     device = adapter.request_device_sync()
-    source_buffer = device.create_buffer_with_data(
-        data=values, usage=wgpu.BufferUsage.STORAGE
-    )
+    source_buffer = device.create_buffer_with_data(data=values, usage=wgpu.BufferUsage.STORAGE)
     destination_buffer = device.create_buffer(
         size=values.nbytes,
         usage=wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_SRC,

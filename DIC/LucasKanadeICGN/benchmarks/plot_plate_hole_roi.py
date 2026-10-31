@@ -37,13 +37,9 @@ def load_field(root, frame, policy, variant):
         parameters = archive["parameters"]
         accepted = archive["status"] > 0.5
         selected = (
-            archive["roi_selected"]
-            if "roi_selected" in archive
-            else np.ones(accepted.shape, bool)
+            archive["roi_selected"] if "roi_selected" in archive else np.ones(accepted.shape, bool)
         )
-    return von_mises_strain(
-        strain_from_parameters(parameters)
-    ) * 1e6, accepted & selected
+    return von_mises_strain(strain_from_parameters(parameters)) * 1e6, accepted & selected
 
 
 def configure(ax):
@@ -52,9 +48,7 @@ def configure(ax):
     ax.set_ylim(320, -320)
     ax.set_xticks((-256, 0, 256))
     ax.set_yticks((-256, 0, 256))
-    ax.add_patch(
-        Circle((0, 0), RADIUS, facecolor="white", edgecolor="#334155", lw=0.8, zorder=5)
-    )
+    ax.add_patch(Circle((0, 0), RADIUS, facecolor="white", edgecolor="#334155", lw=0.8, zorder=5))
     ax.set_facecolor("#e2e8f0")
     for spine in ax.spines.values():
         spine.set_color("#94a3b8")
@@ -117,9 +111,7 @@ def main():
         )
         display["frames"][str(frame)] = {}
         for row, policy in enumerate(("disabled", "median")):
-            label = (
-                "Raw affine gradients" if policy == "disabled" else "Component median"
-            )
+            label = "Raw affine gradients" if policy == "disabled" else "Component median"
             axes[row, 0].pcolormesh(
                 x,
                 y,
@@ -265,9 +257,7 @@ def main():
             fontsize=8,
         )
         save(radial, root, f"boundary_bands_{frame:03d}")
-    (root / "figure_scales.json").write_text(
-        json.dumps(display, indent=2, allow_nan=False)
-    )
+    (root / "figure_scales.json").write_text(json.dumps(display, indent=2, allow_nan=False))
 
 
 if __name__ == "__main__":

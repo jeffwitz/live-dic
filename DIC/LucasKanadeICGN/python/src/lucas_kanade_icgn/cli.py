@@ -56,7 +56,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--repo-root",
         type=Path,
-        help="optional runtime asset directory or tests_gpuio repository root",
+        help="optional runtime asset directory or live-dic repository root",
     )
     parser.add_argument("--chromium", type=Path, help="Chromium or Chrome executable")
     parser.add_argument(

@@ -1,0 +1,13 @@
+# Apply the package's style to active benchmarks and maintenance scripts too.
+extend = "DIC/LucasKanadeICGN/python/pyproject.toml"
+src = ["DIC/LucasKanadeICGN/python/src", "DIC/LucasKanadeICGN/benchmarks"]
+extend-exclude = ["DIC/LucasKanadeICGN/benchmarks/results"]
+
+[lint.per-file-ignores]
+# Active benchmark scripts deliberately import independent checkout fixtures
+# after adding their directories to sys.path. Runtime modules do not do this.
+"DIC/LucasKanadeICGN/benchmarks/benchmark_plate_hole_roi.py" = ["E402"]
+"DIC/LucasKanadeICGN/benchmarks/plot_plate_hole_roi.py" = ["E402"]
+"DIC/LucasKanadeICGN/benchmarks/benchmark_temporal_init.py" = ["E402"]
+"DIC/LucasKanadeICGN/benchmarks/benchmark_realtime_optimization.py" = ["E402"]
+"DIC/LucasKanadeICGN/benchmarks/benchmark_latency_reduction.py" = ["E402"]
