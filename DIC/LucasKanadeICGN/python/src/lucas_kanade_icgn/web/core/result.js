@@ -68,7 +68,9 @@ export async function createResultReader(device, module, level, options, field) 
   const statsGroup = device.createBindGroup({ layout: statistics.getBindGroupLayout(0), entries: [resource(0, field), resource(1, summary), resource(2, config)] });
   const samplesGroup = device.createBindGroup({ layout: decimate.getBindGroupLayout(0), entries: [resource(0, field), resource(2, config), resource(3, samples)] });
   function setTruth(truth) {
-    floats[8] = truth?.[0] ?? 0; floats[9] = truth?.[1] ?? 0; floats[10] = truth ? 1 : 0;
+    const x = truth?.[0] ?? 0, y = truth?.[1] ?? 0, enabled = truth ? 1 : 0;
+    if (floats[8] === Math.fround(x) && floats[9] === Math.fround(y) && floats[10] === enabled) return;
+    floats[8] = x; floats[9] = y; floats[10] = enabled;
     device.queue.writeBuffer(config, 0, bytes);
   }
   return { summary, samples, summaryBytes, sampleBytes: samples.size, step, sampleCount,

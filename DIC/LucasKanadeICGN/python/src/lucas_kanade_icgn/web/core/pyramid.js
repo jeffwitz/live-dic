@@ -642,6 +642,7 @@ const updateConfig = () => {
 };
 
 const configure = (options = {}, allowPyramidRebuild = false) => {
+  if (Object.keys(options).length === 0) return { ...configuration };
   const pyramidLevels = options.pyramidLevels === undefined
     ? configuration.pyramidLevels : Number(options.pyramidLevels);
   if (!Number.isInteger(pyramidLevels) || pyramidLevels < 1 || pyramidLevels > 3) {
@@ -726,8 +727,11 @@ const configure = (options = {}, allowPyramidRebuild = false) => {
       throw new Error('Each per-level tolerance must be greater than zero');
     }
   });
+  const changed = Object.entries(next).some(([key, value]) => Array.isArray(value)
+    ? value.some((entry, index) => entry !== configuration[key]?.[index]) || value.length !== configuration[key]?.length
+    : value !== configuration[key]);
   Object.assign(configuration, next);
-  updateConfig();
+  if (changed) updateConfig();
   return { ...configuration };
 };
 

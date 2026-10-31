@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#153c48">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; worker-src 'self'; style-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./ui/app.css">
+  <title>live-dic · Camera to displacement field</title>
+</head>
+<body>
+  <header><a class="brand" href="./"><img src="./icons/icon.svg" width="36" height="36" alt="">live-dic</a><span class="tag">LOCAL WEBGPU DEMONSTRATION</span></header>
+  <main>
+    <section class="intro"><div><p class="eyebrow">Camera → GPU → displacement field</p><h1>See how a surface moves.</h1><p>Compare a live image with a fixed reference, on your own device. No upload, account or remote computation.</p></div><aside>Built on the foundational work of <a href="https://github.com/MargeritPierre/Strobox">Pierre Margerit</a>.<br>Demonstration, education and field screening.<br><strong>Hand-held capture is not qualified for metrology.</strong></aside></section>
+    <div id="message" role="status" aria-live="polite">Checking WebGPU and measuring the device…</div>
+    <section class="workspace">
+      <div class="viewer"><canvas id="field" width="1280" height="720" aria-label="Camera and displacement field"></canvas><canvas id="roi" aria-label="Draw the reference ROI"></canvas><div id="placeholder">Choose the analytic demo or connect a camera.</div><div class="legend"><span id="low">−1</span><div></div><span id="high">+1 px</span><span class="gray-key">Grey: unavailable / rejected</span></div></div>
+      <aside class="panel">
+        <div class="control-group"><h2>1. Source &amp; reference</h2><div class="buttons"><button id="demo">Analytic demo</button><button id="camera">Camera</button></div>
+        <label>Requested resolution<select id="resolution"><option value="1280x720">720p · 1280 × 720</option><option value="1920x1080">1080p · 1920 × 1080</option><option value="3840x2160">UHD · 3840 × 2160</option></select></label>
+        <label>Profile<select id="profile"><option value="portable">Portable · two levels, one slot</option><option value="qualified-latency">Qualified latency configuration</option><option disabled>Minimal · trajectory gates not qualified</option></select></label>
+        <div class="buttons"><button id="reference" disabled>Capture reference</button><button id="pause" disabled>Pause</button><button id="reset" disabled>Reset history</button></div>
+        </div><div class="control-group"><h2>2. Region of interest</h2><label>Shape<select id="shape"><option value="rectangle">Rectangle</option><option value="polygon">Polygon · double-click to finish</option></select></label>
+        <div class="buttons"><button id="draw" disabled>Draw ROI</button><button id="apply-roi" disabled>Apply ROI</button><button id="clear-roi" disabled>Full image</button></div><p class="hint">White/outlined region is kept. Only complete subsets inside it are measured. Finish the current sequence before changing the reference.</p>
+        </div><div class="control-group"><h2>3. Display &amp; export</h2><label>Field<select id="component"><option value="2">Displacement magnitude |u|</option><option value="0">Horizontal u</option><option value="1">Vertical v</option><option value="3">Affine gradient du/dx</option><option value="4">Affine gradient dv/dy</option><option value="5">Affine symmetric shear</option><option value="6">Status</option></select></label>
+        <label>Scale<select id="scale"><option value="auto">Automatic</option><option value="0.001">±0.001</option><option value="1">±1</option><option value="10">±10</option><option value="100">±100</option></select></label>
+        <button id="export" disabled>Download field CSV + metadata JSON</button><p class="hint">Export pauses capture and reads the full field once.</p></div>
+      </aside>
+    </section>
+    <section class="metrics" aria-label="Live statistics"><div><span>Completed FPS</span><strong id="fps">—</strong></div><div><span>Result age p50 / p95</span><strong id="age">—</strong></div><div><span>Accepted / selected</span><strong id="acceptance">—</strong></div><div><span>Mean iterations</span><strong id="iterations">—</strong></div><div><span>Dropped frames</span><strong id="drops">0</strong></div><div><span>Analytic error (demo)</span><strong id="error">—</strong></div></section>
+    <details><summary>Device, acquisition and timing details</summary><pre id="details">Checking…</pre><p class="hint">Engine age starts when the frame reaches the worker and ends when the GPU field is observable. Small statistics are read for this HUD; the complete field stays on the GPU until export. Capture and display latency are separate.</p></details>
+    <footer>Browser engine: canonical WGSL shared with native Python. <a href="https://github.com/jeffwitz/live-dic">Source &amp; documentation</a>. Your camera stays on this device.</footer>
+  </main>
+  <video id="video" muted playsinline></video>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
