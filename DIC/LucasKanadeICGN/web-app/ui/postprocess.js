@@ -1,3 +1,11 @@
+const PARAMETER_NAMES=Object.freeze(['tx','du_dx','du_dy','ty','dv_dx','dv_dy','d2u_dx2','d2u_dxdy','d2u_dy2','d2v_dx2','d2v_dxdy','d2v_dy2']);
+/** Public native parameter order; raw coefficients retain image-pixel units. */
+export function parameterOrder(model){
+  if(!['translation','affine','quadratic'].includes(model))throw new Error('Unknown field motion model');
+  return PARAMETER_NAMES.slice(0,model==='quadratic'?12:6);
+}
+export function parameterUnits(model){return parameterOrder(model).map((_,i)=>[0,3].includes(i)?'px':i>=6?'1/px':'gradient');}
+
 /** Explicit, reversible field analysis. No GPU/DOM access and no mutation of solver data. */
 export const DEFAULT_RECIPE = Object.freeze({ smoothing: 'none', window: 5,
   strainSource: 'direct', strainMeasure: 'small', excludeFlagged: false, unitsPerPixel: 1, unit: 'px' });
@@ -111,6 +119,14 @@ export function analyzeField(field, options = {}, roiMask = null) {
 }
 
 export function componentValues(analysis,component) {
+  const coefficient=/^computed-p(\d{1,2})$/.exec(component);
+  if(coefficient){
+    const index=Number(coefficient[1]),model=analysis.field.config.motionModel,components=model==='quadratic'?12:6;
+    if(index>=components||(model==='translation'&&![0,3].includes(index)))throw new Error('This model does not estimate the requested coefficient');
+    const displacement=[0,3].includes(index),curvature=index>=6,scale=analysis.recipe.unitsPerPixel;
+    const values=Float64Array.from(analysis.valid,(_,i)=>analysis.field.parameters[i*components+index]*(displacement?scale:curvature?1/scale:1));
+    return {values,valid:analysis.valid,unit:displacement?analysis.recipe.unit:curvature?`1/${analysis.recipe.unit}`:'gradient',source:'computed local model coefficient; unaffected by workbench smoothing/VSG'};
+  }
   const values=analysis.fields[component];if(!values)throw new Error('Unknown field component');
   const strain=!['u','v','magnitude','status','iterations'].includes(component);
   return {values,valid:component==='status'?new Uint8Array(values.length).fill(1):strain?analysis.strainValid:analysis.valid,

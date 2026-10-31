@@ -1,3 +1,4 @@
+import { parameterOrder, parameterUnits } from './ui/postprocess.js';
 import { decodeMaskImage, maskPng } from './ui/mask-image.js';
 import { installWorkbench } from './ui/workbench.js';
 import { installWorkspace, solverOptions } from './ui/workspace.js';
@@ -79,7 +80,7 @@ function receive({ data }) {
     $('export').disabled = false; workbench.setReady(true);
     if (data.record) { try { workbench.add(data.record.field, { ...data.record.metadata, acquisition: {source:sourceSettings.source}, build: buildInfo, roiGeometry: roiMetadata() }); } catch(e) { message(e.message,true); } delete data.record; }
     if (!workbench.reviewing) $('run-state').textContent = `${source} · ${data.width} × ${data.height} · ${data.comparison?.mode ?? 'fixed'} · ${paused ? 'paused' : 'running'}`;
-    if (data.comparison) { sourceSettings.lastComparison = data.comparison; updateLocalPosition(data.comparison.target); }
+    if (data.comparison) { sourceSettings.lastComparison = data.comparison; updateLocalPosition(data.comparison.target);$('last-reference-summary').textContent=`Last pair: ${data.comparison.referenceAdmissible} numerically admissible references / ${data.selected} requested ROI windows. Every selected window remains requested.`; }
     status.completed++; status.results.push(data); if (status.results.length > (smoke ? 18000 : 120)) status.results.shift();
     $('fps').textContent = source === 'plate' ? 'Static pair' : data.fps.toFixed(1);
     $('age').textContent = `${data.ageMedian.toFixed(1)} / ${data.ageP95.toFixed(1)} ms`;
@@ -152,7 +153,7 @@ async function stop() {
   if (localVideoUrl) URL.revokeObjectURL(localVideoUrl); localVideoUrl = null;
   localImages = []; imageIndex = 0; receivedOrdinal = 0;sourceSettings={};
   dropped=0;$('drops').textContent='0';clearLiveMetrics();
-  $('run-state').textContent='No source selected';$('placeholder').hidden=false;$('camera-summary').hidden=true;
+  $('run-state').textContent='No source selected';$('applied-solver-summary').textContent='No reference prepared.';$('last-reference-summary').textContent='';$('placeholder').hidden=false;$('camera-summary').hidden=true;
   referenceInfo = null; ['reference','pause','reset','draw','clear-roi','export','import-mask','save-mask'].forEach(id => $(id).disabled = true);
   $('comparison').disabled=false; source = null; roiEditing = false; $('roi-editor').hidden = true; $('plate-load-label').hidden = true; $('local-controls').hidden = true;
 }
@@ -165,6 +166,11 @@ async function frameFromVideo() {
   return createImageBitmap(video, { resizeWidth: width, resizeHeight: height });
 }
 async function updateReferenceControls() {
+  const cfg=referenceInfo.config,total=referenceInfo.grid[0]*referenceInfo.grid[1];
+  let selected=0,valid=0;
+  for(let i=0;i<total;i++)if(!referenceInfo.roiSelected||referenceInfo.roiSelected[i]){selected++;if(referenceInfo.referenceValid?.[i])valid++;}
+  $('applied-solver-summary').textContent=`Applied ${cfg.motionModel} · ${cfg.interpolation} · ${cfg.pyramidLevels} level(s)\nWindow ${referenceInfo.subsetSize} px · step ${referenceInfo.subsetStride} px · ${Math.round(100*(1-referenceInfo.subsetStride/referenceInfo.subsetSize))}% overlap\nIteration limits (coarse → fine): ${cfg.iterationsPerLevel.join(' / ')}\nGrid ${referenceInfo.grid.join(' × ')} · ${selected} selected / ${total} positions\n${valid} admissible prepared references; target convergence remains to be measured.`;
+  $('last-reference-summary').textContent='Awaiting a target field.';
   const translationOnly = referenceInfo.config?.motionModel === 'translation';
   for (const option of $('component').options) if ([3,4,5,7].includes(Number(option.value))) option.disabled = translationOnly;
   if (translationOnly && [3,4,5,7].includes(Number($('component').value))) { $('component').value='2'; await send('display',{display:displayOptions()}); }
@@ -185,7 +191,7 @@ async function captureReference(frame = null) {
   await updateReferenceControls();
   previousFrame = -1; details(); message('Reference captured. Camera and results stay on this device.');
 }
-function clearLiveMetrics() {for(const id of ['fps','age','acceptance','iterations','error'])$(id).textContent='—';delete sourceSettings.lastComparison;}
+function clearLiveMetrics() {for(const id of ['fps','age','acceptance','iterations','error'])$(id).textContent='—';delete sourceSettings.lastComparison;$('last-reference-summary').textContent='Awaiting a target field.';}
 function countDrop() { dropped++; $('drops').textContent = dropped; }
 async function processFrame(frame, frameIndex = null, { force = false, reset = false, input = null, referenceFrame = null, referenceInput = null } = {}) {
   const token = generation, mode = source === 'plate' ? 'fixed' : $('comparison').value;
@@ -575,6 +581,7 @@ $('export').onclick = async () => {
     Math.floor(i / field.grid[0]) * field.subsetStride + (field.subsetSize - 1) / 2,
     field.status[i], field.iterations[i], ...field.parameters.slice(i * parameters, (i + 1) * parameters),
   ].join(','));
+  metadata.parameterOrder=parameterOrder(field.config.motionModel);metadata.parameterUnits=parameterUnits(field.config.motionModel);
   metadata.acquisition = sourceSettings; metadata.roiGeometry = roiMetadata(); metadata.display = displayOptions();
   download('live-dic-field.csv', lines.join('\n'), 'text/csv');
   download('live-dic-metadata.json', JSON.stringify(metadata, null, 2), 'application/json');

@@ -1,5 +1,5 @@
 /** Dependency-free NumPy archive interchange. No pickle, eval or filesystem extraction. */
-import { validateField, validateRecipe } from './postprocess.js';
+import { validateField, validateRecipe, parameterOrder, parameterUnits } from './postprocess.js';
 const encoder=new TextEncoder(),decoder=new TextDecoder();
 const table=Uint32Array.from({length:256},(_,n)=>{for(let k=0;k<8;k++)n=n&1?0xedb88320^(n>>>1):n>>>1;return n>>>0;});
 function crc32(bytes){let c=0xffffffff;for(const b of bytes)c=table[(c^b)&255]^(c>>>8);return(c^0xffffffff)>>>0;}
@@ -14,6 +14,15 @@ export function npy(values,shape,descriptor) {
   return join([prefix.bytes,encoder.encode(text),new Uint8Array(values.buffer,values.byteOffset,values.byteLength)]);
 }
 function textNpy(value){const chars=Array.from(value),data=new Uint32Array(Math.max(1,chars.length));chars.forEach((c,i)=>data[i]=c.codePointAt(0));return npy(data,[],`<U${Math.max(1,chars.length)}`);}
+function textArrayNpy(values){
+  const width=Math.max(1,...values.map(value=>Array.from(value).length)),data=new Uint32Array(values.length*width);
+  values.forEach((value,i)=>Array.from(value).forEach((c,j)=>data[i*width+j]=c.codePointAt(0)));
+  return npy(data,[values.length],`<U${width}`);
+}
+function validateParameterOrder(names,model){
+  const expected=parameterOrder(model);
+  if(!Array.isArray(names)||names.length!==expected.length||names.some((name,i)=>name!==expected[i]))throw new Error('Parameter order differs from the public live-dic model convention');
+}
 function scalar(value){return npy(new Uint32Array([value]),[],'<u4');}
 export function zipStore(entries) {
   const parts=[],central=[];let offset=0;
@@ -41,7 +50,8 @@ export function fieldArchive(field,metadata={},analysis=null,roiMask=null) {
     'width.npy':scalar(field.width),'height.npy':scalar(field.height),
     'subset_size.npy':scalar(field.subsetSize),'subset_stride.npy':scalar(field.subsetStride),
     'config_json.npy':textNpy(JSON.stringify(field.config)),
-    'metadata_json.npy':textNpy(JSON.stringify(metadata)),
+    'parameter_order.npy':textArrayNpy(parameterOrder(field.config.motionModel)),
+    'metadata_json.npy':textNpy(JSON.stringify({...metadata,parameterOrder:parameterOrder(field.config.motionModel),parameterUnits:parameterUnits(field.config.motionModel)})),
   };
   if(roiMask){if(roiMask.length!==field.width*field.height)throw new Error('Mask shape mismatch');entries['roi_mask.npy']=npy(roiMask,[field.height,field.width],'|u1');}
   if(analysis){entries['recipe_json.npy']=textNpy(JSON.stringify(analysis.recipe));
@@ -63,6 +73,8 @@ async function verifyMask(mask, field, cache = new Map()) {
   if(await cache.get(mask)!==expected)throw new Error('Archived ROI hash does not match the binary mask');
 }
 export function readNpy(bytes) {
+  // Normalize Node Buffer subclasses without copying; subsequent slice() owns its bytes.
+  bytes=bytes instanceof Uint8Array?new Uint8Array(bytes.buffer,bytes.byteOffset,bytes.byteLength):new Uint8Array(bytes);
   const view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
   if(bytes.length<10||!bytes.slice(0,6).every((v,i)=>v===[147,78,85,77,80,89][i]))throw new Error('Invalid NumPy header');
   const version=bytes[6],base=version===1?10:12;
@@ -92,7 +104,7 @@ export function readNpy(bytes) {
   return {shape,values:new Type(data.buffer),descriptor};
 }
 export async function readZip(buffer) {
-  const bytes=buffer instanceof Uint8Array?buffer:new Uint8Array(buffer);
+  const bytes=buffer instanceof Uint8Array?new Uint8Array(buffer.buffer,buffer.byteOffset,buffer.byteLength):new Uint8Array(buffer);
   if(bytes.length>MAX_BYTES||bytes.length<22)throw new Error('Archive is empty or exceeds the 256 MiB import limit');
   const view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);let end=-1;
   for(let i=bytes.length-22;i>=Math.max(0,bytes.length-65557);i--)if(view.getUint32(i,true)===0x06054b50){end=i;break;}
@@ -124,6 +136,7 @@ export async function importFieldArchive(buffer, suppliedGeometry = {}) {
   if(![2,3].includes(status.shape.length)||parameters.shape.length!==status.shape.length+1)throw new Error('Unsupported field/sequence array dimensions');
   if(iterations.shape.length!==status.shape.length||iterations.shape.some((v,i)=>v!==status.shape[i])||status.shape.some((v,i)=>parameters.shape[i]!==v))throw new Error('Field array shapes differ');
   const config=JSON.parse(read('config_json').values[0]),roi=zip['roi_mask.npy']?read('roi_mask'):null;
+  if(zip['parameter_order.npy'])validateParameterOrder(read('parameter_order').values,config.motionModel);
   if(config.roi&&!roi)throw new Error('Archive declares an ROI but contains no roi_mask; the missing mask must not be ignored');
   const scalar=name=>{const item=read(name);if(item.values.length!==1)throw new Error(`${name} must be scalar`);return item.values[0];};
   const width=zip['width.npy']?scalar('width'):roi?.shape[1]??suppliedGeometry.width;
@@ -168,7 +181,7 @@ export function projectArchive(records, settings = {}) {
     entries[`${prefix}/status.npy`]=npy(Float32Array.from(field.status),shape,'<f4');
     entries[`${prefix}/iterations.npy`]=npy(Float32Array.from(field.iterations),shape,'<f4');
     manifest.fields.push({prefix,maskFile,originalId:record.id,width:field.width,height:field.height,subsetSize:field.subsetSize,
-      subsetStride:field.subsetStride,grid:field.grid,config:field.config,metadata:record.metadata,recipe:record.recipe??null});
+      subsetStride:field.subsetStride,grid:field.grid,config:field.config,parameterOrder:parameterOrder(field.config.motionModel),metadata:record.metadata,recipe:record.recipe??null});
   }
   entries['manifest.json']=encoder.encode(JSON.stringify(manifest));
   if(Object.values(entries).reduce((n,value)=>n+value.length,0)>MAX_BYTES)throw new Error('Project exceeds the 256 MiB archive limit; export individual fields instead');
@@ -187,6 +200,7 @@ export async function importProjectArchive(buffer) {
     const field={width:saved.width,height:saved.height,subsetSize:saved.subsetSize,subsetStride:saved.subsetStride,
       grid:saved.grid,config:saved.config,parameters:parameters.values,status:status.values,iterations:iterations.values};
     const {components}=validateField(field);
+    if(saved.parameterOrder!==undefined)validateParameterOrder(saved.parameterOrder,field.config.motionModel);
     if(parameters.shape.length!==3||parameters.shape[0]!==field.grid[1]||parameters.shape[1]!==field.grid[0]||parameters.shape[2]!==components
       ||[status,iterations].some(item=>item.shape.length!==2||item.shape[0]!==field.grid[1]||item.shape[1]!==field.grid[0]))throw new Error('Project field array shapes differ');
     let mask=null;

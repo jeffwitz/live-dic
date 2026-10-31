@@ -152,6 +152,12 @@ preparation on every pair. Its reference-preparation time is reported separately
 and included in worker result age. **This mode is not qualified for 4K60**; the
 fixed-reference GPU timings must not be used to describe it.
 
+The Solve pane distinguishes applied settings from pending edits. It reports
+window/step, overlap, pyramid/iteration schedule, grid dimensions, ROI selection
+and prepared-reference admissibility. The last-pair count can change in consecutive
+mode; it does not reduce the requested ROI. Reference admissibility is not a
+promise of target convergence.
+
 The entire geometric ROI is requested on every pair, including after a failed
 or textureless frame. Numerical invalidity and non-convergence are retained as
 statuses and do not shrink the ROI. Choose **Status · entire ROI** to distinguish
@@ -339,6 +345,17 @@ The processing worker keeps these operations off the acquisition worker.
 Saved-field vectors use processed displacements with explicit magnification;
 an optional contour follows the exact binary ROI pixels. Image x points right
 and y points down. These displays do not modify computed values.
+
+The quantity list also exposes **Computed local model coefficients**, including
+all six displacement second derivatives in an imported native quadratic field.
+Translation-only fields do not expose unestimated zero gradients. These diagnostic
+quantities always read the stored solver coefficients; Gaussian/median displacement
+post-processing and VSG do not change them. A visible source note distinguishes
+them from derived strain. Displacement coefficients use the chosen length unit,
+first derivatives are dimensionless, and second derivatives use reciprocal length
+(e.g. ``1/mm``). This is displacement curvature, not plate-bending curvature or
+stress. The native solver's original spatial policy remains part of the data.
+Browser acquisition still supports translation/affine, not a new quadratic solver.
 
 Choose an odd analysis window in grid points and inspect its pixel span. More
 smoothing trades spatial resolution for lower noise; it is not a robustness

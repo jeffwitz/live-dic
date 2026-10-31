@@ -70,3 +70,32 @@ python tools/qualify_browser_review.py --site _site --software \
   --field /tmp/workbench/processed-field.npz --output /tmp/review
 # Add --no-worker to exercise main-thread analysis.
 ```
+
+## Computed coefficients and installed distribution
+
+`coefficients-hardware.json` materializes a native 3840 x 2160 quadratic field
+from the archived tensile reference/frame 40 with B-spline, 16/16, two levels
+and spatial policy disabled. Its 31,593 accepted samples are then imported into
+the UI. Computed d²u/dx² statistics at 0.01 mm/px match NumPy in 1/mm and remain
+identical after Gaussian/VSG displacement processing. Re-export preserves every
+original parameter, status and iteration. `computed-curvature.png` deliberately
+shows those unsmoothed coefficients, including their visible noise. This is
+coefficient interchange/display qualification, not a new accuracy or speed
+claim for the quadratic estimator.
+
+`coefficients-software.json` repeats the UI coefficient checks on SwiftShader
+using the same native output. The native field hash connects the two runs.
+
+```bash
+python tools/qualify_browser_coefficients.py --site _site --output /tmp/coefficients
+python tools/qualify_browser_coefficients.py --site _site --software \
+  --field /tmp/coefficients/native-quadratic.npz --output /tmp/coefficients-software
+```
+
+`installed-wheel.json` and `installed-wheel-tests.txt` record a fresh pure-Python
+wheel installation outside the checkout, the six canonical WGSL resources,
+unchanged runtime dependency versions and 247 passing tests with native GPU and
+browser flags (no skips). Tests still read their source/fixture/standalone-app
+files from the checkout; native and Python browser-engine imports/resources use
+the installed wheel. The standalone PWA remains outside the wheel by design.
+The wheel contains no first-party OS/architecture binary or SPIR-V.

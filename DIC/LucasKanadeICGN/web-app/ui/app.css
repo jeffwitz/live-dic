@@ -164,3 +164,5 @@ dialog li { margin: 14px 0; line-height: 1.7; font-size: 13px; }
 
 #result-seek {width:100%;accent-color:var(--accent);min-height:32px;}
 #result-order {display:block;font-weight:400;margin-top:5px;}
+
+#applied-solver-summary {white-space:pre-line;border-left:2px solid #86b7ab;padding-left:10px;}

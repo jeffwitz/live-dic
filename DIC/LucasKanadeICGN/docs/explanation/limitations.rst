@@ -270,3 +270,9 @@ a physical-time movie or a numerical performance benchmark. Browser CPU review
 works without WebGPU; new correlations still require WebGPU. Main-thread review
 can stall interaction on large analyses. Camera media and track-processor clocks
 can have different origins and must not be combined into exposure-latency claims.
+
+Computed-coefficient plots are solver output diagnostics, including the solver's
+configured spatial policy. Workbench smoothing/VSG do not alter those coefficients.
+Native quadratic imports can display displacement second derivatives; browser
+acquisition remains translation/affine. Their noise and estimator bias are not
+removed by switching display or length units.

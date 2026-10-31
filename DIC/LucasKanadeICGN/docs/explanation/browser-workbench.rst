@@ -198,3 +198,17 @@ disables new acquisition/correlation while keeping NPZ/project import and CPU
 post-processing available. HTML canvas substitutes for OffscreenCanvas; without
 workers the same pure analysis functions run on the main thread. This fallback
 is not a second correlation solver.
+
+Computed-coefficient diagnostics read the public six/twelve-parameter ordering
+directly. They are separate from processed displacements and derived strain.
+For isotropic scale ``s`` length units/pixel, displacement scales by ``s``,
+first derivatives are unchanged and second derivatives scale by ``1/s``. The
+quadratic basis already uses ``x²/2, xy, y²/2``; no extra factor of two applies.
+The original solver spatial policy and validity flags remain explicit. This is
+not a new quadratic browser solver or a way to smooth curvature implicitly.
+
+Archives now carry the public parameter names. A declared incompatible order
+is rejected rather than interpreted as a different motion convention. Raw
+parameter units remain image-pixel units; display calibration never rewrites
+those arrays. Byte-view normalization also keeps native uncompressed NumPy
+archives correct when passed through offset byte views in the Node harness.

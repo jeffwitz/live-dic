@@ -1,0 +1,19 @@
+{
+  "import": "/tmp/live-dic-release-venv/lib/python3.11/site-packages/lucas_kanade_icgn/__init__.py",
+  "wheel_sha256": "3b58e2990636be81ad6c64dbcc8cdf5ecd4e34a9fdf3fd54badc593cbc1e4875",
+  "shaders": [
+    "lucas_kanade_icgn/shaders/full_pyramid.wgsl",
+    "lucas_kanade_icgn/shaders/icgn.wgsl",
+    "lucas_kanade_icgn/shaders/icgn_subgroup.wgsl",
+    "lucas_kanade_icgn/shaders/input.wgsl",
+    "lucas_kanade_icgn/shaders/result.wgsl",
+    "lucas_kanade_icgn/shaders/subgroup_probe.wgsl"
+  ],
+  "versions": {
+    "numpy": "2.4.6",
+    "pillow": "13.0.0",
+    "websockets": "17.3",
+    "wgpu": "0.32.0"
+  },
+  "first_party_native_binaries": false
+}

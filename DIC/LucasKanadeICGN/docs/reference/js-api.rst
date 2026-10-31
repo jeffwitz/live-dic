@@ -307,3 +307,18 @@ neither changes live engine options or computed field arrays. Presentation
 advances only after the current derived analysis finishes. Camera acquisition
 metadata keeps requested/initial/actual settings and explicit timestamp-clock
 labels; target export is unavailable after a new preparation until a target runs.
+
+``componentValues(analysis, 'computed-pN')`` reads an estimated public model
+coefficient, ``N=0..5`` or ``0..11`` for quadratic imports. Translation permits
+only 0 and 3. Its source and unit are explicit; computed coefficients use
+``analysis.valid`` and are unaffected by smoothing/VSG. Second derivatives use
+reciprocal selected length units. These diagnostics do not add processed
+coefficient arrays to NPZ: the original parameters remain the authoritative data.
+
+NPZ exports include ``parameter_order`` as a Unicode array and raw parameter
+units in metadata. Raw coefficients retain pixels, dimensionless gradients and
+reciprocal pixels independently of display calibration. CSV keeps its existing
+``pN`` columns with this explicit mapping in its metadata JSON. Import rejects a
+declared order that conflicts with the public model contract. Older live-dic
+archives without an order use that established contract. Results manifests carry
+the same optional, checked order.

@@ -540,3 +540,18 @@ qualification rather than infer mobile coverage from desktop results.
 - A prepared reference preview is not a measured target. Clear stale readiness
   and HUD values on reference/ROI/comparison changes. Label camera timestamp
   origins instead of subtracting video media time from track-processor clocks.
+
+### Computed coefficient inspection
+
+- ``computed-pN`` reads the stored public coefficient, including the original
+  solver spatial policy. Workbench displacement smoothing/VSG must not change
+  it. Translation exposes only indices 0 and 3; native quadratic imports can
+  expose all twelve. This does not add quadratic browser acquisition.
+- Isotropic display scale multiplies displacement, leaves first derivatives
+  unchanged and divides second derivatives. Raw NPZ parameters stay in pixels.
+  Preserve checked parameter-order metadata and reject declared conflicts.
+- The native UHD quadratic/NumPy/UI round trip and fresh outside-checkout wheel
+  suite passed locally (247 tests, native/browser enabled, no skips). This
+  qualifies interchange and installed resources, not a new accuracy/performance
+  campaign. The wheel contains all six canonical WGSL files and no first-party
+  native binary.

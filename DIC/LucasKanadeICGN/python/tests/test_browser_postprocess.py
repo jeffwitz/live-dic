@@ -281,6 +281,116 @@ class BrowserPostprocessTests(unittest.TestCase):
         self.assertFalse(result["same"])
         self.assertIn("one analysis epoch", result["error"])
 
+    def test_browser_parameter_order_and_numpy_export_match_native_model_contract(self):
+        import base64
+        import io
+
+        from lucas_kanade_icgn.motion import parameter_order
+
+        archive_module = MODULE.with_name("archive.js")
+        result = javascript(f"""
+          import {{fieldArchive}} from {json.dumps(archive_module.as_uri())};
+          const f=fixture(128,128);f.config.motionModel='quadratic';f.parameters=new Float64Array(64*12);
+          console.log(JSON.stringify({{orders:Object.fromEntries(['translation','affine','quadratic'].map(model=>[model,p.parameterOrder(model)])),archive:Buffer.from(fieldArchive(f)).toString('base64')}}));
+        """)
+        for model, names in result["orders"].items():
+            self.assertEqual(tuple(names), parameter_order(model))
+        with np.load(io.BytesIO(base64.b64decode(result["archive"])), allow_pickle=False) as saved:
+            self.assertEqual(tuple(saved["parameter_order"]), parameter_order("quadratic"))
+            metadata = json.loads(str(saved["metadata_json"]))
+            self.assertEqual(
+                metadata["parameterUnits"],
+                ["px", "gradient", "gradient", "px", "gradient", "gradient"] + ["1/px"] * 6,
+            )
+
+    def test_uncompressed_native_numpy_arrays_round_trip_through_offset_byte_views(self):
+        import base64
+        import io
+
+        from lucas_kanade_icgn.motion import parameter_order
+
+        parameters = np.arange(8 * 8 * 6, dtype=np.float32).reshape(8, 8, 6) / 1000
+        output = io.BytesIO()
+        np.savez(
+            output,
+            parameters=parameters,
+            status=np.ones((8, 8)),
+            iterations=np.ones((8, 8)),
+            width=np.asarray(128),
+            height=np.asarray(128),
+            subset_size=np.asarray(16),
+            subset_stride=np.asarray(16),
+            parameter_order=np.asarray(parameter_order("affine")),
+            config_json=np.asarray(json.dumps(dict(motionModel="affine"))),
+        )
+        archive_module = MODULE.with_name("archive.js")
+        result = javascript(f"""
+          import {{importFieldArchive}} from {json.dumps(archive_module.as_uri())};
+          const bytes=Buffer.from({json.dumps(base64.b64encode(output.getvalue()).decode())},'base64'),offset=Buffer.concat([Buffer.alloc(7),bytes,Buffer.alloc(11)]).subarray(7,7+bytes.length);
+          const result=await importFieldArchive(offset);console.log(JSON.stringify(Array.from(result.field.parameters)));
+        """)
+        np.testing.assert_array_equal(result, parameters.ravel())
+
+    def test_explicit_incompatible_parameter_order_is_rejected_before_import(self):
+        import base64
+        import io
+
+        output = io.BytesIO()
+        np.savez(
+            output,
+            parameters=np.zeros((8, 8, 6)),
+            status=np.ones((8, 8)),
+            iterations=np.ones((8, 8)),
+            width=np.asarray(128),
+            height=np.asarray(128),
+            subset_size=np.asarray(16),
+            subset_stride=np.asarray(16),
+            parameter_order=np.asarray(["ty", "du_dx", "du_dy", "tx", "dv_dx", "dv_dy"]),
+            config_json=np.asarray(json.dumps(dict(motionModel="affine"))),
+        )
+        archive_module = MODULE.with_name("archive.js")
+        result = javascript(f"""
+          import {{importFieldArchive,projectArchive,importProjectArchive,readZip,zipStore}} from {json.dumps(archive_module.as_uri())};
+          const errors=[];
+          try{{await importFieldArchive(Buffer.from({json.dumps(base64.b64encode(output.getvalue()).decode())},'base64'));}}catch(e){{errors.push(e.message);}}
+          const f=fixture(128,128),zip=await readZip(projectArchive([{{id:1,field:f,metadata:{{}},recipe:null}}]));
+          const manifest=JSON.parse(new TextDecoder().decode(zip['manifest.json']));manifest.fields[0].parameterOrder[0]='ty';
+          zip['manifest.json']=new TextEncoder().encode(JSON.stringify(manifest));
+          try{{await importProjectArchive(zipStore(zip));}}catch(e){{errors.push(e.message);}}
+          console.log(JSON.stringify(errors));
+        """)
+        self.assertEqual(len(result), 2)
+        self.assertTrue(all("Parameter order differs" in message for message in result), result)
+
+    def test_computed_quadratic_coefficients_preserve_layout_and_reciprocal_length_units(self):
+        result = javascript("""
+          const f=fixture(112,112);f.config.motionModel='quadratic';f.parameters=new Float64Array(49*12);
+          for(let i=0;i<49;i++)f.parameters.set([i===24?9:0,.002,.003,-.2,.004,.005,.00012,-.00023,.00034,-.00045,.00056,-.00067],i*12);
+          const a=p.analyzeField(f,{smoothing:'gaussian',strainSource:'vsg',unit:'mm',unitsPerPixel:.01});
+          const components=[0,1,2,3,4,5,6,7,8,9,10,11].map(i=>p.componentValues(a,'computed-p'+i));
+          console.log(JSON.stringify({values:components.map(c=>c.values[24]),units:components.map(c=>c.unit),processed:a.fields.u[24],original:f.parameters[24*12]}));
+        """)
+        np.testing.assert_allclose(
+            result["values"],
+            [0.09, 0.002, 0.003, -0.002, 0.004, 0.005, 0.012, -0.023, 0.034, -0.045, 0.056, -0.067],
+            atol=1e-15,
+        )
+        self.assertEqual(
+            result["units"],
+            ["mm", "gradient", "gradient", "mm", "gradient", "gradient"] + ["1/mm"] * 6,
+        )
+        self.assertLess(result["processed"], 0.09)
+        self.assertEqual(result["original"], 9)
+
+    def test_computed_coefficients_reject_unestimated_translation_gradients(self):
+        result = javascript("""
+          const f=fixture(128,128);f.config.motionModel='translation';
+          const a=p.analyzeField(f,{strainSource:'vsg'}),errors=[];
+          for(const component of ['computed-p1','computed-p6','computed-p12'])try{p.componentValues(a,component);}catch(e){errors.push(e.message);}
+          console.log(JSON.stringify({count:errors.length,value:p.componentValues(a,'computed-p3').values[0]}));
+        """)
+        self.assertEqual(result, dict(count=3, value=0))
+
     def test_region_history_preserves_varying_valid_populations_and_empty_gaps(self):
         history_module = MODULE.with_name("history.js")
         rows = javascript(f"""

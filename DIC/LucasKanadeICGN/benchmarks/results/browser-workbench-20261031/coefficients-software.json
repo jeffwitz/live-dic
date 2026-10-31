@@ -1,0 +1,107 @@
+{
+  "build": {
+    "commit": "ead36f8bba5c1173fb3ba357d393a7b2aee21238",
+    "dirty": true,
+    "shaders": {
+      "full_pyramid.wgsl": "d00ef999c5dbc23013928e95ea6ca498a52fbb63850056c05bdbd3c963dc0401",
+      "icgn.wgsl": "a60231689fbc3d29953fd98eb8d04649ec93cbec0f5a89a65446df716152299b",
+      "icgn_subgroup.wgsl": "d68225b1b6b6b21071e59ea6109bbd24dc0fd8b6734b6ebc4f7d59356799a034",
+      "input.wgsl": "d269f8bf203e3363a6e753476c49de27188329409fa5a848358ea031bb554f7e",
+      "result.wgsl": "a587a3112670a702578df6c13f75addd4136e43fa6c7efba7959aa472d0e3267",
+      "subgroup_probe.wgsl": "6e4d149ed7f17969ede557a3062742d8da6c62cb6dd745d5510112c1489fed61"
+    },
+    "demo_manifest_sha256": "c78c445a38a8541d632f28e85ec1154e492b4195c7b8f5d4755597e07605f24a",
+    "plate_image_sha256": {
+      "reference.png": "26135118b554c5996443f07abd2a89273a344154338c4c7f428ab283f85f7192",
+      "frame_095.png": "af0f4c09d2e9292beb4cbbabe01c6651a2e914c1b36b569a5861a8be431d3faf",
+      "frame_225.png": "abe3693810e289b8a2029833011a0d59fdf7ff1ea975eea91b12dc5e708d2897"
+    },
+    "cache_version": "ead36f8bba5c1173fb3ba357d393a7b2aee21238-dirty-689ab578a369"
+  },
+  "kind": "native UHD quadratic output UI round trip; not an accuracy/performance campaign",
+  "native": {
+    "reused_field": "/tmp/live-dic-coefficients-order-hardware/native-quadratic.npz"
+  },
+  "software_browser": true,
+  "native_field_sha256": "f2ce3fa3a878515c585d999e8bc78a7d4aaeafe396fda3ed696b281502800d1a",
+  "before": {
+    "count": 1,
+    "selected": 1,
+    "reviewing": true,
+    "replaying": false,
+    "unsavedProject": true,
+    "memoryBytes": 1814918,
+    "provenance": {
+      "archiveSha256": "f2ce3fa3a878515c585d999e8bc78a7d4aaeafe396fda3ed696b281502800d1a",
+      "importGeometry": {
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "subsetStride": 16,
+        "frameIndex": 0,
+        "frameCount": 1,
+        "imageExtentSource": "archive scalars"
+      }
+    },
+    "recipe": {
+      "smoothing": "none",
+      "window": 5,
+      "strainSource": "direct",
+      "strainMeasure": "small",
+      "excludeFlagged": false,
+      "unitsPerPixel": 0.01,
+      "unit": "mm"
+    },
+    "statistics": {
+      "count": 31593,
+      "min": -2.113858610391617,
+      "max": 1.800273172557354,
+      "mean": -0.0013926000247458182,
+      "standardDeviation": 0.20244563576011568,
+      "p02": -0.451273025944829,
+      "p98": 0.4444686211645603
+    },
+    "extraction": []
+  },
+  "after": {
+    "count": 1,
+    "selected": 1,
+    "reviewing": true,
+    "replaying": false,
+    "unsavedProject": true,
+    "memoryBytes": 1814918,
+    "provenance": {
+      "archiveSha256": "f2ce3fa3a878515c585d999e8bc78a7d4aaeafe396fda3ed696b281502800d1a",
+      "importGeometry": {
+        "width": 3840,
+        "height": 2160,
+        "subsetSize": 16,
+        "subsetStride": 16,
+        "frameIndex": 0,
+        "frameCount": 1,
+        "imageExtentSource": "archive scalars"
+      }
+    },
+    "recipe": {
+      "smoothing": "gaussian",
+      "window": 5,
+      "strainSource": "vsg",
+      "strainMeasure": "small",
+      "excludeFlagged": false,
+      "unitsPerPixel": 0.01,
+      "unit": "mm"
+    },
+    "statistics": {
+      "count": 31593,
+      "min": -2.113858610391617,
+      "max": 1.800273172557354,
+      "mean": -0.0013926000247458182,
+      "standardDeviation": 0.20244563576011568,
+      "p02": -0.451273025944829,
+      "p98": 0.4444686211645603
+    },
+    "extraction": []
+  },
+  "raw_arrays_unchanged": true,
+  "errors": []
+}

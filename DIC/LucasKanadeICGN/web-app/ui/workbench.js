@@ -70,7 +70,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   function restoreView(view) {
     if(!view)return;
     for(const [id,key] of [['review-component','component'],['review-scale','colourScale'],['review-palette','palette']])
-      if([...$(id).options].some(option=>option.value===view[key]))$(id).value=view[key];
+      if([...$(id).options].some(option=>option.value===view[key]&&!option.disabled))$(id).value=view[key];
     if([view.minimum,view.maximum].every(Number.isFinite)&&view.maximum>view.minimum){$('review-min').value=view.minimum;$('review-max').value=view.maximum;}
     $('manual-limits').hidden=$('review-scale').value!=='manual';
     $('review-vectors').checked=view.vectors===true;$('review-contour').checked=view.contour===true;
@@ -158,6 +158,10 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     updateLibrary();$('processing-batch-state').textContent='';
     $('result-title').textContent = entry.label;
     $('result-provenance').textContent = `${entry.field.width} × ${entry.field.height} · ${entry.field.config.motionModel} · ${entry.field.subsetSize}/${entry.field.subsetStride} · solver spatial policy: ${entry.field.config.outlierPolicy ?? 'unspecified'} · ${entry.metadata.comparison?.mode ?? 'imported'} reference. No image is stored behind this field.`;
+    for(const option of $('review-component').options)if(option.dataset.coefficient!==undefined){
+      const i=Number(option.dataset.coefficient);option.disabled=i>=(entry.field.config.motionModel==='quadratic'?12:6)||(entry.field.config.motionModel==='translation'&&![0,3].includes(i));
+    }
+    if($('review-component').selectedOptions[0].disabled)$('review-component').value='magnitude';
     setRecipe(entry.recipe ?? { ...DEFAULT_RECIPE, strainSource: entry.field.config.motionModel === 'translation' ? 'vsg' : 'direct' });
     restoreView(entry.metadata.workbench?.view);
     $('compare-computed').textContent = 'Show computed field';
@@ -213,7 +217,8 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   function format(value, unit) { if (value == null) return 'unavailable'; return `${number(STRAIN_COMPONENTS.has($('review-component').value) ? value*1e6 : value)} ${STRAIN_COMPONENTS.has($('review-component').value) ? 'µε' : unit}`; }
   function render() {
     if (!analysis) return;
-    const component = $('review-component').value, { values, valid, unit } = componentValues(analysis, component);
+    const component = $('review-component').value, { values, valid, unit, source } = componentValues(analysis, component);
+    $('quantity-source').hidden=!source;$('quantity-source').textContent=source?`Computed coefficient (${unit}). Workbench displacement smoothing and VSG do not change these values. The solver's original spatial policy still applies.`:'';
     const stats = statistics(values, valid), field = analysis.field, [gw,gh] = field.grid;
     const nonnegative = ['magnitude','vonMises','iterations'].includes(component);
     const scaleMode=$('review-scale').value,factor=STRAIN_COMPONENTS.has(component)?1e6:1;
@@ -341,7 +346,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     const finite=rows.filter(r=>r.value!=null);ctx.fillStyle='#607782';ctx.font=`${w<500?11:13}px system-ui`;
     if(!finite.length){
       if(rows.length){ctx.fillText(`No valid measurement in ${rows.length} saved samples; gaps are retained.`,24,40);return;}
-      if(!analysis)return;const component=$('review-component').value,{values,valid}=componentValues(analysis,component);
+      if(!analysis)return;const component=$('review-component').value,{values,valid,unit}=componentValues(analysis,component);
       const chosen=options.regionBounds?Uint8Array.from(valid,(v,i)=>{const p=pointPosition(i),[x0,y0,x1,y1]=options.regionBounds;return +(v&&p[0]>=x0&&p[0]<=x1&&p[1]>=y0&&p[1]<=y1);}):valid;
       if(component==='status'){
         const codes=[-3,-2,-1,0,1,2],counts=codes.map(code=>values.reduce((n,v,i)=>n+ +(chosen[i]&&v===code),0)),highest=Math.max(1,...counts),step=(w-80)/6;
@@ -355,7 +360,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
       const highest=Math.max(...bins,1);ctx.fillStyle='#2d8b83';bins.forEach((n,i)=>ctx.fillRect(76+i*(w-108)/40,h-48-n/highest*(h-90),(w-108)/40-1,n/highest*(h-90)));
       ctx.fillStyle='#607782';ctx.fillText(`${options.regionBounds?'Region distribution':'Distribution'} · ${stats.count} valid samples`,24,25);
       const factor=STRAIN_COMPONENTS.has($('review-component').value)?1e6:1;
-      ctx.fillText(`${number(stats.min*factor)} ${factor===1e6?'µε':''}`,76,h-16);ctx.textAlign='right';ctx.fillText(`${number(stats.max*factor)} ${factor===1e6?'µε':''}`,w-32,h-16);ctx.textAlign='left';return;
+      ctx.fillText(`${number(stats.min*factor)} ${factor===1e6?'µε':unit}`,76,h-16);ctx.textAlign='right';ctx.fillText(`${number(stats.max*factor)} ${factor===1e6?'µε':unit}`,w-32,h-16);ctx.textAlign='left';return;
     }
     let low=Math.min(...finite.map(r=>r.value)),high=Math.max(...finite.map(r=>r.value));const span=Math.max(1e-12,Math.abs(high)*1e-9,high-low),xmax=Math.max(...rows.map(r=>r.distance),1e-12);
     low-=.08*span;high+=.08*span;const x=v=>76+v/xmax*(w-108),y=v=>h-48-(v-low)/(high-low)*(h-82);
@@ -508,7 +513,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   $('save-npz').onclick=()=>{if(!analysis)return;const entry=activeEntry();download(`live-dic-${entry.id}.npz`,fieldArchive(entry.field,{...entry.metadata,workbench:{view:viewSettings()},analysis:{recipe:analysis.recipe,processingWallMs:analysis.processingWallMs}},analysis,entry.mask),'application/octet-stream');};
   $('save-processed-csv').onclick=()=>{if(!analysis)return;const {values,valid,unit}=componentValues(analysis,$('review-component').value),lines=[`x_px,y_px,${$('review-component').value}_${unit},valid,solver_status`];for(let i=0;i<values.length;i++)lines.push([...pointPosition(i),valid[i]?values[i]:'',valid[i],analysis.field.status[i]].join(','));download('live-dic-displayed-field.csv',lines.join('\n'),'text/csv');};
   $('save-profile').onclick=()=>{if(!extraction.length)return;const columns=Object.keys(extraction[0]);download('live-dic-extraction.csv',[columns.join(','),...extraction.map(row=>columns.map(k=>row[k]??'').join(','))].join('\n'),'text/csv');download('live-dic-extraction.json',JSON.stringify({recipe:analysis.recipe,view:viewSettings(),valueUnit:(history?.tool??tool)==='gauge'?'strain':componentValues(analysis,$('review-component').value).unit,coordinateUnit:'px',distanceUnit:analysis.recipe.unit,comparison:activeEntry().metadata.comparison},null,2),'application/json');};
-  $('save-figure').onclick=()=>{if(!analysis)return;const figure=document.createElement('canvas');figure.width=Math.max(1600,canvas.width);const imageHeight=Math.round(canvas.height*figure.width/canvas.width);figure.height=imageHeight+160;const ctx=figure.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.drawImage(canvas,0,0,figure.width,imageHeight);ctx.drawImage(overlay,0,0,figure.width,imageHeight);ctx.fillStyle='#fff';ctx.fillRect(0,imageHeight,figure.width,160);ctx.fillStyle='#163540';ctx.font='32px system-ui';ctx.fillText(`${$('review-component').selectedOptions[0].textContent} · ${$('low').textContent} … ${$('high').textContent}`,40,imageHeight+50);ctx.font='22px system-ui';ctx.fillText(`${analysis.recipe.strainMeasure} strain · ${analysis.recipe.strainSource} · ${analysis.recipe.smoothing} smoothing · solver ${analysis.field.config.outlierPolicy}`,40,imageHeight+90);ctx.fillText('Reference image coordinates · live-dic · foundational work by Pierre Margerit',40,imageHeight+130);figure.toBlob(blob=>blob&&download('live-dic-field.png',blob,'image/png'),'image/png');};
+  $('save-figure').onclick=()=>{if(!analysis)return;const figure=document.createElement('canvas');figure.width=Math.max(1600,canvas.width);const imageHeight=Math.round(canvas.height*figure.width/canvas.width);figure.height=imageHeight+160;const ctx=figure.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.drawImage(canvas,0,0,figure.width,imageHeight);ctx.drawImage(overlay,0,0,figure.width,imageHeight);ctx.fillStyle='#fff';ctx.fillRect(0,imageHeight,figure.width,160);ctx.fillStyle='#163540';ctx.font='32px system-ui';ctx.fillText(`${$('review-component').selectedOptions[0].textContent} · ${$('low').textContent} … ${$('high').textContent}`,40,imageHeight+50);ctx.font='22px system-ui';ctx.fillText($('review-component').value.startsWith('computed-p')?`Computed local model coefficient · unaffected by workbench smoothing / VSG · solver ${analysis.field.config.outlierPolicy}`:`${analysis.recipe.strainMeasure} strain · ${analysis.recipe.strainSource} · ${analysis.recipe.smoothing} smoothing · solver ${analysis.field.config.outlierPolicy}`,40,imageHeight+90);ctx.fillText('Reference image coordinates · live-dic · foundational work by Pierre Margerit',40,imageHeight+130);figure.toBlob(blob=>blob&&download('live-dic-field.png',blob,'image/png'),'image/png');};
   updateLibrary();
   return { add, returnLive, setMask(mask){currentMask=mask;}, get reviewing(){return reviewing;}, get recording(){return recording();},
     setReady(ready){$('freeze-field').disabled=!ready;$('record-fields').disabled=!ready;},
