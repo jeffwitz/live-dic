@@ -63,3 +63,13 @@ export async function measureProfiles(capabilities, { resolutions = capabilities
     'Short microbenchmark only; camera motion, decoding, display and thermal throttling require a real run'],
   };
 }
+
+/** Request only the explicit limit needed by the common graph. */
+export async function acquireDevice({ device: injected } = {}) {
+  if (injected) return { device: injected, adapter: null, ownsDevice: false };
+  if (!globalThis.navigator?.gpu) throw new Error('WebGPU is unavailable in this browser');
+  const adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+  if (!adapter) throw new Error('No WebGPU adapter is available');
+  const device = await adapter.requestDevice({ requiredLimits: { maxStorageBuffersPerShaderStage: 8 } });
+  return { device, adapter, ownsDevice: true };
+}

@@ -16,7 +16,7 @@ function send(type, data = {}, transfer = []) {
 const options = () => ({ profile: $('profile').value });
 function details() { $('details').textContent = JSON.stringify({ capabilities, acquisition: sourceSettings,
   execution: transport.isMain ? 'Main-thread fallback: OffscreenCanvas unavailable' : 'Dedicated worker',
-  reference: referenceInfo, profile: $('profile').value,
+  reference: referenceInfo ? { ...referenceInfo, roiSelected: undefined, referenceValid: undefined } : null, profile: $('profile').value,
   requestedResolution: $('resolution').value }, null, 2); }
 function updateScale(scale) {
   if (!Number.isFinite(scale)) return;
@@ -90,7 +90,7 @@ async function stop() {
   video.pause(); video.srcObject = null; source = null;
 }
 async function frameFromVideo() {
-  const [width, height] = sourceSettings.outputSize ?? [video.videoWidth, video.videoHeight];
+  const [width, height] = source === 'camera' ? [video.videoWidth, video.videoHeight] : sourceSettings.outputSize ?? [video.videoWidth, video.videoHeight];
   if (typeof VideoFrame === 'function' && width === video.videoWidth && height === video.videoHeight) {
     try { return new VideoFrame(video, { timestamp: Math.round(video.currentTime * 1e6) }); } catch { /* ImageBitmap fallback below. */ }
   }
@@ -99,9 +99,10 @@ async function frameFromVideo() {
 async function captureReference(frame = null) {
   paused = true; await drain();
   frame ??= await frameFromVideo();
+  if (source === 'camera') { sourceSettings.actual = stream?.getVideoTracks()[0]?.getSettings(); sourceSettings.outputSize = [video.videoWidth, video.videoHeight]; }
   referenceInfo = (await send('reference', { frame, options: options() }, [frame])).info;
   $('placeholder').hidden = true;
-  $('roi').width = referenceInfo.width; $('roi').height = referenceInfo.height;
+  $('roi').width = referenceInfo.width; $('roi').height = referenceInfo.height; roi.clear(); $('apply-roi').disabled = true;
   for (const id of ['reference', 'pause', 'reset', 'draw', 'clear-roi', 'export']) $(id).disabled = false;
   previousFrame = -1; details(); message('Reference captured. Camera and results stay on this device.');
 }
@@ -187,9 +188,9 @@ const roi = installRoi($('roi'), $('shape'), (ready) => { $('apply-roi').disable
 $('demo').onclick = () => startDemo().catch((error) => message(error.message, true));
 $('camera').onclick = () => startCamera().catch((error) => message(error.message, true));
 $('reference').onclick = async () => { await captureReference(); paused = false; $('pause').textContent = 'Pause'; };
-$('pause').onclick = () => { paused = !paused; $('pause').textContent = paused ? 'Resume' : 'Pause'; };
+$('pause').onclick = () => { paused = !paused; $('pause').textContent = paused ? 'Resume' : 'Pause'; if (!paused) send('show-reference', { show: false }); };
 $('reset').onclick = () => send('reset');
-$('draw').onclick = async () => { paused = true; await drain(); $('pause').textContent = 'Resume'; roi.start(referenceInfo.width, referenceInfo.height); $('apply-roi').disabled = false; };
+$('draw').onclick = async () => { paused = true; await drain(); $('pause').textContent = 'Resume'; await send('show-reference', { show: true }); roi.start(referenceInfo.width, referenceInfo.height); $('apply-roi').disabled = false; };
 $('apply-roi').onclick = async () => {
   try { roi.finish(); const mask = roi.mask(); referenceInfo = (await send('roi', { mask, options: options() }, [mask.buffer])).info;
     message('Full-window ROI applied. Resume to continue.'); details(); }

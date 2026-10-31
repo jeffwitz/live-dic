@@ -46,13 +46,13 @@ export class FieldRenderer {
     this.pipeline = device.createRenderPipeline({ layout: 'auto', vertex: { module, entryPoint: 'vertex' },
       fragment: { module, entryPoint: 'fragment', targets: [{ format }] }, primitive: { topology: 'triangle-list' } });
   }
-  draw(engine, result, { mode = 2, scale = null, opacity = .7 } = {}) {
+  draw(engine, result, { mode = 2, scale = null, opacity = .7, imageTexture = null } = {}) {
     const width = result.width, height = result.height;
     if (this.canvas.width !== width) this.canvas.width = width;
     if (this.canvas.height !== height) this.canvas.height = height;
     const max = scale ?? result.maxAbs?.[mode < 3 ? mode : 3] ?? 1;
     const bytes = new ArrayBuffer(48), u = new Uint32Array(bytes), f = new Float32Array(bytes);
-    const texture = engine.imageTexture;
+    const texture = imageTexture ?? engine.imageTexture;
     u.set([width, height, ...result.grid, result.config.motionModel === 'quadratic' ? 16 : 8,
       result.config.motionModel === 'quadratic' ? 12 : 6, mode, +(texture.format === 'r8unorm')]);
     f.set([result.subsetSize, result.subsetStride, Math.max(max, 1e-8), opacity], 8);

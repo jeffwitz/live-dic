@@ -4,7 +4,8 @@ import { FieldRenderer } from '../render/field.js';
 
 /** The same session runs in a worker, or on the main thread without OffscreenCanvas. */
 export function createSession(send) {
-  let engine, renderer, canvas, reference, mask = null, capabilities, last = null;
+  let engine, renderer, canvas, reference, referenceTexture, mask = null, capabilities, last = null;
+  let showingReference = false;
   let display = { mode: 2, scale: null }, received = 0, completed = 0, exportSerial = 0;
   const ages = [], sampleLog = [];
   let bitmapPresentation = false, profile = null;
@@ -15,8 +16,9 @@ export function createSession(send) {
     send({ ...message, ...(bitmap ? { bitmap, width: canvas.width, height: canvas.height } : {}) }, bitmap ? [bitmap] : []);
   }
   async function referenceFrom(frame, options, roiMask = null) {
+    const preparationStarted = performance.now();
     await Promise.all([...outstanding]);
-    renderer?.destroy(); engine?.destroy();
+    renderer?.destroy(); referenceTexture?.destroy(); engine?.destroy();
     const width = frame.displayWidth ?? frame.width, height = frame.displayHeight ?? frame.height;
     const { profile: profileName, ...engineOptions } = options;
     if (!['portable', 'qualified-latency'].includes(profileName)) throw new Error('Unsupported application profile');
@@ -26,10 +28,14 @@ export function createSession(send) {
     mask = roiMask; profile = options.profile ?? 'portable';
     const info = await engine.setReference(frame, { roiMask: mask });
     renderer = canvas ? new FieldRenderer(engine.device, canvas) : null;
+    referenceTexture = engine.device.createTexture({ size: [width, height], format: 'rgba8unorm',
+      usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT });
+    engine.device.queue.copyExternalImageToTexture({ source: frame }, { texture: referenceTexture }, [width, height]);
+    showingReference = false;
     last = await engine.register(frame); renderer?.draw(engine, last, display);
     present({ type: 'preview' }); engine.resetTemporalState();
     ages.length = 0; sampleLog.length = 0; received = completed = 0; completionTimes.length = 0;
-    return info;
+    return { ...info, controllerPreparationWallMs: performance.now() - preparationStarted };
   }
   async function handle(message) {
     const { type, id } = message;
@@ -57,6 +63,7 @@ export function createSession(send) {
             engine.setAnalyticTruth(message.truth ?? null);
             last = await engine.register(message.frame);
             const age = performance.now() - available;
+            showingReference = false;
             const scale = renderer?.draw(engine, last, display);
             completed++; completionTimes.push(performance.now());
             while (completionTimes.length > 1 && completionTimes[0] < performance.now() - 3000) completionTimes.shift();
@@ -75,9 +82,13 @@ export function createSession(send) {
           } finally { message.frame.close(); }
         })();
         outstanding.add(operation); try { await operation; } finally { outstanding.delete(operation); }
+      } else if (type === 'show-reference') {
+        await Promise.all([...outstanding]); showingReference = message.show;
+        if (last) renderer?.draw(engine, last, showingReference ? { ...display, opacity: 0, imageTexture: referenceTexture } : display);
+        present({ type: 'preview', id });
       } else if (type === 'display') {
         display = { ...display, ...message.display };
-        if (last) { const scale = renderer?.draw(engine, last, display); present({ type: 'scale', scale }); }
+        if (last) { const scale = renderer?.draw(engine, last, showingReference ? { ...display, opacity: 0, imageTexture: referenceTexture } : display); present({ type: 'scale', scale }); }
       } else if (type === 'reset') {
         await Promise.all([...outstanding]); engine?.resetTemporalState(); send({ type: 'reset', id });
       } else if (type === 'export') {
@@ -94,7 +105,7 @@ export function createSession(send) {
         send({ type: 'export', id, field, metadata });
       } else if (type === 'report') send({ type: 'report', id, samples: sampleLog, capabilities });
       else if (type === 'destroy') {
-        await Promise.all([...outstanding]); renderer?.destroy(); engine?.destroy(); reference?.close();
+        await Promise.all([...outstanding]); renderer?.destroy(); referenceTexture?.destroy(); engine?.destroy(); reference?.close();
         engine = renderer = reference = null; send({ type: 'destroy', id });
       }
     } catch (error) {
