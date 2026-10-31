@@ -151,6 +151,7 @@ when exporting a measurement with :doc:`how-to/export-results`.
    explanation/shared-kernel
    explanation/native-backend
    explanation/browser-portability
+   explanation/browser-workbench
    explanation/temporal-initialization
    explanation/realtime-performance
    explanation/limitations
