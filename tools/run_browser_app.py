@@ -10,6 +10,7 @@ import subprocess
 import webbrowser
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from socketserver import TCPServer
 
 from build_pages import assemble
 
@@ -38,6 +39,15 @@ def validate_destination(site: Path, *, rebuild: bool) -> None:
         )
 
 
+class WorkbenchServer(ThreadingHTTPServer):
+    """Local serving needs no reverse DNS lookup during bind."""
+
+    def server_bind(self) -> None:
+        TCPServer.server_bind(self)
+        self.server_name = self.server_address[0]
+        self.server_port = self.server_address[1]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--site", type=Path, default=ROOT / "_site")
@@ -58,7 +68,7 @@ def main() -> int:
         validate_destination(site, rebuild=not args.no_build)
         handler = functools.partial(SimpleHTTPRequestHandler, directory=str(site))
         # Bind first: an occupied port must not replace files used by an existing server.
-        with ThreadingHTTPServer((args.host, args.port), handler) as server:
+        with WorkbenchServer((args.host, args.port), handler) as server:
             if not args.no_build:
                 assemble(site)
             host = "localhost" if args.host in {"127.0.0.1", "0.0.0.0"} else args.host

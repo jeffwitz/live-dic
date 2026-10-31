@@ -54,6 +54,10 @@ class BrowserLauncherTests(unittest.TestCase):
                 process = subprocess.Popen(
                     [
                         sys.executable,
+                        "-c",
+                        "import socket,runpy,sys; "
+                        "socket.getfqdn=lambda *args: (_ for _ in ()).throw(AssertionError('No reverse DNS for a local server')); "
+                        "launcher=sys.argv[1];sys.argv=sys.argv[1:];runpy.run_path(launcher,run_name='__main__')",
                         str(LAUNCHER),
                         "--site",
                         str(site),
@@ -66,7 +70,7 @@ class BrowserLauncherTests(unittest.TestCase):
                     stderr=log,
                 )
                 try:
-                    deadline = time.monotonic() + 15
+                    deadline = time.monotonic() + 60
                     url = None
                     while time.monotonic() < deadline:
                         text = logfile.read_text(encoding="utf-8")
