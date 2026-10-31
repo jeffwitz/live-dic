@@ -1,30 +1,37 @@
-# Three.js/TSL affine IC-GN backend
+# Three.js/TSL browser compatibility backend
 
-> **Built on Pierre Margerit's foundational work.** This backend extends
-> [Pierre Margerit's original `tests_gpuio`
-> project](https://github.com/MargeritPierre/tests_gpuio); its GPU-IO
-> experiments and repository structure made this work possible.
+> **Built on Pierre Margerit's foundational work.** His original
+> [`tests_gpuio`](https://github.com/MargeritPierre/tests_gpuio) project,
+> GPU-IO experiments and repository structure made this work possible.
 
-This directory contains an independent WebGPU implementation of DIC-RT's
-six-parameter affine inverse-compositional Gauss-Newton algorithm. It does not
-contain camera, video-codec, or graphical-interface code, and it does not copy
-the DIC implementation from Strobox.
+This directory is a checkout entry point for live-dic's browser backend.
+The canonical implementation is packaged at
+[`../python/src/lucas_kanade_icgn/web/three/`](../python/src/lucas_kanade_icgn/web/three/).
+The checkout JavaScript module delegates there, so numerical changes belong
+in the packaged source rather than in a second implementation.
 
-The numerical pipeline is:
+## Scope and execution
 
-1. prepare the centered reference, gradients, inverse Hessian, `J^T F`, and
-   `sum(J)` once on the CPU;
-2. apply the radius-15 separable Gaussian/B-spline FIR to each target on the
-   GPU;
-3. run the affine IC-GN iterations in one fused compute dispatch, filling the
-   measured hardware subgroup when available (32 lanes on the validation GPU)
-   or using the portable 16-lane workgroup fallback;
-4. apply the optional eight-neighbour displacement UOD pass on the GPU;
-5. read the six affine parameters, status, and iteration count.
+The backend supports translation and affine IC-GN, B-spline/bilinear/Keys-cubic
+interpolation and square widths 8, 16 and 32 with stride equal to size.
+It is single-scale and rejects ROI and pyramid options it cannot implement.
+Quadratic solving and native temporal-pyramid features belong to the shared
+WGSL paths, not this TSL implementation.
 
-`headless.html` exposes the same `window.ICGNHeadless` contract as the GPU-IO
-runtime. The supported entry points are `info`, `configure`, `setReference`,
-`register`, and `benchmark`. Python users should select this runtime through:
+On WebGPU it uses a subgroup solver when qualified, otherwise a portable
+workgroup-memory solver. A discovery probe nominates the subgroup width;
+reference preparation verifies that width inside the actual solver pipeline.
+A mismatch selects the portable fallback. Solver diagnostics report the
+observed mapping. Native `solver_workgroup_size` choices do not configure
+this independent browser solver.
+
+Without WebGPU, Three.js selects a serial WebGL2 transform-feedback solver.
+It shares the TSL mathematical helpers and result layout, but does not emulate
+workgroup barriers and is not qualified as a 4K60 path. The GPU target
+prefilter and optional UOD/median pass remain separate from the local fused
+IC-GN iteration kernel. Direct interpolators omit target prefiltering.
+
+## Python compatibility entry point
 
 ```python
 from lucas_kanade_icgn import ICGNWebGL
@@ -33,14 +40,15 @@ with ICGNWebGL() as engine:
     result = engine.register_pair(reference, target)
 ```
 
-Three.js r186 is vendored under `vendor/` so the backend runs offline. The
-corresponding MIT licence is `vendor/THREE-LICENSE.txt`. Accuracy and timing
-results are recorded in [`../BENCHMARK.md`](../BENCHMARK.md).
+The application supplies `reference` and `target`. Force WebGL2 with
+`ICGNWebGL(force_three_webgl=True)` when qualifying that compatibility path.
+Chromium runs headlessly. Targets and packed fields use binary transport,
+but Python and Chromium still have separate memory. For resident NumPy
+streams use the native full-pyramid engine; a JavaScript streaming supervisor
+is not provided here.
 
-At startup, the runtime measures the hardware subgroup width. The specialized
-solver sizes its workgroup to that width, up to 256 lanes, and divides the 256
-subset pixels across all active lanes. On the validation GPU, 32 lanes process
-eight pixels each. If that path is unavailable, a portable 16-lane
-workgroup-memory solver processes one 16-pixel subset column per lane. The FIR
-prefilter is a separate 16 x 16 cooperative tile and must not be confused with
-either solver mapping.
+Three.js r186 and its MIT license are vendored under `vendor/` for offline
+use. Other notices are in [THIRD_PARTY.md](../THIRD_PARTY.md).
+See [backend selection](../docs/explanation/backend-selection.rst),
+[GPU organization](../docs/explanation/gpu-optimization.rst), and
+[performance evidence](../docs/reference/performance.rst).

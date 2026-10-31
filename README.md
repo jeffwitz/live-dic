@@ -1,523 +1,159 @@
-# Toward 4K60 Real-Time DIC in Python with WebGPU
+# live-dic — Python-supervised DIC toward 4K60
 
 > **Foundational work by [Pierre Margerit](https://github.com/MargeritPierre).**
-> This fork and its real-time Python DIC work would not exist without Pierre's
-> original [`tests_gpuio`](https://github.com/MargeritPierre/tests_gpuio)
-> project. His GPU-IO experiments, repository structure, and WebGL groundwork
-> are the foundation on which the work presented here is built.
+> live-dic would not exist without his original
+> [`tests_gpuio`](https://github.com/MargeritPierre/tests_gpuio) project,
+> GPU-IO experiments and WebGL groundwork. This project continues that work.
 
-## Demonstrated 4K execution on AMD, Intel and NVIDIA
+[![Python tests](https://github.com/jeffwitz/live-dic/actions/workflows/python-tests.yml/badge.svg)](https://github.com/jeffwitz/live-dic/actions/workflows/python-tests.yml)
+[![Documentation](https://github.com/jeffwitz/live-dic/actions/workflows/docs.yml/badge.svg)](https://github.com/jeffwitz/live-dic/actions/workflows/docs.yml)
 
-**The native WebGPU full-pyramid solver has completed 3840 × 2160 DIC
-benchmarks on GPUs from all three vendors:** AMD Radeon 780M, Intel Lunar
-Lake, Intel UHD Graphics (Tiger Lake GT1), and NVIDIA GeForce RTX 3080 Laptop.
-The portable WGSL solver runs through wgpu-native/Vulkan on both integrated
-and discrete hardware, with 16 and 32 invocations per workgroup exercised.
-This is measured evidence of portability across these tested GPU/driver
-configurations.
+live-dic is a GPU digital image correlation engine for **Python measurement
+applications**. A persistent Python supervisor provides NumPy images,
+prepares the reference, schedules bounded work and consumes NumPy displacement,
+gradient, curvature, status and iteration fields.
 
-The [hardware coverage matrix](./DIC/LucasKanadeICGN/docs/reference/performance.rst#gpu-hardware-coverage)
-distinguishes fixed-pair benchmarks from changing-frame accuracy campaigns.
-On the Radeon 780M, all twelve 4K campaign runs completed and passed the
-fixed-interior quality gates. The initial GPU-suite device-loss failure was
-traced to GPU resources retained after `close()`; the lifecycle correction
-and its validation are documented in the coverage matrix.
-These results establish successful execution of the tested workloads across
-vendors; they do not certify every feature, driver, operating system or recent
-GPU, or promise 4K60 on each device.
+The engineering goal is **3840 × 2160 at 60 FPS**, with both throughput and
+result age measured. Native 4K runs have completed on tested AMD, Intel and
+NVIDIA configurations under Linux/Vulkan. Coverage differs by GPU: see the
+[hardware matrix and performance reference](DIC/LucasKanadeICGN/docs/reference/performance.rst).
+This is evidence for the recorded configurations, not certification of every
+GPU, OS or architecture. Camera acquisition and downstream processing remain
+outside the numerical engine's timing boundary.
 
-## Product boundary: Python-supervised DIC
+## Start with the native Python engine
 
-DIC-RT is designed to be supervised by a Python application. Python owns the
-reference lifecycle, solver configuration, acquisition integration, bounded
-queues, timing, error handling, and consumption of the NumPy displacement and
-parameter fields. For resident NumPy streams, the recommended production path
-is therefore `ICGNWGPUFullPyramid()`: it keeps WebGPU in-process and avoids a
-browser data-plane boundary.
-
-For cumulative motion, opt-in
-[`initialization="temporal"`](./DIC/LucasKanadeICGN/docs/how-to/use-temporal-initialization.rst)
-projects the last accepted fine field onto the next coarsest grid and still
-solves every pyramid level. An additional opt-in
-`temporal_fine_correction=True` preserves fine history while applying the
-change measured at the coarse level. On the 200-frame native-UHD tensile
-sequence up to 10% stretch, the final opt-in profile additionally uses
-`temporal_prediction="velocity"` and conservative stopping at the finest level
-(`divergence_patience=3`, `divergence_min_iterations=4`). With affine B-spline
-16/16, two **fixed** levels and explicit median smoothing, it measures
-**77.77 FPS**, 12.76 ms median age and **15.07–15.38 ms p95 across three runs**
-with one slot, from resident NumPy image to materialized NumPy field and
-statistics on Intel LNL. Worst fixed-interior displacement RMSE is 0.0286 px,
-with at least 99.985% coverage. Defaults are unchanged.
-The [complete latency qualification](./DIC/LucasKanadeICGN/benchmarks/results/latency-reduction-20261030/README.md)
-retains the faster prototypes that failed accuracy, whole-grid boundary errors
-and system-load limits. This finite result is not a universal hard deadline.
-
-The browser backends remain important for WebGPU/WebGL2 portability, numerical
-cross-checks, and browser deployments. Their Python adapter is not the intended
-4K60 data plane. Even with the new binary transport, every UHD target crosses
-from Python into Chromium and every full field crosses back; current complete
-calls measure about 45--47 ms median. To turn the faster Three.js GPU graph
-into a competitive streaming application, a persistent **JavaScript
-supervisor** would need to own frame ingestion, GPU submission, backpressure,
-and result consumption in the browser process. Python could configure and
-monitor that supervisor, but it should not marshal every 4K frame and full
-field across the process boundary.
-
-That JavaScript supervisor is an integration direction, not a component
-provided by this repository today. If every input is a NumPy array and every
-full result must be materialized in Python, the native wgpu backend remains the
-correct architecture.
-
-## Long-term target: qualified 4K at 60 FPS
-
-The project goal is sustained digital image correlation on 3840 x 2160 frames
-at 60 frames per second, measured across the complete acquisition-to-result
-pipeline. On the changing UHD sequence, the recommended two-level
-GPU-resident pyramid measures **11.571 / 12.185 ms median / p95** in affine
-mode and **10.992 / 11.397 ms** in translation mode at the complete
-resident-NumPy-image to materialized-field boundary. A bounded two-slot stream
-sustains **95.51 FPS affine** and **104.09 FPS translation**; its median result
-ages are 21.008 and 19.131 ms, so throughput is not presented as latency. The
-boundary includes direct target upload, GPU pyramid construction,
-coarse-to-fine IC-GN computation, packed readback, and NumPy result
-construction.
-
-This is an encouraging compute result, not yet a 4K60 system qualification.
-Camera acquisition and downstream consumers are still excluded. The browser
-GPU timer also excludes input upload, binary Python/Chromium transport, and readback.
-Those stages must all be integrated and measured without growing queues before
-the 4K60 objective can be claimed.
-
-This fork adds a Python-supervised, GPU-accelerated digital image correlation
-(DIC) implementation to `tests_gpuio`. It performs affine
-inverse-compositional Gauss-Newton registration through a native wgpu-py path,
-a Three.js/TSL browser path with automatic WebGPU/WebGL2 selection, and an
-optional historical GPU-IO/WebGL2 backend. All paths accept dynamic dimensions and have been validated
-from 512 x 512 through UHD 3840 x 2160. Three.js remains the browser-facing API
-default. For native NumPy processing, the recommended default is the two-level
-`ICGNWGPUFullPyramid` path; the previous single-scale and selective-recovery
-`ICGNWGPU` implementation remains available.
-
-The current implementation deliberately starts with deterministic images from
-the validation dataset. It does **not** include camera acquisition or the H.264
-pipeline. This isolates the DIC algorithm, numerical equivalence, accuracy, and
-performance before live acquisition is connected.
-
-## What this fork implements
-
-The implementation in [`DIC/LucasKanadeICGN/`](./DIC/LucasKanadeICGN/) adds:
-
-- a six-parameter affine warp for every DIC subset;
-- inverse-compositional Gauss-Newton updates;
-- selectable target interpolation: historical Gaussian/cubic B-spline,
-  direct bilinear, or direct Keys cubic convolution;
-- reference gradients and a constant inverse Hessian prepared once;
-- ZNCC validation and a deliberately narrow displacement UOD pass. The default
-  `outlier_policy="replace"` detects inconsistent `tx`/`ty` values and replaces
-  the complete local motion state; `"flag"` preserves raw coefficients with
-  status 2, while `"disabled"` omits the pass. The explicit `"median"` mode
-  instead applies a centred 3×3 component median to every valid subset; it is
-  a smoothing option, not an outlier detector. Earlier coefficient-triggered
-  modes were removed after they behaved as implicit derivative smoothing on
-  healthy noisy fields; see the
-  [validation and rationale](DIC/LucasKanadeICGN/docs/explanation/displacement-outliers.rst);
-- configurable square subsets including centred odd widths 15, 17, 31, and
-  33, plus optional centred Gaussian integration on native wgpu, and an
-  independent ``subset_stride`` for overlapping shared-WGSL fields;
-  stride defaults to size, with 16 x 16 retained as the qualified geometry;
-- target prefiltering and registration on Three.js/TSL WebGPU by default;
-- a fused, dynamically sized GPU-IO/WebGL2 implementation as an optional
-  backend;
-- an experimental in-process wgpu-py backend with direct NumPy texture upload,
-  shared WGSL compute kernels, and one packed binary readback;
-- a two-level default native full pyramid whose five-tap reductions, affine
-  seed transfers, per-level solvers, and final readback remain on one GPU and
-  one command submission;
-- a bounded full-pyramid sequence API with independent mutable GPU resources
-  per in-flight NumPy frame and ordered result delivery;
-- an optional native subgroup specialization written directly in WGSL,
-  qualified against the portable solver before automatic selection;
-- a persistent, headless Python API with no visible browser interface;
-- NumPy displacement, affine-parameter, status, and iteration fields;
-- sequence processing, benchmarking, `.npz` export, and a command-line tool;
-- Sphinx documentation organized according to Diátaxis and configured for
-  Read the Docs.
-
-The parameter order is compatible with the SYCL prototype:
-
-```text
-[tx, du/dx, du/dy, ty, dv/dx, dv/dy]
-```
-
-## Which backend is the current default?
-
-There is no global default independent of the selected class:
-
-| Intended use | Construction | Pyramid policy |
-|---|---|---|
-| **Python-supervised NumPy DIC and streaming** | `ICGNWGPUFullPyramid()` | Full pyramid, **2 levels by default and recommended** |
-| Native single-scale/selective path | `ICGNWGPU()` | Single scale by default |
-| Python-controlled browser compatibility | `ICGNWebGL()` | Three.js/TSL, single scale |
-| Python-controlled browser using canonical WGSL | `ICGNWebGL(backend="webgpu-wgsl")` | Full pyramid, **2 levels by default** |
-| Historical reproduction only | `ICGNWebGL(backend="gpuio")` | Deprecated single scale |
-
-`ICGNWGPU(pyramid_levels=2 or 3)` is the older selective-recovery mechanism.
-It first executes the fine solve and invokes CPU-orchestrated coarse recovery
-only for failures. It remains available as an optional exception mode, but it
-is not the recommended normal pyramid. The full decision table and execution
-graphs are in the [backend-selection explanation](./DIC/LucasKanadeICGN/docs/explanation/backend-selection.rst).
-
-All active backends accept `interpolation="bspline"`, `"linear"`, or
-`"cubic"` at engine construction. `bspline` remains the compatibility default.
-The direct modes skip both per-frame FIR passes; `linear` prioritizes speed,
-while `cubic` retains substantially more subpixel accuracy. The deprecated
-GPU-IO backend supports only `bspline`. See the
-[interpolation explanation](./DIC/LucasKanadeICGN/docs/explanation/interpolation.rst).
-
-## Architecture
-
-The Python package exposes the browser implementations through one headless
-contract and the native implementation through the same result schema.
-Three.js/TSL is the default inside the browser-control class; GPU-IO remains
-selectable for regression comparisons, and `ICGNWGPUFullPyramid` selects the
-recommended browser-free Python path:
-
-```text
-Python reference image
-        |
-        v
-grayscale conversion + PNG transport
-        |
-        v
-headless Chromium / WebGPU or WebGL2
-        |
-        +--> one-time reference preparation on CPU
-        |    F, gradients, H^-1, J^T F, sum(J)
-        |
-        +--> persistent reference textures on GPU
-
-Python target frame
-        |
-        v
-same-origin binary uint8 transfer
-        |
-        v
-packed GPU upload / texture write
-        |
-        v
-GPU target FIR prefilter
-        |
-        v
-affine IC-GN iterations
-        |
-        v
-optional displacement UOD pass
-        |
-        v
-GPU readback --> packed binary field --> NumPy views
-```
-
-The reference remains a one-time encoded setup operation. Steady-state targets
-do not use PNG, data URLs, DevTools payloads, image decoding, or JSON result
-arrays. Browser memory is still separate from NumPy memory, so the binary
-loopback transfer and GPU upload remain measurable.
-
-The native path is shorter: `NumPy uint8 → r8unorm texture → WGSL FIR/IC-GN/
-optional UOD → packed readback → NumPy views`. Its detailed resource and workgroup
-layout is documented in the [native backend explanation](./DIC/LucasKanadeICGN/docs/explanation/native-backend.rst).
-
-The specialized Three.js/WebGPU solver fuses the IC-GN iterations into one
-compute dispatch and fills the measured hardware subgroup. On the validation
-GPU, 32 lanes each process eight pixels of a default 16 x 16 subset. Its portable
-fallback instead uses one portable 16- or 32-lane workgroup per subset, with 16
-as the default and the native width configurable. These solver groups are
-independent of the FIR tiles: the shared WGSL prefilter uses 32 x 8 horizontal
-and 8 x 32 vertical output tiles.
-
-The GPU-IO solver uses the WebGL2 execution model: one fragment owns one subset
-and scans the selected square serially. Its iterations are fused into one draw,
-the affine state and reference atlases stay in registers, and three result
-attachments are written once. The complete tiling and grouping diagrams are in
-the [GPU optimization documentation](./DIC/LucasKanadeICGN/docs/explanation/gpu-optimization.rst).
-
-Chromium is used only as an invisible WebGPU or WebGL2 execution environment
-for browser backends. The native backend does not start it. The browser Python
-entry point does not load Tweakpane, attach the canvas to the visible page, or
-open a browser window. One persistent engine should be reused for a sequence
-so that runtime startup and reference preparation are not repeated for every
-frame.
-
-## Validated numerical result
-
-The shipped test images are direct luma-frame extractions from the raw YUV
-sequence `seed2026101102_translation`. The analytical motion is
-`(+0.2, -0.1)` pixel per frame.
-
-For the `t=0 -> 10` pair:
-
-| Metric | Result |
-|---|---:|
-| True translation | `(2.0, -1.0)` px |
-| Measured mean translation | `(1.999993, -0.999996)` px |
-| Vector RMSE | `2.749e-5` px |
-| Accepted subsets | `900 / 1,024` |
-| UOD-flagged subsets | `0` |
-| Mean iterations over accepted subsets | `5.959` |
-
-The images, source hashes, format, and motion parameters are recorded in
-[`assets/source.json`](./DIC/LucasKanadeICGN/assets/source.json).
-
-## Performance
-
-The current Intel Lunar Lake audit uses the complete resident-NumPy-image to
-materialized-NumPy-field boundary, with three warm-ups and 12 changing UHD
-frames per campaign. All rows use the default displacement UOD replacement:
-
-| UHD path | Model | Median | p95 | Throughput |
-|---|---|---:|---:|---:|
-| Native full pyramid, 2 levels | affine | **11.571 ms** | **12.185 ms** | **85.37 FPS** |
-| Native full pyramid, 2 levels | translation | **10.992 ms** | **11.397 ms** | **90.72 FPS** |
-| Raw browser WGSL, 2 levels | affine | 41.094 ms | 44.423 ms | 24.27 FPS |
-| Raw browser WGSL, 2 levels | translation | 39.996 ms | 43.995 ms | 24.82 FPS |
-| Three.js/TSL, 1 scale | affine | 43.203 ms | 56.336 ms | 21.91 FPS |
-| Three.js/TSL, 1 scale | translation | 39.666 ms | 44.002 ms | 25.14 FPS |
-
-GPU-IO is intentionally absent, and no SYSCL row is claimed without a new
-equivalent run. These values still exclude camera acquisition and downstream
-consumers; 4K60 qualification must measure the complete deployed
-acquisition-to-result path.
-
-The timing protocol, current measurements, and reproduction commands are documented in
-[`DIC/LucasKanadeICGN/BENCHMARK.md`](./DIC/LucasKanadeICGN/BENCHMARK.md).
-
-## Installation
-
-Native translation and affine measurements support a reference-image boolean
-ROI: `engine.set_reference(reference, roi_mask=mask)`. The default `full` policy
-retains only windows whose complete nominal square is allowed, including checks
-for interior holes. See the [ROI guide](./DIC/LucasKanadeICGN/docs/how-to/use-roi.rst)
-for pyramids, filtering, streaming, and self-contained NPZ exports.
-For boundary measurements, explicitly enable `roi_policy="partial"`; the
-[partial-support guide](./DIC/LucasKanadeICGN/docs/how-to/use-partial-roi.rst)
-explains fixed connected supports and optional visibility truncation near tips.
-
-Requirements:
-
-- Python 3.11 or newer;
-- Chromium or Google Chrome with WebGPU and WebGL2 support;
-- a compatible GPU and driver.
-
-The standard installation includes the native ``wgpu`` runtime and does not
-require Chromium for native processing.
-
-Install the local Python package:
+From the repository root, with Python 3.11 or newer:
 
 ```bash
 python3 -m venv .venv-icgn
-.venv-icgn/bin/pip install -e DIC/LucasKanadeICGN/python
+.venv-icgn/bin/python -m pip install -e DIC/LucasKanadeICGN/python
 ```
 
-The Python package embeds GPU-IO, Three.js r186, both browser solvers, the
-native WGSL kernels, and the headless HTML entry points. After dependencies
-have been installed, the runtime performs no network requests and does not
-require the repository checkout. The optional browser demonstration also uses
-only vendored scripts; see
-[`THIRD_PARTY.md`](./DIC/LucasKanadeICGN/THIRD_PARTY.md).
-
-## First Python registration
+The standard installation includes **wgpu-py**. Native processing requires a
+working GPU driver, but **does not require Chromium, Cargo, a project-specific
+binary extension or an external shader compiler**. The project's wheel is
+pure Python plus WGSL and browser resources; dependency wheels provide their
+own platform runtimes. See the [installation guide](DIC/LucasKanadeICGN/docs/how-to/install.rst)
+for offline installation and software CPU adapters.
 
 ```python
-from lucas_kanade_icgn import ICGNWebGL
+import numpy as np
+from PIL import Image
+from lucas_kanade_icgn import ICGNWGPUFullPyramid
 
-reference = "DIC/LucasKanadeICGN/assets/frame_000.png"
-target = "DIC/LucasKanadeICGN/assets/frame_010.png"
+reference = np.array(Image.open("DIC/LucasKanadeICGN/assets/frame_000.png").convert("L"))
+target = np.array(Image.open("DIC/LucasKanadeICGN/assets/frame_010.png").convert("L"))
 
-with ICGNWebGL() as engine:
-    print(engine.info())
-    engine.set_reference(reference)
+with ICGNWGPUFullPyramid() as engine:
+    preparation = engine.set_reference(reference)
     result = engine.register(target)
+    print(engine.adapter_info)
 
-print(result.mean_translation)
-print(result.parameters.shape)      # (32, 32, 6)
-print(result.displacement.shape)    # (32, 32, 2)
-print(result.accepted_mask.sum())   # 900
-print(result.rmse((2.0, -1.0)))
+print(result.mean_translation)       # Close to (2, -1) pixels for this fixture.
+print(result.parameters.shape)       # (32, 32, 6)
+print(result.displacement.shape)     # (32, 32, 2)
+print(result.accepted_mask.sum())
+result.save_npz("result.npz")
 ```
 
-For a sequence, keep the same context open and call `register` for every target,
-or use `engine.register_many(reference, targets)`.
-
-Select the experimental browser-free path explicitly:
+Reuse the engine for a sequence. Its default two-level full pyramid runs
+coarse-to-fine on every target, with GPU-resident intermediate data:
 
 ```python
-from lucas_kanade_icgn import ICGNWGPU
-
-with ICGNWGPU(interpolation="linear") as engine:
+with ICGNWGPUFullPyramid() as engine:
     engine.set_reference(reference)
+    for result in engine.register_stream(numpy_frames, pipeline_depth=1):
+        consume(result)
+```
+
+`numpy_frames` and `consume` belong to the application. One slot minimizes
+result age; the API default of two slots prioritizes throughput. Slot depth
+and pyramid depth are independent. Native `close()` permanently releases the
+owning GPU resources; repeated close is harmless, and returned NumPy fields
+remain usable.
+
+## Models, ROI and result policies
+
+- **Motion:** translation, six-parameter affine (default), or twelve-parameter
+  quadratic. Quadratic adds the displacement's second derivatives.
+- **Sampling:** B-spline (default), bilinear or Keys cubic interpolation.
+- **Geometry:** native square widths 8, 15, 16, 17, 31, 32 and 33; independent
+  subset stride; uniform or Gaussian spatial integration.
+- **ROI:** native translation and affine accept a reference-sized boolean
+  mask. `True` means retain. Default `roi_policy="full"` selects only complete
+  nominal windows; explicit `"partial"` uses qualified connected boundary
+  supports. Browser backends reject ROI requests.
+- **Spatial policy:** default `outlier_policy="replace"` detects displacement
+  outliers and replaces the complete local state. `"flag"` preserves raw
+  values, `"disabled"` omits the pass, and `"median"` explicitly smooths every
+  valid state. Smoothing is not outlier detection.
+- **Initialization:** zero by default; temporal history, velocity prediction,
+  fine correction and finest-level stagnation stopping are opt-in. The
+  qualified temporal profile is documented separately from API defaults.
+
+```python
+mask = np.ones(reference.shape, dtype=bool)
+mask[200:256, 200:256] = False
+with ICGNWGPUFullPyramid(motion_model="affine") as engine:
+    engine.set_reference(reference, roi_mask=mask)
     result = engine.register(target)
 ```
 
-## Command-line usage
+Excluded points are not zero-displacement measurements. Use `roi_selected`,
+`reference_valid` and `accepted_mask`; exports preserve the ROI and strict JSON
+configuration. See the [ROI guide](DIC/LucasKanadeICGN/docs/how-to/use-roi.rst)
+and [result contract](DIC/LucasKanadeICGN/docs/reference/result-layout.rst).
 
-Register one pair and export all numeric fields:
+## Select the appropriate execution path
 
-```bash
-.venv-icgn/bin/icgn-webgl \
-  DIC/LucasKanadeICGN/assets/frame_000.png \
-  DIC/LucasKanadeICGN/assets/frame_010.png \
-  --truth 2 -1 \
-  --output result.npz
-```
+| Use | Entry point | Default behavior |
+|---|---|---|
+| Python NumPy images and full fields | **`ICGNWGPUFullPyramid()`** | Native WebGPU, two fixed levels |
+| Native single-scale studies | `ICGNWGPU()` | Single scale; optional selective recovery |
+| Browser compatibility | `ICGNWebGL()` | Three.js/TSL, WebGPU with WebGL2 fallback |
+| Shared-WGSL browser qualification | `ICGNWebGL(backend="webgpu-wgsl")` | Two-level full pyramid |
+| Historical reproduction | `ICGNWebGL(backend="gpuio")` | Deprecated GPU-IO |
 
-Run a 30-sample GPU benchmark:
+The **CLI `icgn-webgl` and one-shot `register_pair()` retain their browser
+behavior**. For native production streams use the classes above. The Python
+distribution is still `lucas-kanade-icgn-webgl`, imported as
+`lucas_kanade_icgn`; the project name is live-dic.
 
-```bash
-.venv-icgn/bin/icgn-webgl \
-  DIC/LucasKanadeICGN/assets/frame_000.png \
-  DIC/LucasKanadeICGN/assets/frame_010.png \
-  --benchmark --repeats 30 --warmups 3 --truth 2 -1 \
-  --interpolation linear
-```
+Browser calls transfer images and fields between Python and Chromium. Binary
+transport removes per-frame PNG/JSON encoding, but does not share NumPy memory.
+A competitive browser-native Three.js stream would need a **JavaScript
+supervisor**, which is not provided here. See
+[supervision](DIC/LucasKanadeICGN/docs/explanation/supervision.rst).
 
-Standard output is JSON. Complete arrays and benchmark samples are written to
-the optional compressed NumPy archive.
+## Documentation and evidence
 
-## Documentation
+- [First native registration](DIC/LucasKanadeICGN/docs/tutorials/first-registration.rst)
+  and [live NumPy frames](DIC/LucasKanadeICGN/docs/how-to/process-live-frames.rst).
+- [WebGPU explained for engineers](DIC/LucasKanadeICGN/docs/explanation/webgpu-fundamentals.rst),
+  [GPU vocabulary](DIC/LucasKanadeICGN/docs/reference/gpu-vocabulary.rst), and
+  [kernel optimization](DIC/LucasKanadeICGN/docs/how-to/optimize-webgpu.rst).
+- [API](DIC/LucasKanadeICGN/docs/reference/api.rst),
+  [backend selection](DIC/LucasKanadeICGN/docs/explanation/backend-selection.rst),
+  and [limitations](DIC/LucasKanadeICGN/docs/explanation/limitations.rst).
+- [Performance tables and hardware coverage](DIC/LucasKanadeICGN/docs/reference/performance.rst),
+  [measurement protocol](DIC/LucasKanadeICGN/BENCHMARK.md), and
+  [archived campaign index](DIC/LucasKanadeICGN/benchmarks/results/README.md).
+- Checked-in native 4K [tensile](DIC/LucasKanadeICGN/assets/uhd_tensile/README.md)
+  and [plate-hole](DIC/LucasKanadeICGN/assets/uhd_plate_hole/README.md) fixtures
+  include ground truth, hashes and provenance.
 
-The native engines support `device_type="auto"`, `"gpu"`, and `"cpu"`.
-The CPU mode executes the same WGSL through an installed software driver;
-see [CPU execution and selection](./DIC/LucasKanadeICGN/docs/how-to/run-on-cpu.rst).
+Performance tables name their workload, configuration, GPU, revision and
+population. Resident NumPy image → materialized NumPy field is the primary
+Python boundary. GPU timestamps, throughput, p95 result age and end-to-end
+camera latency answer different questions; do not compare them interchangeably.
 
-New to GPU computing? The [engineering introduction](./DIC/LucasKanadeICGN/docs/explanation/webgpu-fundamentals.rst)
-explains WebGPU, wgpu-py, WGSL shaders, memory transfers, and synchronization
-from first principles. Continue with the [runnable GPU tutorial](./DIC/LucasKanadeICGN/docs/tutorials/first-gpu-kernel.rst),
-[GPU vocabulary](./DIC/LucasKanadeICGN/docs/reference/gpu-vocabulary.rst), and
-[kernel optimization guide](./DIC/LucasKanadeICGN/docs/how-to/optimize-webgpu.rst).
+## Development and project layout
 
-The documentation focuses exclusively on real-time DIC from Python. It contains
-tutorials, operational guides, API reference, the IC-GN formulation, timing
-boundaries, limitations, and scientific provenance.
-
-- source: [`DIC/LucasKanadeICGN/docs/`](./DIC/LucasKanadeICGN/docs/);
-- entry page: [`docs/index.rst`](./DIC/LucasKanadeICGN/docs/index.rst);
-- acknowledgement of Pierre's work:
-  [`acknowledgements.rst`](./DIC/LucasKanadeICGN/docs/explanation/acknowledgements.rst);
-- Read the Docs configuration: [`.readthedocs.yaml`](./.readthedocs.yaml).
-
-Build the HTML documentation locally:
-
-```bash
-python3 -m pip install -r DIC/LucasKanadeICGN/docs/requirements.txt
-python3 -m sphinx -W --keep-going -b html \
-  DIC/LucasKanadeICGN/docs \
-  DIC/LucasKanadeICGN/docs/_build/html
-```
-
-## Repository map
-
-```text
-DIC/LucasKanadeICGN/
-├── LucasKanadeICGN.js      GPU-IO/WebGL2 affine IC-GN implementation
-├── three/                  Three.js/TSL WebGPU implementation and vendor files
-├── headless.html           GPU-IO headless runtime
-├── index.html              optional interactive browser benchmark
-├── assets/                 traceable raw-YUV validation frames
-├── python/                 typed package, CLI, and tests
-├── benchmarks/             reproducible backend and UHD campaigns
-├── docs/                   Sphinx/Diátaxis documentation
-├── BENCHMARK.md            current measurements and reproduction protocol
-└── README.md               detailed implementation overview
-```
-
-The original GPU-IO demonstrations elsewhere in this repository remain
-available from [`index.html`](./index.html).
-
-## Current limitations
-
-- dynamic grayscale frame dimensions in all backends; GPU-IO requires width
-  and height to be multiples of the selected subset size;
-- widths 8, 15, 16, 17, 31, 32, and 33 on native and raw browser WGSL, with an
-  independent stride from 1 through the subset width; Three.js/TSL, WebGL2,
-  and GPU-IO remain limited to widths 8, 16, and 32 with stride equal to size;
-- Three.js/TSL and historical GPU-IO remain single-scale; the raw WGSL browser
-  backend and native full-pyramid backend default to two levels and support
-  three explicitly;
-- opt-in temporal coarse-grid initialization in the native full pyramid;
-  no extrapolated initialization or constant-velocity prediction;
-- no Aitken acceleration or predictive-tolerance guard;
-- no camera, trigger, synchronization, or codec ownership;
-- binary loopback transfer between NumPy and the separate Chromium process;
-  per-frame PNG, DevTools payloads, decoding, and JSON fields have been removed,
-  while the native path also removes the browser process copy;
-- full result-field readback for every `register` call;
-- soft real-time behavior only, with no operating-system deadline guarantee.
-
-The direct `t=0 -> 20` displacement of `(4, -2)` pixels is outside the robust
-local basin for many single-scale subsets. The current two-level native
-full-pyramid campaign returned 31,724 accepted subsets out of 32,400 at UHD
-with a translation RMSE of 0.001873 pixel. These values refer to that campaign's
-accepted population. Larger motions can select three levels
-or provide a better initial estimate.
-
-## Verification
-
-Development checks and the recorded GPU campaigns include:
-
-- hardware-independent Python regression tests for API and numerical helpers;
-- Ruff linting and formatting checks;
-- release-wheel construction and installation from an offline wheelhouse;
-- JavaScript syntax checking;
-- wheel build and installation;
-- real GPU execution through the installed package in the recorded campaigns;
-- strict Sphinx builds with warnings treated as errors;
-- visual inspection of the generated landing page and API reference.
-
-Run the local checks:
-
-```bash
-python3 -m pip install -e 'DIC/LucasKanadeICGN/python[dev]'
-ruff check DIC/LucasKanadeICGN/python
-ruff format --check DIC/LucasKanadeICGN/python
-python3 -m unittest discover -s DIC/LucasKanadeICGN/python/tests -v
-ICGN_RUN_GPU_TESTS=1 python3 -m unittest discover \
-  -s DIC/LucasKanadeICGN/python/tests \
-  -p 'test_gpu_regressions.py' -v
-node --check DIC/LucasKanadeICGN/LucasKanadeICGN.js
-node --check DIC/LucasKanadeICGN/three/LucasKanadeICGNThree.js
-node --check DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/three/LucasKanadeICGNThree.js
-node --check DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/webgpu/LucasKanadeICGNWebGPU.js
-```
-
-The default unit tests do not require Chromium or a GPU. Platform-specific browser
-discovery and launch arguments are covered with deterministic Linux, Windows,
-and macOS simulations. The separate GitHub Actions matrix is prepared to run
-the same installed-package suite on all three operating-system families;
-hardware-backed execution and performance still require qualification on each
-target machine and architecture.
-
-The native GPU regression tests are explicit opt-in tests. On a GPU host with
-Python 3.11 or newer, install the package and run:
-
-```bash
-python -m pip install -e DIC/LucasKanadeICGN/python
-ICGN_RUN_GPU_TESTS=1 python -m unittest discover \
-  -s DIC/LucasKanadeICGN/python/tests -p 'test_gpu_regressions.py' -v
-```
-
-These tests compare GPU reductions against the CPU reference and check that
-seeded retries preserve the states needed by the UOD pass. When enabled,
-a missing native dependency or adapter is an error, not a successful skip.
-The portable CI matrix skips these tests; its green status alone does not
-validate shader execution or performance.
-
-## Acknowledgements and provenance
-
-This fork is a continuation of
-[Pierre Margerit's `tests_gpuio`](https://github.com/MargeritPierre/tests_gpuio),
-whose experiments and WebGL structure made the present work possible.
-The original demonstrations remain published at
-[margeritpierre.github.io/tests_gpuio](https://margeritpierre.github.io/tests_gpuio/).
-
-The repository uses [GPU-IO](https://github.com/amandaghassaei/gpu-io), created
-by Amanda Ghassaei, as its WebGL computation framework.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for tests, packaging, documentation and
+validation outside the checkout. The maintained source is under
+[`DIC/LucasKanadeICGN/python`](DIC/LucasKanadeICGN/python/); Sphinx/Diátaxis
+sources are under [`docs`](DIC/LucasKanadeICGN/docs/).
+The original GPU-IO demonstrations remain accessible from [index.html](index.html).
+Third-party attributions are in
+[THIRD_PARTY.md](DIC/LucasKanadeICGN/THIRD_PARTY.md).

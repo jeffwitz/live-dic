@@ -1,7 +1,7 @@
 Displacement outliers and explicit field median
 ================================================
 
-DIC-RT provides one deliberately narrow spatial robustness check: a universal
+live-dic provides one deliberately narrow spatial robustness check: a universal
 outlier detection (UOD) test on the two displacement components.  It is a
 guard against subsets that converge into a wrong correlation basin.  It is
 not a denoising filter for affine gradients or quadratic curvatures.  A

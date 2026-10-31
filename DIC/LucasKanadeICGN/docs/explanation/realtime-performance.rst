@@ -5,7 +5,7 @@ Real-time performance and latency
 in isolation. A DIC system must define its deadline, sustain it over time, and
 report late or dropped frames.
 
-DIC-RT's primary deployment is Python-supervised: Python owns acquisition
+live-dic's primary deployment is Python-supervised: Python owns acquisition
 integration, engine lifetime, bounded queues, timing, and NumPy outputs. The
 native wgpu path is the reference performance architecture for that boundary.
 The browser adapter is deliberately measured as a complete Python call, not

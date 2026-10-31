@@ -4,7 +4,7 @@ Python supervision and browser-native execution
 Product boundary
 ----------------
 
-DIC-RT is a headless numerical engine intended to be supervised by Python.
+live-dic is a headless numerical engine intended to be supervised by Python.
 The supervisor is not a graphical interface. It is the application layer that
 owns:
 

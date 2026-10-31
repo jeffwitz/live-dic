@@ -1,236 +1,86 @@
-# Current IC-GN performance
+# live-dic benchmark protocol
 
-Last updated: October 30, 2026.
+The [performance reference](docs/reference/performance.rst) is the canonical
+location for timing tables and the GPU hardware coverage matrix. The
+[campaign index](benchmarks/results/README.md) points to raw reports, input
+hashes, source revisions, diagnostic logs and final fields. This document
+explains how to measure; it deliberately does not duplicate numerical tables.
 
-This file contains only measurements for the current kernels. Earlier campaign
-snapshots were removed because their layouts, filter costs, and subgroup
-occupancy no longer describe the implementation. Re-run the commands below
-when a kernel, driver, browser, or measurement boundary changes.
+## Define the measured workload
 
-## GPU coverage: AMD, Intel and NVIDIA
+For the Python product boundary, start with a resident, contiguous uint8 NumPy
+image and stop with the complete NumPy field and statistics. Preparation,
+compilation, acquisition, decoding and downstream consumption are separate
+measurements. GPU timestamps and completion waits are useful diagnostics,
+not substitutes for the complete call.
 
-Native 3840 × 2160 full-pyramid benchmarks have completed on AMD Radeon 780M,
-Intel Lunar Lake, Intel UHD Graphics (Tiger Lake GT1), and NVIDIA GeForce
-RTX 3080 Laptop, using the portable WGSL solver through Vulkan with both
-16 and 32 invocations per workgroup. The
-[hardware coverage matrix](docs/reference/performance.rst#gpu-hardware-coverage)
-records each workload and its numerical and regression scope. These are
-successful measurements across the tested configurations, not a universal
-compatibility or 4K60 guarantee.
+Keep the reference, targets, model, interpolation, subset size/stride,
+weighting, ROI, spatial policy, pyramid levels, iteration/tolerance schedules,
+initialization and slot depth identical between A/B cases. Use a hardware GPU
+explicitly for live performance; software adapters qualify correctness.
+Report the actual adapter and selected solver rather than assuming the request
+was honored.
 
-The [AMD campaign](benchmarks/results/workgroup-width-amd-20261030/README.md)
-completed all twelve runs with passing fixed-interior quality gates. Its
-initial full GPU regression suite aborted because closed engines retained GPU
-resources until device memory was exhausted. The lifecycle correction and
-validation are documented in the coverage matrix. The primary tables below remain the Intel Lunar Lake
-campaign; they are not measurements from all four adapters.
+The checked-in [UHD tensile](assets/uhd_tensile/README.md) and
+[plate-hole](assets/uhd_plate_hole/README.md) fixtures have analytic truth and
+provenance. Tiling the small integer-translation fixtures is useful for timing,
+but must not be presented as a native-UHD subpixel metrology qualification.
+Do not require large-strain late frames to converge from an unqualified zero
+initialization. Preserve each dataset's documented capture-range and error gates.
 
-## Current backend policy
+## Changing-frame image-to-field benchmark
 
-- DIC-RT is measured first as a Python-supervised NumPy pipeline.
-- `ICGNWGPUFullPyramid()` with two levels is the recommended product
-  coarse-to-fine path for that boundary.
-- `ICGNWebGL(backend="webgpu-wgsl")` runs the same two-level full-pyramid WGSL
-  graph in Chromium.
-- `ICGNWebGL()` remains the default browser entry point and uses the optimized
-  Three.js/TSL single-scale solver with automatic WebGL2 fallback.
-- Both native engines expose bounded streaming. `ICGNWGPU()` is the
-  single-scale engine; its optional selective recovery is not the normal
-  pyramid path.
-- GPU-IO is deprecated and has no current performance row.
+From the repository root, after installing the Python package:
 
-## Validation machine
-
-- CPU: Intel Core Ultra 5 228V;
-- GPU: Intel Lunar Lake integrated graphics `[8086:64a0]`;
-- kernel driver: `xe`;
-- operating system: Ubuntu 24.04.5 LTS, Linux 7.0.0-38-generic;
-- browser: Chromium 155.0.8059.79 snap;
-- browser WebGPU: Three.js r186, Vulkan;
-- native WebGPU: wgpu-py 0.32.0, wgpu-native Vulkan.
-
-The offline validation texture is tiled to 3840 × 2160, producing 240 × 135,
-or 32,400, 16 × 16 subsets with the default 16-pixel stride. No published row
-below uses overlapping subsets. No camera or H.264 stage is included.
-
-## Primary UHD image-to-field stream boundary
-
-Primary backend performance measurements use the default
-`outlier_policy="replace"`. The UOD pass tests only recentered `tx` and `ty`;
-after a trigger it replaces the complete local motion state. Use `"flag"` to
-preserve raw coefficients with status 2, or `"disabled"` to omit the pass for
-raw solver studies and isolated timing. The explicit `"median"` option applies
-a centred 3×3 component median to every valid subset and requires its own
-accuracy and timing row before it is used for a performance claim. Earlier
-coefficient-triggered policies were removed because they modified 66--81% of
-a healthy noisy field while presenting smoothing as outlier detection. See the
-[displacement outlier explanation](docs/explanation/displacement-outliers.rst).
-
-This is the deployable Python boundary used for performance claims. A
-persistent engine receives an already acquired, contiguous `uint8` NumPy image
-and the timer stops only when the complete `(135, 240, 6)` NumPy parameter
-field, status, iterations, and statistics are available. Reference preparation,
-camera acquisition, and decoding are excluded.
-
-This boundary reflects the product's intended Python supervisor. Browser rows
-measure Python controlling a separate Chromium worker; they are not estimates
-of a future JavaScript-supervised Three.js stream. Such a supervisor would keep
-browser-native input, scheduling, and result consumers in Chromium and needs a
-separate implementation and campaign.
-
-The sequence cycles the four distinct qualified `frame_001`, `frame_005`,
-`frame_010`, and `frame_020` fixtures. Every row uses three changing-frame
-warm-ups followed by 12 measured frames. Execution is synchronous, so the
-reported latency is also the result age and the inverse stream period. The
-browser rows report the median of three campaigns after the binary transport
-change.
-
-| Backend and model | Median / p95 image-to-field latency | Sustained throughput |
-|---|---:|---:|
-| Native full pyramid, 2 levels, affine | **11.571 / 12.185 ms** | **85.37 FPS** |
-| Native full pyramid, 2 levels, translation | **10.992 / 11.397 ms** | **90.72 FPS** |
-| Raw browser WGSL, 2 levels, affine | **41.094 / 44.423 ms** | **24.27 FPS** |
-| Raw browser WGSL, 2 levels, translation | **39.996 / 43.995 ms** | **24.82 FPS** |
-| Three.js/TSL, 1 scale, affine | **43.203 / 56.336 ms** | **21.91 FPS** |
-| Three.js/TSL, 1 scale, translation | **39.666 / 44.002 ms** | **25.14 FPS** |
-
-The native policy control was measured with the same three-campaign protocol:
-
-| Model and UOD policy | Median / p95 | Throughput | Median / maximum RMSE |
-|---|---:|---:|---:|
-| Affine, `replace` | 11.571 / 12.185 ms | 85.37 FPS | 0.04161 / 0.06274 px |
-| Affine, `disabled` | **10.851 / 11.436 ms** | **92.24 FPS** | 0.04161 / 0.07810 px |
-| Translation, `replace` | 10.992 / 11.397 ms | 90.72 FPS | **0.03590 / 0.04063 px** |
-| Translation, `disabled` | **10.095 / 10.539 ms** | **98.63 FPS** | 0.04487 / 0.06548 px |
-
-Skipping UOD saved about 0.72 ms affine and 0.90 ms translation in these
-campaign medians. It is not a numerically equivalent fast mode: the raw field
-has no wrong-basin replacement, and its maximum error increased on this
-sequence. Production tables therefore retain the default `replace` policy;
-`disabled` is provided for raw metrology studies and isolated solver timing.
-
-The native and raw-browser WGSL rows execute the same two-level algorithm. The
-browser API now keeps the persistent Chromium process but removes per-frame
-PNG, data URLs, DevTools payloads, image decoding, and JSON fields. A
-same-origin long poll transfers the contiguous grayscale bytes unchanged and
-one packed eight-float state returns as binary. Three.js uploads four pixels
-per 32-bit word and expands them on the GPU, avoiding its former 33 MB
-JavaScript float conversion at UHD. The one-time reference setup still uses
-the image path and remains excluded from this boundary.
-
-This does not make Chromium memory and NumPy memory identical. The UHD frame
-still crosses into Chromium, then into a GPU resource, and the result crosses
-back. In the affine campaign the browser body copy took about 9.8 ms median
-and the synchronized GPU graph about 17--20 ms. The complete browser paths
-therefore sustain about 20--22 FPS, not 60 FPS. Native wgpu remains the
-real-time NumPy path.
-
-The native path uploads the NumPy bytes directly to an `r8unorm` texture and
-reads one packed result buffer. The current timing contract separately reports
-input normalization, upload, encoding, queue submission, host completion wait,
-mapped-buffer copy, and NumPy result construction. The completion wait is not
-an isolated GPU timestamp.
-
-Reproduce this boundary with:
-
-```console
-PYTHONPATH=DIC/LucasKanadeICGN/python/src \
-  python3 DIC/LucasKanadeICGN/benchmarks/benchmark_image_to_field.py \
-  --width 3840 --height 2160 --frames 12 --warmups 3 --campaigns 3 \
-  --backend three-tsl --backend webgpu-wgsl \
-  --motion-model translation
+```bash
+python3 DIC/LucasKanadeICGN/benchmarks/benchmark_image_to_field.py \
+  --backend native-pyramid --fixture-set uhd-tensile --device-type gpu \
+  --width 3840 --height 2160 --frames 50 --warmups 8 --campaigns 3 \
+  --pipeline-depth 1 --motion-model affine --outlier-policy median
 ```
 
-## Native full-pyramid bounded stream
+Run `--help` for ROI NPY inputs, subset geometry, interpolation and output
+options. Use `--backend three-tsl` or `--backend webgpu-wgsl` for Python/browser
+comparisons without ROI. Their algorithmic coverage differs; Three.js is
+single-scale, so label the comparison accordingly.
 
-`ICGNWGPUFullPyramid.register_stream()` keeps all mutable resources independent
-for every in-flight target: target textures, pyramid reductions, solver states,
-coarse-to-fine seed buffers, and final readbacks. Reference data and compiled
-pipelines remain shared. Contiguous NumPy bytes are uploaded directly; this
-path contains no PNG, Chromium, DevTools, or JSON conversion.
+For the 200-frame temporal trajectory, follow the exact cache preparation,
+settings and commands in the [latency campaign](benchmarks/results/latency-reduction-20261030/README.md).
+The width [16/32](benchmarks/results/workgroup-width-20261030/README.md),
+[AMD](benchmarks/results/workgroup-width-amd-20261030/README.md) and
+[16/128](benchmarks/results/workgroup-128-20261030/README.md) controls archive
+three alternating repetitions at depths one and two. Do not overwrite these
+archives when running a new campaign; choose a new output directory.
 
-The current campaign used four runs, each with eight warm-ups and 50 changing
-UHD frames. The table reports the median campaign. Result age starts when the
-iterator accepts an image and ends after the complete NumPy field and
-statistics exist. Stream period is total wall time divided by 50.
+## Required reporting
 
-| Model and targets in flight | Median / p95 result age | Stream period | Throughput |
-|---|---:|---:|---:|
-| Affine, depth 1 | **11.354 / 11.899 ms** | 11.368 ms | 88.00 FPS |
-| Affine, depth 2 | 21.008 / 21.683 ms | **10.471 ms** | **95.51 FPS** |
-| Affine, depth 3 | 31.761 / 35.991 ms | 10.523 ms | 95.03 FPS |
-| Translation, depth 1 | **10.496 / 11.229 ms** | 10.708 ms | 93.43 FPS |
-| Translation, depth 2 | 19.131 / 19.665 ms | **9.607 ms** | **104.09 FPS** |
-| Translation, depth 3 | 29.854 / 36.126 ms | 9.655 ms | 103.57 FPS |
+- Input hashes, mask hash/data, code revision and dirty state, relevant source
+  hashes, exact command, software versions, GPU/driver and power profile.
+- Preparation time separately from warmed steady-state measurements.
+- Sustained FPS and stream period separately from result age p50/p95/p99.
+  State whether quantiles pool samples or summarize per-run quantiles.
+- Raw samples, warmup and repetition counts, slot depth and actual levels used.
+- Reference population, ROI selection, numerical validity, accepted/rejected
+  counts, displacement and derivative errors on explicitly defined populations.
+- Whole-grid failures as well as any fixed-interior qualification.
+- Iteration distributions over all windows, including nonconverged windows.
+- Numerical agreement of optimized variants before choosing them by speed.
 
-Depth one minimizes result age. Depth two is the recommended throughput
-setting: it gains 8.5% affine throughput and 11.4% translation throughput while
-approximately doubling result age. The third slot does not improve throughput
-and raises median result age above 29 ms.
+Alternate matched runs and keep tests, builds, rendering and scoring outside
+timed streams. Derive a non-regression margin from repeated reference runs;
+a noisy comparison is indeterminate. Never improve timings by silently
+lowering accuracy requirements, changing the requested model, reducing levels,
+or omitting eligible windows.
 
-```console
-PYTHONPATH=DIC/LucasKanadeICGN/python/src \
-  python3 DIC/LucasKanadeICGN/benchmarks/benchmark_image_to_field.py \
-  --backend native-pyramid --width 3840 --height 2160 \
-  --campaigns 4 --frames 50 --warmups 8 \
-  --pipeline-depth 2 --motion-model affine
-```
+## Qualification and limitations
 
-## Optimizations represented by these measurements
+Run the [development checks](../../CONTRIBUTING.md) before publishing evidence.
+Portable CI, lavapipe execution, hardware-GPU correctness and hardware-GPU
+performance are distinct qualifications. A passing test count is meaningful
+only with its revision and environment; there is no hardcoded current count.
 
-- the canonical WGSL FIR stages 32 × 8 horizontal and 8 × 32 vertical output
-  tiles in workgroup memory;
-- it evaluates the central 25 coefficients of the compatible 31-value FIR
-  record; the six omitted tails have a total absolute weight below `7e-8`;
-- the Three.js FIR uses a conservative 16 × 16 output tile with all 31 taps;
-- the Three.js solver fills the measured 32-lane hardware subgroup, so each
-  lane handles eight subset pixels;
-- the portable shared WGSL solver supports 16 or 32 invocations per subset,
-  with 16 as the default;
-- the two-level full pyramid keeps reduction, coefficients, affine seed
-  transfer, solves, and final readback on one GPU command graph.
-
-The opt-in GPU regressions validate partial FIR tiles, exact integer pyramid
-reduction, fresh seeded state, selective-retry neighbour preservation, and the
-translation-only fractional-displacement contract. They also verify complete-
-state replacement and flag-only preservation for an injected displacement
-outlier, at most 1% false positives on a healthy noisy field, preservation of
-a one-subset-wide affine-gradient band, and exact agreement of the explicit
-3×3 median with an independent translation/affine/quadratic oracle. All 106
-tests pass when GPU execution is enabled.
-
-## Reproduce the current measurements
-
-Current image-to-field campaign:
-
-```console
-PYTHONPATH=DIC/LucasKanadeICGN/python/src \
-  python3 DIC/LucasKanadeICGN/benchmarks/benchmark_image_to_field.py \
-  --backend native-pyramid --backend webgpu-wgsl --backend three-tsl \
-  --campaigns 3 --frames 12 --warmups 3 --motion-model affine \
-  --outlier-policy replace
-```
-
-Run the hardware regressions before publishing a new campaign:
-
-```console
-ICGN_RUN_GPU_TESTS=1 PYTHONPATH=DIC/LucasKanadeICGN/python/src \
-  python3 -m unittest discover \
-  -s DIC/LucasKanadeICGN/python/tests \
-  -p 'test_*.py' -v
-```
-
-## External SYSCL comparison
-
-The related SYSCL project remains referenced for algorithmic provenance, but
-there is currently no qualified apples-to-apples timing row. Add one only after
-both projects are run on the same machine, input, iteration schedule, and
-explicitly equivalent timing boundary.
-
-## Interpretation
-
-These results demonstrate offline 4K60 processing margin on one GPU and one
-controlled dataset. They do not include camera acquisition, frame-arrival
-jitter, a codec, downstream processing, or operating-system deadline
-guarantees. Median and p95, accepted subsets, RMSE, queue depth, and result
-latency must all be reported together when qualifying a deployment.
+4K60 throughput is not automatically a p95 result age below 16.67 ms, and
+neither is a camera-to-consumer qualification. All measured runs are soft
+real-time. The related SYCL project is an algorithmic provenance reference;
+add a timing comparison only after matching its hardware, inputs, configuration
+and measurement boundary.

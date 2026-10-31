@@ -1,7 +1,7 @@
 Interpolation modes
 ===================
 
-DIC-RT exposes three target-reconstruction choices through the same public
+live-dic exposes three target-reconstruction choices through the same public
 argument:
 
 .. code-block:: python

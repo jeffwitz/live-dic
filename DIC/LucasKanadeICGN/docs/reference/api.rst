@@ -101,9 +101,10 @@ not handle a device loss during a sequence. See :doc:`../how-to/run-on-cpu`.
 .. autoclass:: lucas_kanade_icgn.ICGNWGPU
    :members: set_reference, register, register_stream, register_many, close
 
-The native engine is optional and experimental. It returns the same
+The standard package includes the native engine. It returns the same
 ``ReferenceInfo`` and ``RegistrationResult`` types as the browser engine, but
-does not start Chromium or serialize frames as PNG.
+does not start Chromium or serialize frames as PNG. Use the full-pyramid class
+below for the recommended native coarse-to-fine processing path.
 
 All Python backends normalize inputs to 8-bit grayscale. Floating-point arrays
 in ``[0, 1]`` are scaled to ``[0, 255]``; floating-point arrays already using

@@ -12,6 +12,24 @@ performance guarantees.
 For the 200-frame native-UHD tensile trajectory, see the
 :ref:`qualified one-slot latency profile <latency-reduction-profile>`.
 
+How to read this page
+---------------------
+
+There is no single FPS number independent of the workload. The backend
+comparison below uses tiled small-image fixtures and default displacement UOD.
+The native-UHD tensile campaigns use analytic images, chronological temporal
+initialization and explicit median smoothing. Fixed-pair workgroup experiments
+repeat one image; changing-frame campaigns exercise a sequence. Their times
+must not be pooled or treated as interchangeable results.
+
+Each detailed table retains its original configuration and revision. The
+workgroup-width controls and negative latency experiments are evidence for
+those revisions, not fresh measurements of the current checkout. See
+the repository `contribution guide
+<https://github.com/jeffwitz/live-dic/blob/main/CONTRIBUTING.md>`_ for development
+checks; hardware performance must be remeasured separately when relevant code
+or deployment conditions change.
+
 .. _gpu-hardware-coverage:
 
 GPU hardware coverage
@@ -104,7 +122,7 @@ device: the measured Tiger Lake fixed-pair call already exceeds 16.67 ms.
 Current backend policy
 ----------------------
 
-* DIC-RT is evaluated first as a Python-supervised NumPy pipeline. See
+* live-dic is evaluated first as a Python-supervised NumPy pipeline. See
   :doc:`../explanation/supervision`.
 * ``ICGNWGPUFullPyramid()`` with two levels is the recommended product
   configuration for that boundary.
@@ -147,13 +165,13 @@ Validation machine
    * - Native WebGPU
      - wgpu-py 0.32.0, wgpu-native Vulkan, same physical GPU
 
-Current workload and protocol
------------------------------
+Backend-comparison workload and protocol
+----------------------------------------
 
 The offline validation images are tiled to 3840 x 2160. The resulting grid is
 240 x 135, or 32,400 subsets with ``subset_size=16`` and the default
-``subset_stride=16``. No published timing on this page uses overlapping
-subsets. The affine and translation rows in the primary UHD campaign use
+``subset_stride=16``. The primary backend-comparison table uses nonoverlapping
+subsets; other experiments state their own geometry. Its affine and translation rows use
 Gaussian/inverse-spline target filtering, 4 x 4 cubic B-spline interpolation,
 a ``5e-3`` fine-scale tolerance, minimum ZNCC ``0.8``, and the default
 displacement UOD pass. No camera or H.264 stage is included.
@@ -213,9 +231,9 @@ campaigns after the binary transport change.
 Portable native workgroup-size experiment
 -----------------------------------------
 
-The portable native solver can run with 16, 32, or experimental 128 invocations per subset.
-Sixteen remains the default. This experiment compared both values on the
-current RTX 3080 Laptop PC and its integrated Intel UHD Graphics adapter. It
+The portable native solver accepts widths 16, 32, and experimental 128.
+Sixteen remains the default. This experiment compared 16 and 32 on an
+RTX 3080 Laptop PC and its integrated Intel UHD Graphics adapter. It
 uses the same two-level affine full-pyramid engine and a fixed native-UHD
 tensile pair (``reference.png`` to ``frame_040.png``), decoded once into
 contiguous NumPy arrays. The reference was prepared once; after 30 warm-ups,

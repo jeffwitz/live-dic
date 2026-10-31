@@ -2,7 +2,7 @@ Command-line reference
 ======================
 
 ``icgn-webgl`` is the browser-control command used for compatibility,
-qualification, and offline file processing. DIC-RT's primary deployment is a
+qualification, and offline file processing. live-dic's primary deployment is a
 Python supervisor using ``ICGNWGPUFullPyramid`` for resident NumPy streams.
 The command-line default must therefore be read as the default *browser*
 backend, not as the recommended 4K60 Python data plane. See

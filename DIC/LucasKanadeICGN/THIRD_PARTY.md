@@ -23,20 +23,20 @@ The Python wheel contains private copies of `gpu-io.js`,
 `LucasKanadeICGN.js`, `headless.html`, and the complete Three.js/TSL runtime
 under `lucas_kanade_icgn/web/`. These are package data, not Python dependencies. They
 allow the installed package to start the numerical backend without locating a
-`tests_gpuio` checkout.
+live-dic checkout.
 
 ## Native WebGPU dependencies
 
-The optional Python dependency group pins `wgpu>=0.32,<0.33`. The published
+The standard Python dependencies include `wgpu>=0.32,<0.33`. The published
 wgpu-py wheel contains the matching wgpu-native library, so the installed
 native Python backend does not download a driver library or shader at runtime.
 The project's portable and subgroup-specialized WGSL files are first-party
 source and are included as Python package data. They are compiled at device
 creation by the wgpu-native library already shipped in the wgpu-py wheel. The
-DIC-RT wheel contains no Rust extension, GLSL source, or generated SPIR-V and
+live-dic wheel contains no Rust extension, GLSL source, or generated SPIR-V and
 does not invoke Cargo, Maturin, `glslc`, shaderc, or a Vulkan SDK.
 
 The native runtime still contains Rust internally because that is how the
 upstream wgpu-py wheel implements WebGPU. It is an ordinary prebuilt Python
-dependency; DIC-RT neither builds nor downloads that implementation at
+dependency; live-dic neither builds nor downloads that implementation at
 runtime. GPU drivers remain a platform prerequisite.

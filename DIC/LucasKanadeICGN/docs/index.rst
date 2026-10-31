@@ -1,165 +1,99 @@
-Python-supervised real-time DIC toward 4K60
-============================================
+live-dic: real-time DIC from Python
+===================================
 
 .. important:: Foundational work by Pierre Margerit
 
-   This work would not exist without `Pierre Margerit's original tests_gpuio
-   project <https://github.com/MargeritPierre/tests_gpuio>`_. His GPU-IO
-   experiments, repository structure, and WebGL groundwork are the foundation
-   on which this Python real-time DIC implementation is built. The work
-   documented here is a continuation of that foundation.
+   live-dic would not exist without `Pierre Margerit's original tests_gpuio
+   project <https://github.com/MargeritPierre/tests_gpuio>`_, its GPU-IO
+   experiments and WebGL groundwork. This project continues that foundation.
 
-New to GPU computing? Start with :doc:`explanation/webgpu-fundamentals`.
-It assumes Python and numerical arrays, explains the technologies and memory
-model, and leads to a runnable example, a glossary, and an optimization guide.
+live-dic is a numerical engine for Python measurement applications. A
+persistent Python supervisor provides NumPy images, manages references and
+bounded work, and consumes displacement, deformation and curvature fields.
+The recommended engine is **ICGNWGPUFullPyramid**: native wgpu-py executes
+WGSL on the GPU without Chromium or per-frame image encoding.
 
-.. important:: Demonstrated 4K execution on AMD, Intel and NVIDIA
+.. admonition:: Engineering goal: qualified 4K at 60 FPS
 
-   Native full-pyramid DIC benchmarks have completed at 3840 x 2160 on AMD
-   Radeon 780M, Intel Lunar Lake, Intel UHD Graphics (Tiger Lake GT1), and
-   NVIDIA GeForce RTX 3080 Laptop GPUs. The portable WGSL solver has executed
-   through wgpu-native/Vulkan on both integrated and discrete hardware, with
-   16 and 32 invocations per workgroup.
+   The objective is sustained processing of 3840 x 2160 images at 60 FPS,
+   with both throughput and result age measured. Native benchmarks have
+   executed on tested AMD, Intel and NVIDIA GPUs under Linux/Vulkan.
+   Coverage differs by workload and adapter; see :ref:`gpu-hardware-coverage`.
+   The numerical-engine boundary starts with a resident NumPy image and ends
+   with the materialized NumPy field. Camera acquisition and downstream
+   processing must also be measured before claiming a deployed 4K60 system.
 
-   This demonstrates portability for the tested workloads and GPU/driver
-   configurations. AMD passed the twelve-run 4K campaign's fixed-interior
-   quality gates. An initial GPU-suite device-loss failure was traced to GPU
-   resources retained after ``close()``; the lifecycle correction and its
-   validation are recorded in the coverage matrix. Coverage differs by adapter and
-   does not certify all features or every recent GPU. See
-   :ref:`gpu-hardware-coverage` for the evidence and scope.
+Start here
+----------
 
-.. important:: Primary product boundary: Python supervision
+* :doc:`how-to/install` to install native dependencies and optional browser support.
+* :doc:`tutorials/first-registration` for the first native Python registration.
+* :doc:`tutorials/realtime-sequence` and :doc:`how-to/process-live-frames` for
+  persistent NumPy streams.
+* :doc:`how-to/use-roi` for a boolean reference mask; white/True retains pixels.
+  The default full-window policy rejects any subset touching a forbidden pixel.
+  :doc:`how-to/use-partial-roi` covers explicit boundary supports.
+* :doc:`reference/api` for exact defaults and public interfaces.
 
-   DIC-RT is designed to run inside a long-lived Python measurement
-   application. Python owns reference changes, configuration, acquisition
-   integration, bounded queues, timing, failure handling, and consumption of
-   the NumPy displacement and parameter fields. For resident NumPy streams,
-   ``ICGNWGPUFullPyramid`` is the recommended backend because WebGPU remains
-   in-process.
+New to GPU programming? Read :doc:`explanation/webgpu-fundamentals`, then
+:doc:`tutorials/first-gpu-kernel`, :doc:`reference/gpu-vocabulary`, and
+:doc:`how-to/optimize-webgpu`. These assume engineering and Python knowledge,
+not graphics-programming experience.
 
-   The browser adapters are maintained for portability, browser-native use,
-   and numerical qualification. Their binary transport removes PNG and JSON,
-   but it cannot share NumPy memory with Chromium. A competitive Three.js
-   streaming deployment would require a persistent JavaScript supervisor to
-   own browser-native frame ingestion, GPU scheduling, backpressure, and local
-   result consumption. Python could configure and monitor that supervisor
-   without carrying every UHD image and complete field. This JavaScript
-   supervisor is not implemented here today. See
-   :doc:`explanation/supervision`.
+Choose an execution path
+-------------------------
 
-.. admonition:: Long-term target: qualified 4K at 60 FPS
+``ICGNWGPUFullPyramid()`` is the native coarse-to-fine path. Two fixed levels
+are the default; every configured level runs for every target. Native
+``ICGNWGPU()`` is single-scale by default, with optional selective recovery
+retained as a separate compatibility strategy. Both support bounded streaming.
+One slot minimizes result age; the API default of two prioritizes throughput.
 
-   The engineering objective is sustained DIC on 3840 x 2160 frames at 60
-   frames per second over the complete acquisition-to-result pipeline. On a
-   changing four-image sequence, the recommended two-level native full
-   pyramid measured 11.571 ms median / 12.185 ms p95 in affine mode and
-   10.992 / 11.397 ms in translation mode. These resident-NumPy-image to
-   materialized-NumPy-field boundaries are below the 16.667 ms frame period.
-   Camera acquisition and downstream consumers are not included. The bounded
-   two-slot full-pyramid stream sustains 95.51 FPS affine and 104.09 FPS
-   translation, with 21.008 and 19.131 ms median result ages. 4K60 processing
-   throughput is therefore demonstrated offline, while end-to-end acquisition
-   remains to be qualified.
+``ICGNWebGL()`` retains Three.js/TSL as its browser default, with WebGPU and
+WebGL2 fallback. Raw browser ``webgpu-wgsl`` loads the common WGSL full
+pyramid. GPU-IO is deprecated. Browser ROI requests are rejected explicitly.
+The existing CLI and one-shot helper remain browser interfaces; their defaults
+have not changed. See :doc:`explanation/backend-selection`.
 
-.. important:: Browser backend policy
+Browser binary transport removes per-frame PNG and JSON encoding, but still
+copies images and fields between Python and Chromium. A competitive
+browser-native Three.js stream would need its own JavaScript supervisor,
+which is not implemented here. See :doc:`explanation/supervision`.
 
-   ``three-tsl`` is the supported backend for browser applications. It
-   selects WebGPU first and automatically falls back to Three.js/WebGL2.
-   ``ICGNWebGL`` is a Python compatibility and qualification adapter, not the
-   recommended low-latency NumPy data plane.
-   ``gpuio`` is deprecated and remains available temporarily only for
-   historical reproducibility and replacement qualification. See
-   :doc:`how-to/migrate-from-gpuio`.
+Current numerical scope
+-----------------------
 
-.. important:: Displacement outlier policy
+Native engines estimate translation, six-parameter affine motion (default),
+or twelve-parameter quadratic motion. Native subset widths are 8, 15, 16,
+17, 31, 32 and 33, with independently configurable stride and uniform or
+Gaussian integration. B-spline is the default interpolator; bilinear and
+Keys cubic are explicit alternatives. ROI supports translation and affine.
 
-   The default ``outlier_policy="replace"`` applies a normalized UOD test only
-   to recentered ``tx`` and ``ty``. A detected wrong-basin candidate receives
-   status 2 and its complete motion state is replaced by neighbour medians.
-   ``"flag"`` preserves the raw state while setting status 2; ``"disabled"``
-   omits the post-pass. ``"median"`` is an explicit smoothing mode: it applies
-   a centred 3 by 3 component median to every valid subset without assigning
-   outlier status. Earlier coefficient-triggered modes were removed because
-   they modified 66--81% of a healthy noisy field while pretending to detect
-   outliers. The rule, validation contracts, and limitations are in
-   :doc:`explanation/displacement-outliers`.
+The default spatial policy detects displacement outliers and replaces the
+complete local state. Flag-only and raw modes preserve different measurement
+contracts. Explicit ``outlier_policy="median"`` smooths valid states; it is
+not outlier detection. See :doc:`explanation/displacement-outliers`.
+Temporal initialization, velocity prediction and finest-level stopping are
+opt-in; see :doc:`how-to/use-temporal-initialization`.
 
-This documentation describes a Python-supervised workflow for GPU-accelerated digital
-image correlation (DIC). The current implementation performs translation,
-affine, or quadratic inverse-compositional Gauss-Newton registration on grayscale frames through
-Three.js/TSL with WebGPU and WebGL2 backends, raw browser WebGPU with shared
-WGSL kernels, and native wgpu-py backends. The deprecated GPU-IO/WebGL2 path is
-retained as a historical comparison. Three.js is the default browser backend.
-All paths have been validated at 3840 x 2160 pixels.
+Use native engines as context managers or close them explicitly. Native
+close is permanent and idempotent and releases the owning GPU resources;
+shared pyramid levels preserve their parent's device. Result arrays remain
+usable after close. See :doc:`reference/api`.
 
-The recommended native coarse-to-fine engine is
-``ICGNWGPUFullPyramid``, whose two-level default keeps reduction, prefiltering,
-seed transfer, solving, and final readback on the GPU.  The older
-``ICGNWGPU(pyramid_levels=2 or 3)`` selective-recovery mode remains available
-only as an optional exception path: it first runs a fine solve and performs
-CPU-orchestrated recovery for failures. The current changing-frame UHD
-campaign measures the complete resident-image to materialized-field boundary;
-kernel-only browser timings are retained only as diagnostics. These figures
-qualify offline processing from a NumPy frame, not camera-to-consumer latency.
+Evidence and limits
+--------------------
 
-The engineering objective is sustained, measurable DIC processing from Python.
-That means keeping the GPU runtime alive, preparing the reference only once,
-separating compute time from transport and readback, and reporting the complete
-latency of the deployed acquisition-to-result path.
+:doc:`reference/performance` is the canonical location for timing tables,
+scientific populations and hardware coverage. It distinguishes default
+backend comparisons, analytic temporal trajectories, fixed-pair experiments
+and rejected prototypes. :doc:`how-to/benchmark` explains measurement.
 
-Choose the section that matches your task:
-
-* :doc:`explanation/webgpu-fundamentals` if GPU programming is new to you;
-* :doc:`tutorials/first-gpu-kernel` to run a small WGSL calculation from Python;
-* :doc:`how-to/optimize-webgpu` to develop and measure efficient kernels;
-* :doc:`how-to/run-on-cpu` to select a software CPU adapter explicitly;
-* :doc:`reference/gpu-vocabulary` for GPU terminology and source responsibilities;
-* :doc:`tutorials/first-registration` if you are using the package for the first
-  time;
-* :doc:`tutorials/realtime-sequence` to build a persistent sequence loop;
-* :doc:`how-to/process-live-frames` for NumPy frames from an acquisition source;
-* :doc:`how-to/benchmark` to measure throughput and latency correctly;
-* :doc:`reference/api` for the exact Python interface;
-* :doc:`reference/performance` for the current native wgpu-py, raw-WGSL,
-  Three.js, and bounded-sequence results on the validation machine;
-* :doc:`explanation/backend-selection` for the exact defaults and recommended
-  execution path for each public engine;
-* :doc:`explanation/supervision` for the Python product boundary and the
-  JavaScript supervisor required by a competitive browser-native stream;
-* :doc:`explanation/gpu-optimization` for the backend tiling, lane grouping,
-  and reduction strategies;
-* :doc:`explanation/interpolation` for the selectable B-spline, bilinear, and
-  Keys-cubic target reconstruction paths;
-* :doc:`explanation/motion-models` for translation, affine, and quadratic solving;
-* :doc:`explanation/displacement-outliers` for UOD replacement, flag-only,
-  and disabled policies and their scientific validation contracts;
-* :doc:`explanation/subset-size` for selectable subset size and overlapping stride;
-* :doc:`explanation/shared-kernel` for the common WGSL source and its exact
-  host/buffer contract;
-* :doc:`explanation/native-backend` for the direct NumPy-to-WebGPU path and
-  native WGSL subgroup qualification;
-* :doc:`explanation/realtime-performance` to understand what "real time" means
-  for this pipeline.
-
-Current scope
--------------
-
-The implementation provides a resolution-dependent grid of configurable 8 x 8,
-16 x 16, or 32 x 32 subsets, with translation, six-parameter affine, or
-twelve-parameter quadratic motion,
-selectable B-spline, bilinear, or
-Keys-cubic target interpolation, ZNCC validation, and optional displacement
-outlier detection. The test dataset is offline;
-camera acquisition and codec integration are deliberately outside the current
-path.
-
-.. note::
-
-   This is a soft real-time numerical pipeline, not a hard real-time system.
-   GPU timing alone is not sufficient to claim a frame rate. Always measure the
-   complete Python call and the acquisition-to-result latency on the target
-   machine.
+These are soft real-time pipelines. Portable CI, software Vulkan execution,
+hardware correctness and hardware performance are different qualifications.
+No current result certifies every GPU, OS or architecture. Consult
+:doc:`explanation/limitations` and retain the configuration and validity masks
+when exporting a measurement with :doc:`how-to/export-results`.
 
 .. toctree::
    :hidden:

@@ -14,7 +14,7 @@ explicitly; the default ``"auto"`` prefers enumerated hardware. See
 :doc:`../how-to/run-on-cpu` for the selection contract, diagnostics, and
 software-driver requirements.
 
-DIC-RT is intended to be supervised from Python. When acquisition produces
+live-dic is intended to be supervised from Python. When acquisition produces
 NumPy arrays and downstream code consumes NumPy fields, the GPU runtime should
 therefore remain in the Python process. This is the product boundary for which
 the native backend exists.
@@ -129,7 +129,7 @@ the browser-side ``enable subgroups;`` directive. The two native-only WGSL
 files therefore omit that directive explicitly; no general source rewriting
 is performed. They are compiled by the wgpu-native library already contained
 in the wgpu-py wheel. Cargo, Maturin, ``glslc``, a Vulkan SDK, and network
-access are not needed to build, install, import, or execute DIC-RT.
+access are not needed to build, install, import, or execute live-dic.
 
 The specialized source is limited to affine motion, B-spline interpolation,
 uniform integration, 16 x 16 subsets, and a 16-pixel stride. Other

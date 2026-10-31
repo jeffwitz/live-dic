@@ -4,15 +4,16 @@ Install the Python runtime
 System requirements
 -------------------
 
-The browser backends require:
+Native processing requires:
 
 * Python 3.11 or newer;
-* Chromium or Google Chrome with WebGL2 support; WebGPU is preferred;
-* a GPU and driver accepted by Chromium.
+* a platform supported by the dependency wheels;
+* a working GPU driver or an installed software WebGPU adapter.
 
 The standard package includes ``wgpu-py`` and supports native processing on
 platforms supported by that library. Native processing does not require
-Chromium.
+Chromium. Browser compatibility additionally requires Chromium or Chrome with
+WebGL2 support; WebGPU is preferred for those paths. It is not installed by pip.
 Both native engines accept ``device_type="cpu"`` when an installed software
 adapter is available. See :doc:`run-on-cpu` for driver requirements and
 explicit CPU/GPU selection.
@@ -41,7 +42,10 @@ Verify the command-line interface:
 
    $ .venv-icgn/bin/icgn-webgl --help
 
-Verify the headless GPU runtime:
+Verify a native registration using :doc:`../tutorials/first-registration`.
+That tutorial uses ``ICGNWGPUFullPyramid`` and does not start Chromium.
+The CLI above is still a browser interface, so the following optional check
+requires Chromium:
 
 .. code-block:: console
 
@@ -50,8 +54,9 @@ Verify the headless GPU runtime:
        DIC/LucasKanadeICGN/assets/frame_010.png \
        --truth 2 -1
 
-The JSON output should name the GPU, report a 32 x 32 grid, and contain 900
-accepted subsets for this test pair.
+The JSON output should identify the browser adapter and report a 32 x 32 grid.
+Check acceptance and error against the fixture's known translation; do not
+interpret browser availability as native runtime qualification.
 
 Select a compute backend
 ------------------------
@@ -153,7 +158,7 @@ where Chromium is needed only for browser backends, then run:
 No CDN or package index is contacted during subsequent registrations.
 
 No Rust toolchain, Cargo, Maturin, ``glslc``, shader compiler, or Vulkan SDK is
-required for the DIC-RT package. Subgroup shaders are WGSL sources compiled by
+required for the live-dic package. Subgroup shaders are WGSL sources compiled by
 the wgpu-native library that is already part of the platform-specific wgpu-py
 wheel. As with every GPU application, an appropriate system GPU driver remains
 required.

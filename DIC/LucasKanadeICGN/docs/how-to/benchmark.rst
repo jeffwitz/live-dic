@@ -206,7 +206,7 @@ samples:
        --output campaign-native-auto.json
 
 The JSON records the Git commit and dirty-worktree flag, complete command,
-Python, NumPy, wgpu and DIC-RT versions, platform, input paths and SHA-256
+Python, NumPy, wgpu and live-dic versions, platform, input paths and SHA-256
 hashes, selected solver, device, numerical error, accepted count, and
 individual timing samples. Keep this file with any table derived from the
 campaign.

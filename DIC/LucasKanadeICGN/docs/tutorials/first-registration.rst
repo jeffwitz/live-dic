@@ -1,93 +1,80 @@
-Your first DIC registration
-===========================
+Your first native DIC registration
+===================================
 
-This tutorial runs one affine DIC registration, inspects the displacement
-field, and checks it against a known translation. It uses the images shipped in
-the repository, so no camera is required.
-
-This introductory example uses the broadly compatible Three.js browser
-adapter. DIC-RT's intended production boundary is nevertheless a
-Python-supervised NumPy pipeline; use ``ICGNWGPUFullPyramid`` for the native
-coarse-to-fine path once the package dependencies are installed. See
-:doc:`../explanation/supervision` before choosing a deployment backend.
+This tutorial prepares one reference and registers a target with the native
+Python engine. It uses checked-in images with a known translation, so no
+camera, Chromium or graphical interface is needed.
 
 Prerequisites
 -------------
 
-Complete :doc:`../how-to/install` first. Run the commands below from the
-``tests_gpuio`` repository root.
+Complete :doc:`../how-to/install` with Python 3.11 or newer and a working GPU
+or software WebGPU adapter. Run this example from the live-dic repository root.
+The standard installation includes wgpu-py.
 
-Create a script named ``first_registration.py``:
+Create ``first_registration.py``:
 
 .. code-block:: python
 
-   from lucas_kanade_icgn import ICGNWebGL
+   import numpy as np
+   from PIL import Image
+   from lucas_kanade_icgn import ICGNWGPUFullPyramid
 
+   reference = np.array(Image.open("DIC/LucasKanadeICGN/assets/frame_000.png").convert("L"))
+   target = np.array(Image.open("DIC/LucasKanadeICGN/assets/frame_010.png").convert("L"))
 
-   reference = "DIC/LucasKanadeICGN/assets/frame_000.png"
-   target = "DIC/LucasKanadeICGN/assets/frame_010.png"
-
-   with ICGNWebGL() as engine:
-       engine_info = engine.info()
-       reference_info = engine.set_reference(reference)
+   with ICGNWGPUFullPyramid() as engine:
+       preparation = engine.set_reference(reference)
        result = engine.register(target)
+       print("Adapter:", engine.adapter_info)
 
-   print(f"GPU: {engine_info.device}")
-   print(f"Solver: {engine_info.solver}, subgroup width: {engine_info.subgroup_width}")
-   print(f"Runtime construction: {reference_info.runtime_build_wall_ms:.3f} ms")
-   print(f"Reference construction: {reference_info.reference_build_wall_ms:.3f} ms")
-   print(f"Complete preparation: {reference_info.total_wall_ms:.3f} ms")
-   print(f"Mean translation: {result.mean_translation}")
-   print(f"Accepted subsets: {result.accepted}")
-   print(f"Mean iterations: {result.mean_iterations:.3f}")
-   print(f"Translation RMSE: {result.rmse((2.0, -1.0)):.6g} px")
+   print("Preparation (ms):", preparation.total_wall_ms)
+   print("Mean translation:", result.mean_translation)
+   print("Accepted subsets:", result.accepted)
+   print("Mean iterations:", result.mean_iterations)
+   print("Translation RMSE (px):", result.rmse((2.0, -1.0)))
 
-Run it:
+Run it using the environment created during installation:
 
 .. code-block:: console
 
    $ .venv-icgn/bin/python first_registration.py
 
-On the validated Intel Lunar Lake system, the important values are close to:
+The mean displacement should be close to ``(2, -1)`` pixels. Inspect the
+reported adapter: ``device_type="auto"`` prefers hardware but can use an
+installed software adapter. Small numerical differences and iteration counts
+can vary by implementation and configuration. This integer-translation fixture
+is a smoke check, not a complete subpixel metrology qualification; the native
+UHD analytic regressions provide stronger evidence.
 
-.. code-block:: text
-
-   Mean translation: (1.999993, -0.999996)
-   Accepted subsets: 900
-   Mean iterations: 5.959
-   Translation RMSE: 2.74937e-05 px
-
-Inspect the fields
-------------------
-
-``result.displacement`` contains the translation at every grid point:
+Inspect and export the fields
+------------------------------
 
 .. code-block:: python
 
    print(result.displacement.shape)  # (32, 32, 2)
-   print(result.displacement[16, 16])
+   print(result.parameters.shape)    # (32, 32, 6)
+   print(result.parameter_order)
 
-``result.parameters`` contains all six affine parameters:
+   valid = result.accepted_mask
+   print(result.displacement[valid].mean(axis=0))
+   result.save_npz("first_registration.npz")
 
-.. code-block:: python
+The affine parameter order is ``tx, du/dx, du/dy, ty, dv/dx, dv/dy``. Only
+accepted values are measurements; rejected or excluded records must not be
+averaged as zero motion. See :doc:`../reference/result-layout`.
 
-   print(result.parameters.shape)  # (32, 32, 6)
+The context manager releases GPU resources permanently when it exits. The
+returned NumPy fields remain usable. Reuse an open engine for additional
+targets, and create a new one after close.
 
-The final axis is ordered as ``tx, du/dx, du/dy, ty, dv/dx, dv/dy``.
+Optional browser compatibility
+-------------------------------
 
-Use the validity mask before computing statistics over individual subsets:
+If the deployment requires a browser, install Chromium separately and use
+``ICGNWebGL`` instead. Three.js selects WebGPU or its WebGL2 fallback; its
+algorithmic and ROI coverage differ from the native full pyramid. See
+:doc:`../explanation/backend-selection` before comparing results or timings.
 
-.. code-block:: python
-
-   valid_displacements = result.displacement[result.accepted_mask]
-   print(valid_displacements.mean(axis=0))
-
-What you accomplished
----------------------
-
-You started one persistent GPU runtime, prepared reference-dependent data once,
-registered a target, and retrieved the complete affine field in Python. The next
-tutorial keeps the same reference and processes a sequence without restarting
-the runtime.
-
-Next: :doc:`realtime-sequence`.
+Continue with :doc:`realtime-sequence` to process a persistent sequence, or
+:doc:`../how-to/use-roi` to select a reference-image region.
