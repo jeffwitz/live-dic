@@ -232,6 +232,95 @@ gradient summary, rather than another field readback. **Field opacity** chooses
 an image blend, field only or image only. Invalid cells stay grey. Arrows and
 VM are visualization operations; they do not modify the calculated parameters.
 
+Correlation settings without hidden changes
+--------------------------------------------
+
+The numbered **Input / Mask / Solve / Results** navigation keeps the current
+step visible. Play/Pause and Capture reference remain beside the viewer. The
+quick guide explains the workflow and keyboard shortcuts (Space: Play/Pause;
+R: capture reference; Esc: clear the current measurement). Shortcuts do not
+operate while editing an input, modal or mask.
+
+In **Solve**, enable **Use custom settings** to choose translation/affine,
+window width, grid step, interpolator, pyramid levels, coarse/fine iteration
+limits and solver spatial policy. Edits remain pending until a new reference
+capture or Apply mask. Exported configuration describes the applied settings,
+not the pending form. Three-level custom runs use four middle-level iterations;
+one level uses the fine limit. These custom combinations do not inherit a
+qualified preset's precision/FPS claim. Translation has no direct strain field;
+use displacement-neighbourhood strain analysis in the results lab.
+
+Review and process a computed field
+-----------------------------------
+
+In **Results**, choose **Inspect current field**. Capture pauses and one full
+field is read. The saved view uses reference image coordinates and a plain field
+background, never an older field overlaid on an unrelated current image.
+**Return to live view** restores GPU rendering. A saved field retains its own
+model, configuration, ROI and input pair even after changing the active source.
+
+Choose displacement, strain components, equivalent strain, principal strains,
+polar rotation, iteration count or solver status. Computed estimates are
+preserved, including any solver median already applied. Optional displacement
+median/Gaussian smoothing and VSG plane-fit strain are separate analysis
+operations. **Show computed field** temporarily compares with the computed
+values; **Restore processing recipe** returns to the selected operations.
+The processing worker keeps these operations off the acquisition worker.
+
+Choose an odd analysis window in grid points and inspect its pixel span. More
+smoothing trades spatial resolution for lower noise; it is not a robustness
+proof. Missing values stay unavailable and neighbourhoods do not cross excluded
+ROI pixels. VSG needs non-collinear valid support. Green-Lagrange and infinitesimal
+strain are distinct choices. Length units use an explicit units-per-pixel scale,
+not camera calibration; strain remains dimensionless. See
+:doc:`../explanation/browser-workbench` for equations, rank checks and support.
+
+**Point probe** reports a snapped subset's coordinates, status, iterations and
+value. For a **Line profile**, click two endpoints and export actual grid samples;
+invalid cells remain gaps. **Extensometer** reports endpoint distance change
+and engineering gauge strain, distinct from a local strain tensor. It requires
+two distinct accepted endpoints and does not infer measurements at invalid points.
+
+**Save NPZ + processing recipe** preserves computed arrays, separate processed
+arrays, their validity masks, metadata and binary ROI. Open it in Python with:
+
+.. code-block:: python
+
+   import json
+   import numpy as np
+
+   with np.load("live-dic-1.npz", allow_pickle=False) as saved:
+       parameters = saved["parameters"]   # grid height, grid width, 6 or 12
+       strain = saved["processed_exx"]
+       valid = saved["strain_valid"].astype(bool)
+       recipe = json.loads(str(saved["recipe_json"]))
+
+**Open saved NPZ field** restores a single workbench archive. Legacy exports
+without explicit image width/height and subset geometry are refused; the app
+does not guess image extent. The importer has a 256 MiB uncompressed limit and
+rejects pickle/object arrays. **Export displayed values CSV** leaves unavailable
+measurements empty and retains solver statuses. **Save figure PNG** includes
+quantity, scale, processing convention and attribution. Images are not included
+in saved fields; retain your original input sequence separately.
+
+Record fields deliberately
+--------------------------
+
+**Keep computed fields for review** records every completed admitted field. It
+adds a full readback and can lower throughput. **GPU field age** keeps its
+observable-GPU boundary; each recorded field separately reports full-readback
+time and worker-arrival-to-recorded-field age. These are not camera-to-Python
+timings. Video/camera can still drop and count work under backpressure; folders
+continue to await every image.
+
+The library is bounded to 128 MiB of stored arrays, distinct masks and metadata
+in the current tab. Analysis scratch, browser decoder/GPU memory and export
+buffers are additional. At the limit recording and acquisition stop with an
+explicit message; existing fields are not discarded. Export or delete results
+before continuing. There is no automatic disk persistence: save NPZ before
+closing the tab. Switching sources preserves saved fields but disables recording
+until you explicitly enable it again. No image stream or result is uploaded.
+
 Profiles and device limits
 --------------------------
 

@@ -196,7 +196,7 @@ jobs:
   browser-software:
     name: Linux / Chromium SwiftShader and native CPU parity
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -225,6 +225,14 @@ jobs:
         run: >-
           python tools/qualify_browser_editor.py --site _site --software
           --report browser-results/editor.json --screenshots browser-results/editor
+      - name: Exercise UHD local sources and whole-ROI consecutive failures
+        run: >-
+          python tools/qualify_local_sources.py --site _site --software
+          --output browser-results/local-sources
+      - name: Exercise UHD results analysis, measurements and NPZ interchange
+        run: >-
+          python tools/qualify_browser_workbench.py --site _site --software
+          --output browser-results/workbench
       - name: Retain raw browser qualification reports
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

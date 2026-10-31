@@ -2,7 +2,7 @@ Browser workbench design and scientific contract
 ================================================
 
 The browser companion complements the native Python supervisor. Its interface
-is being extended around a short path: choose input, define the reference and
+is organized around a short path: choose input, define the reference and
 ROI, run correlation, then inspect and process the resulting fields. Pierre
 Margerit's foundational numerical work remains the basis of the engine.
 

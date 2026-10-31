@@ -225,3 +225,18 @@ reference for each pair and has no 4K60 qualification. Its ROI stays in image
 coordinates, not material coordinates. Input frame loss cannot be reconstructed;
 known gaps and busy-pair drops are counted. Incremental fields are not cumulative
 trajectories. Playback speed does not provide physical acquisition time.
+
+Results workbench
+-----------------
+
+Results recording is opt-in, adds full-field readback and has no live 60 Hz
+qualification. The in-tab 128 MiB stored-data limit excludes analysis scratch,
+GPU/decoder memory and export buffers. Save NPZ before closing; there is no
+implicit persistent field store or raw-image recording. Analysis is a reversible
+post-processing view, not a new convergence test. Smoothing reduces spatial
+resolution. VSG can lose valid strain support near gaps and narrow regions;
+invalid values are not filled. Unit scaling is isotropic and does not correct
+lens distortion, perspective or out-of-plane motion. Gauge strain is an endpoint
+distance measure. No automatic cumulative trajectory or physical acquisition
+clock is inferred from folder replay. Imported workbench archives require explicit
+geometry and support one field, not arbitrary legacy/sequence NPZ layouts.

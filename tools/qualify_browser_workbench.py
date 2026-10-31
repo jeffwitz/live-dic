@@ -1,0 +1,225 @@
+"""Exercise the actual UHD results UI, extraction tools and NumPy archive interchange."""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import base64
+import hashlib
+import io
+import json
+import tempfile
+from pathlib import Path
+from urllib.parse import quote
+
+import numpy as np
+from qualify_browser_editor import protocol
+from qualify_local_sources import choose_files, wait
+
+from lucas_kanade_icgn import ICGNWebGL
+from lucas_kanade_icgn.engine import _StaticServer
+
+
+def click(browser, selector, x, y):
+    rect = browser._evaluate(
+        f"(()=>{{const r=document.querySelector({json.dumps(selector)}).getBoundingClientRect();return {{x:r.x,y:r.y,width:r.width,height:r.height}};}})()"
+    )
+    px, py = rect["x"] + x / 3840 * rect["width"], rect["y"] + y / 2160 * rect["height"]
+    asyncio.run(
+        protocol(
+            browser,
+            [
+                (
+                    "Input.dispatchMouseEvent",
+                    dict(type="mousePressed", x=px, y=py, button="left", clickCount=1),
+                ),
+                (
+                    "Input.dispatchMouseEvent",
+                    dict(type="mouseReleased", x=px, y=py, button="left", clickCount=1),
+                ),
+            ],
+        )
+    )
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--site", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--software", action="store_true")
+    args = parser.parse_args()
+    args.output.mkdir(parents=True, exist_ok=True)
+    site = args.site.resolve()
+    server = _StaticServer(site.parent)
+    server.start()
+    flags = (
+        (
+            "--use-angle=swiftshader",
+            "--enable-unsafe-webgpu",
+            "--use-webgpu-adapter=swiftshader",
+            "--use-vulkan=swiftshader",
+        )
+        if args.software
+        else ()
+    )
+    try:
+        with ICGNWebGL(
+            backend="webgpu-wgsl",
+            chromium_args=(*flags, "--window-size=1600,1200"),
+            call_timeout=240,
+        ) as browser:
+            browser._evaluate(
+                f"location.assign({json.dumps(f'http://127.0.0.1:{server.port}/{quote(site.name)}/?smoke=1&case=plate')});true"
+            )
+            wait(browser, "globalThis.liveDicStatus?.completed>=1")
+            browser._evaluate(
+                "document.querySelector('[data-pane=view]').click();document.getElementById('freeze-field').onclick().then(()=>true)"
+            )
+            wait(browser, "globalThis.liveDicWorkbench?.report().recipe!=null")
+            baseline = browser._evaluate("liveDicWorkbench.report()")
+            assert baseline["count"] == 1 and baseline["reviewing"], baseline
+            assert baseline["statistics"]["count"] > 30000, baseline
+            for key, value in [
+                ("review-component", "vonMises"),
+                ("post-smoothing", "gaussian"),
+                ("strain-measure", "green"),
+            ]:
+                browser._evaluate(
+                    f"document.getElementById({json.dumps(key)}).value={json.dumps(value)};document.getElementById({json.dumps(key)}).onchange();true"
+                )
+            wait(browser, "liveDicWorkbench.report().recipe?.strainMeasure==='green'")
+            processed = browser._evaluate("liveDicWorkbench.report()")
+            assert processed["recipe"]["strainSource"] == "vsg", processed
+            assert processed["recipe"]["smoothing"] == "gaussian", processed
+            browser._evaluate("document.querySelector('[data-inspect=line]').click();true")
+            click(browser, "#inspection", 800, 900)
+            click(browser, "#inspection", 1400, 900)
+            profile = browser._evaluate("liveDicWorkbench.report().extraction")
+            assert len(profile) > 20 and all(row["value"] is not None for row in profile), profile
+            browser._evaluate("document.querySelector('[data-inspect=gauge]').click();true")
+            click(browser, "#inspection", 800, 900)
+            click(browser, "#inspection", 1400, 900)
+            gauge = browser._evaluate("liveDicWorkbench.report().extraction")
+            assert len(gauge) == 1 and np.isfinite(gauge[0]["engineeringStrain"]), gauge
+            # Capture the real download Blob; NumPy independently verifies shapes and operators.
+            encoded = browser._evaluate("""(async()=>{
+              const original=URL.createObjectURL;let saved;
+              URL.createObjectURL=b=>{if(b.type==='application/octet-stream')saved=b;return original(b);};
+              try{document.getElementById('save-npz').onclick();const bytes=new Uint8Array(await saved.arrayBuffer());
+                const parts=[];for(let i=0;i<bytes.length;i+=32768)parts.push(String.fromCharCode(...bytes.subarray(i,i+32768)));
+                return btoa(parts.join(''));}finally{URL.createObjectURL=original;}
+            })()""")
+            payload = base64.b64decode(encoded)
+            archive_path = args.output / "processed-field.npz"
+            archive_path.write_bytes(payload)
+            with np.load(io.BytesIO(payload), allow_pickle=False) as data:
+                assert data["parameters"].shape == (135, 240, 6)
+                assert data["roi_mask"].shape == (2160, 3840)
+                recipe = json.loads(str(data["recipe_json"]))
+                assert recipe == processed["recipe"], recipe
+                y, x, radius = 56, 62, 2
+                gy, gx = np.mgrid[-radius : radius + 1, -radius : radius + 1]
+                weights = np.exp(-(gx**2 + gy**2) / 2)
+
+                def smooth(row, column, component):
+                    values = data["parameters"][
+                        row - radius : row + radius + 1,
+                        column - radius : column + radius + 1,
+                        component,
+                    ]
+                    return np.sum(weights * values) / weights.sum()
+
+                coords = np.column_stack([np.ones(gx.size), gx.ravel() * 16, gy.ravel() * 16])
+                uv = np.array(
+                    [
+                        [smooth(y + dy, x + dx, 0), smooth(y + dy, x + dx, 3)]
+                        for dy, dx in zip(gy.ravel(), gx.ravel(), strict=True)
+                    ]
+                )
+                slopes = np.linalg.lstsq(coords, uv, rcond=None)[0][1:]
+                f = np.eye(2) + slopes.T
+                strain = (f.T @ f - np.eye(2)) / 2
+                expected = [strain[0, 0], strain[1, 1], strain[0, 1]]
+                actual = [data[f"processed_{k}"][y, x] for k in ["exx", "eyy", "exy"]]
+                np.testing.assert_allclose(actual, expected, atol=1e-12, rtol=1e-10)
+                assert np.all(data["analysis_valid"][data["status"] < 0.5] == 0)
+                numeric_error = float(np.max(np.abs(np.asarray(actual) - expected)))
+            # Comparing computed data is temporary; returning restores the explicit processing recipe.
+            browser._evaluate("document.getElementById('compare-computed').onclick();true")
+            wait(browser, "liveDicWorkbench.report().recipe?.smoothing==='none'")
+            browser._evaluate("document.getElementById('compare-computed').onclick();true")
+            wait(browser, "liveDicWorkbench.report().recipe?.smoothing==='gaussian'")
+            screenshots = {}
+            for label, target in [("field", ".viewer"), ("analysis", "#results-workbench")]:
+                browser._evaluate(
+                    f"document.querySelector({json.dumps(target)}).scrollIntoView({{block:'start'}});true"
+                )
+                reply = asyncio.run(
+                    protocol(
+                        browser,
+                        [
+                            (
+                                "Page.captureScreenshot",
+                                dict(format="png", captureBeyondViewport=False),
+                            )
+                        ],
+                    )
+                )[0]
+                path = args.output / f"{label}.png"
+                path.write_bytes(base64.b64decode(reply["data"]))
+                screenshots[label] = hashlib.sha256(path.read_bytes()).hexdigest()
+            browser._evaluate(
+                "document.getElementById('return-live').onclick();document.getElementById('record-fields').checked=true;document.getElementById('record-fields').onchange();true"
+            )
+            browser._evaluate(
+                "document.getElementById('plate-load').value='225';document.getElementById('plate-load').onchange().then(()=>true)"
+            )
+            wait(browser, "liveDicWorkbench.report().count===2")
+            browser._evaluate(
+                "document.getElementById('record-fields').checked=false;document.getElementById('record-fields').onchange();true"
+            )
+            # Upload through an actual file input, including Snap's separate /tmp namespace.
+            visible = Path.home() / "snap/chromium/common"
+            with tempfile.TemporaryDirectory(
+                prefix="live-dic-npz-", dir=visible if visible.is_dir() else None
+            ) as temp:
+                local = Path(temp) / "field.npz"
+                local.write_bytes(payload)
+                asyncio.run(choose_files(browser, "#result-file", [local]))
+                wait(
+                    browser,
+                    "liveDicWorkbench.report().count===3 && liveDicWorkbench.report().recipe?.smoothing==='gaussian'",
+                )
+            report = dict(
+                build=json.loads((site / "build.json").read_text()),
+                software=args.software,
+                user_agent=browser._evaluate("navigator.userAgent"),
+                baseline=baseline,
+                processed=processed,
+                profile=profile,
+                gauge=gauge,
+                operator_max_error=numeric_error,
+                archive_sha256=hashlib.sha256(payload).hexdigest(),
+                screenshots=screenshots,
+                final=browser._evaluate("liveDicWorkbench.report()"),
+                errors=browser._evaluate("liveDicStatus.errors"),
+            )
+            assert not report["errors"], report["errors"]
+            (args.output / "report.json").write_text(
+                json.dumps(report, indent=2, allow_nan=False) + "\n"
+            )
+            print(
+                json.dumps(
+                    {
+                        "fields": report["final"]["count"],
+                        "operator_max_error": numeric_error,
+                        "errors": report["errors"],
+                    }
+                )
+            )
+    finally:
+        server.close()
+
+
+if __name__ == "__main__":
+    main()

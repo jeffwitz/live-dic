@@ -3,6 +3,12 @@ import { LATENCY_OPTIONS } from '../web/core/device.js';
 import { scorePlate } from './plate-truth.js';
 import { FieldRenderer } from '../render/field.js';
 
+function encodeMask(mask) {
+  const chunks = [];
+  for (let i=0;i<mask.length;i+=32768) chunks.push(String.fromCharCode(...mask.subarray(i,i+32768)));
+  return btoa(chunks.join(''));
+}
+
 /** The same session runs in a worker, or on the main thread without OffscreenCanvas. */
 export function createSession(send) {
   let engine, renderer, canvas, reference, referenceTexture, mask = null, capabilities, last = null;
@@ -10,12 +16,13 @@ export function createSession(send) {
   let display = { mode: 2, scale: null }, received = 0, completed = 0, exportSerial = 0;
   const ages = [], sampleLog = [];
   let lastComparison = null, referenceAdmissible = 0;
+  let recording = false;
   let bitmapPresentation = false, profile = null;
   const completionTimes = [];
   const outstanding = new Set();
-  function present(message = {}) {
+  function present(message = {}, transfer = []) {
     const bitmap = bitmapPresentation && canvas ? canvas.transferToImageBitmap() : null;
-    send({ ...message, ...(bitmap ? { bitmap, width: canvas.width, height: canvas.height } : {}) }, bitmap ? [bitmap] : []);
+    send({ ...message, ...(bitmap ? { bitmap, width: canvas.width, height: canvas.height } : {}) }, bitmap ? [bitmap, ...transfer] : transfer);
   }
   async function referenceFrom(frame, options, roiMask = null) {
     const preparationStarted = performance.now();
@@ -66,6 +73,9 @@ export function createSession(send) {
         if (message.mode === 'fixed' && reference) await referenceFrom(reference,message.options,mask);
         else engine?.resetTemporalState();
         send({type:'comparison',id});
+      } else if (type === 'recording') {
+        recording = message.enabled === true;
+        send({ type: 'recording', id, enabled: recording });
       } else if (type === 'frame') {
         received++;
         if (!engine || !engine.ring.idle || outstanding.size) { message.frame.close(); message.referenceFrame?.close(); send({ type: 'dropped', id }); return; }
@@ -89,6 +99,15 @@ export function createSession(send) {
             if (plateScore) last.truthRmse = plateScore.displacementRmsePx;
             showingReference = false;
             const scale = renderer?.draw(engine, last, display);
+            let record = null;
+            if (recording) {
+              const started = performance.now(), field = await engine.exportField();
+              record = { field, metadata: { comparison: lastComparison, configuration: field.config,
+                createdAt: new Date().toISOString(), frameIndex: message.frameIndex,
+                recordingReadbackWallMs: performance.now()-started,
+                workerArrivalToRecordedFieldMs: performance.now()-available,
+                timingBoundary: 'Recorded fields include an explicit full readback; live age remains worker arrival to observable GPU field' } };
+            }
             completed++; completionTimes.push(performance.now());
             while (completionTimes.length > 1 && completionTimes[0] < performance.now() - 3000) completionTimes.shift();
             ages.push(age); if (ages.length > 120) ages.shift();
@@ -102,7 +121,8 @@ export function createSession(send) {
               ageP95: sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * .95))],
               accepted: last.accepted, selected: last.selected, meanIterations: last.meanIterations,
               truthRmse: last.truthRmse, scale, counters: last.counters, timing: last.timing,
-              frameIndex: message.frameIndex, plateScore, comparison:lastComparison });
+              frameIndex: message.frameIndex, plateScore, comparison:lastComparison, record },
+              record ? [record.field.parameters.buffer, record.field.status.buffer, record.field.iterations.buffer] : []);
           } finally { message.frame.close(); message.referenceFrame?.close(); }
         })();
         outstanding.add(operation); try { await operation; } finally { outstanding.delete(operation); }
@@ -127,7 +147,7 @@ export function createSession(send) {
           subsetStride: field.subsetStride, samples: sampleLog,
           timingBoundary: 'Worker frame available to observable GPU field plus small HUD summary; full field is read only for this export',
           roi: mask ? { width: field.width, height: field.height, encoding: 'base64-uint8-boolean',
-            data: btoa(Array.from(mask, (v) => String.fromCharCode(v)).join('')) } : null };
+            data: encodeMask(mask) } : null };
         send({ type: 'export', id, field, metadata });
       } else if (type === 'report') send({ type: 'report', id, samples: sampleLog, capabilities });
       else if (type === 'destroy') {

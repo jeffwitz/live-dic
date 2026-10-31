@@ -21,12 +21,16 @@ This is evidence for the recorded configurations, not certification of every
 GPU, OS or architecture. Camera acquisition and downstream processing remain
 outside the numerical engine's timing boundary.
 
-## Browser camera and analytic demo
+## Browser acquisition and results workbench
 
-A standalone **WebGPU application** now provides browser-local camera/demo
+A standalone **WebGPU application** now provides browser-local camera, image-folder and video
 supervision, a bounded worker, editable multi-domain/full ROI with holes,
 temporal prediction, GPU field display with displacement arrows/equivalent strain
-and on-demand CSV/JSON export. It imports the same portable WGSL core as the
+and on-demand CSV/JSON export. A results workbench adds bounded opt-in field
+recording, point/line/extensometer extraction, reversible displacement smoothing,
+VSG strain, principal/equivalent strain, length units and NumPy NPZ interchange.
+Fixed-reference and real consecutive-pair comparisons are distinct options; the
+latter rebuilds each reference and does not inherit fixed-reference FPS claims. It imports the same portable WGSL core as the
 Python raw-WebGPU adapter. It has no Three.js/CDN dependency and can run offline
 after its first installation. The original UHD plate-with-hole case loads
 with an editable rectangle/circle preset and both analytical load states.

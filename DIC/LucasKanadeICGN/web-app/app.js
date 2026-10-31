@@ -1,3 +1,5 @@
+import { installWorkbench } from './ui/workbench.js';
+import { installWorkspace, solverOptions } from './ui/workspace.js';
 import { installRoi } from './ui/roi.js';
 import { bounds, platePreset } from './ui/roi-geometry.js';
 import { imageFiles, fileInfo, decodeImage, waitForMedia, seekVideo } from './ui/local-media.js';
@@ -25,7 +27,20 @@ if (smoke) {
   const original = console.error.bind(console);
   console.error = (...args) => { status.errors.push(args.map(String).join(' ')); original(...args); };
 }
-const options = () => ({ profile: $('profile').value });
+const options = solverOptions;
+const workspace = installWorkspace({ shortcuts: {
+  play: () => { if (!$('pause').disabled && !loadingSource) $('pause').click(); },
+  reference: () => { if (!$('reference').disabled && !loadingSource) $('reference').click(); },
+  clear: () => workbench.clearInspection(),
+} });
+const workbench = installWorkbench({
+  captureCurrent: captureCurrentField,
+  pause: () => { pauseSource(); $('pause').textContent = 'Play'; },
+  error: text => message(text, true),
+  recordChange: enabled => send('recording', { enabled }).catch(e => message(e.message, true)),
+  liveChanged: reviewing => { $('run-state').textContent = reviewing ? 'Saved field · reference coordinates' : source ? `${source} · ${paused ? 'paused' : 'running'}` : 'No source selected'; },
+  openResults: () => workspace.showPane('view'),
+});
 function details() { $('details').textContent = JSON.stringify({ capabilities, acquisition: { ...sourceSettings, files: sourceSettings.files ? `${sourceSettings.files.length} file records retained in export` : undefined },
   execution: transport.isMain ? 'Main-thread fallback: OffscreenCanvas unavailable' : 'Dedicated worker',
   reference: referenceInfo ? { ...referenceInfo, roiSelected: undefined, referenceValid: undefined } : null, profile: $('profile').value,
@@ -53,7 +68,9 @@ function receive({ data }) {
   }
   if (data.type === 'result') {
     if (data.plateScore) { sourceSettings.analyticScore = data.plateScore; details(); }
-    $('export').disabled = false;
+    $('export').disabled = false; workbench.setReady(true);
+    if (data.record) { try { workbench.add(data.record.field, { ...data.record.metadata, acquisition: {source:sourceSettings.source}, roiGeometry: {version:1,shapes:appliedShapes} }); } catch(e) { message(e.message,true); } delete data.record; }
+    if (!workbench.reviewing) $('run-state').textContent = `${source} · ${data.width} × ${data.height} · ${data.comparison?.mode ?? 'fixed'} · ${paused ? 'paused' : 'running'}`;
     if (data.comparison) { sourceSettings.lastComparison = data.comparison; updateLocalPosition(data.comparison.target); }
     status.completed++; status.results.push(data); if (status.results.length > (smoke ? 18000 : 120)) status.results.shift();
     $('fps').textContent = source === 'plate' ? 'Static pair' : data.fps.toFixed(1);
@@ -63,9 +80,9 @@ function receive({ data }) {
     $('error').textContent = data.truthRmse == null ? '—' : `${data.truthRmse.toFixed(4)} px`;
     $('error').classList.toggle('metric-warning', data.truthRmse != null && data.truthRmse > .1);
     $('error').title = data.plateScore?.population ?? 'Whole accepted field, including possible wrong-basin estimates near the image boundary';
-    updateScale(data.scale);
+    if (!workbench.reviewing) updateScale(data.scale);
   }
-  if (data.type === 'scale') updateScale(data.scale);
+  if (data.type === 'scale' && !workbench.reviewing) updateScale(data.scale);
   if (data.type === 'dropped') { dropped++; $('drops').textContent = dropped; }
   const request = pending.get(data.id);
   if (request) { pending.delete(data.id); request.resolve(data); }
@@ -113,6 +130,7 @@ async function sourceChange(operation) {
   finally { loadingSource = false; document.querySelector('.workspace').inert=false; sourceButtons.forEach(id => $(id).disabled = !capabilities?.supported); }
 }
 async function stop() {
+  workbench.returnLive(); workbench.stopRecording(); workbench.setReady(false); workbench.setMask(null);
   pauseSource(); generation++; seekSerial++; sourceAbort.abort();
   await drain(); await imageTask?.catch(() => {}); await imageLoop?.catch(() => {}); sourceAbort = new AbortController();
   await reader?.cancel(); reader = null;
@@ -132,6 +150,7 @@ async function frameFromVideo() {
   return createImageBitmap(video, { resizeWidth: width, resizeHeight: height });
 }
 async function captureReference(frame = null) {
+  workbench.returnLive(); workbench.setMask(null); workbench.setReady(false);
   pauseSource(); await drain(); roiEditing = false; $('roi-editor').hidden = true;
   frame ??= await frameFromVideo();
   if (source === 'camera') { sourceSettings.actual = stream?.getVideoTracks()[0]?.getSettings(); sourceSettings.outputSize = [video.videoWidth, video.videoHeight]; }
@@ -140,6 +159,9 @@ async function captureReference(frame = null) {
   roi.reset(referenceInfo.width, referenceInfo.height); $('apply-roi').disabled = true;
   for (const id of ['reference', 'pause', 'reset', 'draw', 'clear-roi', 'export']) $(id).disabled = false;
   if ($('comparison').value === 'consecutive' && source !== 'plate') $('export').disabled = true;
+  const translationOnly = referenceInfo.config?.motionModel === 'translation';
+  for (const option of $('component').options) if ([3,4,5,7].includes(Number(option.value))) option.disabled = translationOnly;
+  if (translationOnly && [3,4,5,7].includes(Number($('component').value))) { $('component').value='2'; await send('display',{display:displayOptions()}); }
   previousFrame = -1; details(); message('Reference captured. Camera and results stay on this device.');
 }
 function countDrop() { dropped++; $('drops').textContent = dropped; }
@@ -335,8 +357,8 @@ async function startPlate() {
   $('resolution').value = '3840x2160';
   await captureReference(reference);
   roi.reset(3840, 2160, platePreset()); appliedShapes = roi.shapes();
-  const mask = roi.mask(); referenceInfo = (await send('roi', { mask, options: options() }, [mask.buffer])).info;
-  $('component').value = '7'; $('scale').value = '0.002'; $('arrows').checked = true; $('arrow-gain').value = '50'; $('opacity').value = '1';
+  const mask = roi.mask(), ownedMask = mask?.slice() ?? null; referenceInfo = (await send('roi', { mask, options: options() }, [mask.buffer])).info; workbench.setMask(ownedMask);
+  $('component').value = referenceInfo.config.motionModel === 'translation' ? '2' : '7'; $('scale').value = referenceInfo.config.motionModel === 'translation' ? '10' : '0.002'; $('arrows').checked = true; $('arrow-gain').value = '50'; $('opacity').value = '1';
   await send('display', { display: displayOptions() });
   await runPlateTarget();
   // Show editable outer rectangle and circular hole on the fixed reference.
@@ -361,12 +383,21 @@ async function lockCamera(track) {
   }
   return { requested: settings, actual: track.getSettings(), capabilities: caps, locks };
 }
+async function refreshCameras() {
+  if (!navigator.mediaDevices?.enumerateDevices) { message('Camera enumeration is not available in this browser.',true); return; }
+  const devices = (await navigator.mediaDevices.enumerateDevices()).filter(device => device.kind === 'videoinput');
+  const selected = $('camera-device').value; $('camera-device').replaceChildren(new Option('Default / rear camera',''));
+  devices.forEach((device,index) => $('camera-device').add(new Option(device.label || `Camera ${index+1} · permission needed for its name`, device.deviceId)));
+  if ([...$('camera-device').options].some(option=>option.value===selected)) $('camera-device').value=selected;
+}
+$('refresh-cameras').onclick = () => refreshCameras().catch(e=>message(e.message,true));
+$('camera-device').onchange = () => { if(source==='camera') sourceChange(startCamera); };
 async function startCamera() {
   await stop(); manifest = null; source = 'camera'; $('resolution').disabled = false;
   const [width, height] = $('resolution').value.split('x').map(Number);
-  stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: 'environment', width, height, frameRate: { ideal: 60 } } });
+  stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { ...($('camera-device').value ? {deviceId:{exact:$('camera-device').value}} : {facingMode:'environment'}), width, height, frameRate: { ideal: 60 } } });
   video.src = ''; video.srcObject = stream; await video.play();
-  const track = stream.getVideoTracks()[0];
+  const track = stream.getVideoTracks()[0]; await refreshCameras();
   sourceSettings = { source: 'camera', requested: { width, height, frameRate: 60 }, ...await lockCamera(track), outputSize: [video.videoWidth, video.videoHeight] };
   await captureReference(); paused = false; $('pause').textContent = 'Pause';
   const token = generation;
@@ -434,6 +465,7 @@ $('reference').onclick = () => sourceChange(async () => {
   else $('pause').textContent = 'Play';
 });
 $('pause').onclick = async () => {
+  workbench.returnLive();
   if (roiEditing) { message('Apply the mask before resuming.'); return; }
   if (source === 'plate') return runPlateTarget().catch(e => message(e.message,true));
   if (!paused) { pauseSource(); $('pause').textContent = 'Play'; return; }
@@ -445,15 +477,16 @@ $('pause').onclick = async () => {
   } catch(error) { message(error.message,true); }
 };
 $('reset').onclick = () => send('reset');
-$('draw').onclick = async () => { pauseSource(); await drain(); roiEditing = true; $('pause').textContent = 'Resume'; await send('show-reference', { show: true }); $('roi-editor').hidden = false; $('shape').value = 'select'; roi.start(); };
+$('draw').onclick = async () => { workspace.showPane('mask'); workbench.returnLive(); pauseSource(); await drain(); roiEditing = true; $('pause').textContent = 'Resume'; await send('show-reference', { show: true }); $('roi-editor').hidden = false; $('shape').value = 'select'; roi.start(); };
 $('apply-roi').onclick = async () => {
-  try { const mask = roi.mask(); appliedShapes = roi.shapes(); referenceInfo = (await send('roi', { mask, options: options() }, mask ? [mask.buffer] : [])).info;
+  try { workbench.setReady(false); const mask = roi.mask(), ownedMask = mask?.slice() ?? null; appliedShapes = roi.shapes(); referenceInfo = (await send('roi', { mask, options: options() }, mask ? [mask.buffer] : [])).info; workbench.setMask(ownedMask);
     roiEditing = false; roi.stop(); $('roi-editor').hidden = true; $('apply-roi').disabled = true;
     message('Mask applied. Its geometry stays editable; all complete selected subsets are used.'); details();
     if (source === 'plate') await runPlateTarget();
+    else if (source === 'images') await runImage(imageIndex,true);
   } catch (error) { message(error.message, true); }
 };
-$('clear-roi').onclick = async () => { pauseSource(); await drain(); roiEditing = false; roi.reset(referenceInfo.width, referenceInfo.height); appliedShapes = []; $('roi-editor').hidden = true;
+$('clear-roi').onclick = async () => { workbench.returnLive(); workbench.setMask(null); pauseSource(); await drain(); roiEditing = false; roi.reset(referenceInfo.width, referenceInfo.height); appliedShapes = []; $('roi-editor').hidden = true;
   referenceInfo = (await send('roi', { mask: null, options: options() })).info; $('pause').textContent = 'Resume'; details(); if (source === 'plate') await runPlateTarget(); };
 function displayOptions() { return { mode: Number($('component').value), scale: $('scale').value === 'auto' ? null : Number($('scale').value),
   opacity: Number($('opacity').value), arrows: $('arrows').checked, arrowStep: Number($('arrow-step').value), arrowGain: Number($('arrow-gain').value) }; }
@@ -462,9 +495,14 @@ function download(name, content, type) {
   const url = URL.createObjectURL(new Blob([content], { type })), link = document.createElement('a');
   link.href = url; link.download = name; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-$('export').onclick = async () => {
+async function captureCurrentField() {
   pauseSource(); await drain(); $('pause').textContent = 'Play';
-  const { field, metadata } = await send('export');
+  const reply = await send('export');
+  reply.metadata.acquisition = structuredClone(sourceSettings); reply.metadata.roiGeometry = {version:1,composition:'union of roots; exact pixel-containment alternates domain/hole/island',shapes:structuredClone(appliedShapes)}; reply.metadata.display = displayOptions();
+  return reply;
+}
+$('export').onclick = async () => {
+  const { field, metadata } = await captureCurrentField();
   const parameters = field.config.motionModel === 'quadratic' ? 12 : 6;
   const lines = [`x,y,status,iterations,${Array.from({ length: parameters }, (_, i) => `p${i}`).join(',')}`];
   for (let i = 0; i < field.status.length; i++) lines.push([
@@ -476,11 +514,18 @@ $('export').onclick = async () => {
   download('live-dic-field.csv', lines.join('\n'), 'text/csv');
   download('live-dic-metadata.json', JSON.stringify(metadata, null, 2), 'application/json');
 };
-$('resolution').onchange = () => { if (source === 'camera') startCamera().catch((error) => message(error.message, true)); };
+$('resolution').onchange = () => { if (source === 'camera') sourceChange(startCamera); };
 $('profile').onchange = () => { if (referenceInfo) message('Profile change takes effect when the reference is captured again.'); };
-window.addEventListener('pagehide', () => { sourceAbort.abort(); clearPreviousCapture(); if (localVideoUrl) URL.revokeObjectURL(localVideoUrl); stream?.getTracks().forEach((t) => t.stop()); transport?.postMessage({ type: 'destroy' }); });
+window.addEventListener('pagehide', () => { workbench.destroy(); sourceAbort.abort(); clearPreviousCapture(); if (localVideoUrl) URL.revokeObjectURL(localVideoUrl); stream?.getTracks().forEach((t) => t.stop()); transport?.postMessage({ type: 'destroy' }); });
 window.addEventListener('error', (event) => { status.errors.push(event.message); message(event.message, true); });
 window.addEventListener('unhandledrejection', (event) => { const text = String(event.reason); status.errors.push(text); message(text, true); });
-if (smoke) { globalThis.liveDicReport = () => send('report'); globalThis.liveDicRoi = roi; globalThis.liveDicSourceState = () => ({source,paused,loadingSource,inFlight,index:imageIndex,fileCount:localImages.length,localBusy:!!imageTask,loop:!!imageLoop,settings:sourceSettings,comparison:$('comparison').value,videoTime:video.currentTime,videoPaused:video.paused}); }
+if (smoke) { globalThis.liveDicReport = () => send('report'); globalThis.liveDicWorkbench = workbench; globalThis.liveDicRoi = roi; globalThis.liveDicSourceState = () => ({source,paused,loadingSource,inFlight,index:imageIndex,fileCount:localImages.length,localBusy:!!imageTask,loop:!!imageLoop,settings:sourceSettings,comparison:$('comparison').value,videoTime:video.currentTime,videoPaused:video.paused}); }
+for (const id of ['custom-solver','motion-model','subset-size','subset-stride','interpolation','pyramid-levels','coarse-iterations','fine-iterations','outlier-policy','temporal-start']) $(id).onchange = () => {
+  $('solver-settings').disabled = !$('custom-solver').checked;
+  $('subset-stride').max = $('subset-size').value;
+  if (Number($('subset-stride').value) > Number($('subset-size').value)) $('subset-stride').value = $('subset-size').value;
+  try { const requested = options(); $('solver-summary').textContent = $('custom-solver').checked ? `Pending: ${requested.motionModel} · ${requested.subsetSize}/${requested.subsetStride} · ${requested.pyramidLevels} level(s). Capture reference or Apply mask to apply.` : 'Preset selected for the next reference. Current fields keep their original configuration.'; }
+  catch(e) { $('solver-summary').textContent = e.message; }
+};
 init().catch((error) => { status.errors.push(error.message); message(error.message, true); });
 if ('serviceWorker' in navigator && (!smoke || query.has('offline'))) navigator.serviceWorker.register(new URL('./sw.js', import.meta.url)).catch((error) => message(`Offline installation unavailable: ${error.message}`, true));

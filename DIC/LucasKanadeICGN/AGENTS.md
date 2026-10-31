@@ -467,3 +467,21 @@ qualification rather than infer mobile coverage from desktop results.
 - `tools/qualify_local_sources.py` exercises real file inputs, UHD pair parity,
   failure recovery, dimension rejection, and local video seek/play/pause. Source
   replacement drains work, aborts pending decodes and closes frame ownership.
+
+### Browser workbench follow-up — 2026-10-31
+
+- The Input/Mask/Solve/Results workflow offers custom solver edits only for a
+  new reference. Preserve native/core defaults. Translation has no direct strain;
+  its analysis must use displacement-neighbourhood fitting.
+- Saved computed fields include the solver's configured spatial policy. Never
+  call median solver output raw/unfiltered. Postprocessing is explicit,
+  reversible, separately masked and executed outside the acquisition worker.
+- Results recording is opt-in and adds full readback. The bounded in-tab library
+  stops recording/acquisition at capacity; it must not evict scientific results
+  silently. Save NPZ before tab close; raw images are not recorded.
+- Keep computed parameters/status/iterations separate from processed arrays and
+  validity masks. Preserve strict no-pickle NPZ, explicit dimensions/ROI/recipe,
+  and conservative visibility across image/grid exclusions.
+- `tools/qualify_browser_workbench.py` exercises the actual UHD GUI, pointer
+  measurements, independent NumPy strain oracle, recording and NPZ reimport.
+  Its timing is correctness evidence, not live performance qualification.

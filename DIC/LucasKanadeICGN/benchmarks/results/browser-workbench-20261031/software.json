@@ -1,0 +1,381 @@
+{
+  "build": {
+    "commit": "2a02dbcd2f7efafa401c5cedad89214e3a45b77b",
+    "dirty": true,
+    "shaders": {
+      "full_pyramid.wgsl": "d00ef999c5dbc23013928e95ea6ca498a52fbb63850056c05bdbd3c963dc0401",
+      "icgn.wgsl": "a60231689fbc3d29953fd98eb8d04649ec93cbec0f5a89a65446df716152299b",
+      "icgn_subgroup.wgsl": "d68225b1b6b6b21071e59ea6109bbd24dc0fd8b6734b6ebc4f7d59356799a034",
+      "input.wgsl": "d269f8bf203e3363a6e753476c49de27188329409fa5a848358ea031bb554f7e",
+      "result.wgsl": "a587a3112670a702578df6c13f75addd4136e43fa6c7efba7959aa472d0e3267",
+      "subgroup_probe.wgsl": "6e4d149ed7f17969ede557a3062742d8da6c62cb6dd745d5510112c1489fed61"
+    },
+    "demo_manifest_sha256": "c78c445a38a8541d632f28e85ec1154e492b4195c7b8f5d4755597e07605f24a",
+    "plate_image_sha256": {
+      "reference.png": "26135118b554c5996443f07abd2a89273a344154338c4c7f428ab283f85f7192",
+      "frame_095.png": "af0f4c09d2e9292beb4cbbabe01c6651a2e914c1b36b569a5861a8be431d3faf",
+      "frame_225.png": "abe3693810e289b8a2029833011a0d59fdf7ff1ea975eea91b12dc5e708d2897"
+    },
+    "cache_version": "2a02dbcd2f7efafa401c5cedad89214e3a45b77b-dirty-aee9da633621"
+  },
+  "software": true,
+  "user_agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+  "baseline": {
+    "count": 1,
+    "selected": 1,
+    "reviewing": true,
+    "memoryBytes": 9335511,
+    "recipe": {
+      "smoothing": "none",
+      "window": 5,
+      "strainSource": "direct",
+      "strainMeasure": "small",
+      "excludeFlagged": false,
+      "unitsPerPixel": 1,
+      "unit": "px"
+    },
+    "statistics": {
+      "count": 31474,
+      "min": 0.0016767680751011106,
+      "max": 2.35908134817003,
+      "mean": 1.212937554123824,
+      "standardDeviation": 0.5958362089323361,
+      "p02": 0.14775443010450814,
+      "p98": 2.2182566993002495
+    },
+    "extraction": []
+  },
+  "processed": {
+    "count": 1,
+    "selected": 1,
+    "reviewing": true,
+    "memoryBytes": 9335511,
+    "recipe": {
+      "smoothing": "gaussian",
+      "window": 5,
+      "strainSource": "vsg",
+      "strainMeasure": "green",
+      "excludeFlagged": false,
+      "unitsPerPixel": 1,
+      "unit": "px"
+    },
+    "statistics": {
+      "count": 31474,
+      "min": 0.00028096748302382403,
+      "max": 0.001370828410099087,
+      "mean": 0.0009126697297649342,
+      "standardDeviation": 7.018019959795673e-05,
+      "p02": 0.0007450942388177798,
+      "p98": 0.0010453953339114917
+    },
+    "extraction": []
+  },
+  "profile": [
+    {
+      "distance": 0,
+      "x": 807.5,
+      "y": 903.5,
+      "value": 0.0009204450635134564,
+      "status": 1
+    },
+    {
+      "distance": 16,
+      "x": 823.5,
+      "y": 903.5,
+      "value": 0.0009108006276243019,
+      "status": 1
+    },
+    {
+      "distance": 32,
+      "x": 839.5,
+      "y": 903.5,
+      "value": 0.0008956966380656759,
+      "status": 1
+    },
+    {
+      "distance": 48,
+      "x": 855.5,
+      "y": 903.5,
+      "value": 0.0008797667871977612,
+      "status": 1
+    },
+    {
+      "distance": 64,
+      "x": 871.5,
+      "y": 903.5,
+      "value": 0.0008771827163201694,
+      "status": 1
+    },
+    {
+      "distance": 80,
+      "x": 887.5,
+      "y": 903.5,
+      "value": 0.0008892574027240987,
+      "status": 1
+    },
+    {
+      "distance": 96,
+      "x": 903.5,
+      "y": 903.5,
+      "value": 0.0009015034957535922,
+      "status": 1
+    },
+    {
+      "distance": 112,
+      "x": 919.5,
+      "y": 903.5,
+      "value": 0.0009123899210067188,
+      "status": 1
+    },
+    {
+      "distance": 128,
+      "x": 935.5,
+      "y": 903.5,
+      "value": 0.0009197310795040646,
+      "status": 1
+    },
+    {
+      "distance": 144,
+      "x": 951.5,
+      "y": 903.5,
+      "value": 0.0009161513469964491,
+      "status": 1
+    },
+    {
+      "distance": 160,
+      "x": 967.5,
+      "y": 903.5,
+      "value": 0.0009086760739455036,
+      "status": 1
+    },
+    {
+      "distance": 176,
+      "x": 983.5,
+      "y": 903.5,
+      "value": 0.0009083653597326785,
+      "status": 1
+    },
+    {
+      "distance": 192,
+      "x": 999.5,
+      "y": 903.5,
+      "value": 0.0009080882207432247,
+      "status": 1
+    },
+    {
+      "distance": 208,
+      "x": 1015.5,
+      "y": 903.5,
+      "value": 0.000895013238739106,
+      "status": 1
+    },
+    {
+      "distance": 224,
+      "x": 1031.5,
+      "y": 903.5,
+      "value": 0.0008753856732303536,
+      "status": 1
+    },
+    {
+      "distance": 240,
+      "x": 1047.5,
+      "y": 903.5,
+      "value": 0.0008675017879800934,
+      "status": 1
+    },
+    {
+      "distance": 256,
+      "x": 1063.5,
+      "y": 903.5,
+      "value": 0.0008787984636397421,
+      "status": 1
+    },
+    {
+      "distance": 272,
+      "x": 1079.5,
+      "y": 903.5,
+      "value": 0.0008959587378707807,
+      "status": 1
+    },
+    {
+      "distance": 288,
+      "x": 1095.5,
+      "y": 903.5,
+      "value": 0.0009029515277982928,
+      "status": 1
+    },
+    {
+      "distance": 304,
+      "x": 1111.5,
+      "y": 903.5,
+      "value": 0.0009057461371467033,
+      "status": 1
+    },
+    {
+      "distance": 320,
+      "x": 1127.5,
+      "y": 903.5,
+      "value": 0.0009131724380591536,
+      "status": 1
+    },
+    {
+      "distance": 336,
+      "x": 1143.5,
+      "y": 903.5,
+      "value": 0.0009214310645781649,
+      "status": 1
+    },
+    {
+      "distance": 352,
+      "x": 1159.5,
+      "y": 903.5,
+      "value": 0.0009255200549651172,
+      "status": 1
+    },
+    {
+      "distance": 368,
+      "x": 1175.5,
+      "y": 903.5,
+      "value": 0.0009223568385886071,
+      "status": 1
+    },
+    {
+      "distance": 384,
+      "x": 1191.5,
+      "y": 903.5,
+      "value": 0.0009180670567439462,
+      "status": 1
+    },
+    {
+      "distance": 400,
+      "x": 1207.5,
+      "y": 903.5,
+      "value": 0.0009149591520636344,
+      "status": 1
+    },
+    {
+      "distance": 416,
+      "x": 1223.5,
+      "y": 903.5,
+      "value": 0.0009136208036234327,
+      "status": 1
+    },
+    {
+      "distance": 432,
+      "x": 1239.5,
+      "y": 903.5,
+      "value": 0.000916445197784711,
+      "status": 1
+    },
+    {
+      "distance": 448,
+      "x": 1255.5,
+      "y": 903.5,
+      "value": 0.0009163831729679197,
+      "status": 1
+    },
+    {
+      "distance": 464,
+      "x": 1271.5,
+      "y": 903.5,
+      "value": 0.0009097278447298743,
+      "status": 1
+    },
+    {
+      "distance": 480,
+      "x": 1287.5,
+      "y": 903.5,
+      "value": 0.0009027397711938625,
+      "status": 1
+    },
+    {
+      "distance": 496,
+      "x": 1303.5,
+      "y": 903.5,
+      "value": 0.0009008786146003215,
+      "status": 1
+    },
+    {
+      "distance": 512,
+      "x": 1319.5,
+      "y": 903.5,
+      "value": 0.0009034872178163602,
+      "status": 1
+    },
+    {
+      "distance": 528,
+      "x": 1335.5,
+      "y": 903.5,
+      "value": 0.000907007844290094,
+      "status": 1
+    },
+    {
+      "distance": 544,
+      "x": 1351.5,
+      "y": 903.5,
+      "value": 0.0009107628787960499,
+      "status": 1
+    },
+    {
+      "distance": 560,
+      "x": 1367.5,
+      "y": 903.5,
+      "value": 0.0009182231443481358,
+      "status": 1
+    },
+    {
+      "distance": 576,
+      "x": 1383.5,
+      "y": 903.5,
+      "value": 0.0009285699135317771,
+      "status": 1
+    },
+    {
+      "distance": 592,
+      "x": 1399.5,
+      "y": 903.5,
+      "value": 0.0009351471154841062,
+      "status": 1
+    }
+  ],
+  "gauge": [
+    {
+      "referenceLength": 592,
+      "deformedLength": 591.7261549674644,
+      "extension": -0.2738450325356325,
+      "engineeringStrain": -0.0004625760684723522
+    }
+  ],
+  "operator_max_error": 6.396792817664476e-17,
+  "archive_sha256": "05cfd3de0461106c5f36b1df3baaf018de83f787fd55d9613e5c0cbd8e55bc7f",
+  "screenshots": {
+    "field": "fe1d1e4444547b244d1be0a50fe3ac64b655bc2e3df56208eea1ad22d0f39340",
+    "analysis": "16680dc5e68d886fdb2dde5181421c546d648263be3895e5873e7df11c5803a2"
+  },
+  "final": {
+    "count": 3,
+    "selected": 3,
+    "reviewing": true,
+    "memoryBytes": 19709539,
+    "recipe": {
+      "smoothing": "gaussian",
+      "window": 5,
+      "strainSource": "vsg",
+      "strainMeasure": "green",
+      "excludeFlagged": false,
+      "unitsPerPixel": 1,
+      "unit": "px"
+    },
+    "statistics": {
+      "count": 31474,
+      "min": 0.00028096748302382403,
+      "max": 0.001370828410099087,
+      "mean": 0.0009126697297649342,
+      "standardDeviation": 7.018019959795673e-05,
+      "p02": 0.0007450942388177798,
+      "p98": 0.0010453953339114917
+    },
+    "extraction": []
+  },
+  "errors": []
+}

@@ -229,3 +229,25 @@ Image folders use lazy, sequential natural ordering. Files of incompatible size
 are rejected rather than resized. The playback-rate cap does not define physical
 time. Video timestamps use decoded media time; a missing timestamp remains null.
 The application does not accumulate incremental fields or infer strain rates.
+
+Application workbench options
+------------------------------
+
+Custom solver controls pass the existing camelCase options to a newly prepared
+engine; they never reconfigure an in-flight field. The default application
+preset and core/Python defaults remain unchanged. The app offers translation
+and affine because its mask editor uses full ROI. Quadratic remains supported
+by the core without ROI, not implicitly enabled by the application.
+
+The separate analysis recipe contains ``smoothing`` (none/median/gaussian),
+``window`` (3/5/7/9 grid points), ``strainSource`` (direct/vsg), ``strainMeasure``
+(small/green), ``excludeFlagged`` (boolean), ``unit`` (px/mm/µm/m) and positive
+``unitsPerPixel``. Pixel units require scale one; smoothing and translation-only
+fields require VSG strain. Unsupported recipes throw. Analysis returns separate
+``valid`` and ``strainValid`` masks and finite arrays; missing statistics are
+null. It never changes solver status or computed parameters.
+
+Optional recording performs full ``exportField`` readback after each admitted
+solve. Its metadata contains ``recordingReadbackWallMs`` and
+``workerArrivalToRecordedFieldMs``. The normal unrecorded live path retains its
+small-summary readback. These are application options, not new solver defaults.
