@@ -431,3 +431,23 @@ qualification rather than infer mobile coverage from desktop results.
 - `.github/workflows/pages.yml` and the software-browser CI job are prepared.
   No new remote CI result, push, PR, Pages setting or deployment is asserted.
   Publication remains a separate explicit action by the repository owner.
+
+
+### Browser mask/display follow-up — 2026-10-31
+
+- The PWA editor keeps multiple vector shapes with exact pixel-centre
+  containment, domain/hole/island depth, union of outer domains, hole subtraction
+  and island restoration. Equal footprints are duplicates. Keep binary mask
+  and applied vector geometry together in exports. Preview pixels exist only
+  during editing; never rasterize vector geometry in the live frame loop.
+- The original UHD plate preset is an editable rectangle/circle pair. Its
+  half-pixel vector offset preserves the archived integer-index mask exactly.
+  The assembler copies original plate PNGs with hash verification, not new
+  generated or resized scientific fixtures. Both loads are static image pairs.
+- VM display uses direct infinitesimal affine strain and the archived ezz=0
+  equivalent-strain convention, not stress. GPU vector arrows use valid reference
+  origins, explicit spacing and magnification. Rendering must not modify fields.
+- `tools/qualify_browser_editor.py` exercises actual pointer input and GPU
+  display oracles on hardware/SwiftShader; it is prepared in browser CI. Retain
+  the original/edited population distinction and do not interpret static scores
+  as FPS qualification. `docs/how-to/run-in-browser.rst` documents all controls.

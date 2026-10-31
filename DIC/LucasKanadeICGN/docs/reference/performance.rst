@@ -1195,3 +1195,59 @@ configuration JSON. Editable installation with ``[native]``, CLI help, Ruff,
 JavaScript syntax, local Markdown links and strict Sphinx also pass locally.
 The new GitHub browser job and Pages deployment have not been run or enabled
 by this work. Camera hardware and the untested device matrix remain open.
+
+
+Editable browser masks and UHD scientific display (2026-10-31)
+--------------------------------------------------------------
+
+The follow-up UI qualification uses the unchanged original UHD plate images.
+Seven CPU contracts check domain/hole/island composition, overlapping domains,
+concave containment, ellipse/polygon geometry, exact native-UHD preset pixels
+and JS analytical/VM agreement with the NumPy oracle. Real Chromium pointer
+events add a rectangular hole, an elliptic island, another circle and a polygon,
+move/resize a circle, delete/undo and apply the edited mask.
+
+.. list-table:: Hardware browser plate checks, affine 16/16, B-spline, median
+   :header-rows: 1
+
+   * - Case
+     - Selected far-field population
+     - Coverage
+     - Displacement RMSE (px)
+     - VM strain RMSE (microstrain)
+   * - Frame 95, original rectangle/circle preset
+     - 29,901
+     - 100%
+     - 0.009069
+     - 160.90
+   * - Frame 95, six edited shapes
+     - 28,961
+     - 100%
+     - 0.009086
+     - 160.46
+   * - Frame 225, six edited shapes
+     - 28,961
+     - 100%
+     - 0.009357
+     - 147.24
+
+The population is selected reference centres at radius at least 288 px and a
+32 px image margin. Edited masks change this population: these rows demonstrate
+correctness on their own selected regions, not a precision improvement from
+masking. Near-hole gradient precision remains outside that gate. Static plate
+scoring explicitly maps the full field once; these are not live FPS results.
+The native and portable WGSL numerical sources and Python defaults are unchanged.
+
+The same scenario passes on Chromium SwiftShader. A GPU colour oracle checks a
+known constant equivalent strain, visible vector triangles, unchanged source
+parameters and no arrows at invalid origins. A zoomed viewport screenshot
+checks the displayed hole; a complete-page DevTools screenshot can miscapture
+nested scrolling, so the scientific zoom figure uses the actual viewport.
+
+The full Python suite and GPU/browser editor checks are recorded with their
+actual counts and source revisions in the campaign report. Strict
+Sphinx, Ruff, JS syntax and package-resource equality checks pass locally.
+The enhanced software-browser CI step is prepared; no remote result is claimed.
+See the `editor reports and screenshots
+<https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/browser-mask-editor-20261031>`_
+and :doc:`../how-to/run-in-browser` for reproducible commands and UI conventions.

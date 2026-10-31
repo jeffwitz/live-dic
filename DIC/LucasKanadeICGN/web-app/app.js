@@ -54,7 +54,7 @@ function receive({ data }) {
     $('iterations').textContent = data.meanIterations?.toFixed(2) ?? '—';
     $('error').textContent = data.truthRmse == null ? '—' : `${data.truthRmse.toFixed(4)} px`;
     $('error').classList.toggle('metric-warning', data.truthRmse != null && data.truthRmse > .1);
-    $('error').title = 'Whole accepted field, including possible wrong-basin estimates near the image boundary';
+    $('error').title = data.plateScore?.population ?? 'Whole accepted field, including possible wrong-basin estimates near the image boundary';
     updateScale(data.scale);
   }
   if (data.type === 'scale') updateScale(data.scale);

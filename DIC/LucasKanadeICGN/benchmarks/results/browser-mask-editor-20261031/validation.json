@@ -1,0 +1,16 @@
+{
+  "source_commit": "8480694f055b9c95f2dd40c3ae01186d746b8d09",
+  "tests": {
+    "count": 209,
+    "passed": 209,
+    "skipped": 0,
+    "seconds": 122.944,
+    "command": "ICGN_RUN_GPU_TESTS=1 ICGN_RUN_BROWSER_TESTS=1 python3 -m unittest discover -s DIC/LucasKanadeICGN/python/tests -v"
+  },
+  "style": "Ruff check and format: passed, 58 files",
+  "documentation": "Sphinx -W --keep-going html: passed",
+  "packaged_files": "44 package files byte-identical to the previously installed py3-none-any wheel",
+  "native_package_changes": [],
+  "remote_ci": "not run; workflow prepared",
+  "timing_scope": "correctness qualification, no new FPS claim; full suite and final software editor ran concurrently"
+}

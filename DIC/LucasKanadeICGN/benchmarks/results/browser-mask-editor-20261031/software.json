@@ -1,0 +1,150 @@
+{
+  "url": "http://127.0.0.1:36459/_site/?smoke=1&case=plate",
+  "software": true,
+  "version": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+  "build": {
+    "commit": "8480694f055b9c95f2dd40c3ae01186d746b8d09",
+    "dirty": true,
+    "shaders": {
+      "full_pyramid.wgsl": "d00ef999c5dbc23013928e95ea6ca498a52fbb63850056c05bdbd3c963dc0401",
+      "icgn.wgsl": "a60231689fbc3d29953fd98eb8d04649ec93cbec0f5a89a65446df716152299b",
+      "icgn_subgroup.wgsl": "d68225b1b6b6b21071e59ea6109bbd24dc0fd8b6734b6ebc4f7d59356799a034",
+      "input.wgsl": "d269f8bf203e3363a6e753476c49de27188329409fa5a848358ea031bb554f7e",
+      "result.wgsl": "a587a3112670a702578df6c13f75addd4136e43fa6c7efba7959aa472d0e3267",
+      "subgroup_probe.wgsl": "6e4d149ed7f17969ede557a3062742d8da6c62cb6dd745d5510112c1489fed61"
+    },
+    "demo_manifest_sha256": "c78c445a38a8541d632f28e85ec1154e492b4195c7b8f5d4755597e07605f24a",
+    "plate_image_sha256": {
+      "reference.png": "26135118b554c5996443f07abd2a89273a344154338c4c7f428ab283f85f7192",
+      "frame_095.png": "af0f4c09d2e9292beb4cbbabe01c6651a2e914c1b36b569a5861a8be431d3faf",
+      "frame_225.png": "abe3693810e289b8a2029833011a0d59fdf7ff1ea975eea91b12dc5e708d2897"
+    },
+    "cache_version": "8480694f055b9c95f2dd40c3ae01186d746b8d09-dirty-1d77e77c7f62"
+  },
+  "renderer": {
+    "pixel": [
+      238,
+      182,
+      177
+    ],
+    "arrowChangedChannels": 1920,
+    "unchanged": true,
+    "invalidEqual": true
+  },
+  "zoom": {
+    "width": 1107,
+    "height": 616,
+    "scrollWidth": 4428,
+    "scrollHeight": 2491,
+    "left": 1661,
+    "top": 938,
+    "canvas": {
+      "x": -1588.5,
+      "y": -522.90625,
+      "width": 4428,
+      "height": 2490.75,
+      "top": -522.90625,
+      "right": 2839.5,
+      "bottom": 1967.84375,
+      "left": -1588.5
+    },
+    "centrePixel": [
+      122,
+      122,
+      122,
+      255
+    ]
+  },
+  "original": {
+    "population": "selected reference centres, r >= 288 px and 32 px image margin; ezz = 0",
+    "count": 29901,
+    "requested": 29901,
+    "coverage": 1,
+    "displacementRmsePx": 0.009069438853206586,
+    "vmRmse": 0.00016090777396741987
+  },
+  "edited": {
+    "population": "selected reference centres, r >= 288 px and 32 px image margin; ezz = 0",
+    "count": 28961,
+    "requested": 28961,
+    "coverage": 1,
+    "displacementRmsePx": 0.009086597298257622,
+    "vmRmse": 0.00016047368144219288
+  },
+  "second_load": {
+    "population": "selected reference centres, r >= 288 px and 32 px image margin; ezz = 0",
+    "count": 28961,
+    "requested": 28961,
+    "coverage": 1,
+    "displacementRmsePx": 0.009356893143757502,
+    "vmRmse": 0.00014724419460726876
+  },
+  "shapes": [
+    {
+      "id": "plate",
+      "label": "Plate observation window",
+      "type": "rectangle",
+      "x": 0,
+      "y": 0,
+      "width": 3840,
+      "height": 2160
+    },
+    {
+      "id": "hole",
+      "label": "Traction-free hole",
+      "type": "circle",
+      "x": 1808.5,
+      "y": 968.5,
+      "width": 224,
+      "height": 224
+    },
+    {
+      "id": "region-3",
+      "label": "rectangle 3",
+      "type": "rectangle",
+      "x": 450,
+      "y": 400,
+      "width": 550,
+      "height": 400
+    },
+    {
+      "id": "region-4",
+      "label": "ellipse 4",
+      "type": "ellipse",
+      "x": 550,
+      "y": 500,
+      "width": 350,
+      "height": 200
+    },
+    {
+      "id": "region-5",
+      "label": "circle 5",
+      "type": "circle",
+      "x": 2525,
+      "y": 800,
+      "width": 150,
+      "height": 150
+    },
+    {
+      "id": "region-6",
+      "label": "Polygon 6",
+      "type": "polygon",
+      "points": [
+        [
+          1200,
+          1500
+        ],
+        [
+          1450,
+          1500
+        ],
+        [
+          1350,
+          1750
+        ]
+      ]
+    }
+  ],
+  "details": "{\n  \"capabilities\": {\n    \"supported\": true,\n    \"adapter\": {\n      \"vendor\": \"google\",\n      \"architecture\": \"swiftshader\",\n      \"device\": \"\",\n      \"description\": \"\"\n    },\n    \"limits\": {\n      \"maxStorageBuffersPerShaderStage\": 10,\n      \"maxBindGroups\": 4,\n      \"maxStorageBufferBindingSize\": 1073741824,\n      \"maxBufferSize\": 1073741824,\n      \"maxComputeWorkgroupStorageSize\": 32768,\n      \"maxComputeInvocationsPerWorkgroup\": 256,\n      \"maxTextureDimension2D\": 8192\n    },\n    \"features\": [\n      \"depth32float-stencil8\",\n      \"rg11b10ufloat-renderable\",\n      \"bgra8unorm-storage\",\n      \"texture-compression-bc\",\n      \"chromium-experimental-sampling-resource-table\",\n      \"core-features-and-limits\",\n      \"chromium-experimental-timestamp-query-inside-passes\",\n      \"float32-filterable\",\n      \"indirect-first-instance\",\n      \"texture-compression-astc-sliced-3d\",\n      \"float32-blendable\",\n      \"subgroup-size-control\",\n      \"texture-compression-unaligned\",\n      \"texture-compression-astc\",\n      \"texture-compression-etc2\",\n      \"depth-clip-control\",\n      \"texture-compression-bc-sliced-3d\",\n      \"timestamp-query\",\n      \"clip-distances\",\n      \"texture-component-swizzle\",\n      \"subgroups\"\n    ],\n    \"resolutions\": [\n      [\n        1280,\n        720\n      ],\n      [\n        1920,\n        1080\n      ],\n      [\n        3840,\n        2160\n      ]\n    ],\n    \"recommendedProfile\": \"portable\",\n    \"reasons\": [\n      \"Start at 720p; measure the real graph before raising resolution\"\n    ],\n    \"profiles\": {\n      \"portable\": true,\n      \"qualified-latency\": true,\n      \"minimal\": false\n    }\n  },\n  \"acquisition\": {\n    \"source\": \"original native-UHD analytic plate\",\n    \"outputSize\": [\n      3840,\n      2160\n    ],\n    \"mechanics\": {\n      \"center_px\": [\n        1920,\n        1080\n      ],\n      \"hole_radius_px\": 112,\n      \"pixel_mm\": 0.01,\n      \"young_MPa\": 210000,\n      \"poisson\": 0.3,\n      \"plane_strain\": true,\n      \"outer_image_edges\": \"observation window in an infinite medium, not traction-free specimen edges\"\n    },\n    \"load\": {\n      \"frame\": 225,\n      \"primary\": 250,\n      \"secondary\": 80\n    },\n    \"analyticScore\": {\n      \"population\": \"selected reference centres, r >= 288 px and 32 px image margin; ezz = 0\",\n      \"count\": 28961,\n      \"requested\": 28961,\n      \"coverage\": 1,\n      \"displacementRmsePx\": 0.009356893143757502,\n      \"vmRmse\": 0.00014724419460726876\n    }\n  },\n  \"execution\": \"Dedicated worker\",\n  \"reference\": {\n    \"preparationWallMs\": 4996.299999982119,\n    \"runtimeBuildWallMs\": 2295.7000000178814,\n    \"referenceBuildWallMs\": 2460.7999999821186,\n    \"width\": 3840,\n    \"height\": 2160,\n    \"subsetSize\": 16,\n    \"subsetStride\": 16,\n    \"grid\": [\n      240,\n      135\n    ],\n    \"config\": {\n      \"subsetSize\": 16,\n      \"subsetStride\": 16,\n      \"initialization\": \"temporal\",\n      \"temporalPrediction\": \"velocity\",\n      \"temporalFineCorrection\": true,\n      \"temporalMaxAge\": null,\n      \"divergencePatience\": 3,\n      \"divergenceMinIterations\": 4,\n      \"pyramidPolicy\": \"fixed\",\n      \"spatialWeighting\": \"uniform\",\n      \"solverWorkgroupSize\": 16,\n      \"pipelineDepth\": 1,\n      \"iterations\": 16,\n      \"tolerance\": 0.005,\n      \"znccMin\": 0.8,\n      \"pyramidLevels\": 2,\n      \"iterationsPerLevel\": [\n        8,\n        16\n      ],\n      \"tolerancePerLevel\": [\n        0.005,\n        0.005\n      ],\n      \"interpolation\": \"bspline\",\n      \"motionModel\": \"affine\",\n      \"outlierPolicy\": \"median\",\n      \"roi\": {\n        \"policy\": \"full\",\n        \"maskShape\": [\n          2160,\n          3840\n        ],\n        \"maskSha256\": \"9c0fc899154c03b4056c6c9d90c989f2a75bd21fa364426454a5dbd29addb0e7\",\n        \"selected\": 31280,\n        \"excluded\": 1120,\n        \"gridTotal\": 32400,\n        \"levelSelectedCounts\": [\n          31280,\n          7688\n        ]\n      }\n    },\n    \"device\": \"Raw WebGPU shared WGSL (google swiftshader)\",\n    \"controllerPreparationWallMs\": 16541.09999999404\n  },\n  \"profile\": \"portable\",\n  \"requestedResolution\": \"3840x2160\"\n}",
+  "errors": []
+}
