@@ -47,6 +47,13 @@ export class FieldRenderer {
           if t>=0.0 { color=mix(vec3<f32>(0.98),vec3<f32>(0.84,0.18,0.12),t); }
           if config.mode==6u { color=select(vec3<f32>(0.1,0.65,0.4),vec3<f32>(1.0,0.65,0.1),status>1.5); }
         }
+        if config.mode==6u {
+          color=vec3<f32>(0.48);
+          if status == -1.0 {color=vec3<f32>(0.23);}
+          if status == -2.0 {color=vec3<f32>(0.8,0.12,0.16);}
+          if status == 0.0 {color=vec3<f32>(0.98,0.8,0.15);}
+          if status >= 0.5 {color=select(vec3<f32>(0.1,0.65,0.4),vec3<f32>(1.0,0.5,0.1),status>1.5);}
+        }
         return vec4<f32>(mix(background,color,config.opacity),1.0);
       }
     ` });

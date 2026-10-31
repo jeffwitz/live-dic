@@ -9,6 +9,7 @@ export function createSession(send) {
   let showingReference = false;
   let display = { mode: 2, scale: null }, received = 0, completed = 0, exportSerial = 0;
   const ages = [], sampleLog = [];
+  let lastComparison = null, referenceAdmissible = 0;
   let bitmapPresentation = false, profile = null;
   const completionTimes = [];
   const outstanding = new Set();
@@ -28,6 +29,8 @@ export function createSession(send) {
     engine.device.addEventListener('uncapturederror', (event) => send({ type: 'error', message: `WebGPU: ${event.error.message}` }));
     mask = roiMask; profile = options.profile ?? 'portable';
     const info = await engine.setReference(frame, { roiMask: mask });
+    referenceAdmissible = [...info.referenceValid].reduce((n,v,i)=>n+ +(v && (!info.roiSelected || info.roiSelected[i])),0);
+    lastComparison = null;
     renderer = canvas ? new FieldRenderer(engine.device, canvas) : null;
     referenceTexture = engine.device.createTexture({ size: [width, height], format: 'rgba8unorm',
       usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT });
@@ -58,15 +61,29 @@ export function createSession(send) {
         if (!reference) throw new Error('Capture a reference before drawing the ROI');
         const info = await referenceFrom(reference, message.options, message.mask);
         send({ type: 'reference', id, info });
+      } else if (type === 'comparison') {
+        await Promise.all([...outstanding]);
+        if (message.mode === 'fixed' && reference) await referenceFrom(reference,message.options,mask);
+        else engine?.resetTemporalState();
+        send({type:'comparison',id});
       } else if (type === 'frame') {
         received++;
-        if (!engine || !engine.ring.idle) { message.frame.close(); send({ type: 'dropped', id }); return; }
+        if (!engine || !engine.ring.idle || outstanding.size) { message.frame.close(); message.referenceFrame?.close(); send({ type: 'dropped', id }); return; }
         const available = performance.now();
         const operation = (async () => {
           try {
+            let preparationMs = 0;
+            if (message.referenceFrame) {
+              const started = performance.now();
+              const info = await engine.setReference(message.referenceFrame,{roiMask:mask});
+              preparationMs = performance.now()-started;
+              referenceAdmissible = [...info.referenceValid].reduce((n,v,i)=>n+ +(v && (!info.roiSelected || info.roiSelected[i])),0);
+            }
             if (message.reset) engine.resetTemporalState();
             engine.setAnalyticTruth(message.truth ?? null);
             last = await engine.register(message.frame);
+            last.timing.pairReferencePreparationWallMs = preparationMs;
+            lastComparison = {...message.comparison, referenceAdmissible, requested:last.selected, fixedImageCoordinateRoi:true};
             const age = performance.now() - available;
             const plateScore = message.plate ? scorePlate(await engine.exportField(), message.plate, engine.reference.roiSelected ?? new Uint8Array(last.grid[0] * last.grid[1]).fill(1)) : null;
             if (plateScore) last.truthRmse = plateScore.displacementRmsePx;
@@ -76,7 +93,7 @@ export function createSession(send) {
             while (completionTimes.length > 1 && completionTimes[0] < performance.now() - 3000) completionTimes.shift();
             ages.push(age); if (ages.length > 120) ages.shift();
             sampleLog.push({ frame: message.frameIndex, workerAvailableMs: available, captureTimestampUs: message.frame.timestamp ?? null, completedMs: performance.now(),
-              ageMs: age, gpuFieldObservableMs: last.timing.wallMs, truthRmse: last.truthRmse,
+              ageMs: age, comparison:lastComparison, referencePreparationMs:preparationMs, gpuFieldObservableMs: last.timing.wallMs, truthRmse: last.truthRmse,
               acceptance: last.acceptance, accepted: last.accepted, meanIterations: last.meanIterations });
             if (sampleLog.length > 18000) sampleLog.shift();
             const sorted = [...ages].sort((a, b) => a - b);
@@ -85,8 +102,8 @@ export function createSession(send) {
               ageP95: sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * .95))],
               accepted: last.accepted, selected: last.selected, meanIterations: last.meanIterations,
               truthRmse: last.truthRmse, scale, counters: last.counters, timing: last.timing,
-              frameIndex: message.frameIndex, plateScore });
-          } finally { message.frame.close(); }
+              frameIndex: message.frameIndex, plateScore, comparison:lastComparison });
+          } finally { message.frame.close(); message.referenceFrame?.close(); }
         })();
         outstanding.add(operation); try { await operation; } finally { outstanding.delete(operation); }
       } else if (type === 'show-reference') {
@@ -95,6 +112,7 @@ export function createSession(send) {
         present({ type: 'preview', id });
       } else if (type === 'display') {
         display = { ...display, ...message.display };
+        await Promise.all([...outstanding]);
         if (last) { const scale = renderer?.draw(engine, last, showingReference ? { ...display, opacity: 0, imageTexture: referenceTexture } : display); present({ type: 'scale', id, scale }); }
         else send({ type: 'scale', id, scale: null });
       } else if (type === 'reset') {
@@ -103,7 +121,7 @@ export function createSession(send) {
         await Promise.all([...outstanding]);
         if (!engine) throw new Error('No field is available');
         const start = performance.now(), field = await engine.exportField();
-        const metadata = { configuration: engine.reference.config, capabilities, profile, createdAt: new Date().toISOString(),
+        const metadata = { configuration: engine.reference.config, capabilities, profile, comparison:lastComparison, createdAt: new Date().toISOString(),
           exportSerial: ++exportSerial, readbackWallMs: performance.now() - start,
           width: field.width, height: field.height, grid: field.grid, subsetSize: field.subsetSize,
           subsetStride: field.subsetStride, samples: sampleLog,
@@ -117,7 +135,7 @@ export function createSession(send) {
         engine = renderer = reference = null; send({ type: 'destroy', id });
       }
     } catch (error) {
-      message.frame?.close();
+      message.frame?.close(); message.referenceFrame?.close();
       send({ type: 'error', id, message: error instanceof Error ? error.message : String(error) });
     }
   }

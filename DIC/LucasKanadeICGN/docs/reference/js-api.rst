@@ -212,3 +212,20 @@ The static plate demo maps its complete field to compare with analytic truth.
 Its selected far-field population is labelled in ``acquisition.analyticScore``;
 its scoring readback must not be confused with the camera/video small-summary
 path. The analytical helper and material constants never enter the solver.
+
+Application local-source contract
+---------------------------------
+
+The PWA supervisor (not ``DICEngine`` defaults) adds local File-based image and
+video sources and ``fixed`` / ``consecutive`` comparison modes. Each exported
+``comparison`` records reference and target input metadata, the geometric
+``requested`` count, ``referenceAdmissible`` and ``fixedImageCoordinateRoi``.
+``pairReferencePreparationWallMs`` is zero for a normal fixed-reference frame;
+for a consecutive pair it includes ``setReference`` on the predecessor. Worker
+age includes this preparation. Image filenames, sizes, modification timestamps
+and the sequence manifest are retained in application export metadata.
+
+Image folders use lazy, sequential natural ordering. Files of incompatible size
+are rejected rather than resized. The playback-rate cap does not define physical
+time. Video timestamps use decoded media time; a missing timestamp remains null.
+The application does not accumulate incremental fields or infer strain rates.

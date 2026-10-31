@@ -1,7 +1,7 @@
 Run the local browser application
 =================================
 
-The browser companion accepts a camera or an analytic demonstration and keeps
+The browser companion accepts a camera, local video, local image sequence or an analytic demonstration and keeps
 its frame processing on the device. It uses the same portable WGSL solver as
 native Python. Pierre Margerit's foundational GPU work made this project
 possible. Python remains the recommended supervisor for NumPy acquisition and
@@ -13,7 +13,8 @@ Open or serve it
 The Pages workflow is prepared, but enabling or publishing the site is a
 repository-owner action. In GitHub, select **Settings → Pages → Source → GitHub
 Actions**. After a successful deployment, open the URL displayed by the Pages
-job. A prepared workflow alone does not prove that a public site exists.
+job. Builds retain an artifact and skip deployment while Pages is not configured;
+the workflow never enables Pages. A prepared workflow alone does not prove that a public site exists.
 
 For a local checkout, assemble the assets and serve the resulting directory:
 
@@ -36,7 +37,7 @@ canonical shader directories.
 Try the demonstration first
 ---------------------------
 
-Choose **Analytic demo**. The application loads a derived 1920 × 1080 tensile
+Choose **Tensile demo**. The application loads a derived 1920 × 1080 tensile
 replay, captures its reference and displays displacement magnitude. The
 reference, image-formation recipe, raw input pixel hashes and encoded-file
 hash are in ``web-app/demo/manifest.json``. The 200-frame stretch history comes
@@ -80,6 +81,58 @@ processor is available it supplies the frames directly; otherwise the app uses
 video-frame callbacks and ImageBitmap/VideoFrame capture. Input colour-to-gray
 conversion runs on GPU. The cold reference preparation reads grayscale once;
 target frames are not read into a CPU pixel array.
+
+Open your own images or video
+-----------------------------
+
+Choose **Open image folder** or **Select images**. Images are decoded lazily,
+one pair at a time, in natural relative-filename order (``frame_2`` before
+``frame_10``). PNG, JPEG, WebP, BMP, AVIF and GIF are admitted when the browser
+can decode them; animated image formats are treated as still images. Unsupported
+files are listed as ignored. TIFF is not admitted. No images are uploaded.
+
+Select a **Reference image**, then **Set selected reference**. The timeline,
+**Previous image** and **Next image** select the target. **Play** processes every
+image sequentially without skipping a file. The image rate cap limits replay
+speed; zero removes that cap. This replay setting is not an acquisition clock.
+An undecodable image or a different image size stops playback with its filename;
+there is no implicit resampling. Change the source to begin a different size.
+
+**Open video** uses the browser decoder and a temporary local Blob URL. Use the
+timeline to seek while paused and **Play** to resume; the playback-speed control
+affects presentation, not the acquisition timestamps. Codec support depends on
+the browser. No codec or decoder is downloaded by the application. The actual
+decoded size is used even if another requested camera resolution is selected.
+
+Fixed or consecutive reference
+------------------------------
+
+**Fixed reference** remains the default. Every target is compared with the
+captured reference. **Consecutive received images** performs a new IC-GN
+correlation between the previous input and the current input; it does not
+subtract two displacement fields and it never chooses the last successful
+result as the next reference. This is an incremental field, not an accumulated
+material trajectory. Strains refer to that pair's reference configuration.
+
+For folders the pair is exactly files ``n-1`` and ``n``. For video/camera the
+application retains only the latest received predecessor and has one pair in
+flight. It drops and counts work when busy and rejects detected gaps; delivered
+frames can already be missing upstream. It cannot reconstruct an unreceived
+camera frame. Export records both input identifiers and video timestamps when
+available. Seeking, pausing or switching modes clears the retained predecessor.
+The analytical plate preset uses fixed reference and labels that restriction.
+
+Consecutive mode rebuilds the grayscale reference, gradients, Hessian and ROI
+preparation on every pair. Its reference-preparation time is reported separately
+and included in worker result age. **This mode is not qualified for 4K60**; the
+fixed-reference GPU timings must not be used to describe it.
+
+The entire geometric ROI is requested on every pair, including after a failed
+or textureless frame. Numerical invalidity and non-convergence are retained as
+statuses and do not shrink the ROI. Choose **Status · entire ROI** to distinguish
+excluded, unavailable, rejected, unconverged, valid and flagged/replaced cells.
+A failed cell is not a valid zero displacement. The mask remains in image
+coordinates when the pair reference changes; it is not advected with material.
 
 Build and edit a mask with domains and holes
 --------------------------------------------

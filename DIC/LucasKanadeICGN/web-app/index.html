@@ -18,7 +18,21 @@
     <section class="workspace">
       <div class="viewer"><div class="viewer-tools"><label>Zoom<select id="zoom"><option value="1">Fit</option><option value="2">×2</option><option value="4">×4</option><option value="8">×8</option></select></label><button id="centre-view">Centre view</button><span>Scroll to pan when zoomed</span></div><div id="image-viewport"><div id="scene"><canvas id="field" width="1280" height="720" aria-label="Camera and displacement field"></canvas><canvas id="roi" aria-label="Draw the reference ROI"></canvas><div id="placeholder">Choose the analytic demo or connect a camera.</div></div></div><div class="legend"><span id="low">−1</span><div></div><span id="high">+1 px</span><span class="gray-key">Grey: unavailable / rejected</span></div></div>
       <aside class="panel">
-        <div class="control-group"><h2>1. Source &amp; reference</h2><div class="buttons"><button id="demo">Tensile demo</button><button id="plate">Plate with hole · UHD</button><button id="camera">Camera</button></div>
+        <div class="control-group"><h2>1. Source &amp; reference</h2><div class="buttons"><button id="demo">Tensile demo</button><button id="plate">Plate with hole · UHD</button><button id="camera">Camera</button><button id="open-video">Open video</button><button id="open-folder">Open image folder</button><button id="open-images">Select images</button></div>
+        <input id="video-file" type="file" accept="video/*" hidden>
+        <input id="image-folder" type="file" webkitdirectory multiple hidden>
+        <input id="image-files" type="file" accept="image/png,image/jpeg,image/webp,image/bmp,image/avif,image/gif" multiple hidden>
+        <div id="local-controls" hidden>
+          <p class="hint" id="local-name"></p>
+          <div id="image-reference-controls" hidden><label>Reference image<select id="image-reference"></select></label><button id="use-image-reference">Set selected reference</button></div>
+          <label id="local-seek-label">Target<input id="local-seek" type="range" min="0" max="1" value="0" step="1"><output id="local-position"></output></label>
+          <div class="buttons" id="image-step-controls"><button id="previous-image">Previous image</button><button id="next-image">Next image</button></div>
+          <label id="image-rate-label">Image rate cap (0 = as fast as possible)<input id="image-rate" type="number" min="0" max="240" value="30" step="1"></label>
+          <label id="video-rate-label" hidden>Playback speed<select id="video-rate"><option value="0.25">×0.25</option><option value="0.5">×0.5</option><option value="1" selected>×1</option><option value="2">×2</option></select></label>
+          <p class="hint">Files stay on this device. Folder playback processes every image in natural filename order; video uses the browser decoder.</p>
+        </div>
+        <label>Comparison<select id="comparison"><option value="fixed">Fixed reference</option><option value="consecutive">Consecutive received images · rebuild reference per pair</option></select></label>
+        <p class="hint">Every subset selected by the ROI is requested. Failed estimates retain their status; they do not remove regions from the next pair. Consecutive mode rebuilds the reference and is slower.</p>
         <label id="plate-load-label" hidden>Plate load<select id="plate-load"><option value="95">Frame 95 · 250 / 0 MPa</option><option value="225">Frame 225 · 250 / 80 MPa</option></select></label>
         <label>Requested resolution<select id="resolution"><option value="1280x720">720p · 1280 × 720</option><option value="1920x1080">1080p · 1920 × 1080</option><option value="3840x2160">UHD · 3840 × 2160</option></select></label>
         <label>Profile<select id="profile"><option value="portable">Portable · two levels, one slot</option><option value="qualified-latency">Qualified latency configuration</option><option disabled>Minimal · trajectory gates not qualified</option></select></label>
@@ -36,7 +50,7 @@
           <p class="hint">Add as many shapes as needed. A shape fully inside another becomes a hole; inside a hole it becomes an island. Separate/overlapping outer domains unite. Drag handles or enter coordinates. Changes take effect with Apply mask.</p>
         </div>
         <p class="hint" id="roi-summary">Full image · no mask.</p>
-        </div><div class="control-group"><h2>3. Display &amp; export</h2><label>Field<select id="component"><option value="2">Displacement magnitude |u|</option><option value="0">Horizontal u</option><option value="1">Vertical v</option><option value="3">Affine gradient du/dx</option><option value="4">Affine gradient dv/dy</option><option value="5">Affine symmetric shear</option><option value="7">von Mises strain εVM (εzz = 0)</option><option value="6">Status</option></select></label>
+        </div><div class="control-group"><h2>3. Display &amp; export</h2><label>Field<select id="component"><option value="2">Displacement magnitude |u|</option><option value="0">Horizontal u</option><option value="1">Vertical v</option><option value="3">Affine gradient du/dx</option><option value="4">Affine gradient dv/dy</option><option value="5">Affine symmetric shear</option><option value="7">von Mises strain εVM (εzz = 0)</option><option value="6">Status · entire ROI, including failures</option></select></label>
         <label>Scale<select id="scale"><option value="auto">Automatic</option><option value="0.001">±0.001</option><option value="0.002">±0.002</option><option value="0.005">±0.005</option><option value="1">±1</option><option value="10">±10</option><option value="100">±100</option></select></label>
         <label>Field opacity<select id="opacity"><option value="0.7">Blend with the image</option><option value="1">Field only</option><option value="0">Image only</option></select></label>
         <label class="check"><input id="arrows" type="checkbox">Displacement arrows</label>

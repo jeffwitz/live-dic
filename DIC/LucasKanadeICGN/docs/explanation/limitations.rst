@@ -215,3 +215,13 @@ derived compressed asset; lossless UHD fixtures remain the scientific tests.
 Only desktop Linux Chromium execution has been exercised locally. Android,
 iOS/iPadOS Safari, desktop Safari and Firefox remain untested. Portable Python
 CI is not evidence of camera or GPU qualification on those platforms.
+
+Local sequences and incremental browser fields
+----------------------------------------------
+
+Local image decoding and video codecs depend on browser support; TIFF image
+sequences are unsupported. Consecutive comparison rebuilds the numerical
+reference for each pair and has no 4K60 qualification. Its ROI stays in image
+coordinates, not material coordinates. Input frame loss cannot be reconstructed;
+known gaps and busy-pair drops are counted. Incremental fields are not cumulative
+trajectories. Playback speed does not provide physical acquisition time.

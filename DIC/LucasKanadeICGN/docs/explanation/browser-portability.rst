@@ -317,3 +317,16 @@ visible arrows, unchanged source values and no arrows at invalid origins.
 Real DevTools pointer events qualify drawing, moving, numeric resizing,
 deletion/undo and applying a multi-hole UHD mask. These tests do not replace
 phone/touch-hardware qualification or renew the historical FPS measurements.
+
+Local-source and pair ownership
+-------------------------------
+
+The supervisor owns File handles and decodes only the current image pair; it
+releases ImageBitmap/VideoFrame objects after submission and revokes old local
+video URLs on source replacement. Source replacement drains work and invalidates
+pending asynchronous decodes. Folder replay awaits each field; video/camera use
+bounded admission and count dropped pairs. The consecutive predecessor advances
+on received input, independent of solver acceptance. This preserves the geometric
+ROI after numerical failures. Consecutive reference preparation is CPU/GPU cold
+work per pair and is included in its own timing boundary; it is not the ordinary
+fixed-reference real-time path.

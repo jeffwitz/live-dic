@@ -12,12 +12,15 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  pages: read
 concurrency:
   group: pages
   cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      pages_enabled: ${{ steps.pages.outputs.enabled }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Assemble and verify canonical shader and demo hashes
@@ -27,8 +30,31 @@ jobs:
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: _site
+      - name: Check the owner's existing Pages configuration
+        id: pages
+        shell: python
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          import json, os, urllib.error, urllib.request
+          request = urllib.request.Request(
+              f"https://api.github.com/repos/{os.environ['GITHUB_REPOSITORY']}/pages",
+              headers={"Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+                       "Accept": "application/vnd.github+json"})
+          try:
+              with urllib.request.urlopen(request) as response:
+                  configured = json.load(response).get("build_type") == "workflow"
+          except urllib.error.HTTPError as error:
+              if error.code != 404:
+                  raise
+              configured = False
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"enabled={str(configured).lower()}\n")
+          print("Pages deployment enabled by owner" if configured else
+                "Artifact prepared; deployment skipped until Settings > Pages > GitHub Actions is selected")
   deploy:
     needs: build
+    if: needs.build.outputs.pages_enabled == 'true'
     runs-on: ubuntu-latest
     permissions:
       pages: write

@@ -451,3 +451,19 @@ qualification rather than infer mobile coverage from desktop results.
   display oracles on hardware/SwiftShader; it is prepared in browser CI. Retain
   the original/edited population distinction and do not interpret static scores
   as FPS qualification. `docs/how-to/run-in-browser.rst` documents all controls.
+
+### Local source and consecutive comparison follow-up — 2026-10-31
+
+- Local image folders decode lazily in natural relative-filename order and
+  await every image; local video uses a Blob URL and browser codecs. Never
+  resize an incompatible input silently or upload local data.
+- Fixed reference stays the default. Consecutive mode performs a real solve
+  against the immediately preceding input, including after numerical failure;
+  it rebuilds the reference and includes that preparation in result age.
+  Do not describe this cold-per-pair mode using fixed-reference FPS claims.
+- The geometric ROI remains requested independently of numerical validity.
+  Status view covers the entire grid. A mask in consecutive mode remains in
+  image coordinates; it is not material tracking or cumulative integration.
+- `tools/qualify_local_sources.py` exercises real file inputs, UHD pair parity,
+  failure recovery, dimension rejection, and local video seek/play/pause. Source
+  replacement drains work, aborts pending decodes and closes frame ownership.
