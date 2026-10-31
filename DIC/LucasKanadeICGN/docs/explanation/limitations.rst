@@ -250,3 +250,11 @@ VSG compose their support sizes: two 5-point operations on a 16/16 grid have a
 nominal 144 px strain span, not an 80 px span. Smaller windows can preserve more
 spatial detail; numerical operator tests are not a material-specific choice of
 strain gauge size.
+
+Mask-image input is a reference-preparation operation. Exact mode rejects
+nonbinary/transparent decoded images; explicit threshold conversion is a user
+choice. Imported black pixels cannot be restored by adding vector domains;
+replace/reimport that base to change them. Preview/export of unapplied edits is
+distinct from the applied mask carried by a numerical field. The result canvas
+has no retained source image; its vector and contour overlays use reference
+coordinates and are presentation only.

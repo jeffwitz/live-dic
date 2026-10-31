@@ -18,6 +18,7 @@ export function createSession(send) {
   let lastComparison = null, referenceAdmissible = 0;
   let recording = false;
   let analysisEpoch = null;
+  let activeOptions = null;
   let bitmapPresentation = false, profile = null;
   const completionTimes = [];
   const outstanding = new Set();
@@ -36,6 +37,7 @@ export function createSession(send) {
     engine.device.lost.then((info) => { if (info.reason !== 'destroyed') send({ type: 'error', message: `GPU device lost: ${info.message}` }); });
     engine.device.addEventListener('uncapturederror', (event) => send({ type: 'error', message: `WebGPU: ${event.error.message}` }));
     mask = roiMask; profile = options.profile ?? 'portable';
+    activeOptions = structuredClone(options);
     analysisEpoch = crypto.randomUUID();
     const info = await engine.setReference(frame, { roiMask: mask });
     referenceAdmissible = [...info.referenceValid].reduce((n,v,i)=>n+ +(v && (!info.roiSelected || info.roiSelected[i])),0);
@@ -72,7 +74,7 @@ export function createSession(send) {
         send({ type: 'reference', id, info });
       } else if (type === 'comparison') {
         await Promise.all([...outstanding]);
-        if (message.mode === 'fixed' && reference) await referenceFrom(reference,message.options,mask);
+        if (message.mode === 'fixed' && reference) await referenceFrom(reference,activeOptions,mask);
         else engine?.resetTemporalState();
         send({type:'comparison',id});
       } else if (type === 'recording') {

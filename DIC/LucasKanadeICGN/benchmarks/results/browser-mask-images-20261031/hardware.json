@@ -1,0 +1,62 @@
+{
+  "build": {
+    "commit": "bf8d8215ac88e5a1f4a5d08f65f63cef241d4e7e",
+    "dirty": true,
+    "shaders": {
+      "full_pyramid.wgsl": "d00ef999c5dbc23013928e95ea6ca498a52fbb63850056c05bdbd3c963dc0401",
+      "icgn.wgsl": "a60231689fbc3d29953fd98eb8d04649ec93cbec0f5a89a65446df716152299b",
+      "icgn_subgroup.wgsl": "d68225b1b6b6b21071e59ea6109bbd24dc0fd8b6734b6ebc4f7d59356799a034",
+      "input.wgsl": "d269f8bf203e3363a6e753476c49de27188329409fa5a848358ea031bb554f7e",
+      "result.wgsl": "a587a3112670a702578df6c13f75addd4136e43fa6c7efba7959aa472d0e3267",
+      "subgroup_probe.wgsl": "6e4d149ed7f17969ede557a3062742d8da6c62cb6dd745d5510112c1489fed61"
+    },
+    "demo_manifest_sha256": "c78c445a38a8541d632f28e85ec1154e492b4195c7b8f5d4755597e07605f24a",
+    "plate_image_sha256": {
+      "reference.png": "26135118b554c5996443f07abd2a89273a344154338c4c7f428ab283f85f7192",
+      "frame_095.png": "af0f4c09d2e9292beb4cbbabe01c6651a2e914c1b36b569a5861a8be431d3faf",
+      "frame_225.png": "abe3693810e289b8a2029833011a0d59fdf7ff1ea975eea91b12dc5e708d2897"
+    },
+    "cache_version": "bf8d8215ac88e5a1f4a5d08f65f63cef241d4e7e-dirty-ea9146f1c9ec"
+  },
+  "software": false,
+  "user_agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+  "original_selected": 32220,
+  "clipped_selected": 32195,
+  "mask_sha256": "479de8439783f197fae814fee0d5513f24e192d27cf812687ead135bf7e31311",
+  "clipped_sha256": "2d3a25518523552aaca476092d8a9665cc2204198bc6186b8948a8b87afd2cd4",
+  "exported_png_sha256": "77fb7cd9918ef14557084b05180e473f02ffa01e6002ea2515196aaf82585c9f",
+  "geometry": {
+    "version": 2,
+    "composition": "imported binary image intersected with vector domains/holes",
+    "baseImage": {
+      "name": "gray.png",
+      "size": 13720,
+      "type": "image/png",
+      "lastModified": 1793448264874,
+      "sha256": "68724733cf502aae3cbdeffc6eed2f87c7eb5c969f48f56ad8382f3705256359",
+      "threshold": 128,
+      "convention": "rounded BT.709 luminance >= threshold and alpha >= 128"
+    },
+    "shapes": [
+      {
+        "id": "image-mask-domain",
+        "label": "Clip image mask",
+        "type": "rectangle",
+        "x": 0,
+        "y": 0,
+        "width": 3840,
+        "height": 2160
+      },
+      {
+        "id": "region-5",
+        "label": "circle 5",
+        "type": "circle",
+        "x": 480,
+        "y": 480,
+        "width": 80,
+        "height": 80
+      }
+    ]
+  },
+  "errors": []
+}

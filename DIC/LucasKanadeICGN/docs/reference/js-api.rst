@@ -273,3 +273,21 @@ geometry, actual solver configuration, metadata, recipe and a shared mask path.
 No source image or live permission is embedded. Import validates shapes, finite
 parameters, documented statuses, integer iteration counts, recipes, mask hashes
 and library capacity before adding a batch. It never changes an active solver.
+
+Application mask-image and display contract
+-------------------------------------------
+
+The mask editor accepts an optional immutable binary image base, intersected
+with its vector ROI. Exact import accepts only opaque black/white decoded pixels;
+explicit threshold import uses rounded BT.709 luminance and alpha >= 128.
+Dimensions must match. File hash and conversion are retained with applied vector
+geometry; exported binary masks are sufficient to reconstruct the numerical ROI.
+Mask edits remain unapplied until preparation completes. Cold source/reference
+operations are serialized and invalidate stale seeks; comparison-mode changes
+reuse applied solver options rather than pending form edits.
+
+The results view can draw processed displacement vectors and a binary-pixel ROI
+contour. Pixel-index measurements use integer pixel centres; canvas coordinates
+include the corresponding +0.5 offset. Display controls are saved separately
+from processing recipes. Application exports also include the assembled build's
+revision/content version and canonical shader hashes when available.

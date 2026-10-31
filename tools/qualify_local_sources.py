@@ -248,6 +248,12 @@ def main():
             ]["comparison"]
             video_state = browser._evaluate("liveDicSourceState()")
             assert video_state["videoPaused"], video_state
+            if args.software:
+                # A finite movie can end while a slow software solve is still in flight.
+                # Exercise the actual slow-playback control; this is correctness, not FPS qualification.
+                browser._evaluate(
+                    "document.getElementById('video-rate').value='0.0625';document.getElementById('video-rate').onchange();true"
+                )
             before = browser._evaluate("liveDicStatus.completed")
             browser._evaluate("document.getElementById('pause').onclick().then(()=>true)")
             wait(browser, f"liveDicStatus.completed>{before + 1}")

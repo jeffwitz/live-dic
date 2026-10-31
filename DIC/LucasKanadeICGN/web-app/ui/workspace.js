@@ -42,5 +42,5 @@ export function solverOptions() {
     interpolation: get('interpolation').value, outlierPolicy: get('outlier-policy').value,
     pyramidLevels: levels, iterationsPerLevel: levels === 1 ? [fine] : levels === 2 ? [coarse, fine] : [coarse, 4, fine],
     initialization: temporal ? 'temporal' : 'zero', temporalPrediction: temporal ? 'velocity' : 'none',
-    temporalFineCorrection: temporal, divergencePatience: temporal ? 3 : null };
+    temporalFineCorrection: temporal && levels === 2, divergencePatience: temporal ? 3 : null };
 }

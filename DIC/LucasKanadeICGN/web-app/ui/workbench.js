@@ -47,6 +47,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   let requestId = 0, workerBusy = false, pendingAnalysis = false, workerFieldId = null, debounce = null;
   let pendingImport = null, importSerial = 0;
   let history = null, historyAbort = null;
+  const contours = new WeakMap();
   const worker = typeof Worker === 'function' ? new Worker(new URL('./analysis-worker.js', import.meta.url), { type: 'module' }) : null;
   const recording = () => $('record-fields').checked;
   const activeEntry = () => entries.find(entry => entry.id === selected);
@@ -56,7 +57,8 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   function viewSettings() {
     return { component:$('review-component').value,colourScale:$('review-scale').value,
       minimum:Number($('review-min').value),maximum:Number($('review-max').value),
-      palette:$('review-palette').value,tool,points };
+      palette:$('review-palette').value,vectors:$('review-vectors').checked,vectorStep:Number($('review-vector-step').value),
+      vectorGain:Number($('review-vector-gain').value),contour:$('review-contour').checked,tool,points };
   }
   function restoreView(view) {
     if(!view)return;
@@ -64,6 +66,9 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
       if([...$(id).options].some(option=>option.value===view[key]))$(id).value=view[key];
     if([view.minimum,view.maximum].every(Number.isFinite)&&view.maximum>view.minimum){$('review-min').value=view.minimum;$('review-max').value=view.maximum;}
     $('manual-limits').hidden=$('review-scale').value!=='manual';
+    $('review-vectors').checked=view.vectors===true;$('review-contour').checked=view.contour===true;
+    if([2,4,8].includes(view.vectorStep))$('review-vector-step').value=view.vectorStep;
+    if([1,5,20,50,100].includes(view.vectorGain))$('review-vector-gain').value=view.vectorGain;
   }
 
   function memoryBytes(extra = []) {
@@ -126,6 +131,8 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     $('saved-fields').value = entry.id; $('results-workbench').hidden = false;
     $('return-live').hidden = false; canvas.hidden = false; overlay.hidden = false; $('field').hidden = true;
     canvas.width = overlay.width = entry.field.width; canvas.height = overlay.height = entry.field.height;
+    for(const id of ['measure-ax','measure-bx'])$(id).max=entry.field.width-1;
+    for(const id of ['measure-ay','measure-by'])$(id).max=entry.field.height-1;
     $('roi').hidden=true;$('review-controls').hidden=false;$('live-appearance').hidden=true;$('recording-panel').open=false;
     const index=entries.indexOf(entry);$('previous-result').disabled=index<=0;$('next-result').disabled=index>=entries.length-1;
     $('result-title').textContent = entry.label;
@@ -147,7 +154,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
           : `${result.recipe.smoothing} displacement smoothing · ${result.recipe.strainSource === 'vsg' ? 'VSG strain' : 'direct gradients'} · ${result.recipe.window} × ${result.recipe.window} grid points · nominal displacement span ${result.smoothingSpanPx} px / strain span ${result.strainSpanPx} px. No filling across gaps.`;
         render();
       }
-      for (const id of ['save-npz','save-processed-csv','save-figure']) $(id).disabled = !analysis;
+      for (const id of ['save-npz','save-processed-csv','save-figure','measurement-inputs']) $(id).disabled = !analysis;
     }
     if (pendingAnalysis && reviewing) runAnalysis();
   }
@@ -175,7 +182,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     clearHistory();
     requestId++; pendingAnalysis = true; clearTimeout(debounce); analysis = null;
     $('analysis-state').textContent = 'Updating analysis…';
-    for (const id of ['save-npz','save-processed-csv','save-figure']) $(id).disabled = true;
+    for (const id of ['save-npz','save-processed-csv','save-figure','measurement-inputs']) $(id).disabled = true;
     debounce = setTimeout(runAnalysis, 60);
   }
   function format(value, unit) { if (value == null) return 'unavailable'; return `${number(STRAIN_COMPONENTS.has($('review-component').value) ? value*1e6 : value)} ${STRAIN_COMPONENTS.has($('review-component').value) ? 'µε' : unit}`; }
@@ -214,8 +221,33 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     context.putImageData(image,0,0);
     const ctx = canvas.getContext('2d'); ctx.fillStyle = '#263b47'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.imageSmoothingEnabled = false;
     // Samples occupy a stride-sized cell centred on the actual reference subset centre.
-    const offset = (field.subsetSize-field.subsetStride-1)/2;
+    const offset = (field.subsetSize-field.subsetStride)/2;
     ctx.drawImage(small,offset,offset,gw*field.subsetStride,gh*field.subsetStride);
+    if($('review-contour').checked){
+      const mask=activeEntry().mask;
+      if(mask){
+        if(!contours.has(mask)){
+          const path=new Path2D(),w=field.width,h=field.height;
+          for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;if(!mask[i])continue;
+            if(x===0||!mask[i-1]){path.moveTo(x,y);path.lineTo(x,y+1);}
+            if(x===w-1||!mask[i+1]){path.moveTo(x+1,y);path.lineTo(x+1,y+1);}
+            if(y===0||!mask[i-w]){path.moveTo(x,y);path.lineTo(x+1,y);}
+            if(y===h-1||!mask[i+w]){path.moveTo(x,y+1);path.lineTo(x+1,y+1);}
+          }contours.set(mask,path);
+        }
+        ctx.strokeStyle='#ffffff';ctx.lineWidth=Math.max(1,field.width/1200);ctx.stroke(contours.get(mask));
+      }
+    }
+    if($('review-vectors').checked){
+      const step=Number($('review-vector-step').value),gain=Number($('review-vector-gain').value),path=new Path2D();
+      for(let y=0;y<gh;y+=step)for(let x=0;x<gw;x+=step){const i=y*gw+x;if(!analysis.valid[i])continue;
+        const ax=x*field.subsetStride+field.subsetSize/2,ay=y*field.subsetStride+field.subsetSize/2;
+        const dx=analysis.fields.u[i]/analysis.recipe.unitsPerPixel*gain,dy=analysis.fields.v[i]/analysis.recipe.unitsPerPixel*gain,length=Math.hypot(dx,dy);if(length<.01)continue;
+        const bx=ax+dx,by=ay+dy,head=Math.min(length*.4,field.width/300),ux=dx/length,uy=dy/length;
+        path.moveTo(ax,ay);path.lineTo(bx,by);path.moveTo(bx-head*ux+head*.45*uy,by-head*uy-head*.45*ux);path.lineTo(bx,by);path.lineTo(bx-head*ux-head*.45*uy,by-head*uy+head*.45*ux);
+      }
+      ctx.strokeStyle='#173b4c';ctx.lineWidth=Math.max(3,field.width/700);ctx.stroke(path);ctx.strokeStyle='#fff';ctx.lineWidth=Math.max(1,field.width/1800);ctx.stroke(path);
+    }
     $('low').textContent = component==='status' ? 'Excluded / failed' : format(low,unit);
     $('high').textContent = component==='status' ? 'Accepted / flagged' : format(high,unit);
     document.querySelector('.legend').classList.toggle('status',component==='status');
@@ -233,18 +265,22 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   }
   function updateInspection() {
     const ctx = overlay.getContext('2d');ctx.clearRect(0,0,overlay.width,overlay.height);extraction=[];
+    document.querySelectorAll('.second-endpoint').forEach(label=>label.hidden=tool==='probe');
+    for(const id of ['measure-bx','measure-by']){$(id).required=tool!=='probe';$(id).disabled=tool==='probe';}
+    for(const [i,ids] of [[0,['measure-ax','measure-ay']],[1,['measure-bx','measure-by']]])
+      for(const [axis,id] of ids.entries())$(id).value=points[i]?.[axis]??'';
     if (!analysis || !points.length) { $('cursor-value').hidden=true;$('probe-value').textContent='Click the field above to place a measurement.'; drawChart([]);$('save-profile').disabled=true;return; }
     const component=$('review-component').value,{values,valid,unit}=componentValues(analysis,component),f=analysis.field;
     const indices=points.map(([x,y])=>nearestIndex(f,x,y)),snapped=indices.map(i=>i<0?null:pointPosition(i));
     ctx.strokeStyle='#fff';ctx.fillStyle='#153c48';ctx.lineWidth=Math.max(2,f.width/600);
-    for(const point of snapped)if(point){ctx.beginPath();ctx.arc(...point,Math.max(4,f.width/300),0,2*Math.PI);ctx.fill();ctx.stroke();}
+    for(const point of snapped)if(point){ctx.beginPath();ctx.arc(point[0]+.5,point[1]+.5,Math.max(4,f.width/300),0,2*Math.PI);ctx.fill();ctx.stroke();}
     if(tool==='probe') {
       const i=indices[0];
       if(i<0){$('probe-value').textContent='Outside the measured grid.';$('cursor-value').hidden=true;return;}
       $('probe-value').textContent=`Subset ${i} · x=${snapped[0][0].toFixed(1)}, y=${snapped[0][1].toFixed(1)} px\n${STATUS[Math.round(f.status[i])] ?? 'Unknown status'} · ${f.iterations[i]} iterations\n${component}: ${valid[i]?format(values[i],unit):'unavailable — not a valid measurement'}`;
       extraction=[{distance:0,x:snapped[0][0],y:snapped[0][1],value:valid[i]?values[i]:null,status:f.status[i]}];
     } else if(points.length===2 && snapped.every(Boolean)) {
-      const [a,b]=snapped;ctx.beginPath();ctx.moveTo(...a);ctx.lineTo(...b);ctx.stroke();
+      const [a,b]=snapped;ctx.beginPath();ctx.moveTo(a[0]+.5,a[1]+.5);ctx.lineTo(b[0]+.5,b[1]+.5);ctx.stroke();
       if(tool==='gauge') {
         const gauge=extensometer(analysis,a,b);
         $('probe-value').textContent=gauge?`Gauge L₀ = ${number(gauge.referenceLength)} ${gauge.unit}\nΔL = ${number(gauge.extension)} ${gauge.unit} · ΔL/L₀ = ${number(gauge.engineeringStrain*1e6)} µε\nEndpoint distance strain; not a local tensor component.`:'The gauge needs two distinct accepted endpoints. Invalid values are never filled.';
@@ -286,10 +322,16 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   }
   overlay.onpointerdown = event => {
     clearHistory();
-    if(!analysis)return;const rect=overlay.getBoundingClientRect(),point=[(event.clientX-rect.left)/rect.width*overlay.width,(event.clientY-rect.top)/rect.height*overlay.height];
+    if(!analysis)return;const rect=overlay.getBoundingClientRect(),point=[(event.clientX-rect.left)/rect.width*overlay.width-.5,(event.clientY-rect.top)/rect.height*overlay.height-.5];
     if(tool==='probe'||points.length>=2)points=[];points.push(point);updateInspection();
   };
   overlay.classList.add('inspecting');
+  $('measurement-position').onsubmit=event=>{
+    event.preventDefault();if(!analysis)return;
+    const positions=[['measure-ax','measure-ay'],...(tool==='probe'?[]:[['measure-bx','measure-by']])].map(ids=>ids.map(id=>Number($(id).value)));
+    if(positions.some(([x,y])=>!Number.isFinite(x)||!Number.isFinite(y)||x<0||y<0||x>=analysis.field.width||y>=analysis.field.height)){$('inspection-hint').textContent='Use coordinates inside the reference image.';return;}
+    clearHistory();points=positions;updateInspection();
+  };
   document.querySelectorAll('[data-inspect]').forEach(button=>button.onclick=()=>{clearHistory();tool=button.dataset.inspect;points=[];document.querySelectorAll('[data-inspect]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));$('inspection-hint').textContent=tool==='probe'?'Click a subset to inspect values and solver status.':'Click two endpoints on the field; measurements snap to subset centres.';updateInspection();});
   $('clear-inspection').onclick=()=>{clearHistory();points=[];updateInspection();};
   $('extract-history').onclick=async()=>{
@@ -302,7 +344,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
       const rows=await extractHistory(candidates,{recipe,component,points:selection,tool:selectedTool,signal:controller.signal,
         progress:(done,total)=>{$('history-state').textContent=`Analysing saved field ${done} / ${total}…`;}});
       if(controller.signal.aborted)return;history={rows,recipe,component,tool:selectedTool};$('spatial-view').hidden=false;
-      $('history-state').textContent=`${rows.length} fields from the same analysis epoch · ${entries.length-rows.length} unrelated fields excluded. Missing measurements stay gaps. ${entry.metadata.comparison?.mode==='consecutive'?'Pair increments at fixed image coordinates; not cumulative material tracking.':'Same fixed reference.'}`;
+      $('history-state').textContent=`${rows.length} fields from the same analysis epoch · ${entries.length-rows.length} unrelated fields excluded. Missing measurements stay gaps. ${entry.metadata.comparison?.mode==='consecutive'?'Pair increments at fixed image coordinates; not cumulative material tracking.':entry.metadata.comparison?.mode==='fixed'?'Same fixed reference.':'Reference convention not recorded; no accumulated trajectory inferred.'}`;
       updateInspection();
     }catch(e){if(e.name!=='AbortError')$('history-state').textContent=e.message;}
     finally{if(historyAbort===controller){historyAbort=null;$('extract-history').disabled=false;$('cancel-history').hidden=true;}}
@@ -385,7 +427,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   $('reset-processing').onclick=()=>{setRecipe({...DEFAULT_RECIPE,strainSource:activeEntry()?.field.config.motionModel==='translation'?'vsg':'direct'});computedView=false;scheduleAnalysis();};
   $('compare-computed').onclick=()=>{computedView=!computedView;$('compare-computed').textContent=computedView?'Restore processing recipe':'Show computed field';scheduleAnalysis();};
   $('review-component').onchange=()=>{clearHistory();$('review-scale').value='robust';$('manual-limits').hidden=true;render();};
-  for(const id of ['review-scale','review-min','review-max','review-palette'])$(id).onchange=()=>{$('manual-limits').hidden=$('review-scale').value!=='manual';render();};
+  for(const id of ['review-scale','review-min','review-max','review-palette','review-vectors','review-vector-step','review-vector-gain','review-contour'])$(id).onchange=()=>{$('manual-limits').hidden=$('review-scale').value!=='manual';render();};
   $('save-npz').onclick=()=>{if(!analysis)return;const entry=activeEntry();download(`live-dic-${entry.id}.npz`,fieldArchive(entry.field,{...entry.metadata,workbench:{view:viewSettings()},analysis:{recipe:analysis.recipe,processingWallMs:analysis.processingWallMs}},analysis,entry.mask),'application/octet-stream');};
   $('save-processed-csv').onclick=()=>{if(!analysis)return;const {values,valid,unit}=componentValues(analysis,$('review-component').value),lines=[`x_px,y_px,${$('review-component').value}_${unit},valid,solver_status`];for(let i=0;i<values.length;i++)lines.push([...pointPosition(i),valid[i]?values[i]:'',valid[i],analysis.field.status[i]].join(','));download('live-dic-displayed-field.csv',lines.join('\n'),'text/csv');};
   $('save-profile').onclick=()=>{if(!extraction.length)return;const columns=Object.keys(extraction[0]);download('live-dic-extraction.csv',[columns.join(','),...extraction.map(row=>columns.map(k=>row[k]??'').join(','))].join('\n'),'text/csv');download('live-dic-extraction.json',JSON.stringify({recipe:analysis.recipe,view:viewSettings(),valueUnit:(history?.tool??tool)==='gauge'?'strain':componentValues(analysis,$('review-component').value).unit,coordinateUnit:'px',distanceUnit:analysis.recipe.unit,comparison:activeEntry().metadata.comparison},null,2),'application/json');};

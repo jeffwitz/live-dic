@@ -149,3 +149,15 @@ source or settings. Current library storage is 128 MiB, total uncompressed
 archive input is capped at 256 MiB, and the versioned format accepts at most
 512 fields / 4096 ZIP entries. CRC protects entries; ROI hashes are checked
 against their canonical binary mask. Export/import does not execute code.
+
+Mask image editing
+------------------
+
+An optional binary base is intersected with the existing exact vector mask. Undo
+snapshots retain an immutable base reference, not a copied full image per edit.
+Only paused edits rasterize or compose masks. PNG import/export does not change
+IC-GN equations or add a pixel mask in the solver loop. Preparing a new ROI
+reuses the core's full-window selection, conservative links and canonical hash.
+A failed import leaves the existing geometry/calculation intact. Source and
+reference operations share one admission gate, drain pending work and invalidate
+stale video seeks before replacing resources.

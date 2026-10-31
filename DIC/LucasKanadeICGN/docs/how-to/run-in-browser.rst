@@ -99,7 +99,8 @@ An undecodable image or a different image size stops playback with its filename;
 there is no implicit resampling. Change the source to begin a different size.
 
 **Open video** uses the browser decoder and a temporary local Blob URL. Use the
-timeline to seek while paused and **Play** to resume; the playback-speed control
+timeline to seek while paused and **Play** to resume. Slow replay down to ×1/16
+is useful for expensive analysis or software adapters; the playback-speed control
 affects presentation, not the acquisition timestamps. Codec support depends on
 the browser. No codec or decoder is downloaded by the application. The actual
 decoded size is used even if another requested camera resolution is selected.
@@ -177,6 +178,42 @@ fixed mask. Conservative seed/neighbour links and the preprocessing guarantee
 are documented in :doc:`use-roi`. Browser partial ROI and geometric truncation
 remain explicitly unsupported. Export metadata retains both the full binary
 mask and the applied vector geometry, allowing the mask to be reconstructed.
+
+Import or download a black/white mask
+-------------------------------------
+
+After capturing a reference, choose **Import mask image** in **Mask**. White
+retains pixels and black excludes them. The image must have exactly the reference
+width and height; it is never resized. The default exact mode requires opaque,
+strictly black/white decoded pixels. Grayscale, coloured or transparent input is
+refused, rather than silently thresholded.
+
+For an antialiased or grayscale source, explicitly choose **luminance threshold**
+and an integer threshold 0–255 before importing. The conversion keeps pixels
+with rounded BT.709 luminance at least that threshold and alpha at least 128.
+The filename, file hash and conversion convention are recorded. Inspect the
+preview and choose **Apply mask**; import alone does not alter the last numerical
+field. **Full image** removes both the imported base and vector restrictions.
+
+The imported mask is a fixed base. Vector domains/holes clip it by intersection;
+they cannot restore a black base pixel. A full-image rectangle is supplied so
+that adding a nested ellipse/circle/polygon makes an extra hole immediately.
+The preview shows exclusions in the base as well as vector exclusions. Undo
+preserves the base and restores vector edits. To change an existing pixel hole,
+edit/reimport the image itself or replace the mask with vectors.
+
+**Download edited mask PNG** exports the current editable net mask as opaque
+black/white at original size, including unapplied edits. Apply it separately to
+use it for correlation. Numerical field exports always keep the **applied**
+binary mask and geometry, even while another edit is being previewed. In Python:
+
+.. code-block:: python
+
+   from PIL import Image
+   import numpy as np
+
+   mask = np.asarray(Image.open("live-dic-roi-edited.png").convert("L")) == 255
+   engine.set_reference(reference, roi_mask=mask)
 
 Original UHD plate with a hole
 ------------------------------
@@ -271,6 +308,9 @@ median/Gaussian smoothing and VSG plane-fit strain are separate analysis
 operations. **Show computed field** temporarily compares with the computed
 values; **Restore processing recipe** returns to the selected operations.
 The processing worker keeps these operations off the acquisition worker.
+Saved-field vectors use processed displacements with explicit magnification;
+an optional contour follows the exact binary ROI pixels. Image x points right
+and y points down. These displays do not modify computed values.
 
 Choose an odd analysis window in grid points and inspect its pixel span. More
 smoothing trades spatial resolution for lower noise; it is not a robustness

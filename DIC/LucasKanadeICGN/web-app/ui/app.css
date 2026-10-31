@@ -155,3 +155,6 @@ dialog li { margin: 14px 0; line-height: 1.7; font-size: 13px; }
 .viewer .section-heading > .buttons { margin: 0; }
 #cursor-value { position: absolute; z-index: 3; top: 12px; left: 12px; max-width: min(480px,75%); padding: 10px 12px; border-radius: 7px; background: #fffffff0; color: #163540; font-size: 11px; line-height: 1.7; white-space: pre-wrap; pointer-events: none; box-shadow: 0 2px 12px #1233; }
 @media(max-width:760px) { #cursor-value { font-size: 10px; padding: 7px 9px; top: 6px; left: 6px; }.viewer .section-heading{flex-direction:column;} }
+.measurement-coordinates { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 0 14px; }
+#measurement-position fieldset { margin-top: 10px; }
+@media(max-width:760px) { .measurement-coordinates { grid-template-columns: repeat(2,minmax(0,1fr)); } }

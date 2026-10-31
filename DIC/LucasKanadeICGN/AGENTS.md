@@ -491,3 +491,22 @@ qualification rather than infer mobile coverage from desktop results.
   not cumulative incremental tracking. Native sequence NPZ import selects one
   field and explicitly confirms any missing image geometry. Keep provenance and
   stored ROI data; never guess original image extent from grid dimensions.
+
+### Mask-image and input admission follow-up — 2026-10-31
+
+- Exact mask-image input requires opaque black/white pixels at reference size.
+  Threshold conversion is explicit and records file hash/convention. Imported
+  pixels form an immutable base intersected with vector geometry. Undo shares
+  that base; never copy it per live frame or per undo checkpoint.
+- Keep edited and applied mask provenance distinct. PNG export may contain
+  current edits; a numerical field must retain its applied binary ROI and shapes.
+- Cold source/reference operations use one admission gate, drain work and
+  invalidate stale seeks. Comparison mode restores applied options, not pending
+  custom controls. Temporal fine correction is admissible only at two levels.
+- The mask-image hardware/SwiftShader reports and exact PNG round trip are in
+  `benchmarks/results/browser-mask-images-20261031/`. The complete local suite
+  reached 238 passing tests with native GPU/browser flags. This is local evidence,
+  not a claim that a later remote CI is green or physical cameras were tested.
+- Software video qualification uses the actual slow-replay control so a finite
+  movie does not end before two slow solves finish. Do not turn this into a
+  software-adapter FPS claim or weaken numerical tolerances.

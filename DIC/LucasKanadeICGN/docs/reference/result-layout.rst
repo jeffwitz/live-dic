@@ -6,7 +6,11 @@ Grid geometry
 
 For ``subset_size=S`` and ``subset_stride=D``, the complete-subset grid is
 ``1 + floor((width - S) / D)`` by ``1 + floor((height - S) / D)``. Each point
-owns an ``S x S`` subset centered at ``(S/2 + D*i, S/2 + D*j)``. The stride
+owns an ``S x S`` subset centered at ``(S/2 + D*i, S/2 + D*j)`` in
+pixel-edge coordinates. In zero-based pixel-index coordinates (integer pixel
+centres), the same point is ``((S-1)/2 + D*i, (S-1)/2 + D*j)``; the browser
+CSV and analytical fixture scoring use that convention. Canvas rendering adds
+the half-pixel offset when placing these coordinates. The stride
 defaults to the size. Border subsets that cannot support the selected
 interpolation are rejected. With the default ``S=D=16``, a 512 x 512 frame
 produces a 32 x 32 grid and a 3840 x 2160 frame produces a 240 x 135 grid.
