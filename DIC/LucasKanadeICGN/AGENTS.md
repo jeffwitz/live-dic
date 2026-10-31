@@ -598,3 +598,13 @@ qualification rather than infer mobile coverage from desktop results.
   records. The actual decoded PNG pixels match pre-export canvas composition;
   footer bounds and legend colours are checked in the browser workbench CI tool.
   This is export correctness, not a new live-FPS or metrology campaign.
+
+### UHD local-video admission
+
+- The optional local-source `--video` path was exercised with a temporary native
+  3840 × 2160 movie derived from unchanged original tensile PNGs. Hardware and
+  SwiftShader seek/play/pause records are in `browser-uhd-video-20261031/`.
+- Keep this decoder/I-O check separate from analytical PNG accuracy and live
+  FPS campaigns. FFmpeg is an optional test-input construction tool, never a
+  new application/runtime dependency. Do not commit another derived movie as
+  a substitute for the provenance-bearing original fixtures.

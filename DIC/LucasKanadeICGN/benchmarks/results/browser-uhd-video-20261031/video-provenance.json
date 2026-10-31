@@ -1,0 +1,61 @@
+{
+  "source_images": [
+    {
+      "file": "DIC/LucasKanadeICGN/assets/uhd_tensile/reference.png",
+      "sha256": "7cadf6032d7c5ac2de74ae542573a3b38069dc8c1c075ef9576641601996aeec"
+    },
+    {
+      "file": "DIC/LucasKanadeICGN/assets/uhd_tensile/frame_040.png",
+      "sha256": "7477178b00acb669b34aeb2084b895076cf74475f472bc25f3af2696b2719e30"
+    }
+  ],
+  "video_sha256": "bb3749e621be0c9c6f9df4e17f290c15def4960037de69a26b4ff90dacad4d7e",
+  "video_bytes": 29115772,
+  "probe": {
+    "programs": [],
+    "streams": [
+      {
+        "codec_name": "vp9",
+        "width": 3840,
+        "height": 2160,
+        "pix_fmt": "yuv420p",
+        "r_frame_rate": "10/1",
+        "nb_read_packets": "60"
+      }
+    ],
+    "format": {
+      "duration": "6.000000",
+      "size": "29115772"
+    }
+  },
+  "ffmpeg_version": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
+  "concat": "file '/home/jeff/Code/tests_gpuio/DIC/LucasKanadeICGN/assets/uhd_tensile/reference.png'\nduration 0.2\nfile '/home/jeff/Code/tests_gpuio/DIC/LucasKanadeICGN/assets/uhd_tensile/frame_040.png'\nduration 5.8\nfile '/home/jeff/Code/tests_gpuio/DIC/LucasKanadeICGN/assets/uhd_tensile/frame_040.png'\n",
+  "generation_arguments": [
+    "-f",
+    "concat",
+    "-safe",
+    "0",
+    "-i",
+    "concat.txt",
+    "-vf",
+    "fps=10",
+    "-t",
+    "6",
+    "-c:v",
+    "libvpx-vp9",
+    "-lossless",
+    "1",
+    "-deadline",
+    "realtime",
+    "-cpu-used",
+    "8",
+    "-row-mt",
+    "1",
+    "-threads",
+    "2",
+    "-pix_fmt",
+    "yuv420p",
+    "uhd-six-seconds.webm"
+  ],
+  "scope": "Temporary browser decoder/I-O fixture, not a replacement for the original analytical PNGs. VP9 lossless coding follows an 8-bit grayscale-to-YUV420P conversion; original grayscale byte identity and a 60-FPS performance qualification are not claimed."
+}

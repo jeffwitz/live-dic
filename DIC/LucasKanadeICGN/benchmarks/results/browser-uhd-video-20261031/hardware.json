@@ -1,0 +1,302 @@
+{
+  "build": {
+    "commit": "271b5e4a704534156f51c8e286290f32d9599120",
+    "dirty": false,
+    "shaders": {
+      "full_pyramid.wgsl": "d00ef999c5dbc23013928e95ea6ca498a52fbb63850056c05bdbd3c963dc0401",
+      "icgn.wgsl": "a60231689fbc3d29953fd98eb8d04649ec93cbec0f5a89a65446df716152299b",
+      "icgn_subgroup.wgsl": "d68225b1b6b6b21071e59ea6109bbd24dc0fd8b6734b6ebc4f7d59356799a034",
+      "input.wgsl": "d269f8bf203e3363a6e753476c49de27188329409fa5a848358ea031bb554f7e",
+      "result.wgsl": "a587a3112670a702578df6c13f75addd4136e43fa6c7efba7959aa472d0e3267",
+      "subgroup_probe.wgsl": "6e4d149ed7f17969ede557a3062742d8da6c62cb6dd745d5510112c1489fed61"
+    },
+    "demo_manifest_sha256": "c78c445a38a8541d632f28e85ec1154e492b4195c7b8f5d4755597e07605f24a",
+    "plate_image_sha256": {
+      "reference.png": "26135118b554c5996443f07abd2a89273a344154338c4c7f428ab283f85f7192",
+      "frame_095.png": "af0f4c09d2e9292beb4cbbabe01c6651a2e914c1b36b569a5861a8be431d3faf",
+      "frame_225.png": "abe3693810e289b8a2029833011a0d59fdf7ff1ea975eea91b12dc5e708d2897"
+    },
+    "cache_version": "271b5e4a704534156f51c8e286290f32d9599120"
+  },
+  "software": false,
+  "version": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+  "rows": [
+    {
+      "label": "fixed",
+      "comparison": {
+        "mode": "fixed",
+        "reference": {
+          "kind": "images",
+          "index": 0,
+          "name": "frames/frame_0.png",
+          "size": 6340820,
+          "type": "image/png",
+          "lastModified": 1793454834507
+        },
+        "target": {
+          "kind": "images",
+          "ordinal": 3,
+          "timestampUs": null,
+          "timestampClock": null,
+          "index": 1,
+          "name": "frames/frame_1.png",
+          "size": 6468779,
+          "type": "image/png",
+          "lastModified": 1793454834509
+        },
+        "referenceAdmissible": 32220,
+        "requested": 32220,
+        "fixedImageCoordinateRoi": true
+      },
+      "selected": 32220,
+      "status_counts": {
+        "-3": 180,
+        "-1": 746,
+        "1": 31474
+      },
+      "parameter_rmse": 6.8458770288889535e-06,
+      "parameter_max": 0.0003905296325683594,
+      "status_mismatches": 0
+    },
+    {
+      "label": "consecutive",
+      "comparison": {
+        "mode": "consecutive",
+        "reference": {
+          "kind": "images",
+          "index": 1,
+          "name": "frames/frame_1.png",
+          "size": 6468779,
+          "type": "image/png",
+          "lastModified": 1793454834509
+        },
+        "target": {
+          "kind": "images",
+          "ordinal": 5,
+          "timestampUs": null,
+          "timestampClock": null,
+          "index": 2,
+          "name": "frames/frame_2.png",
+          "size": 6482887,
+          "type": "image/png",
+          "lastModified": 1793454834511
+        },
+        "referenceAdmissible": 32220,
+        "requested": 32220,
+        "fixedImageCoordinateRoi": true
+      },
+      "selected": 32220,
+      "status_counts": {
+        "-3": 180,
+        "-1": 746,
+        "1": 31474
+      },
+      "parameter_rmse": 7.823828533622532e-06,
+      "parameter_max": 0.0013942644000053406,
+      "status_mismatches": 0
+    },
+    {
+      "label": "failure-recovery-3",
+      "comparison": {
+        "mode": "consecutive",
+        "reference": {
+          "kind": "images",
+          "index": 2,
+          "name": "frames/frame_2.png",
+          "size": 6482887,
+          "type": "image/png",
+          "lastModified": 1793454834511
+        },
+        "target": {
+          "kind": "images",
+          "ordinal": 6,
+          "timestampUs": null,
+          "timestampClock": null,
+          "index": 3,
+          "name": "frames/frame_3.png",
+          "size": 8119,
+          "type": "image/png",
+          "lastModified": 1793454834543
+        },
+        "referenceAdmissible": 32220,
+        "requested": 32220,
+        "fixedImageCoordinateRoi": true
+      },
+      "selected": 32220,
+      "status_counts": {
+        "-3": 180,
+        "-2": 31474,
+        "-1": 746
+      }
+    },
+    {
+      "label": "failure-recovery-4",
+      "comparison": {
+        "mode": "consecutive",
+        "reference": {
+          "kind": "images",
+          "index": 3,
+          "name": "frames/frame_3.png",
+          "size": 8119,
+          "type": "image/png",
+          "lastModified": 1793454834543
+        },
+        "target": {
+          "kind": "images",
+          "ordinal": 7,
+          "timestampUs": null,
+          "timestampClock": null,
+          "index": 4,
+          "name": "frames/frame_4.png",
+          "size": 6340820,
+          "type": "image/png",
+          "lastModified": 1793454834545
+        },
+        "referenceAdmissible": 0,
+        "requested": 32220,
+        "fixedImageCoordinateRoi": true
+      },
+      "selected": 32220,
+      "status_counts": {
+        "-3": 180,
+        "-1": 32220
+      }
+    },
+    {
+      "label": "failure-recovery-5",
+      "comparison": {
+        "mode": "consecutive",
+        "reference": {
+          "kind": "images",
+          "index": 4,
+          "name": "frames/frame_4.png",
+          "size": 6340820,
+          "type": "image/png",
+          "lastModified": 1793454834545
+        },
+        "target": {
+          "kind": "images",
+          "ordinal": 8,
+          "timestampUs": null,
+          "timestampClock": null,
+          "index": 5,
+          "name": "frames/frame_5.png",
+          "size": 6468779,
+          "type": "image/png",
+          "lastModified": 1793454834547
+        },
+        "referenceAdmissible": 32220,
+        "requested": 32220,
+        "fixedImageCoordinateRoi": true
+      },
+      "selected": 32220,
+      "status_counts": {
+        "-3": 180,
+        "-1": 746,
+        "1": 31474
+      }
+    }
+  ],
+  "dimension_error": "frames/frame_6.png is 48\u00d732; the reference is 3840\u00d72160. Images are never resized implicitly.",
+  "video": {
+    "file": "uhd-six-seconds.webm",
+    "sha256": "bb3749e621be0c9c6f9df4e17f290c15def4960037de69a26b4ff90dacad4d7e",
+    "state": {
+      "source": "video-file",
+      "paused": true,
+      "loadingSource": false,
+      "inFlight": 0,
+      "index": 0,
+      "fileCount": 0,
+      "localBusy": false,
+      "loop": false,
+      "settings": {
+        "source": "local video",
+        "file": {
+          "name": "uhd-six-seconds.webm",
+          "size": 29115772,
+          "type": "video/webm",
+          "lastModified": 1793454820838
+        },
+        "outputSize": [
+          3840,
+          2160
+        ],
+        "durationSeconds": 6,
+        "reference": {
+          "kind": "video-file",
+          "file": {
+            "name": "uhd-six-seconds.webm",
+            "size": 29115772,
+            "type": "video/webm",
+            "lastModified": 1793454820838
+          },
+          "timeSeconds": 0
+        },
+        "requestedComparison": "fixed",
+        "lastComparison": {
+          "mode": "fixed",
+          "reference": {
+            "kind": "video-file",
+            "file": {
+              "name": "uhd-six-seconds.webm",
+              "size": 29115772,
+              "type": "video/webm",
+              "lastModified": 1793454820838
+            },
+            "timeSeconds": 0
+          },
+          "target": {
+            "kind": "video-file",
+            "ordinal": 1,
+            "timestampUs": 500000,
+            "timestampClock": "HTMLVideoElement media timeline",
+            "file": {
+              "name": "uhd-six-seconds.webm",
+              "size": 29115772,
+              "type": "video/webm",
+              "lastModified": 1793454820838
+            },
+            "timeSeconds": 0.5
+          },
+          "referenceAdmissible": 32400,
+          "requested": 32400,
+          "fixedImageCoordinateRoi": true
+        }
+      },
+      "comparison": "fixed",
+      "videoTime": 0.5,
+      "videoPaused": true
+    },
+    "configuration": {
+      "subsetSize": 16,
+      "subsetStride": 16,
+      "initialization": "temporal",
+      "temporalPrediction": "velocity",
+      "temporalFineCorrection": true,
+      "temporalMaxAge": null,
+      "divergencePatience": 3,
+      "divergenceMinIterations": 4,
+      "pyramidPolicy": "fixed",
+      "spatialWeighting": "uniform",
+      "solverWorkgroupSize": 16,
+      "pipelineDepth": 1,
+      "iterations": 16,
+      "tolerance": 0.005,
+      "znccMin": 0.8,
+      "pyramidLevels": 2,
+      "iterationsPerLevel": [
+        8,
+        16
+      ],
+      "tolerancePerLevel": [
+        0.005,
+        0.005
+      ],
+      "interpolation": "bspline",
+      "motionModel": "affine",
+      "outlierPolicy": "median"
+    }
+  },
+  "errors": []
+}
