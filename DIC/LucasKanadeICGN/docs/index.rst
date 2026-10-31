@@ -145,6 +145,7 @@ when exporting a measurement with :doc:`how-to/export-results`.
    explanation/gpu-optimization
    explanation/shared-kernel
    explanation/native-backend
+   explanation/browser-portability
    explanation/temporal-initialization
    explanation/realtime-performance
    explanation/limitations
