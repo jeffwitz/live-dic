@@ -24,3 +24,17 @@ controls; archived plate photographs are reused without modification. Source
 build/content and mask hashes are in the reports. Later controls add keyboard
 probe placement and optional saved-field arrows/contours without changing ROI
 selection or calculated values.
+
+## Touch and cancellation follow-up
+
+`touch-hardware.json` additionally checks centred shape creation, restoring the
+last applied binary/vector state with Cancel, and actual CDP touch resizing in a
+390 x 844 emulated viewport. `touch-editor.png` is captured while that same CDP
+connection retains the emulation. Page width is asserted at most 390 CSS pixels.
+This exercises desktop Chromium's responsive layout and touch event path; it does
+not qualify a physical phone, mobile GPU, camera, Safari or Firefox. The source
+and numerical grid remain native UHD.
+
+```bash
+python tools/qualify_browser_mask_images.py --site _site --output /tmp/mask-touch
+```

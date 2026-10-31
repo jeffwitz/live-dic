@@ -35,6 +35,9 @@ Python raw-WebGPU adapter. It has no Three.js/CDN dependency and can run offline
 after its first installation. The original UHD plate-with-hole case loads
 with an editable rectangle/circle preset and both analytical load states.
 
+From a checkout, run `python3 tools/run_browser_app.py` to build, serve and open
+the workbench in your usual browser. It uses the browser’s existing GPU settings.
+
 [Run the browser application locally or prepare Pages](DIC/LucasKanadeICGN/docs/how-to/run-in-browser.rst).
 The Pages workflow is ready; repository-owner activation/deployment is separate.
 Phone capture is a demonstration and field-screening tool, **not qualified for

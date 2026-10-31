@@ -16,7 +16,21 @@ Actions**. After a successful deployment, open the URL displayed by the Pages
 job. Builds retain an artifact and skip deployment while Pages is not configured;
 the workflow never enables Pages. A prepared workflow alone does not prove that a public site exists.
 
-For a local checkout, assemble the assets and serve the resulting directory:
+From the repository root, build, serve and open it in one command:
+
+.. code-block:: bash
+
+   python3 tools/run_browser_app.py
+
+This uses Python's standard library and your normal browser profile. If your
+default browser lacks WebGPU, choose an installed supported browser explicitly,
+for example ``--browser chromium``. ``--no-open`` prints the URL without opening
+a window, ``--port 8001`` chooses another port, and ``--no-build`` serves the
+existing assembled site. Ctrl+C stops this server. An occupied port does not
+replace the files used by the existing server, and unrelated directories are
+refused as build destinations.
+
+To assemble and serve manually:
 
 .. code-block:: bash
 
@@ -153,7 +167,11 @@ a hole silently. Islands are restored at the next depth. The region list names
 each domain/hole and indents its depth.
 
 Use **Select / move / resize**, select a region in the list or click it in the
-viewer, then drag its body or white handles. Polygon handles move individual
+viewer, then drag its body or white handles. **Add centred shape** creates a
+rectangle, ellipse or circle without dragging; use its numeric geometry to
+position it precisely. The mask toolbar above the image offers Apply/Cancel
+without scrolling back to the panel. **Cancel edits** restores the last applied
+geometry, including an imported image base, without recalculating a field. Polygon handles move individual
 vertices. The numeric left/top/width/height fields use full-resolution reference
 pixels; **Update geometry** applies them. A circle keeps equal width and height.
 Selecting equal dimensions also makes an ellipse circular. Delete removes the
@@ -320,10 +338,13 @@ strain are distinct choices. Length units use an explicit units-per-pixel scale,
 not camera calibration; strain remains dimensionless. See
 :doc:`../explanation/browser-workbench` for equations, rank checks and support.
 
+Click the field or enter reference pixel-index coordinates and choose
+**Place measurement**. Image x points right and y points down.
 **Point probe** reports a snapped subset's coordinates, status, iterations and
 value. For a **Line profile**, click two endpoints and export actual grid samples;
 invalid cells remain gaps. **Extensometer** reports endpoint distance change
-and engineering gauge strain, distinct from a local strain tensor. It requires
+and engineering gauge strain, distinct from a local strain tensor. It may span a hole: it uses only the two endpoints, not a continuous material
+line. It requires
 two distinct accepted endpoints and does not infer measurements at invalid points.
 
 **Save NPZ + processing recipe** preserves computed arrays, separate processed

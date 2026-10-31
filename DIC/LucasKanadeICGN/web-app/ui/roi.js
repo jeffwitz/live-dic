@@ -7,6 +7,7 @@ export function installRoi(canvas, tool, onChange) {
   let shapes = [], selected = null, active = false, draft = null, drag = null, serial = 0;
   let compiled = { mask: null, shapes: [] }, preview = null, history = [];
   let baseMask = null;
+  let touchMode = false;
   const getPoint = e => { const b = canvas.getBoundingClientRect(); return [
     Math.max(0, Math.min(canvas.width, (e.clientX - b.left) * canvas.width / b.width)),
     Math.max(0, Math.min(canvas.height, (e.clientY - b.top) * canvas.height / b.height))]; };
@@ -31,7 +32,7 @@ export function installRoi(canvas, tool, onChange) {
       path(s); ctx.strokeStyle = s.id === selected ? '#f9cc45' : record?.role === 'hole' ? '#fc8271' : '#62ecce';
       ctx.lineWidth = canvas.width / 500; ctx.stroke();
       if (active && s.id === selected) {
-        const size = canvas.width / 100;
+        const size = canvas.width / Math.max(1,canvas.getBoundingClientRect().width) * (touchMode?14:10);
         handles(s).forEach(([x, y]) => { ctx.fillStyle = '#fff'; ctx.fillRect(x - size / 2, y - size / 2, size, size); ctx.strokeRect(x - size / 2, y - size / 2, size, size); });
       }
     }
@@ -61,9 +62,9 @@ export function installRoi(canvas, tool, onChange) {
       : ((p[0] - x - w / 2) / (w / 2)) ** 2 + ((p[1] - y - h / 2) / (h / 2)) ** 2 <= 1;
   }
   canvas.addEventListener('pointerdown', e => {
-    if (!active || e.button > 0) return; e.preventDefault(); const p = getPoint(e);
+    if (!active || e.button > 0) return; touchMode=e.pointerType==='touch';e.preventDefault(); const p = getPoint(e);
     if (tool.value === 'select') {
-      const s = current(), tolerance = canvas.width / canvas.getBoundingClientRect().width * 12;
+      const s = current(), tolerance = canvas.width / canvas.getBoundingClientRect().width * (touchMode?24:12);
       const handle = s ? handles(s).findIndex(q => Math.hypot(q[0] - p[0], q[1] - p[1]) < tolerance) : -1;
       if (handle < 0) selected = [...shapes].reverse().find(s => hit(s, p))?.id ?? null;
       if (current()) { checkpoint(); drag = { point: p, original: structuredClone(current()), handle }; canvas.setPointerCapture(e.pointerId); }
@@ -104,8 +105,16 @@ export function installRoi(canvas, tool, onChange) {
   canvas.addEventListener('dblclick', e => { if (active && draft?.type === 'polygon') { e.preventDefault(); finish(); tool.value = 'select'; } });
   return {
     start() { active = true; canvas.classList.add('drawing'); update(); },
-    stop() { if (draft) finish(); active = false; preview = null; canvas.classList.remove('drawing'); paint(); notify(); },
+    stop({discardDraft=false}={}) { if(discardDraft)draft=drag=null;else if (draft) finish(); active = false; preview = null; canvas.classList.remove('drawing'); paint(); notify(); },
     finish,
+    state() { return {width:canvas.width,height:canvas.height,shapes:structuredClone(shapes),baseMask:baseMask?.slice()??null}; },
+    addCentred(type='rectangle') {
+      if(!active)throw new Error('Choose Edit mask first');
+      if(!['rectangle','ellipse','circle'].includes(type))throw new Error('Choose rectangle, ellipse or circle for numeric creation');
+      let width=canvas.width/2,height=canvas.height/2;if(type==='circle')width=height=Math.min(width,height);
+      checkpoint();const shape={id:`region-${++serial}`,label:`${type} ${serial}`,type,x:(canvas.width-width)/2,y:(canvas.height-height)/2,width,height};
+      shapes.push(shape);selected=shape.id;tool.value='select';update();
+    },
     reset(width, height, preset = [], raster = null) { if(raster&&(!(raster instanceof Uint8Array)||raster.length!==width*height||raster.some(v=>v>1)))throw new Error('Invalid imported image mask');canvas.width = width; canvas.height = height;baseMask=raster?.slice()??null; shapes = validateShapes(preset); selected = shapes[0]?.id ?? null; draft = drag = null; history = []; serial += preset.length; active = false; canvas.classList.remove('drawing'); update(); },
     select(id) { selected = id; tool.value = 'select'; paint(); notify(); },
     edit(box) { if (!current()) return; checkpoint(); shapes[shapes.findIndex(s => s.id === selected)] = transformShape(current(), box); update(); },

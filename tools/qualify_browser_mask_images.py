@@ -177,10 +177,95 @@ def main():
                 )
             )[0]
             (args.output / "editor.png").write_bytes(base64.b64decode(shot["data"]))
+            browser._evaluate("document.getElementById('cancel-roi').onclick().then(()=>true)")
+            assert mask_hash() == digest(expected.astype(np.uint8))
+            browser._evaluate("document.getElementById('draw').onclick().then(()=>true)")
+            browser._evaluate(
+                "document.getElementById('shape').value='circle';document.getElementById('add-centred').onclick();true"
+            )
+            assert mask_hash() != digest(expected.astype(np.uint8))
+
+            async def check_touch():
+                # Emulation belongs to the CDP connection. Keep it attached through
+                # layout, touch input and screenshot rather than testing desktop twice.
+                import websockets
+
+                async with websockets.connect(
+                    browser._websocket_url,
+                    origin=browser._devtools_origin,
+                    max_size=32 * 1024 * 1024,
+                ) as socket:
+                    serial = 0
+
+                    async def call(method, **params):
+                        nonlocal serial
+                        serial += 1
+                        await socket.send(json.dumps(dict(id=serial, method=method, params=params)))
+                        while True:
+                            response = json.loads(await socket.recv())
+                            if response.get("id") == serial:
+                                if "error" in response:
+                                    raise RuntimeError(response["error"])
+                                return response.get("result", {})
+
+                    async def evaluate(expression):
+                        reply = await call(
+                            "Runtime.evaluate",
+                            expression=expression,
+                            returnByValue=True,
+                            awaitPromise=True,
+                        )
+                        if "exceptionDetails" in reply:
+                            raise RuntimeError(reply["exceptionDetails"])
+                        return reply["result"].get("value")
+
+                    await call(
+                        "Emulation.setDeviceMetricsOverride",
+                        width=390,
+                        height=844,
+                        deviceScaleFactor=1,
+                        mobile=True,
+                    )
+                    await call("Emulation.setTouchEmulationEnabled", enabled=True, maxTouchPoints=2)
+                    geometry = await evaluate("""(async()=>{
+                        await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+                        document.querySelector('.viewer').scrollIntoView({block:'start'});
+                        const r=document.getElementById('roi').getBoundingClientRect();
+                        return {x:r.x,y:r.y,w:r.width,h:r.height,viewport:innerWidth,
+                            pageWidth:document.documentElement.scrollWidth};})()""")
+                    assert geometry["viewport"] == 390, geometry
+                    assert geometry["pageWidth"] <= 390, geometry
+                    before = await evaluate("liveDicRoi.shapes().at(-1)")
+                    tx = geometry["x"] + (before["x"] + before["width"]) / 3840 * geometry["w"]
+                    ty = geometry["y"] + (before["y"] + before["height"]) / 2160 * geometry["h"]
+                    await call(
+                        "Input.dispatchTouchEvent",
+                        type="touchStart",
+                        touchPoints=[dict(x=tx, y=ty)],
+                    )
+                    await call(
+                        "Input.dispatchTouchEvent",
+                        type="touchMove",
+                        touchPoints=[dict(x=tx + 8, y=ty + 4)],
+                    )
+                    await call("Input.dispatchTouchEvent", type="touchEnd", touchPoints=[])
+                    after = await evaluate("liveDicRoi.shapes().at(-1)")
+                    assert after["width"] != before["width"], (before, after)
+                    shot = await call(
+                        "Page.captureScreenshot", format="png", captureBeyondViewport=False
+                    )
+                    (args.output / "mobile-editor.png").write_bytes(base64.b64decode(shot["data"]))
+                    return before, after, geometry
+
+            touch_before, touch_after, touch_geometry = asyncio.run(check_touch())
+            browser._evaluate("document.getElementById('cancel-roi').onclick().then(()=>true)")
+            assert mask_hash() == digest(expected.astype(np.uint8))
             report = dict(
                 build=json.loads((site / "build.json").read_text()),
                 software=args.software,
                 user_agent=browser._evaluate("navigator.userAgent"),
+                touch_resize=dict(before=touch_before, after=touch_after),
+                emulated_viewport=touch_geometry,
                 original_selected=32220,
                 clipped_selected=int(selected.sum()),
                 mask_sha256=digest(mask),

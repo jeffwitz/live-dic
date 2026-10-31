@@ -13,7 +13,7 @@ let localImages = [], imageIndex = 0, imageTask = null, imageLoop = null, seekSe
 let imageDelay = null, imageWake = null;
 let previousCapture = null, captureBusy = false, receivedOrdinal = 0;
 let roiEditing = false, appliedShapes = [], plateManifest = null;
-let draftMaskSource = null, appliedMaskSource = null;
+let draftMaskSource = null, appliedMaskSource = null, appliedEditorState = null, editorWasActive = false;
 let generation = 0, previousFrame = -1, referenceInfo, capabilities, sourceSettings = {}, requests = 0;
 let buildInfo = null;
 const pending = new Map(), video = $('video');
@@ -140,7 +140,7 @@ async function stop() {
   workbench.returnLive(); workbench.stopRecording();
   pauseSource(); generation++; seekSerial++; sourceAbort.abort();
   await drain(); await imageTask?.catch(() => {}); await imageLoop?.catch(() => {}); sourceAbort = new AbortController();
-  workbench.setReady(false); workbench.setMask(null);
+  workbench.setReady(false); workbench.setMask(null);appliedEditorState=null;roiEditing=false;roi.stop({discardDraft:true});
   await reader?.cancel(); reader = null;
   stream?.getTracks().forEach(track => track.stop()); stream = null;
   video.pause(); video.srcObject = null; video.removeAttribute('src'); video.load();
@@ -169,7 +169,7 @@ async function captureReference(frame = null) {
   if (source === 'camera') { sourceSettings.actual = stream?.getVideoTracks()[0]?.getSettings(); sourceSettings.outputSize = [video.videoWidth, video.videoHeight]; }
   referenceInfo = (await send('reference', { frame, options: options() }, [frame])).info; appliedShapes = []; draftMaskSource = appliedMaskSource = null; $('mask-import-summary').textContent='White pixels are kept; black pixels are excluded. Imported images must match the reference dimensions.';
   $('placeholder').hidden = true; $('image-viewport').style.aspectRatio = `${referenceInfo.width}/${referenceInfo.height}`;
-  roi.reset(referenceInfo.width, referenceInfo.height); $('apply-roi').disabled = true;
+  roi.reset(referenceInfo.width, referenceInfo.height); appliedEditorState=roi.state(); $('apply-roi').disabled = true;
   for (const id of ['reference', 'pause', 'reset', 'draw', 'clear-roi', 'export', 'import-mask', 'save-mask']) $(id).disabled = false;
   if ($('comparison').value === 'consecutive' && source !== 'plate') $('export').disabled = true;
   await updateReferenceControls();
@@ -371,7 +371,7 @@ async function startPlate() {
   $('resolution').value = '3840x2160';
   await captureReference(reference);
   roi.reset(3840, 2160, platePreset()); appliedShapes = roi.shapes();
-  const mask = roi.mask(), ownedMask = mask?.slice() ?? null; referenceInfo = (await send('roi', { mask, options: options() }, [mask.buffer])).info; workbench.setMask(ownedMask);
+  const mask = roi.mask(), ownedMask = mask?.slice() ?? null; referenceInfo = (await send('roi', { mask, options: options() }, [mask.buffer])).info; workbench.setMask(ownedMask); appliedEditorState=roi.state();
   $('component').value = referenceInfo.config.motionModel === 'translation' ? '2' : '7'; $('scale').value = referenceInfo.config.motionModel === 'translation' ? '10' : '0.002'; $('arrows').checked = true; $('arrow-gain').value = '50'; $('opacity').value = '1';
   await send('display', { display: displayOptions() });
   await runPlateTarget();
@@ -435,13 +435,24 @@ const roi = installRoi($('roi'), $('shape'), (state) => {
   if (selected) bounds(selected).forEach((v, i) => { $(['roi-x','roi-y','roi-width','roi-height'][i]).value = Math.round(v * 1000) / 1000; });
   $('roi-height').disabled = selected?.type === 'circle';
   $('roi-summary').textContent = (state.hasBaseMask ? 'Image mask ∩ ' : '') + (state.shapes.length ? `${state.shapes.filter(s => s.role === 'domain').length} domain(s), ${state.shapes.filter(s => s.role === 'hole').length} hole(s)${roiEditing ? ' · unapplied edits' : ''}` : 'Full image · no mask.');
-  $('apply-roi').disabled = !roiEditing;
+  if(state.editing&&!editorWasActive&&matchMedia('(max-width:760px)').matches)requestAnimationFrame(()=>document.querySelector('.viewer').scrollIntoView({block:'start'})); editorWasActive=state.editing;
+  $('apply-roi').disabled = !roiEditing; $('mask-toolbar').hidden=!roiEditing; $('apply-mask-top').disabled=!roiEditing;
 });
 $('zoom').onchange = () => { $('scene').style.width = `${Number($('zoom').value)*100}%`; };
 $('centre-view').onclick = () => { const view=$('image-viewport'); view.scrollLeft=(view.scrollWidth-view.clientWidth)/2; view.scrollTop=(view.scrollHeight-view.clientHeight)/2; };
 $('regions').onchange = () => roi.select($('regions').value);
 $('delete-roi').onclick = () => roi.remove();
 $('undo-roi').onclick = () => roi.undo();
+$('add-centred').onclick = () => { try {roi.addCentred($('shape').value==='select'?'rectangle':$('shape').value);} catch(e){message(e.message,true);} };
+$('apply-mask-top').onclick = () => $('apply-roi').click();
+$('finish-mask-top').onclick = () => $('finish-shape').click();
+$('cancel-mask-top').onclick = () => $('cancel-roi').click();
+$('cancel-roi').onclick = () => sourceChange(async()=>{
+  if(!appliedEditorState)return;
+  roiEditing=false;roi.reset(appliedEditorState.width,appliedEditorState.height,appliedEditorState.shapes,appliedEditorState.baseMask);draftMaskSource=appliedMaskSource;
+  $('roi-editor').hidden=true;$('mask-import-summary').textContent=appliedMaskSource?`${appliedMaskSource.name} · applied base restored.`:'No imported image base. White pixels are kept; black pixels are excluded.';await send('show-reference',{show:false});
+  message('Unapplied mask edits discarded. The existing numerical field and applied ROI are unchanged.');
+});
 $('finish-shape').onclick = () => { try { roi.finish(); $('shape').value = 'select'; } catch (e) { message(e.message, true); } };
 $('update-shape').onclick = () => { try { roi.edit(['roi-x','roi-y','roi-width','roi-height'].map(id => Number($(id).value))); } catch (e) { message(e.message, true); } };
 $('shape').onchange = () => { try { roi.finish(); } catch (e) { message(e.message, true); } };
@@ -518,7 +529,7 @@ $('save-mask').onclick=async()=>{
 };
 $('draw').onclick = () => sourceChange(async () => { workspace.showPane('mask'); workbench.returnLive(); pauseSource(); await drain(); roiEditing = true; $('pause').textContent = 'Resume'; await send('show-reference', { show: true }); $('roi-editor').hidden = false; $('shape').value = 'select'; roi.start(); });
 $('apply-roi').onclick = () => sourceChange(async () => {
-  try { workbench.setReady(false); const mask = roi.mask(), ownedMask = mask?.slice() ?? null; appliedShapes = roi.shapes(); referenceInfo = (await send('roi', { mask, options: options() }, mask ? [mask.buffer] : [])).info; workbench.setMask(ownedMask); appliedMaskSource = draftMaskSource; await updateReferenceControls();
+  try { workbench.setReady(false); const mask = roi.mask(), ownedMask = mask?.slice() ?? null; appliedShapes = roi.shapes(); referenceInfo = (await send('roi', { mask, options: options() }, mask ? [mask.buffer] : [])).info; workbench.setMask(ownedMask); appliedMaskSource = draftMaskSource; appliedEditorState=roi.state(); await updateReferenceControls();
     roiEditing = false; roi.stop(); $('roi-editor').hidden = true; $('apply-roi').disabled = true;
     message('Mask applied. Its geometry stays editable; all complete selected subsets are used.'); details();
     if (source === 'plate') await runPlateTarget();
@@ -526,7 +537,7 @@ $('apply-roi').onclick = () => sourceChange(async () => {
   } catch (error) { message(error.message, true); }
 });
 $('clear-roi').onclick = () => sourceChange(async () => { workbench.returnLive(); pauseSource(); await drain(); workbench.setMask(null); workbench.setReady(false); roiEditing = false; roi.reset(referenceInfo.width, referenceInfo.height); appliedShapes = []; draftMaskSource = appliedMaskSource = null; $('roi-editor').hidden = true;
-  referenceInfo = (await send('roi', { mask: null, options: options() })).info; await updateReferenceControls(); $('mask-import-summary').textContent='Full image · no imported base mask.'; $('pause').textContent = 'Resume'; details(); if (source === 'plate') await runPlateTarget(); });
+  referenceInfo = (await send('roi', { mask: null, options: options() })).info; await updateReferenceControls(); appliedEditorState=roi.state(); $('mask-import-summary').textContent='Full image · no imported base mask.'; $('pause').textContent = 'Resume'; details(); if (source === 'plate') await runPlateTarget(); });
 function displayOptions() { return { mode: Number($('component').value), scale: $('scale').value === 'auto' ? null : Number($('scale').value),
   opacity: Number($('opacity').value), arrows: $('arrows').checked, arrowStep: Number($('arrow-step').value), arrowGain: Number($('arrow-gain').value) }; }
 for (const id of ['component', 'scale', 'opacity', 'arrows', 'arrow-step', 'arrow-gain']) $(id).onchange = () => send('display', { display: displayOptions() });
