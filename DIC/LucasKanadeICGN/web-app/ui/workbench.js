@@ -142,7 +142,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     if (mask && mask.length !== field.width*field.height) throw new Error('Saved field mask dimensions differ');
     entry.label = fieldLabel(metadata, entry.id);
     const result=await storage.addMany([entry]);entries.push(entry);changed();updateLibrary(select);
-    if(result.failure){$('record-fields').checked=false;recordChange(false);pause();error(`Results storage stopped: ${result.failure}. The completed field is retained in RAM. Export or retry disk storage before continuing.`);}
+    if(result.failure){$('record-fields').checked=false;recordChange(false);pause();error(`Results storage stopped: ${result.failure}. The completed field is retained in RAM. Export or retry disk storage before continuing.`);updateLibrary();}
     if (select) await selectEntry(entry.id);
     return entry;
   }
@@ -441,7 +441,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   $('spatial-view').onclick=()=>{history=null;$('spatial-view').hidden=true;updateInspection();};
   $('freeze-field').onclick=async()=>{if(captureBusy||storage.readOnly||storageBlocked())return;captureBusy=true;$('freeze-field').disabled=true;try{const {field,metadata}=await captureCurrent();let mask=currentMask;if(metadata.roi&&!mask)mask=maskFromMetadata(metadata);await add(field,metadata,{select:true,mask});}catch(e){error(e.message);}finally{captureBusy=false;$('freeze-field').disabled=!liveReady||storage.readOnly||storageBlocked();}};
   $('return-live').onclick=()=>returnLive(true);
-  $('record-fields').onchange=async()=>{const changedMode=recordChange(recording());if(recording()){await storage.database();const persistent=await storage.persistence();$('storage-quota').textContent=persistent?'Browser persistence granted; independent exports are still required for a backup.':'Persistence not granted or unavailable: browser disk data may be evicted. Export important sequences.';}await changedMode;updateLibrary();};
+  $('record-fields').onchange=async()=>{if(recording()&&(storage.readOnly||storageBlocked())){$('record-fields').checked=false;await recordChange(false);updateLibrary();return;}const changedMode=recordChange(recording());if(recording()){await storage.database();const persistent=await storage.persistence();$('storage-quota').textContent=persistent?'Browser persistence granted; independent exports are still required for a backup.':'Persistence not granted or unavailable: browser disk data may be evicted. Export important sequences.';}await changedMode;updateLibrary();};
   $('saved-fields').onchange=()=>selectEntry($('saved-fields').value);
   $('result-seek').oninput=()=>{const entry=entries[Number($('result-seek').value)];if(entry)selectEntry(entry.id);};
   $('result-number').onchange=()=>{const number=Number($('result-number').value);if(Number.isInteger(number)&&number>=1&&number<=entries.length)selectEntry(entries[number-1].id);};
