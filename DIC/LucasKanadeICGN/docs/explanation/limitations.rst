@@ -316,3 +316,24 @@ Hardware/browser observations qualify only that tested configuration. A
 software browser validates execution and numerical results, never live FPS.
 The simulated static camera controls are not physical-camera tests. See
 :doc:`gpu-reference-preparation` and the current performance campaign.
+
+
+Bounded browser recording overlap and preview
+--------------------------------------------
+
+The experimental pipeline checkbox is opt-in. It preserves one GPU computation
+at a time and permits a two-field CPU recording queue to overlap IndexedDB
+admission. This hides some waiting; it cannot increase GPU capacity or sustain
+an arrival rate permanently above disk throughput. A full queue slows admission,
+and a failed write retains completed data and pauses capture. Computed FPS may
+lead durable throughput temporarily and must not be presented as committed FPS.
+
+A reduced-rate/size preview is approximate presentation, not a resampling of the
+DIC input or a new field resolution. Numerical exports stay at the original
+geometry/precision. Preview timing begins at worker availability, not camera
+exposure. Explicit drain barriers protect source/reference/ROI/project changes.
+Browser termination cannot be made transactional with pending writes; heed the
+unsaved-data guard and export independent backups. Device-loss or unexpected
+CPU retention failures stop admission rather than discarding a pending field.
+See :doc:`browser-workbench` and :doc:`../how-to/run-in-browser` for ownership and
+recovery rules. No 60 FPS or all-platform claim follows from this option alone.

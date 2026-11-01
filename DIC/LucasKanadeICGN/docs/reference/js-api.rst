@@ -391,3 +391,53 @@ The standalone workbench's ``ui/field-storage.js`` is a separate supervisor
 module, not a ``DICEngine`` option. It stores full fields/masks in IndexedDB,
 keeps a configurable CPU array cache, and loads archived fields lazily. It does
 not retain GPU resources. See :doc:`../how-to/store-long-sequences`.
+
+
+Standalone PWA supervisor settings
+---------------------------------
+
+The application Worker accepts ``options.supervision`` in its reference/ROI
+preparation message. It is separate from the numerical ``DICEngine`` API;
+passing it directly to ``DICEngine.create`` remains an unsupported option.
+For a custom supervisor around the application session:
+
+.. code-block:: javascript
+
+   worker.postMessage({
+     type: 'reference', id: 1, frame: referenceFrame,
+     options: {
+       profile: 'portable', referencePreparation: 'gpu',
+       supervision: {
+         overlapRecording: true,
+         displayRate: 30,
+         previewMaxWidth: 1920,
+       },
+     },
+   }, [referenceFrame]);
+
+``supervision`` is omitted by default. Its defaults are
+``{overlapRecording:false, displayRate:0, previewMaxWidth:0}``.
+``overlapRecording`` must be boolean; the recording capacity is fixed at two,
+including reserved computations. ``displayRate`` is finite in 0..240 Hz, with
+zero meaning every field. ``previewMaxWidth`` is an integer in 0..16384, zero
+meaning native width; presentation preserves aspect ratio and never upsamples.
+Unknown keys and invalid types throw before reference replacement. The GUI
+exposes a small set of these values. Changes require coherent new preparation.
+
+Numerical result dimensions always describe the original image. With an
+explicit supervisor configuration, a bitmap message's ``presentation`` object
+reports its actual width/height, the result ID/input pair, reference-preview
+flag and worker timing origin. Skipped preview updates do not skip computations
+or recorded fields. The explicit ``flush`` session message waits for current
+work and presents the latest pending field. The PWA uses it outside the live
+loop during pause/export/source transitions.
+
+The bounded ``RecordingQueue`` owns full typed fields until library admission.
+A disk failure blocks new reservations and routes completed fields to explicit
+RAM retention. Unexpected retention failure keeps the original field object in
+the queue and rejects draining; it must not be treated as a successful export.
+Default recording acknowledgements remain synchronous. The opt-in path
+acknowledges computation after handing ownership to the queue, so committed
+throughput and age must be reported separately. IndexedDB I/O is asynchronous;
+this does not create a second GPU device or transfer WebGPU buffers to another
+Worker.

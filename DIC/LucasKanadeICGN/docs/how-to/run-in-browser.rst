@@ -223,6 +223,45 @@ This option adds persistent scratch textures/buffers, counted by the existing
 GPU resource report. It does not use disk recording memory as GPU memory. See
 :doc:`../explanation/gpu-reference-preparation` for validation and timing limits.
 
+Overlap recording and control the live preview
+---------------------------------------------
+
+In **Solve**, check **Experimental pipeline overlap**, choose the maximum display
+rate and preview width, then capture a new reference or apply the mask. The
+option is independent of **Experimental GPU reference preparation** and custom
+solver settings. The existing synchronous/native-size behaviour remains the
+default. Pending edits do not affect an active sequence.
+
+With overlap enabled, the supervisor reserves space before every recorded solve.
+At most **two fields**, including a calculation in progress, may be waiting for
+library admission. The GPU can compute the next field while the previous CPU
+field is being committed to IndexedDB. A full queue applies backpressure. Camera
+and video inputs retain their existing explicit drop policy for unadmitted
+frames; local image playback waits for space and does not skip a file.
+
+A storage failure pauses acquisition and recording. Both already completed
+fields are retained in the results library in RAM, including a field completing
+after the first failure. Export them or use **Retry disk save**, then explicitly
+re-enable recording. Pending results are drained before pause completes, source
+or reference replacement, project export or saved-session replacement. Closing
+the page with pending data triggers the existing unsaved-data guard; it cannot
+force a browser to finish writes after the page has been terminated.
+
+The preview shows the latest completed field at the selected rate. **0 / Every
+computed field** preserves unthrottled presentation. A 1920 px preview of a
+3840 × 2160 acquisition is only a display raster: the original numerical images,
+ROI coordinates, subset grid, parameter precision and saved fields remain UHD.
+The preview never enlarges an image. Mask editing explicitly restores the
+native-size reference preview. A paused/exported view is flushed to the latest
+completed pair rather than leaving the last throttled preview on screen.
+
+The pipeline status distinguishes the displayed input, pending recording slots
+and library admissions. Computed FPS may temporarily lead committed FPS by up
+to the bounded capacity. Recording benchmarks must report committed throughput
+and worker-arrival-to-admission latency alongside computed throughput. These
+are not sensor-exposure timestamps. A 30 Hz preview does not promise 30 or 60
+computed measurements per second.
+
 Build and edit a mask with domains and holes
 --------------------------------------------
 

@@ -253,25 +253,35 @@ receives transferable image bitmaps for presentation and handles controls and
 recorded-field admission. Browser video capture/decoding also has its own
 implementation scheduling. This is already a form of parallel execution.
 
-There are deliberate dependencies: the application admits one solve at a time,
-and acknowledgement of a recorded result follows durable storage admission.
-A second display Worker cannot remove the work performed by the same physical
-GPU. Moving field rendering to another GPU device would also require a data
-exchange instead of reading the existing device's field buffer directly.
+The default path deliberately admits one solve at a time and acknowledges a
+recorded field after storage admission. The opt-in pipeline keeps one GPU solve
+but reserves at most two CPU recording slots, including work currently being
+computed. It acknowledges transfer of ownership to that bounded queue, allowing
+the next solve to overlap disk admission. Image sequences wait for capacity;
+live inputs retain their existing explicit drop semantics. They do not turn a
+non-adjacent camera pair into an allegedly consecutive one.
 
-For future overlap, separate the display clock from the measurement clock:
-present the latest completed field rather than queueing every display update.
-A lower display rate/resolution must leave analytical image size, subset grid,
-solver parameters and numerical exports unchanged. Recording needs a bounded
-queue and an explicit drain barrier on pause/source changes/export. A full
-queue applies backpressure; storage failure must retain every completed field
-and stop further admission. Merely acknowledging before a write completes can
-otherwise lose fields or hide an ever-growing result age.
+The queue serializes writes. On failure, it stops new reservations and retains
+already completed fields in RAM through the same results library. Static ROI
+masks are shared; typed parameters/status/iterations retain their precision.
+An error during RAM retention keeps the original queue object and blocks export
+completion. Source/reference/ROI changes and pause/project operations drain the
+queue first. The unsaved-data guard includes pending queue ownership, even before
+the first field has appeared in the library. Recovery preserves field order and
+does not duplicate the field whose first write failed.
 
-The short native-UHD display-removal controls in
-``benchmarks/results/browser-display-headroom-20261101/`` retain most of the
-pair processing time even with rendering/presentation removed. They do not
-establish a repeatable display-optimization speedup or renew absolute FPS
-qualification. The normal presentation surface now retains its dimensions
-between same-size frames; this avoids unnecessary canvas resets while keeping
-the numerical graph and displayed image dimensions unchanged.
+Display and computation have separate clocks. The Worker renders the most
+recent completed field when a presentation is due, rather than queueing old
+preview frames. A timer/explicit flush presents the final field when inputs
+pause. Preview width affects only the canvas raster and shader coordinate
+mapping. Mask editing forces native-size reference presentation, while numerical
+inputs, subsets and all saved/exported arrays remain unchanged. Existing
+unthrottled native-size defaults remain in place.
+
+The application keeps a single GPU owner and uses asynchronous browser disk
+I/O. Another display Worker/device would require exchanging resources instead
+of directly reading the existing field buffer, without removing GPU work. The
+short display-removal controls in
+``benchmarks/results/browser-display-headroom-20261101/`` do not qualify a new
+FPS limit. The new overlap path has its own correctness/performance controls;
+computed, presented and committed rates/ages are distinct quantities.

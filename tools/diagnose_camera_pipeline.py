@@ -39,8 +39,8 @@ def main():
     parser.add_argument("--warmup", type=float, default=3)
     parser.add_argument("--software", action="store_true")
     parser.add_argument("--overlap-pipeline", action="store_true")
-    parser.add_argument("--display-rate", type=int, default=30)
-    parser.add_argument("--preview-width", type=int, default=1920)
+    parser.add_argument("--display-rate", type=int, choices=[0, 15, 30, 60], default=30)
+    parser.add_argument("--preview-width", type=int, choices=[0, 1280, 1920], default=1920)
     parser.add_argument("--comparison", choices=["all", "fixed", "consecutive"], default="all")
     parser.add_argument("--recording", choices=["all", "on", "off"], default="all")
     parser.add_argument(
@@ -158,7 +158,7 @@ def main():
                     started = time.monotonic()
                     time.sleep(args.duration)
                     stop = browser._evaluate(
-                        "({completed:liveDicStatus.completed,fps:document.getElementById('fps').textContent,age:document.getElementById('age').textContent,state:liveDicSourceState(),fields:liveDicWorkbench.report().count,diskFields:liveDicWorkbench.report().storage.diskFields,pipeline:document.getElementById('pipeline-timing').textContent,errors:liveDicStatus.errors})"
+                        "({completed:liveDicStatus.completed,fps:document.getElementById('fps').textContent,age:document.getElementById('age').textContent,state:liveDicSourceState(),fields:liveDicWorkbench.report().count,diskFields:liveDicWorkbench.report().storage.diskFields,storage:liveDicWorkbench.report().storage,epochMs:performance.timeOrigin+performance.now(),pipeline:document.getElementById('pipeline-timing').textContent,errors:liveDicStatus.errors})"
                     )
                     elapsed = time.monotonic() - started
                     assert not stop["errors"], stop["errors"]
@@ -196,6 +196,7 @@ def main():
                                     "mode",
                                     "recording",
                                     "completed_fps",
+                                    "committed_fps",
                                     "median_preparation_ms",
                                     "median_observable_solver_ms",
                                 ]

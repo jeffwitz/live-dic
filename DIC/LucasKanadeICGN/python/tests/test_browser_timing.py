@@ -14,6 +14,62 @@ PROJECT = Path(__file__).resolve().parents[2]
 
 @unittest.skipUnless(shutil.which("node"), "Node is needed for browser timing contracts")
 class BrowserTimingTests(unittest.TestCase):
+    def test_preview_throttling_keeps_every_measurement_and_flushes_latest_pair(self):
+        runtime = tempfile.TemporaryDirectory()
+        self.addCleanup(runtime.cleanup)
+        root = Path(runtime.name)
+        (root / "package.json").write_text('{"type":"module"}')
+        shutil.copytree(PROJECT / "python/src/lucas_kanade_icgn/web/core", root / "web/core")
+        shutil.copytree(PROJECT / "web-app/ui", root / "ui")
+        shutil.copytree(PROJECT / "web-app/render", root / "render")
+        script = f"""
+          import {{DICEngine}} from {json.dumps((root / "web/core/engine.js").as_uri())};
+          import {{FieldRenderer}} from {json.dumps((root / "render/field.js").as_uri())};
+          import {{createSession}} from {json.dumps((root / "ui/session.js").as_uri())};
+          let clock=0,engineOptions;const timers=new Map();let timer=0;
+          globalThis.performance={{now:()=>clock,timeOrigin:1000}};
+          globalThis.setTimeout=fn=>{{timers.set(++timer,fn);return timer;}};
+          globalThis.clearTimeout=id=>timers.delete(id);
+          Object.defineProperty(globalThis,'navigator',{{configurable:true,value:{{gpu:{{requestAdapter:async()=>null,getPreferredCanvasFormat:()=> 'rgba8unorm'}}}}}});
+          globalThis.isSecureContext=true;
+          globalThis.GPUBufferUsage={{UNIFORM:1,COPY_DST:2}};
+          globalThis.GPUTextureUsage={{COPY_DST:2,TEXTURE_BINDING:4,RENDER_ATTACHMENT:16}};
+          const frame=()=>({{width:64,height:64,close(){{this.closed=true;}}}});
+          globalThis.createImageBitmap=async()=>frame();
+          const context={{configure(){{}},unconfigure(){{}}}},canvas={{width:64,height:64,getContext:()=>context}};
+          const info={{width:64,height:64,referenceValid:new Uint8Array(16).fill(1),grid:[4,4],config:{{motionModel:'affine'}}}};
+          const engine={{device:{{lost:new Promise(()=>{{}}),addEventListener(){{}},createShaderModule:()=>({{}}),createRenderPipeline:()=>({{}}),
+             createBuffer:()=>({{destroy(){{}}}}),createTexture:()=>({{destroy(){{}}}}),queue:{{copyExternalImageToTexture(){{}}}}}},
+             ring:{{idle:true}},resetTemporalState(){{}},setAnalyticTruth(){{}},destroy(){{}},setReference:async()=>info,
+             register:async()=>({{width:64,height:64,grid:[4,4],config:info.config,timing:{{wallMs:0}},accepted:4,selected:16}})}};
+          DICEngine.create=async options=>{{engineOptions=options;return engine;}};
+          const draws=[];FieldRenderer.prototype.draw=function(engine,result,options){{
+            const width=options.previewMaxWidth||64;this.canvas.width=width;this.canvas.height=width;draws.push(width);return 1;
+          }};
+          const messages=[],session=createSession(m=>messages.push(m));
+          await session.handle({{type:'boot',canvas,measure:false}});
+          await session.handle({{type:'reference',frame:frame(),options:{{profile:'portable',supervision:{{displayRate:10,previewMaxWidth:32}}}}}});
+          const targets=[];
+          for(let i=1;i<=3;i++){{clock+=10;const target=frame();targets.push(target);await session.handle({{type:'frame',id:i,frame:target,comparison:{{mode:'fixed',target:{{ordinal:i}}}}}});}}
+          const before={{draws:[...draws],measurements:messages.filter(m=>m.type==='result').length,timers:timers.size}};
+          await session.handle({{type:'flush',id:9}});const flushed=messages.at(-1);
+          await session.handle({{type:'show-reference',show:true}});const reference=messages.at(-1);
+          await session.handle({{type:'destroy'}});
+          console.log(JSON.stringify({{before,flushed,reference,draws,timers:timers.size,closed:targets.every(t=>t.closed),numericalOptionsUnchanged:!('supervision' in engineOptions)}}));
+        """
+        actual = json.loads(
+            subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
+        )
+        self.assertEqual(actual["before"], dict(draws=[32], measurements=3, timers=1))
+        self.assertEqual(actual["flushed"]["presentation"]["resultId"], 3)
+        self.assertEqual(actual["flushed"]["presentation"]["width"], 32)
+        self.assertTrue(actual["reference"]["presentation"]["referencePreview"])
+        self.assertEqual(actual["reference"]["presentation"]["width"], 64)
+        self.assertEqual(actual["draws"], [32, 32, 64])
+        self.assertEqual(actual["timers"], 0)
+        self.assertTrue(actual["closed"])
+        self.assertTrue(actual["numericalOptionsUnchanged"])
+
     def test_comparison_switch_clears_old_age_and_fps_windows(self):
         # Reproduce the assembled module layout without copying images/vendor assets.
         with tempfile.TemporaryDirectory() as directory:
