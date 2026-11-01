@@ -1,0 +1,12 @@
+test_opt_in_and_unsupported_combinations (test_gpu_reference.GpuReferenceContractTests.test_opt_in_and_unsupported_combinations) ... ok
+test_all_readback_modes_reset_history_and_external_inputs_stay_owned_by_caller (test_gpu_reference.GpuReferenceExecutionTests.test_all_readback_modes_reset_history_and_external_inputs_stay_owned_by_caller) ... ok
+test_flat_references_are_invalid_and_finite_including_odd_subsets (test_gpu_reference.GpuReferenceExecutionTests.test_flat_references_are_invalid_and_finite_including_odd_subsets) ... ok
+test_fractional_translation_and_affine_against_analytic_truth (test_gpu_reference.GpuReferenceExecutionTests.test_fractional_translation_and_affine_against_analytic_truth) ... ok
+test_pairs_reuse_resources_submit_once_and_keep_inputs_independent (test_gpu_reference.GpuReferenceExecutionTests.test_pairs_reuse_resources_submit_once_and_keep_inputs_independent) ... ok
+test_reference_quantities_match_cpu_for_models_interpolators_and_grids (test_gpu_reference.GpuReferenceExecutionTests.test_reference_quantities_match_cpu_for_models_interpolators_and_grids) ... ok
+test_roi_empty_and_holes_remain_static_across_new_pairs (test_gpu_reference.GpuReferenceExecutionTests.test_roi_empty_and_holes_remain_static_across_new_pairs) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 21.365s
+
+OK

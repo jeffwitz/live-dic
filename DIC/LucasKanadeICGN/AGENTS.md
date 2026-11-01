@@ -664,3 +664,33 @@ qualification rather than infer mobile coverage from desktop results.
   Do not call these physical-camera measurements or a GPU-preparation speedup.
 - The local native/browser-enabled suite passed 263 tests, and the UHD GUI
   check passed. This is not an observed result of a new remote CI execution.
+
+### Experimental browser GPU reference preparation — 2026-11-01
+
+- `referencePreparation: 'gpu'` and `registerPair(previous,current)` are opt-in
+  JS/PWA features. CPU preparation, native Python and all existing defaults stay
+  unchanged. The Solve checkbox applies only with a new reference/ROI preparation.
+- `reference.wgsl` retains the CPU Gaussian/recursive B-spline boundary convention,
+  gradient/Hessian layout and IC-GN equations. FP32 preparation is compared to the
+  existing FP64 oracle, not promised bitwise identical on marginal textures.
+  Translation/affine, uniform full windows and one slot are supported; quadratic
+  and deeper rings are rejected. The native Python graph does not use this new
+  preparation shader yet; native Naga compilation is not native execution.
+- Hot pairs reuse resources, submit preparation plus solving once, and discard
+  temporal histories from the previous reference. Independent reference/target
+  input textures prevent aliasing. Never introduce CPU readback of intermediate
+  reference images, validity masks or Hessians in this loop. Only the numeric
+  admissibility count joins final readback; never expose a stale CPU validity mask.
+- `exportReference` is an explicit cold diagnostic with allocation/readback.
+  Keep ROI geometry static and input-frame ownership with the caller. GPU scratch
+  is counted as API resources, never physical/free VRAM. No optional subgroup or
+  external compiler is required.
+- `test_gpu_reference.py` executes the CPU oracle, all subset sizes, fractional
+  motions, masks, readbacks, history reset, ownership and hot resource/submission
+  contracts. The software-browser CI step is configured; only local results have
+  been observed for this revision. The local complete suite passed 270 tests.
+- `browser-gpu-reference-20261101/` retains native-UHD analytical controls and
+  static simulated-camera observations, including recording. Respect their
+  distinct timing boundaries. Consecutive 1080p improves substantially, but the
+  full UHD application remains far below 60 FPS. Do not turn this into a claim
+  about physical cameras or other GPUs/OSs. Seven canonical WGSL files now ship.

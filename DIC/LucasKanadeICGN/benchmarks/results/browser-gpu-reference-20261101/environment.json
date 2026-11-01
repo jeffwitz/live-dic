@@ -1,0 +1,124 @@
+{
+  "platform": "Linux-7.0.0-38-generic-x86_64-with-glibc2.39",
+  "python": "3.11.14 (main, Jan 27 2026, 23:58:49) [Clang 21.1.4 ]",
+  "wgpu": "0.32.0",
+  "nativeAdapterInventory": [
+    {
+      "vendor": "Intel open-source Mesa driver",
+      "architecture": "",
+      "device": "Intel(R) Graphics (LNL)",
+      "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+      "stackgroup_min_size": 4,
+      "stackgroup_max_size": 128,
+      "vendor_id": 32902,
+      "device_id": 25760,
+      "adapter_type": "IntegratedGPU",
+      "backend_type": "Vulkan"
+    },
+    {
+      "vendor": "llvmpipe",
+      "architecture": "",
+      "device": "llvmpipe (LLVM 20.1.2, 256 bits)",
+      "description": "Mesa 25.2.8-0ubuntu0.24.04.4 (LLVM 20.1.2)",
+      "stackgroup_min_size": 4,
+      "stackgroup_max_size": 128,
+      "vendor_id": 65541,
+      "device_id": 0,
+      "adapter_type": "CPU",
+      "backend_type": "Vulkan"
+    },
+    {
+      "vendor": "",
+      "architecture": "",
+      "device": "Mesa Intel(R) Graphics (LNL)",
+      "description": "4.6 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.4",
+      "stackgroup_min_size": 4,
+      "stackgroup_max_size": 128,
+      "vendor_id": 32902,
+      "device_id": 0,
+      "adapter_type": "IntegratedGPU",
+      "backend_type": "OpenGL"
+    }
+  ],
+  "note": "Native adapter inventory is context; the selected browser adapter and user agent are in individual reports. Browser execution uses Chromium/Dawn, not the native Python graph.",
+  "cameraReports": {
+    "camera-cpu-1080.json.gz": {
+      "uncompressedSha256": "9bd50a807748f4e2901474553e97aa13aa2e54f936b0f3983e9a9e716071a3b4",
+      "buildCommit": "1c28373c6d5e452125df75e1f41b7d3491628b91",
+      "cases": [
+        {
+          "mode": "fixed",
+          "recording": false,
+          "completedFps": 60.06429776337943
+        },
+        {
+          "mode": "fixed",
+          "recording": true,
+          "completedFps": 31.684633608628808
+        },
+        {
+          "mode": "consecutive",
+          "recording": false,
+          "completedFps": 2.498287651661755
+        },
+        {
+          "mode": "consecutive",
+          "recording": true,
+          "completedFps": 2.1986956941361284
+        }
+      ]
+    },
+    "camera-gpu-1080.json.gz": {
+      "uncompressedSha256": "4fa840f54ec8324f6d7cffefd23be0d144411bf81986cdbdd4056959439f6a08",
+      "buildCommit": "1c28373c6d5e452125df75e1f41b7d3491628b91",
+      "cases": [
+        {
+          "mode": "fixed",
+          "recording": false,
+          "completedFps": 57.937555094188454
+        },
+        {
+          "mode": "fixed",
+          "recording": true,
+          "completedFps": 32.95251020982132
+        },
+        {
+          "mode": "consecutive",
+          "recording": false,
+          "completedFps": 26.385287877489862
+        },
+        {
+          "mode": "consecutive",
+          "recording": true,
+          "completedFps": 19.489912015686446
+        }
+      ]
+    },
+    "camera-gpu-uhd.json.gz": {
+      "uncompressedSha256": "7fd36e4894887faab4f04b1d5c687ea5a9d423917bd4e1d530da551dd30fcc86",
+      "buildCommit": "1c28373c6d5e452125df75e1f41b7d3491628b91",
+      "cases": [
+        {
+          "mode": "fixed",
+          "recording": false,
+          "completedFps": 18.28423000702671
+        },
+        {
+          "mode": "fixed",
+          "recording": true,
+          "completedFps": 10.19222493356233
+        },
+        {
+          "mode": "consecutive",
+          "recording": false,
+          "completedFps": 7.892660185124151
+        },
+        {
+          "mode": "consecutive",
+          "recording": true,
+          "completedFps": 5.274031238712587
+        }
+      ]
+    }
+  }
+}

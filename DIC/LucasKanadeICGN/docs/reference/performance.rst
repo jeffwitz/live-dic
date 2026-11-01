@@ -1360,3 +1360,35 @@ cold costs and reproduction commands are in
 distributions, not general thermal or physical-camera qualification. Newly
 prepared consecutive pairs do **not** reach 4K60 on this machine. Do not compare
 them to fixed-reference solve times as though both perform the same work.
+
+The same archive also contains actual application controls with a **static
+simulated 60 Hz camera**, ten-second observations after three seconds warmup.
+Sizes were negotiated at native 1080p/UHD. These are completed-field rates,
+including delivery/display and optional durable recording:
+
+.. list-table:: Browser application, consecutive pairs
+   :header-rows: 1
+
+   * - Input / recording
+     - CPU reference preparation
+     - GPU reference preparation
+   * - 1080p / off
+     - 2.50 fields/s
+     - 26.39 fields/s
+   * - 1080p / on
+     - 2.20 fields/s
+     - 19.49 fields/s
+   * - UHD / off
+     - Not measured in this application campaign
+     - 7.89 fields/s
+   * - UHD / on
+     - Not measured in this application campaign
+     - 5.27 fields/s
+
+The 1080p fixed-reference controls remain around 58–60 fields/s without
+recording. They do not rebuild a reference per frame. Recorded-field age and
+observable GPU-field age have different boundaries: the latter excludes the
+subsequent recording admission. The application observations do not equal the
+resident-array controls above, and neither establishes physical-camera or
+all-hardware performance. These results justify keeping the GPU option explicit
+and experimental while further reducing consecutive-mode costs.

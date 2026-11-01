@@ -1,0 +1,8 @@
+Wheel: lucas_kanade_icgn_webgl-0.1.0-py3-none-any.whl
+SHA256: 370bc5c72dcf8b26f9a58bf065885e4185083a79cc068066c891ea66f4732d56
+Fresh Python 3.12 environment: /tmp/live-dic-gpu-reference-installed
+Installed from wheel outside checkout; standard dependencies resolved by pip.
+Native GPU ROI identity and allow_pickle=False NPZ with config_json: passed.
+All seven GPU-reference tests against installed browser modules/shaders: passed.
+No first-party native extension or external shader compiler invoked.
+The native extra no longer exists: wgpu is an ordinary/default dependency.
