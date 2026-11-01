@@ -1,0 +1,24 @@
+{
+  "revision": "4322e22d0cdb4d66c33cf13f8dc83de3a2113846",
+  "python_src_tree": "c691f0be12a0a0e4d93720628d486321c4f0bfb0",
+  "source_sha256": {
+    "app.js": "34eee33fd6f2ff18591db3d1f02f8e887a6868224c9a961b3292fbb352739a4a",
+    "index.html": "0dcee29ac55b3f67d79fb9c00b1b67f4f36d36d7730fd1b649b4c4685053cf16",
+    "ui/local-media.js": "94715d192a55b4866ec2688de62c06575a19f50cf085b0b75406d7a3fa39bf29",
+    "ui/mask-image.js": "eefe02a4eed2b055a088f9819450bb66e43562adc4bd1187df70b055932aa61d",
+    "ui/tiff-codec.js": "1e018db04815f1c1593c77439f2918750ff66aaa5cb36cfb8d18643ab5f6d4a4",
+    "ui/tiff-worker.js": "4a8c8f52e23516f147f78700930f89e79cffd6c94b1d238c11c560c10121459a",
+    "vendor/UTIF-3.1.0.js": "e3e76115f49571e39624c3316a76b3c4c5b2c5ca518dfec4b66a9f7af8c6d059",
+    "vendor/pako-inflate-1.0.11.min.js": "2ca27e9a8dae569cdeac42752ed1aed1afeff7f19282d3cc12c0aaa54a08bc04"
+  },
+  "hardware_build_matches_committed_runtime": true,
+  "checks": {
+    "unit_gpu_browser": "287 tests passed; no skips",
+    "ruff": "passed",
+    "format": "84 files passed",
+    "node": "5 modules passed",
+    "sphinx": "strict build passed",
+    "repository": "passed"
+  },
+  "wheel_changed": false
+}

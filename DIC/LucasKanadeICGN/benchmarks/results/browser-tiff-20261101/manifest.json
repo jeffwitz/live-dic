@@ -1,0 +1,10 @@
+{
+  "hardware.json": {
+    "sha256": "9c28e0a5d8e3f7c7e9df43df25b33f167dc26c6d5ac1eee5b50bded469022f63",
+    "bytes": 7325
+  },
+  "software.json": {
+    "bytes": 7306,
+    "sha256": "733a7fcfc5add9fc77b1d92ddd0e277839038e3a460e20cdee76c62215811278"
+  }
+}
