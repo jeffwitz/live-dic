@@ -156,6 +156,12 @@ def main():
             )
             assert browser._evaluate("document.getElementById('review-component').value") == "exx"
             assert browser._evaluate("liveDicStatus.completed") == 3
+            # Keep the exact completed raster while a different field is on disk.
+            raster = """(async()=>{const c=document.getElementById('review-field'),pixels=c.getContext('2d').getImageData(0,0,c.width,c.height).data;
+              return {hash:Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',pixels)),v=>v.toString(16).padStart(2,'0')).join(''),
+                width:c.width,height:c.height,opacity:getComputedStyle(c).opacity,displayed:liveDicWorkbench.report().displayed};})()"""
+            raster_before = browser._evaluate(raster)
+            analysis_runs = browser._evaluate("liveDicWorkbench.report().analysisRuns")
             # Rapid seeks converge to the last requested saved result.
             browser._evaluate("""(()=>{
               const store=liveDicWorkbench.storage;globalThis.seekLoads=[];
@@ -167,6 +173,12 @@ def main():
                 "for(const index of [0,2,1]){document.getElementById('result-seek').value=index;document.getElementById('result-seek').oninput();}true"
             )
             assert browser._evaluate("seekLoads") == [1]
+            raster_loading = browser._evaluate(raster)
+            assert raster_loading == raster_before, (raster_before, raster_loading)
+            assert browser._evaluate("document.getElementById('save-figure').disabled")
+            assert browser._evaluate(
+                "document.getElementById('result-render-state').textContent.includes('Still showing field 3')"
+            )
             browser._evaluate("releaseSeek();true")
             wait(
                 browser,
@@ -175,6 +187,35 @@ def main():
             assert browser._evaluate("liveDicStatus.completed") == 3
             assert browser._evaluate("seekLoads") == [1, 2]
             browser._evaluate("liveDicWorkbench.storage.load=originalLoad;true")
+            assert browser._evaluate("liveDicWorkbench.report().analysisRuns") == analysis_runs
+            cache_hit = browser._evaluate("liveDicWorkbench.report().analysisCache")
+            assert cache_hit["hits"] > 0 and cache_hit["bytes"] <= cache_hit["maxBytes"]
+            # A recipe miss must retain the same raster until its actual Worker reply.
+            raster_before_worker = browser._evaluate(raster)
+            browser._evaluate("""(()=>{globalThis.heldAnalysis=[];globalThis.originalPost=Worker.prototype.postMessage;
+              Worker.prototype.postMessage=function(...args){if(args[0]?.recipe&&!args[0]?.extract){heldAnalysis.push([this,args]);return;}return originalPost.apply(this,args);};
+              document.getElementById('post-window').value=9;document.getElementById('post-window').onchange();return true;})()""")
+            wait(browser, "heldAnalysis.length===1&&liveDicWorkbench.report().recipe===null")
+            raster_analyzing = browser._evaluate(raster)
+            assert raster_analyzing == raster_before_worker
+            assert browser._evaluate("document.getElementById('save-figure').disabled")
+            browser._evaluate(
+                "Worker.prototype.postMessage=originalPost;for(const [worker,args]of heldAnalysis)originalPost.apply(worker,args);true"
+            )
+            wait(browser, "liveDicWorkbench.report().recipe?.window===9")
+            browser._evaluate(
+                "document.getElementById('post-window').value=5;document.getElementById('post-window').onchange();true"
+            )
+            wait(browser, "liveDicWorkbench.report().recipe?.window===5")
+            # Region summaries are deliberately legible on the field and below it.
+            browser._evaluate("""(()=>{document.querySelector('[data-inspect=region]').click();
+              for(const [id,value]of Object.entries({'measure-ax':800,'measure-ay':700,'measure-bx':1500,'measure-by':1100}))document.getElementById(id).value=value;
+              document.getElementById('measurement-position').dispatchEvent(new Event('submit',{cancelable:true}));return true;})()""")
+            region = browser._evaluate(
+                "({values:liveDicWorkbench.report().extraction,font:parseFloat(getComputedStyle(document.getElementById('probe-value')).fontSize),overlayFont:parseFloat(getComputedStyle(document.getElementById('cursor-value')).fontSize)})"
+            )
+            assert len(region["values"]) == 1 and region["values"][0]["valid"] > 0
+            assert region["font"] >= 16 and region["overlayFont"] >= 14
             # A seek during an in-progress playback load must wait for it too.
             browser._evaluate("""(()=>{
               globalThis.playbackLoads=[];let first=true;
@@ -211,6 +252,10 @@ def main():
                 solved=solved,
                 final=browser._evaluate("liveDicWorkbench.report()"),
                 raw_fields=raw_after,
+                retained_raster_during_disk_load=raster_loading,
+                retained_raster_during_worker=raster_analyzing,
+                cache_revisit=cache_hit,
+                region=region,
                 correlations=browser._evaluate("liveDicStatus.completed"),
                 coalesced_loads=browser._evaluate("seekLoads"),
                 playback_loads=browser._evaluate("playbackLoads"),

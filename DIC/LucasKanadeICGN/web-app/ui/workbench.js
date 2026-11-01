@@ -3,7 +3,7 @@ import { fieldArchive, importFieldArchive, projectArchive, importProjectArchive 
 import { extractHistory, sameAnalysis } from './history.js';
 import { resultFigure } from './figure.js';
 import { FieldStorage, defaultCacheBytes, fieldArrayBytes, MiB } from './field-storage.js';
-import { createViewCache } from './view-cache.js';
+import { createViewCache, createAnalysisCache } from './view-cache.js';
 
 const $ = id => document.getElementById(id);
 const number = value => value == null || !Number.isFinite(value) ? 'unavailable' : value.toPrecision(5);
@@ -47,6 +47,7 @@ function setRecipe(recipe) {
 export function installWorkbench({ captureCurrent, pause, error, recordChange, liveChanged, openResults, requestMemory = async()=>null, geometryDefaults = () => ({}), beforeProjectExport = async () => pause(), hasPendingResults = () => false }) {
   const entries = [], canvas = $('review-field'), overlay = $('inspection'), chart = $('profile-chart');
   const viewCache = createViewCache(deriveComponentValues, statistics);
+  const analysisCache = createAnalysisCache();
   const componentValues = (analysis, component) => viewCache.get(analysis, component);
   let analysisRuns = 0;
   document.querySelector('.viewer').append($('results-workbench'));
@@ -54,6 +55,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   let storage = new FieldStorage(), selectionSerial = 0, selectionBusy = false, libraryTimer = null, liveReady = false, prepared = false, captureBusy = false;
   let tool = 'probe', points = [], extraction = [], computedView = false, figureLegend = null;
   let requestId = 0, workerBusy = false, pendingAnalysis = false, workerFieldId = null, debounce = null;
+  let analysisJob = null, displayed = null;
   let pendingImport = null, importSerial = 0;
   let history = null, historyAbort = null, lastChartRows=[], lastChartOptions={};
   let replaying=false,replayTimer=null,replayIds=[];
@@ -140,7 +142,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     for (const entry of entries.slice(start,start+101)) select.add(new Option(entry.label, entry.id));
     select.value = reviewing?selected??'':'';
     const info=storage.report();
-    $('library-summary').textContent = `${entries.length} field(s) · ${(memoryBytes()/MiB).toFixed(1)} MiB resident / ${(info.memoryLimitBytes/MiB).toFixed(0)} MiB cache target · ${info.diskFields} saved on browser disk. ${!entries.length?'No stored results.':hasUnsaved()?'Export for an independent backup; settings have unsaved changes.':'Project download requested or session settings saved; verify your backup.'} Images are not recorded.`;
+    $('library-summary').textContent = `${entries.length} field(s) · ${(memoryBytes()/MiB).toFixed(1)} MiB resident / ${(info.memoryLimitBytes/MiB).toFixed(0)} MiB cache target · ${(analysisCache.report().bytes/MiB).toFixed(1)} MiB derived replay cache (32 MiB maximum) · ${info.diskFields} saved on browser disk. ${!entries.length?'No stored results.':hasUnsaved()?'Export for an independent backup; settings have unsaved changes.':'Project download requested or session settings saved; verify your backup.'} Images are not recorded.`;
     $('storage-summary').textContent=info.warning?`${info.warning}. ${info.unsavedFields} field(s) only in RAM; do not close before exporting/retrying.`:info.diskAvailable?'Disk-backed storage. Old cached fields are reloaded on demand. Browser storage is not an independent backup.':'Opening browser storage on first saved field; RAM remains bounded if disk is unavailable.';
     $('retry-storage').hidden=!info.unsavedFields&&!info.warning;$('save-session').disabled=!entries.length||!info.diskAvailable;
     $('freeze-field').disabled=!liveReady||captureBusy||storage.readOnly||storageBlocked();$('record-fields').disabled=!prepared||storage.readOnly||storageBlocked();
@@ -174,7 +176,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     stopReplay();rememberView();
     historyAbort?.abort();history=null;
     reviewing = false; selectionSerial++;selectionBusy=false;storage.pin(null);storage.evict();requestId++; pendingAnalysis = false; clearTimeout(debounce);
-    analysis=null;workerFieldId=null;lastChartRows=[];lastChartOptions={};canvas.dataset.analysisState='idle';canvas.setAttribute('aria-busy','false');worker?.postMessage({clear:true});
+    analysis=null;displayed=null;workerFieldId=null;lastChartRows=[];lastChartOptions={};canvas.dataset.analysisState='idle';canvas.setAttribute('aria-busy','false');worker?.postMessage({clear:true});
     $('results-workbench').hidden = true; canvas.hidden = true; overlay.hidden = true;
     $('field').hidden = false; $('return-live').hidden = true;
     $('roi').hidden=false;$('review-controls').hidden=true;$('live-appearance').hidden=false;$('cursor-value').hidden=true;
@@ -189,19 +191,16 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     historyAbort?.abort();history=null;$('spatial-view').hidden=true;$('history-state').textContent='';
     pause(); selected = entry.id; analysis = null; reviewing = true; computedView = false; points = []; extraction = [];
     const token=++selectionSerial;selectionBusy=true;storage.pin(entry.id);requestId++;pendingAnalysis=false;clearTimeout(debounce);
-    canvas.dataset.analysisState='pending';canvas.setAttribute('aria-busy','true');$('analysis-state').textContent='Loading saved field…';$('review-controls').inert=true;
+    canvas.dataset.analysisState='pending';canvas.setAttribute('aria-busy','true');pendingLabel(`Loading field ${entry.id}`);$('review-controls').inert=true;
     for(const key of ['save-npz','save-processed-csv','save-figure','measurement-inputs','apply-recipe-analysis'])$(key).disabled=true;
-    try {await storage.load(entry);} catch(e){if(token===selectionSerial){selectionBusy=false;$('review-controls').inert=false;canvas.dataset.analysisState='failed';canvas.setAttribute('aria-busy','false');error(e.message);}return;}
+    try {await storage.load(entry);} catch(e){if(token===selectionSerial){selectionBusy=false;$('review-controls').inert=false;canvas.dataset.analysisState='failed';canvas.setAttribute('aria-busy','false');$('result-render-state').textContent=$('analysis-state').textContent=`Unable to load field ${entry.id}. ${displayed ? `Still showing field ${displayed.id}. ` : ''}${e.message}`;error(e.message);}return;}
     if(token!==selectionSerial)return;selectionBusy=false;$('review-controls').inert=false;
     $('saved-fields').value = entry.id; $('results-workbench').hidden = false;
     $('return-live').hidden = false; canvas.hidden = false; overlay.hidden = false; $('field').hidden = true;
-    canvas.width = overlay.width = entry.field.width; canvas.height = overlay.height = entry.field.height;
     for(const id of ['measure-ax','measure-bx'])$(id).max=entry.field.width-1;
     for(const id of ['measure-ay','measure-by'])$(id).max=entry.field.height-1;
     $('roi').hidden=true;$('review-controls').hidden=false;$('live-appearance').hidden=true;$('recording-panel').open=false;
     updateLibrary();$('processing-batch-state').textContent='';
-    $('result-title').textContent = entry.label;
-    $('result-provenance').textContent = `${entry.field.width} × ${entry.field.height} · ${entry.field.config.motionModel} · ${entry.field.subsetSize}/${entry.field.subsetStride} · solver spatial policy: ${entry.field.config.outlierPolicy ?? 'unspecified'} · ${entry.metadata.comparison?.mode ?? 'imported'} reference. No image is stored behind this field.`;
     for(const option of $('review-component').options)if(option.dataset.coefficient!==undefined){
       const i=Number(option.dataset.coefficient);option.disabled=i>=(entry.field.config.motionModel==='quadratic'?12:6)||(entry.field.config.motionModel==='translation'&&![0,3].includes(i));
     }
@@ -210,19 +209,23 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     if(!preserveView)restoreView(entry.metadata.workbench?.view);
     else restoreInspection(inspection);
     $('compare-computed').textContent = 'Show computed field';
-    liveChanged(true); openResults(); scheduleAnalysis();
+    liveChanged(true); openResults(); scheduleAnalysis(true);
   }
-  function analysisComplete(id, result, failure) {
-    workerBusy = false;
+  function analysisComplete(id, result, failure, cached = false) {
+    if (!cached) {
+      workerBusy = false;
+      if (result && analysisJob && entries.includes(analysisJob.entry)) analysisCache.set(analysisJob.key, result);
+      analysisJob = null;
+    }
     if (id === requestId && reviewing) {
       canvas.setAttribute('aria-busy','false');canvas.dataset.analysisState=failure?'failed':'ready';
-      if (failure) { analysis = null; $('analysis-state').textContent = failure;$('cursor-value').hidden=false;$('cursor-value').textContent=`Derived analysis unavailable: ${failure}. Stored coefficients are preserved.`; error(failure); }
+      if (failure) { analysis = null; $('result-render-state').textContent = $('analysis-state').textContent = `Requested analysis failed. ${displayed ? `Still showing field ${displayed.id}. ` : ''}${failure}`;$('cursor-value').hidden=false;$('cursor-value').textContent=`Derived analysis unavailable: ${failure}. Stored coefficients are preserved.`; error(failure); }
       else {
         analysis = { ...result, field: activeEntry().field }; if (!computedView) {
           if(JSON.stringify(activeEntry().recipe)!==JSON.stringify(result.recipe))changed();
           activeEntry().recipe = result.recipe;updateLibrary();
         }
-        $('analysis-state').textContent = `Analysis ${result.processingWallMs.toFixed(1)} ms, outside the live solver. Computed arrays preserved.`;
+        $('analysis-state').textContent = cached ? 'Saved analysis reused from replay cache. No correlation or derived recalculation.' : `Analysis ${result.processingWallMs.toFixed(1)} ms, outside the live solver. Computed arrays preserved.`;
         $('processing-summary').textContent = result.recipe.smoothing === 'none' && result.recipe.strainSource === 'direct'
           ? 'Computed displacement and local model gradients. Solver smoothing, if enabled during correlation, is already part of these values.'
           : `${result.recipe.smoothing} displacement smoothing · ${result.recipe.strainSource === 'vsg' ? 'VSG strain' : 'direct gradients'} · ${result.recipe.window} × ${result.recipe.window} grid points · nominal displacement span ${result.smoothingSpanPx} px / strain span ${result.strainSpanPx} px. No filling across gaps.`;
@@ -240,12 +243,14 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   function runAnalysis() {
     if (!reviewing || !activeEntry()) return;
     if(selectionBusy){pendingAnalysis=true;return;}
-    if (workerBusy) { pendingAnalysis = true; return; }
-    pendingAnalysis = false; workerBusy = true;
-    analysisRuns++;
     const entry = activeEntry(), id = requestId, recipe = computedView
       ? { ...DEFAULT_RECIPE, strainSource: entry.field.config.motionModel === 'translation' ? 'vsg' : 'direct', unit: $('length-unit').value, unitsPerPixel: Number($('length-scale').value) }
       : recipeFromControls();
+    const key = JSON.stringify([entry.id, recipe]), cached = analysisCache.get(key);
+    if (cached) { pendingAnalysis = false; analysisComplete(id, cached, null, true); return; }
+    if (workerBusy) { pendingAnalysis = true; return; }
+    pendingAnalysis = false; workerBusy = true; analysisRuns++;
+    analysisJob = { key, entry };
     if (worker) {
       const payload = { id, recipe };
       if (workerFieldId !== entry.id) { payload.field = entry.field; payload.mask = entry.mask; workerFieldId = entry.id; }
@@ -255,13 +260,18 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
       catch (e) { analysisComplete(id, null, e.message); }
     }
   }
-  function scheduleAnalysis() {
+  function pendingLabel(action) {
+    $('result-render-state').textContent = $('analysis-state').textContent = `${action}… ${displayed ? `Still showing field ${displayed.id} (${displayed.component}); inspection and exports wait for the requested analysis.` : 'Preparing the first field.'}`;
+    $('cursor-value').hidden=true;
+    $('probe-value').textContent='Measurements will update when the requested field is ready.';
+    $('save-profile').disabled=true;
+  }
+  function scheduleAnalysis(immediate = false) {
     clearHistory();
     requestId++; pendingAnalysis = true; clearTimeout(debounce); analysis = null;
-    canvas.dataset.analysisState='pending';canvas.setAttribute('aria-busy','true');$('cursor-value').hidden=false;$('cursor-value').textContent='Updating derived analysis…';
-    $('analysis-state').textContent = 'Updating analysis…';
+    canvas.dataset.analysisState='pending';canvas.setAttribute('aria-busy','true');pendingLabel(`Preparing field ${selected}`);
     for (const id of ['save-npz','save-processed-csv','save-figure','measurement-inputs','apply-recipe-analysis']) $(id).disabled = true;
-    debounce = setTimeout(runAnalysis, 60);
+    if(immediate)runAnalysis();else debounce = setTimeout(runAnalysis, 60);
   }
   function format(value, unit) { if (value == null) return 'unavailable'; return `${number(STRAIN_COMPONENTS.has($('review-component').value) ? value*1e6 : value)} ${STRAIN_COMPONENTS.has($('review-component').value) ? 'µε' : unit}`; }
   function render() {
@@ -302,6 +312,10 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
       image.data.set([...rgb,255],i*4);
     }
     context.putImageData(image,0,0);
+    // Publish only a completed analysis. Resizing clears a canvas, so keep the
+    // previous raster throughout disk/worker waits and resize in this draw task.
+    if(canvas.width!==field.width||canvas.height!==field.height){canvas.width=field.width;canvas.height=field.height;}
+    if(overlay.width!==field.width||overlay.height!==field.height){overlay.width=field.width;overlay.height=field.height;}
     const ctx = canvas.getContext('2d'); ctx.fillStyle = '#263b47'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.imageSmoothingEnabled = false;
     // Samples occupy a stride-sized cell centred on the actual reference subset centre.
     const offset = (field.subsetSize-field.subsetStride)/2;
@@ -347,6 +361,10 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     for (const [label,value] of summaryRows) {
       const box = document.createElement('div'), strong = document.createElement('strong'); box.textContent = label; strong.textContent = value; box.append(strong); summary.append(box);
     }
+    displayed={id:selected,component};canvas.dataset.displayedField=String(selected);
+    $('result-render-state').textContent=`Showing field ${selected} · ${$('review-component').selectedOptions[0].textContent}`;
+    const entry=activeEntry();$('result-title').textContent=entry.label;
+    $('result-provenance').textContent=`${field.width} × ${field.height} · ${field.config.motionModel} · ${field.subsetSize}/${field.subsetStride} · solver spatial policy: ${field.config.outlierPolicy ?? 'unspecified'} · ${entry.metadata.comparison?.mode ?? 'imported'} reference. No image is stored behind this field.`;
     updateInspection();rememberView();
   }
   function pointPosition(index) {
@@ -496,8 +514,8 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     changed();updateLibrary();$('processing-batch-state').textContent=`Applied recipe to ${candidates.length} matching field(s); ${entries.length-candidates.length} unrelated field(s) unchanged. Computed arrays are preserved.`;
   };
   for(const [id,delta] of [['previous-result',-1],['next-result',1]])$(id).onclick=()=>{const index=entries.findIndex(e=>e.id===selected);if(entries[index+delta])return seekResult(entries[index+delta].id);};
-  $('delete-field').onclick=async()=>{stopReplay();const index=entries.findIndex(e=>e.id===Number($('saved-fields').value));if(index<0)return;const entry=entries[index];if(entry.storage?.saved&&!confirm('Permanently delete this computed field from browser disk? Export it first if needed.'))return;try{await storage.remove(entry);const active=entry.id===selected;entries.splice(index,1);changed();if(active){returnLive(true);selected=null;}updateLibrary();}catch(e){error(e.message);}};
-  async function closeLibrary(){await beforeProjectExport();await storage.flush();if(entries.length&&!confirm('Close this view? Committed disk fields remain in Saved sessions. RAM-only fields and unsaved analysis changes need an export before closing.'))return false;returnLive(true);await storage.close();entries.length=0;selected=null;nextId=1;storage=new FieldStorage({memoryLimit:storage.memoryLimit});updateLibrary();return true;}
+  $('delete-field').onclick=async()=>{stopReplay();const index=entries.findIndex(e=>e.id===Number($('saved-fields').value));if(index<0)return;const entry=entries[index];if(entry.storage?.saved&&!confirm('Permanently delete this computed field from browser disk? Export it first if needed.'))return;try{await storage.remove(entry);const active=entry.id===selected;entries.splice(index,1);analysisCache.clear();changed();if(active){returnLive(true);selected=null;}updateLibrary();}catch(e){error(e.message);}};
+  async function closeLibrary(){await beforeProjectExport();await storage.flush();if(entries.length&&!confirm('Close this view? Committed disk fields remain in Saved sessions. RAM-only fields and unsaved analysis changes need an export before closing.'))return false;returnLive(true);await storage.close();analysisCache.clear();entries.length=0;selected=null;nextId=1;storage=new FieldStorage({memoryLimit:storage.memoryLimit});updateLibrary();return true;}
   $('clear-fields').onclick=()=>closeLibrary().catch(e=>error(e.message));
   $('results-memory-limit').onchange=()=>{storage.setLimit($('results-memory-limit').value==='auto'?defaultCacheBytes():Number($('results-memory-limit').value)*MiB);const report=storage.report();if(report.unsavedFields&&report.residentBytes>report.memoryLimitBytes){$('record-fields').checked=false;recordChange(false);pause();error('Cache budget is below unsaved RAM data; export or retry disk storage before continuing.');}updateLibrary();};
   $('retry-storage').onclick=async()=>{try{await beforeProjectExport();await storage.retry();updateLibrary();await refreshSessions();}catch(e){error(`Disk save failed; RAM-only fields are retained. ${e.message}`);}};
@@ -512,7 +530,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     const id=$('stored-sessions').value;if(!id)return;
     try{await beforeProjectExport();await recordChange(false);$('record-fields').checked=false;const candidate=new FieldStorage({memoryLimit:storage.memoryLimit});const saved=await candidate.openSession(id);
       if(entries.length&&!confirm('Replace this view with the saved session? Current committed fields stay on disk; export RAM-only data and unsaved settings first.')){await candidate.close();return;}
-      returnLive(true);await storage.close();storage=candidate;entries.length=0;for(const entry of saved.entries)entries.push(entry);nextId=entries.reduce((max,entry)=>Math.max(max,entry.id+1),1);selected=null;changed();updateLibrary();
+      returnLive(true);await storage.close();analysisCache.clear();storage=candidate;entries.length=0;for(const entry of saved.entries)entries.push(entry);nextId=entries.reduce((max,entry)=>Math.max(max,entry.id+1),1);selected=null;changed();updateLibrary();
       const first=entries.find(entry=>entry.id===saved.selectedId)??entries[0];if(first)await selectEntry(first.id,{preserveView:false});$('project-state').textContent=`Opened ${entries.length} disk-backed fields. This session is read-only for acquisition; close this view to start a new recording.`;
     }catch(e){error(e.message);}
   };
@@ -653,6 +671,6 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     flush:()=>storage.flush(),get storage(){return storage;},
     stopRecording({preserveSelection=false}={}){const selected=$('record-fields').checked;$('record-fields').checked=false;const changed=recordChange(false);if(preserveSelection)$('record-fields').checked=selected;return changed;},
     clearInspection(){stopReplay();clearHistory();points=[];updateInspection();},
-    report(){const values=analysis?viewCache.get(analysis,$('review-component').value):null;return{count:entries.length,selected,reviewing,replaying,quantity:$('review-component').value,analysisRuns,viewCache:viewCache.report(),unsavedProject:hasUnsaved(),memoryBytes:memoryBytes(),storage:storage.report(),provenance:activeEntry()?{analysisEpoch:activeEntry().metadata.analysisEpoch,archiveSha256:activeEntry().metadata.archiveSha256,importGeometry:activeEntry().metadata.importGeometry}:null,recipe:analysis?.recipe??null,statistics:values?.statistics??null,extraction};},
-    destroy(){stopReplay();historyAbort?.abort();clearTimeout(debounce);clearTimeout(libraryTimer);chartResize?.disconnect();cancelAnimationFrame(chartResizeFrame);worker?.terminate();window.removeEventListener('beforeunload',beforeUnload);} };
+    report(){const values=analysis?viewCache.get(analysis,$('review-component').value):null;return{count:entries.length,selected,reviewing,replaying,quantity:$('review-component').value,analysisRuns,viewCache:viewCache.report(),analysisCache:analysisCache.report(),displayed,unsavedProject:hasUnsaved(),memoryBytes:memoryBytes(),storage:storage.report(),provenance:activeEntry()?{analysisEpoch:activeEntry().metadata.analysisEpoch,archiveSha256:activeEntry().metadata.archiveSha256,importGeometry:activeEntry().metadata.importGeometry}:null,recipe:analysis?.recipe??null,statistics:values?.statistics??null,extraction};},
+    destroy(){analysisCache.clear();analysis=null;analysisJob=null;stopReplay();historyAbort?.abort();clearTimeout(debounce);clearTimeout(libraryTimer);chartResize?.disconnect();cancelAnimationFrame(chartResizeFrame);worker?.terminate();window.removeEventListener('beforeunload',beforeUnload);} };
 }

@@ -105,6 +105,12 @@ Deletion is deliberate and permanent; export first.
 CPU RAM and GPU memory
 ----------------------
 
+Results playback also keeps up to eight recent derived analyses in a separate
+32 MiB cache. This additional bounded allocation avoids repeating a saved
+processing recipe when revisiting a field. It excludes raw fields and image
+masks, and is cleared when closing or replacing the library. The last
+completed map remains visible while an uncached field is loaded or processed.
+
 The CPU cache target covers resident field arrays, their encoded metadata and
 shared masks. It is not a limit on the whole browser process. The catalog and
 JavaScript objects, one active analysis/worker, decoded frames, renderer,

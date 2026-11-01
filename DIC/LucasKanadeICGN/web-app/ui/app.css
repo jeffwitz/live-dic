@@ -167,7 +167,13 @@ dialog li { margin: 14px 0; line-height: 1.7; font-size: 13px; }
 
 #applied-solver-summary {white-space:pre-line;border-left:2px solid #86b7ab;padding-left:10px;}
 
-#review-field[data-analysis-state=pending],#review-field[data-analysis-state=failed] {opacity:.45;}
+/* Keep the completed raster fully visible while another field is prepared.
+   aria-busy and the analysis status describe the pending request separately. */
+#review-field {opacity:1;}
+#probe-value {font-size:16px;line-height:1.8;padding:18px;}
+#cursor-value {font-size:14px;max-width:min(620px,80%);}
+#field-summary strong {font-size:18px;}
+@media(max-width:760px) {#probe-value{font-size:14px;padding:12px;}#cursor-value{font-size:12px;}#field-summary strong{font-size:16px;}}
 
 /* Independent scale key for sparse live vectors, outside the analysis legend. */
 .live-vector-key {display:flex;align-items:center;gap:.6rem;min-height:1.2rem;margin:0;padding:.6rem .75rem;background:#fff;color:#425766}

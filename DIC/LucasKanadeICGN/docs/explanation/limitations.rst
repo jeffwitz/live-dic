@@ -362,5 +362,10 @@ GUI and adds full readback/disk admission cost. A preview-only run has no saved
 sequence to replay. Video/camera admission retains its explicit dropped-frame
 policy; use an image folder when every input file must be calculated.
 Playback rate is a presentation maximum, never an acquisition FPS measurement.
-It waits for disk loading and derived analysis. Raw images are not recorded
+It waits for disk loading and derived analysis, keeping the last completed
+map visible and explicitly labelled during the wait. The eight-entry/32 MiB
+derived replay cache is additional to the configurable raw-field RAM target;
+it is not a promise to cache a whole recording or sustain the selected rate.
+Inspection and derived exports remain unavailable until the new analysis is
+ready. Raw images are not recorded
 with fields, so saved scalar maps use reference coordinates.

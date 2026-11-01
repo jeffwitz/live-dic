@@ -808,3 +808,17 @@ qualification rather than infer mobile coverage from desktop results.
 - Rapid result seeks allow one load and only the newest pending request.
   Canned smoke scenarios explicitly start unrecorded previews; the manual
   workflow qualifier uses `?smoke=1&case=manual` and original UHD inputs.
+
+### Continuous saved-result presentation — 2026-11-01
+
+- Keep the last completed Results raster fully visible while another saved
+  field or recipe is prepared. Never reset same-size canvases or dim them on
+  pending transitions. The nearby status distinguishes displayed and requested
+  fields; inspection and derived exports still require current analysis.
+- The derived-analysis LRU is separate from raw-field storage: at most eight
+  entries and 32 MiB of typed-array buffers, keyed by field and complete recipe.
+  Retain neither raw fields nor masks there; clear it on library replacement.
+  Palette/range changes continue to reuse active component arrays/statistics.
+- The workflow qualifier holds actual UHD disk loads and Worker submissions,
+  checks unchanged visible raster hashes, cached revisits, enlarged region
+  summaries and preserved raw arrays. Keep these guards when changing playback.

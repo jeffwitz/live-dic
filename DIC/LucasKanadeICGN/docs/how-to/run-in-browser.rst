@@ -36,7 +36,11 @@ Imported projects/sessions restore their saved initial view. Replay rate is a
 maximum of 1–30 fields/s (initially 2), independent of acquisition timestamps.
 Slow analysis/loading reduces the actual rate instead of skipping saved fields.
 Fast slider drags keep one active disk load and only the newest pending seek.
-The Space shortcut plays/pauses saved results only in Results.
+The last completed map stays visible while the next is loaded or analysed; the
+status above it names the field still shown. Inspection and exports wait for
+the requested field. Revisiting recent fields with the same recipe reuses a
+bounded cache (eight analyses, at most 32 MiB, additional to the raw-field
+cache). The Space shortcut plays/pauses saved results only in Results.
 
 Open or serve it
 ----------------

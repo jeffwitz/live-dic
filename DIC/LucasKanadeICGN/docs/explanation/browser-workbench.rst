@@ -76,11 +76,23 @@ A presentation flush shows the latest completed pair; mask editing restores
 the full reference image. Numerical images, fields and archives remain full size.
 
 The result library caches computed fields in bounded RAM and browser disk.
-Selecting a saved field pauses acquisition and runs its explicit processing
-recipe. Component arrays and statistics are cached for that completed analysis;
-palette/range/vector edits reuse them. A changed recipe or field has a new
-analysis and cache. This avoids recomputing derivatives for visual styling;
-it does not eagerly process or retain derived arrays for an entire recording.
+Selecting a saved field pauses acquisition and applies its explicit processing
+recipe. A separate least-recently-used replay cache holds at most eight derived
+analyses and 32 MiB of typed-array buffers. Its key includes field identity and
+the complete recipe; a matching revisit reuses the analysis without worker
+recalculation. Cache misses run the recipe. It retains neither raw fields nor
+image masks and is cleared when closing or changing the library. Component
+arrays and statistics are cached for the active analysis; palette/range/vector
+edits reuse them. No eager processing of an entire recording is performed.
+
+The completed field raster stays visible at full opacity during disk loading
+and analysis. The status above the image identifies the displayed field and
+the pending request. Its title, legend and raster change together only after
+the requested analysis is ready; same-size canvases are not reset between
+frames. Inspection and derived exports remain disabled during this wait, so
+previous pixels cannot be mistaken for a new measurement. A failed request
+keeps the last completed image with an explicit failure status. Region and
+probe summaries use larger type both on the image and below it.
 Original camera images are not stored with fields. Saved maps therefore use
 reference coordinates instead of an unrelated live image background.
 
