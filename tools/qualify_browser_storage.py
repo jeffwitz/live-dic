@@ -273,6 +273,15 @@ def main():
                 and recovered["storage"]["unsavedFields"] == 0
             ), recovered
             report["injectedQuotaFailure"] = {"beforeRetry": failure, "afterRetry": recovered}
+            report["concurrentSessionDeletion"] = evaluate(
+                browser,
+                "const {FieldStorage}=await import('./ui/field-storage.js');const s=new FieldStorage();"
+                f"const saved=await s.openSession({json.dumps(session)});await s.backend.deleteSession({json.dumps(session)});"
+                "let reason=null;try{await s.saveSettings(saved.entries,1);}catch(e){reason=e.message;}await s.close();return {reason};",
+            )
+            assert "deleted" in (report["concurrentSessionDeletion"]["reason"] or ""), report[
+                "concurrentSessionDeletion"
+            ]
             report["noDisk"] = evaluate(
                 browser,
                 "await document.getElementById('clear-fields').onclick();const s=liveDicWorkbench.storage;"

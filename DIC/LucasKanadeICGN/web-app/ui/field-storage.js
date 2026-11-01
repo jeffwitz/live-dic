@@ -80,14 +80,18 @@ export class IndexedFieldDatabase {
     try { await done; } catch (error) { if (conflict) throw new Error('Stored session changed or was deleted in another tab; recording stopped'); throw error; }
   }
   async saveSettings(session, value, revision) {
-    const tx = this.db.transaction('settings', 'readwrite'), done = transactionDone(tx);
-    let conflict = false;
-    const request = tx.objectStore('settings').get(session);
-    request.onsuccess = () => {
-      if ((request.result?.revision ?? 0) !== revision) { conflict = true; tx.abort(); return; }
-      tx.objectStore('settings').put({id: session, value, revision: revision + 1});
+    const tx = this.db.transaction(['sessions','settings'], 'readwrite'), done = transactionDone(tx);
+    let conflict = false, deleted=false;
+    const exists=tx.objectStore('sessions').get(session);
+    exists.onsuccess=()=>{
+      if(!exists.result){deleted=true;tx.abort();return;}
+      const request = tx.objectStore('settings').get(session);
+      request.onsuccess = () => {
+        if ((request.result?.revision ?? 0) !== revision) { conflict = true; tx.abort(); return; }
+        tx.objectStore('settings').put({id: session, value, revision: revision + 1});
+      };
     };
-    try { await done; } catch (error) { if (conflict) throw new Error('Another tab changed this session; reopen it before saving settings'); throw error; }
+    try { await done; } catch (error) { if(deleted)throw new Error('This session was deleted in another tab; export retained fields before closing');if (conflict) throw new Error('Another tab changed this session; reopen it before saving settings'); throw error; }
   }
   async remove(session, descriptor, summary) {
     const tx = this.db.transaction(['fields', 'catalog', 'sessions'], 'readwrite'), done = transactionDone(tx);
@@ -162,7 +166,8 @@ export class FieldStorage {
       if (this.readOnly) throw new Error('This saved session is read-only; start a new results session before recording');
       const db = await this.database(), now = new Date().toISOString();
       const session = this.session ?? {id: crypto.randomUUID(), createdAt: now, count: 0, bytes: 0, nextId: 1, name: 'Computed fields'};
-      const masks = [], records = [];
+      const masks = [], records = [], residentMasks=new Map();
+      for(const entry of this.cache.values())if(entry.mask)residentMasks.set(entry.storage.maskId,entry.mask);
       for (const entry of entries) {
         validateField(entry.field);
         // A narrow view must not retain/serialize an unrelated, much larger backing buffer.
@@ -172,6 +177,7 @@ export class FieldStorage {
           if(values.byteOffset||values.byteLength!==values.buffer.byteLength)entry.field={...entry.field,[key]:values.slice()};
         }
         const maskId = await this.maskId(entry.mask, entry.field), descriptor = {...this.descriptor(entry), maskId};
+        if(maskId){if(residentMasks.has(maskId))entry.mask=residentMasks.get(maskId);else residentMasks.set(maskId,entry.mask);}
         records.push({id: entry.id, field: entry.field, metadata: entry.metadata, maskId, descriptor});
         if (maskId && !this.knownMasks.has(maskId) && !masks.some(mask => mask.id === maskId)) masks.push({id: maskId, data: entry.mask});
       }

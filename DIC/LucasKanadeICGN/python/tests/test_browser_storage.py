@@ -102,6 +102,16 @@ class BrowserStorageTests(unittest.TestCase):
         self.assertEqual(result["after"], result["bytes"])
         self.assertEqual(result["masks"], 1)
 
+    def test_identical_masks_from_different_archive_parts_share_resident_memory(self):
+        result = javascript("""
+          const {disk,store}=setup(16*MiB),a=entry(1,64,64,new Uint8Array(4096).fill(1)),b=entry(2,64,64,new Uint8Array(4096).fill(1));
+          await store.addMany([a]);await store.addMany([b]);
+          console.log(JSON.stringify({shared:a.mask===b.mask,masks:disk.staticMasks.size,bytes:store.residentBytes()}));
+        """)
+        self.assertTrue(result["shared"])
+        self.assertEqual(result["masks"], 1)
+        self.assertEqual(result["bytes"], 4096 + 2 * (16 * (6 * 8 + 4 + 4) + 120))
+
     def test_reopen_is_lazy_and_restores_analysis_without_loading_all_fields(self):
         result = javascript("""
           const {disk,store}=setup(),entries=[entry(1),entry(2),entry(3)];for(const e of entries)await store.addMany([e]);
