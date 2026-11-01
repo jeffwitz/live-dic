@@ -1,0 +1,370 @@
+{
+  "timestamp_queries": {
+    "usable": false,
+    "reason": "Every one of the 1080 observed pass durations was zero despite nonzero wall durations. Do not use these values for attribution."
+  },
+  "native": [
+    {
+      "temporal": false,
+      "preparationMs": 1833.6244129459374,
+      "medianMs": 16.214979521464556,
+      "p95Ms": 24.936469618114643,
+      "sustainedFps": 57.29707707411329,
+      "accepted": 31654,
+      "rmse": 5.089189672050637e-07
+    },
+    {
+      "temporal": true,
+      "preparationMs": 1764.8040250060149,
+      "medianMs": 15.183438517851755,
+      "p95Ms": 22.2696556331357,
+      "sustainedFps": 60.455691900212386,
+      "accepted": 31654,
+      "rmse": 3.605158459864919e-05
+    }
+  ],
+  "resident_browser": [
+    {
+      "name": "fixed-full",
+      "callMs": 21.299999982118607,
+      "exportMs": 0.0,
+      "totalMs": 21.299999982118607
+    },
+    {
+      "name": "fixed-summary-export",
+      "callMs": 20.950000002980232,
+      "exportMs": 3.2999999821186066,
+      "totalMs": 24.400000005960464
+    },
+    {
+      "name": "pair-full",
+      "callMs": 103.6499999910593,
+      "exportMs": 0.0,
+      "totalMs": 103.6499999910593
+    },
+    {
+      "name": "pair-summary-export",
+      "callMs": 108.6499999910593,
+      "exportMs": 3.300000011920929,
+      "totalMs": 111.59999999403954
+    },
+    {
+      "name": "pair-external-summary-export",
+      "callMs": 137.79999999701977,
+      "exportMs": 3.3499999940395355,
+      "totalMs": 141.15000000596046
+    }
+  ],
+  "reference_preparation": {
+    "bytes": {
+      "wholeMs": 86.79999999701977,
+      "emptyFenceMs": 2.5999999940395355,
+      "copyApiMs": 0.6499999910593033,
+      "copyCompletionMs": 3.4500000029802322,
+      "steps": [
+        {
+          "label": "clear reference counts",
+          "medianMs": 2.6499999910593033
+        },
+        {
+          "label": "reference pyramid reduction",
+          "medianMs": 2.6499999910593033
+        },
+        {
+          "label": "reference level 0 gaussian_x",
+          "medianMs": 8.150000005960464
+        },
+        {
+          "label": "reference level 0 gaussian_y",
+          "medianMs": 7.750000014901161
+        },
+        {
+          "label": "reference level 0 spline_rows",
+          "medianMs": 5.5
+        },
+        {
+          "label": "reference level 0 spline_columns",
+          "medianMs": 7.0
+        },
+        {
+          "label": "reference level 0 gradients",
+          "medianMs": 7.5
+        },
+        {
+          "label": "reference level 0 prepare_subsets",
+          "medianMs": 30.49999998509884
+        },
+        {
+          "label": "reference level 1 gaussian_x",
+          "medianMs": 4.350000008940697
+        },
+        {
+          "label": "reference level 1 gaussian_y",
+          "medianMs": 3.2999999970197678
+        },
+        {
+          "label": "reference level 1 spline_rows",
+          "medianMs": 2.7000000029802322
+        },
+        {
+          "label": "reference level 1 spline_columns",
+          "medianMs": 2.8499999940395355
+        },
+        {
+          "label": "reference level 1 gradients",
+          "medianMs": 2.6499999910593033
+        },
+        {
+          "label": "reference level 1 prepare_subsets",
+          "medianMs": 6.850000008940697
+        }
+      ]
+    },
+    "external": {
+      "wholeMs": 101.3500000089407,
+      "emptyFenceMs": 2.749999985098839,
+      "copyApiMs": 4.0,
+      "copyCompletionMs": 22.50000001490116,
+      "steps": [
+        {
+          "label": "reference input conversion",
+          "medianMs": 2.75
+        },
+        {
+          "label": "clear reference counts",
+          "medianMs": 2.5999999940395355
+        },
+        {
+          "label": "reference pyramid reduction",
+          "medianMs": 2.600000023841858
+        },
+        {
+          "label": "reference level 0 gaussian_x",
+          "medianMs": 10.549999997019768
+        },
+        {
+          "label": "reference level 0 gaussian_y",
+          "medianMs": 9.950000002980232
+        },
+        {
+          "label": "reference level 0 spline_rows",
+          "medianMs": 6.3499999940395355
+        },
+        {
+          "label": "reference level 0 spline_columns",
+          "medianMs": 6.5999999940395355
+        },
+        {
+          "label": "reference level 0 gradients",
+          "medianMs": 9.099999994039536
+        },
+        {
+          "label": "reference level 0 prepare_subsets",
+          "medianMs": 28.049999997019768
+        },
+        {
+          "label": "reference level 1 gaussian_x",
+          "medianMs": 3.749999985098839
+        },
+        {
+          "label": "reference level 1 gaussian_y",
+          "medianMs": 2.8499999940395355
+        },
+        {
+          "label": "reference level 1 spline_rows",
+          "medianMs": 2.7999999970197678
+        },
+        {
+          "label": "reference level 1 spline_columns",
+          "medianMs": 3.1500000059604645
+        },
+        {
+          "label": "reference level 1 gradients",
+          "medianMs": 2.800000011920929
+        },
+        {
+          "label": "reference level 1 prepare_subsets",
+          "medianMs": 8.049999997019768
+        }
+      ]
+    }
+  },
+  "camera": [
+    {
+      "mode": "fixed",
+      "recording": false,
+      "computedFps": 27.81421774448416,
+      "committedFps": 0.0,
+      "stages": {
+        "buffer map": {
+          "medianMs": 0.5,
+          "p95Ms": 2.7250000089406967,
+          "count": 336
+        },
+        "current input upload completion": {
+          "medianMs": 9.399999976158142,
+          "p95Ms": 14.279999992251403,
+          "count": 335
+        },
+        "target preprocessing + solve + summaries completion": {
+          "medianMs": 15.400000005960464,
+          "p95Ms": 24.230000007152558,
+          "count": 335
+        },
+        "idle gap before next accepted input": {
+          "medianMs": 8.699999988079071,
+          "p95Ms": 15.099999994039536,
+          "count": 334
+        }
+      },
+      "boundary": "Extra fences isolate stages; intrusive diagnostic, not the unmodified application FPS."
+    },
+    {
+      "mode": "fixed",
+      "recording": true,
+      "computedFps": 20.493163331288766,
+      "committedFps": 20.410195058692455,
+      "stages": {
+        "buffer map": {
+          "medianMs": 2.5,
+          "p95Ms": 5.600000023841858,
+          "count": 494
+        },
+        "current input upload completion": {
+          "medianMs": 10.300000011920929,
+          "p95Ms": 16.69999998807907,
+          "count": 247
+        },
+        "target preprocessing + solve + summaries completion": {
+          "medianMs": 17.599999994039536,
+          "p95Ms": 25.44999999552965,
+          "count": 246
+        },
+        "recorded-field readback": {
+          "medianMs": 4.5999999940395355,
+          "p95Ms": 8.470000001788138,
+          "count": 247
+        },
+        "worker to CPU field": {
+          "medianMs": 34.69999998807907,
+          "p95Ms": 44.579999995231624,
+          "count": 247
+        },
+        "worker/main handoff": {
+          "medianMs": 0.6999023258686066,
+          "p95Ms": 3.900034177303314,
+          "count": 247
+        },
+        "IndexedDB transaction": {
+          "medianMs": 15.60009765625,
+          "p95Ms": 24.609936523437497,
+          "count": 247
+        },
+        "storage full admission": {
+          "medianMs": 19.199951171875,
+          "p95Ms": 28.79985351562499,
+          "count": 247
+        },
+        "idle gap before next accepted input": {
+          "medianMs": 13.199999988079071,
+          "p95Ms": 21.975000001490116,
+          "count": 246
+        }
+      },
+      "boundary": "Extra fences isolate stages; intrusive diagnostic, not the unmodified application FPS."
+    },
+    {
+      "mode": "consecutive",
+      "recording": false,
+      "computedFps": 7.999934117810604,
+      "committedFps": 0.0,
+      "stages": {
+        "buffer map": {
+          "medianMs": 0.5,
+          "p95Ms": 2.280000013113017,
+          "count": 97
+        },
+        "both pair inputs upload completion": {
+          "medianMs": 16.600000023841858,
+          "p95Ms": 24.440000003576277,
+          "count": 97
+        },
+        "reference preparation completion": {
+          "medianMs": 80.7999999821186,
+          "p95Ms": 99.22499999403954,
+          "count": 96
+        },
+        "target preprocessing + solve + summaries completion": {
+          "medianMs": 15.049999997019768,
+          "p95Ms": 24.599999994039536,
+          "count": 96
+        },
+        "idle gap before next accepted input": {
+          "medianMs": 10.0,
+          "p95Ms": 18.38999999463558,
+          "count": 95
+        }
+      },
+      "boundary": "Extra fences isolate stages; intrusive diagnostic, not the unmodified application FPS."
+    },
+    {
+      "mode": "consecutive",
+      "recording": true,
+      "computedFps": 6.525312456624743,
+      "committedFps": 6.607911348480752,
+      "stages": {
+        "both pair inputs upload completion": {
+          "medianMs": 17.549999997019768,
+          "p95Ms": 25.504999999701976,
+          "count": 80
+        },
+        "reference preparation completion": {
+          "medianMs": 92.80000001192093,
+          "p95Ms": 111.03999997973442,
+          "count": 79
+        },
+        "target preprocessing + solve + summaries completion": {
+          "medianMs": 19.0,
+          "p95Ms": 24.590000000596042,
+          "count": 79
+        },
+        "buffer map": {
+          "medianMs": 2.5,
+          "p95Ms": 5.144999991357328,
+          "count": 158
+        },
+        "recorded-field readback": {
+          "medianMs": 4.300000011920929,
+          "p95Ms": 6.500000005960459,
+          "count": 79
+        },
+        "worker to CPU field": {
+          "medianMs": 135.90000000596046,
+          "p95Ms": 160.759999987483,
+          "count": 79
+        },
+        "worker/main handoff": {
+          "medianMs": 0.999951183795929,
+          "p95Ms": 2.799965816736221,
+          "count": 79
+        },
+        "IndexedDB transaction": {
+          "medianMs": 48.2001953125,
+          "p95Ms": 57.82009277343749,
+          "count": 79
+        },
+        "storage full admission": {
+          "medianMs": 52.39990234375,
+          "p95Ms": 62.2599609375,
+          "count": 79
+        },
+        "idle gap before next accepted input": {
+          "medianMs": 14.349999994039536,
+          "p95Ms": 22.859999983012674,
+          "count": 78
+        }
+      },
+      "boundary": "Extra fences isolate stages; intrusive diagnostic, not the unmodified application FPS."
+    }
+  ]
+}

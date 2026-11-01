@@ -738,3 +738,22 @@ qualification rather than infer mobile coverage from desktop results.
 - The local complete native/browser suite passed 278 tests without skips. Actual
   UHD pause/failure/recovery/source/export checks retain exact typed arrays. The
   separate software-browser CI job is configured; no new remote result is claimed.
+
+### Browser throughput attribution — 2026-11-01
+
+- `browser-bottleneck-20261101/` diagnoses the fixed-reference native-to-browser
+  camera gap on the original UHD identity pair. Preserve the comparison boundary:
+  native steady state excludes reference preparation; consecutive pairs include
+  rebuilding it. Reference preparation is additional work, not slower LK alone.
+- The temporary diagnostic sites split upload/preparation/solving with extra
+  completion fences. Their wall times locate expensive stages but are not pure
+  GPU times or unmodified application FPS. Asynchronous storage admission overlaps
+  the next calculation; never sum it blindly into frame period.
+- The attempted 1,080 GPU timestamp durations are all zero and invalid. Keep the
+  rejected capture, use qualified wall controls, and sanity-check any future GPU
+  timestamps before attribution. The largest isolated reference stage includes
+  subset statistics plus Hessians/inverses; it does not isolate inversion alone.
+- The owner stopped the planned display-cadence matrix after twelve complete
+  controls to prioritize diagnosis. Keep those raw runs and the incomplete
+  criteria explicit. No shader/default optimization was authorized by that
+  diagnosis request; decide the next optimization from the measured costs.

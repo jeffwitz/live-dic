@@ -1,0 +1,89 @@
+--- a/worker.js
++++ b/worker.js
+@@ -1,3 +1,4 @@
++import './stage-hooks.js';
+ import { createSession } from './ui/session.js';
+ const session = createSession((message, transfer = []) => postMessage(message, transfer));
+ self.onmessage = ({ data }) => { session.handle(data); };
+--- /dev/null
++++ b/stage-hooks.js
+@@ -0,0 +1,10 @@
++
++globalThis.__stageEvents=[];globalThis.__stageFrame=null;
++globalThis.__stageEvent=(stage,start,extra={})=>{
++ if(!globalThis.__stageFrame)return;
++ __stageEvents.push({stage,frame:__stageFrame,startEpochMs:performance.timeOrigin+start,wallMs:performance.now()-start,...extra});
++ if(__stageEvents.length>8192)__stageEvents.shift();
++};
++const map=GPUBuffer.prototype.mapAsync;
++GPUBuffer.prototype.mapAsync=function(...args){const start=performance.now(),frame=__stageFrame;
++ return map.apply(this,args).then(result=>{if(frame){__stageEvents.push({stage:'buffer map',frame,startEpochMs:performance.timeOrigin+start,wallMs:performance.now()-start,bytes:this.size,label:this.label});}return result;});};
+--- a/ui/session.js
++++ b/ui/session.js
+@@ -127,6 +127,7 @@
+         received++;
+         if (!engine || !engine.ring.idle || outstanding.size) { message.frame.close(); message.referenceFrame?.close(); send({ type: 'dropped', id }); return; }
+         const available = performance.now();
++        globalThis.__stageFrame={id,ordinal:message.comparison?.target?.ordinal};
+         const recordThisFrame = message.recordRequested ?? recording;
+         const operation = (async () => {
+           try {
+@@ -219,7 +220,7 @@
+           supervisor:gpuMemoryUsage({referenceTexture,rendererConfig:renderer?.config}),
+           limits:capabilities?.limits??null,physicalVramBytes:null,freeVramBytes:null,
+           note:'GPU API allocations are distinct from the CPU results cache. Physical residency/free VRAM and unified/discrete placement are not exposed. Canvas swapchains and driver allocations are not counted.'});
+-      } else if (type === 'report') send({ type: 'report', id, samples: sampleLog, capabilities,
++      } else if (type === 'report') send({ type: 'report', id, samples: sampleLog, capabilities, diagnostic:globalThis.__stageEvents,
+         presentation:{...presentationStats,snapshotEpochMs:performance.timeOrigin+performance.now(),supervision} });
+       else if (type === 'destroy') {
+         await Promise.all([...outstanding]); cancelPresentation();
+--- a/web/core/pyramid.js
++++ b/web/core/pyramid.js
+@@ -740,7 +740,13 @@
+     const temporal=pair?null:slot.temporal;
+     if (roiPlans[0]?.count === 0) return null;
+     const encoder = device.createCommandEncoder({ label: 'DIC-RT full-pyramid registration' });
+-    if(pair){slot.temporal?.clearForNewReference(encoder);gpuReference.encode(encoder);}
++    if(pair){
++      const refStart=performance.now(),referenceEncoder=device.createCommandEncoder({label:'Diagnostic reference preparation'});
++      slot.temporal?.clearForNewReference(referenceEncoder);gpuReference.encode(referenceEncoder);
++      device.queue.submit([referenceEncoder.finish()]);await device.queue.onSubmittedWorkDone();
++      globalThis.__stageEvent('reference preparation completion',refStart);
++    }
++    const solveStarted=performance.now();
+     if (slot.externalActive) slot.external.converter.encode(encoder);
+     levels.forEach((level) => {
+       encoder.clearBuffer(level.buffers.state);
+@@ -856,6 +862,7 @@
+     device.queue.submit([encoder.finish()]);
+     if (!timestampReadback) {
+       await device.queue.onSubmittedWorkDone();
++      globalThis.__stageEvent('target preprocessing + solve + summaries completion',solveStarted);
+       return null;
+     }
+     await timestampReadback.mapAsync(GPUMapMode.READ);
+@@ -1118,7 +1125,8 @@
+     const slot = slots[slotIndex], started = performance.now();
+     if (!slot.external) throw new Error('External image input was not prepared');
+     slot.externalActive = true;
+-    slot.external.converter.copy(frame);
++    const uploadStart=performance.now();slot.external.converter.copy(frame);const apiMs=performance.now()-uploadStart;await device.queue.onSubmittedWorkDone();
++    globalThis.__stageEvent('current input upload completion',uploadStart,{apiMs});
+     const gpuMs = await executePipeline({ slot });
+     return readResult({ gpuMs, wallMs: performance.now() - started }, slot);
+   };
+@@ -1126,11 +1134,14 @@
+   const registerPair = async (reference,current) => {
+     if(!referenceReady||!gpuReference)throw new Error('Prepare a GPU reference before registering pairs');
+     const slot=slots[0],started=performance.now();
++    const uploadStart=performance.now();
+     if(roiPlans[0]?.count!==0)gpuReference.copy(reference);
+     if(roiPlans[0]?.count!==0) {
+       if(current instanceof Uint8Array){slot.externalActive=false;setTargetBytes(current,FRAME_WIDTH,FRAME_HEIGHT,slot.levels[0].sourceTexture);}
+       else{slot.externalActive=true;slot.external.converter.copy(current);}
+     }
++    const apiMs=performance.now()-uploadStart;await device.queue.onSubmittedWorkDone();
++    globalThis.__stageEvent('both pair inputs upload completion',uploadStart,{apiMs});
+     await executePipeline({slot,pair:true});
+     const result=await readResult({gpuMs:null,wallMs:performance.now()-started,gpuReferenceIncluded:true},slot);
+     levels.forEach(level=>level.referenceValid=null);

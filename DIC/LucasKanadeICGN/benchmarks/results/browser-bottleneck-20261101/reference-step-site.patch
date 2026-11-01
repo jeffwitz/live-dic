@@ -1,0 +1,49 @@
+--- a/web/core/reference-gpu.js
++++ b/web/core/reference-gpu.js
+@@ -127,7 +127,35 @@
+           masks: levels.map((level, i) => Uint8Array.from(data.subarray(offsets[i], offsets[i] + level.gridCount))) };
+       } finally { validityReadback.unmap(); }
+     }
+-    return { copy, encode, readValidity,
++    async function profile(frame, repeats) {
++      const steps=[];
++      const recorder={
++        clearBuffer(...args){steps.push({label:'clear reference counts',run:encoder=>encoder.clearBuffer(...args)});},
++        beginComputePass(options){
++          const calls=[];let label=options?.label??'reference input conversion';
++          return {setPipeline(pipeline){calls.push(['setPipeline',[pipeline]]);},
++            setBindGroup(...args){calls.push(['setBindGroup',args]);},
++            dispatchWorkgroups(...args){calls.push(['dispatchWorkgroups',args]);},
++            end(){steps.push({label,run(encoder){const pass=encoder.beginComputePass(options);for(const [name,args] of calls)pass[name](...args);pass.end();}});}};
++        }
++      };
++      copy(frame);encode(recorder);
++      const samples=[];
++      for(let repeat=0;repeat<repeats;repeat++){
++        let started=performance.now();copy(frame);const whole=device.createCommandEncoder();encode(whole);device.queue.submit([whole.finish()]);await device.queue.onSubmittedWorkDone();
++        const wholeMs=performance.now()-started;
++        started=performance.now();const empty=device.createCommandEncoder();device.queue.submit([empty.finish()]);await device.queue.onSubmittedWorkDone();const emptyFenceMs=performance.now()-started;
++        started=performance.now();copy(frame);const copyApiMs=performance.now()-started;await device.queue.onSubmittedWorkDone();const copyCompletionMs=performance.now()-started;
++        const measured=[];
++        for(const step of steps){
++          const start=performance.now(),encoder=device.createCommandEncoder();step.run(encoder);device.queue.submit([encoder.finish()]);await device.queue.onSubmittedWorkDone();
++          measured.push({label:step.label,wallMs:performance.now()-start});
++        }
++        samples.push({wholeMs,emptyFenceMs,copyApiMs,copyCompletionMs,steps:measured});
++      }
++      return {samples,boundary:'Whole: copy + unchanged full preparation + completion. Steps: each original pass submitted/fenced separately; extra fences perturb execution and these are wall times, not GPU timestamps.'};
++    }
++    return { copy, encode, readValidity, profile,
+       async prepare(frame) {
+         copy(frame);
+         const encoder = device.createCommandEncoder(); encode(encoder);
+--- a/web/core/pyramid.js
++++ b/web/core/pyramid.js
+@@ -1233,6 +1233,7 @@
+     info, configure, setReference, register, registerBytes, registerExternal, registerPair, exportReference, benchmark, ensureDevice,
+     resetTemporalState() { temporal?.reset(); },
+     setAnalyticTruth(truth) { slots.forEach((slot) => slot.resultReader?.setTruth(truth)); },
++    profileReference(frame,repeats) {return gpuReference.profile(frame,repeats);},
+     exportField() { return readResult({ export: true }, lastSlot ?? slots[0], true); },
+     get device() { return device; },
+     get imageTexture() { return lastSlot?.externalActive ? lastSlot.external.converter.source : (lastSlot?.levels[0].sourceTexture ?? sourceTexture); },

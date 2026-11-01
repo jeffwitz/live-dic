@@ -1,0 +1,80 @@
+{
+  "base_commit": "1baf91325790666ec1cacb2e63fee031b8f217d2",
+  "scope": "Temporary diagnostic sites; patches are not shipped in the numerical engine. All times below are wall times. GPU timestamp results were all zero and rejected.",
+  "files": {
+    "core-cause.json.gz": {
+      "sha256_uncompressed": "1c527fcf774cc4bf89294aedeebe53a6b434988ecbf2cc8f80de6d5ba359b378",
+      "bytes_uncompressed": 945993
+    },
+    "reference-steps.json.gz": {
+      "sha256_uncompressed": "33555aa38449c367fddcc0580e3e886a1f669e0fdba5c28d35179636c98379f3",
+      "bytes_uncompressed": 50526
+    },
+    "camera-stages.json.gz": {
+      "sha256_uncompressed": "d68b99beaf42352b7f108bccab0d219136c121d45a55dc658b439a173d0d359b",
+      "bytes_uncompressed": 2343472
+    },
+    "full-tests.log.gz": {
+      "sha256_uncompressed": "dd1dcb3638556a9113c0ff86f7c2c344ac9e55e18103899ab87e3a877a7d11d3",
+      "bytes_uncompressed": 381
+    },
+    "cadence-consecutive-1-30.json.gz": {
+      "sha256_uncompressed": "315f367e14e88d302a5b1bb379d7e54dae7a4f374ba64ab4d357e0157bc06ea2",
+      "bytes_uncompressed": 257546
+    },
+    "cadence-consecutive-10-30.json.gz": {
+      "sha256_uncompressed": "97977c167664d3a4cc12534fa72b5c2fa571e83bc685ecdae72fede72a4b3970",
+      "bytes_uncompressed": 302510
+    },
+    "cadence-consecutive-2-10.json.gz": {
+      "sha256_uncompressed": "77f1967390d0f1670ffeead4d255d88c6d18a2b52a7e04647e9e3e697cd8986d",
+      "bytes_uncompressed": 260728
+    },
+    "cadence-consecutive-3-5.json.gz": {
+      "sha256_uncompressed": "12646090835789daa235d2bacf8237592fbf3f63759a3d8901dcda873e064ed3",
+      "bytes_uncompressed": 261915
+    },
+    "cadence-consecutive-4-1.json.gz": {
+      "sha256_uncompressed": "3533eefe970591a8a9952e12525c6ac89bc09a683760d4b24c941b98c3774c2a",
+      "bytes_uncompressed": 270967
+    },
+    "cadence-consecutive-5-off.json.gz": {
+      "sha256_uncompressed": "da36ed150b05162cbe86f74a9a8750836b8bffbc97fdaead4c7462fafbe99afd",
+      "bytes_uncompressed": 269156
+    },
+    "cadence-consecutive-6-off.json.gz": {
+      "sha256_uncompressed": "95ba52416841e4b1103c88d0c8e5db845f634543b9ca15d6f25324595beee0e4",
+      "bytes_uncompressed": 271552
+    },
+    "cadence-consecutive-7-1.json.gz": {
+      "sha256_uncompressed": "dd6c981b61e580dbb4acde6e5070260dfc5c250a5ba09c0b128acabe2f299a95",
+      "bytes_uncompressed": 313846
+    },
+    "cadence-consecutive-8-5.json.gz": {
+      "sha256_uncompressed": "8d544ccbd29fbadf1f274d892159839b5f2c29a5cb482baf72ac365b41584305",
+      "bytes_uncompressed": 304687
+    },
+    "cadence-consecutive-9-10.json.gz": {
+      "sha256_uncompressed": "e0d4cdd709d3543d36194a7e6cced40646e3c0dbe7f50a6a5961d2a5184b4f77",
+      "bytes_uncompressed": 310489
+    },
+    "cadence-fixed-1-30.json.gz": {
+      "sha256_uncompressed": "8927fecd2bcf7b199032d1981b281d24d8a432a028a75befc3937c1961ec5cf4",
+      "bytes_uncompressed": 806682
+    },
+    "cadence-fixed-2-10.json.gz": {
+      "sha256_uncompressed": "12a99c0dac4acbcf8f89e36d515fafb4cffb1770321f363f94c1a2c90120ac89",
+      "bytes_uncompressed": 865221
+    }
+  },
+  "diagnostic_sources": {
+    "profile_camera_stages_setup.py": "29610669060a0c42ae0e83e970593293c611e5b5ee42337b1d08f404ab08bc55",
+    "profile_camera_stages.py": "e2cc092de9fd212e547272dbf8641bcdad0d8fc4eaeebdefeab50da789cd7a01",
+    "profile_reference_steps.py": "d9f0a0a8a894a4cd75a0ad1bc26d14cfb4a6c239585b00f0727faaa11a35b3e0",
+    "profile_dic_core.py": "d676d40b2b81f7a8e79a15422563e91c922ad1c80ecd5696e2802cc0ba3e99b0",
+    "camera-stage-site.patch": "d025331196ab203154728dd7b844e230be07bd30ebe22fededec3763b8a3d3e1",
+    "profile_dic_gpu.js": "d3350b17f3e686eb966194876ec40e506a4b15006e745be7f0fbe9fa651a26e0",
+    "analyze.py": "3152abcbbf7df10915f460ff9bebc2c5c34809ef9d4f49e1210851ea16d736a0",
+    "reference-step-site.patch": "26c9a5c1f6ec1c195e286426cc66da6f3dba3b135e1bca901cd790d4bad3bb73"
+  }
+}

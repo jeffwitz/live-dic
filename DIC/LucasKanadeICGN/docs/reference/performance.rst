@@ -1520,3 +1520,101 @@ The raw records, criteria, source hashes, commands and reconstruction script
 are in ``benchmarks/results/browser-pipeline-overlap-20261101/``. The local
 native/browser-enabled suite passes 278 tests without skips. The separate CI
 job is prepared; no new remote CI result or Pages deployment is asserted.
+
+
+.. _browser-bottleneck:
+
+Where the native 4K budget goes in the camera application
+------------------------------------------------------------
+
+The native tables above time an acquired resident grayscale image to a complete
+NumPy field, with the reference prepared once. Consecutive browser acquisition
+also rebuilds reference intensities, derivatives, subset statistics, Hessians
+and inverses on every pair. This is a different amount of work. Suspending live
+display leaves the latter cost in place; the low-cadence controls execute zero
+live draws/bitmap transfers and still record only 6.889–6.945 UHD fields/s.
+
+The diagnosis uses the original UHD tensile reference as an identity pair,
+affine 16/16, B-spline, median, two fixed levels, 8/16 iterations and 0.005
+tolerances. The native temporal profile matches the application's velocity,
+fine-correction and divergence options. Same Intel Lunar Lake hardware,
+Linux/Vulkan, Mesa 25.2.8, Chromium 155, performance profile. These are new
+short controls, not a reproduction of every historical campaign.
+
+.. list-table:: Same resident UHD image, no camera/display/database
+   :header-rows: 1
+
+   * - Path and work performed per call
+     - Median wall time
+   * - Native, prepared reference, complete NumPy field, temporal profile
+     - 15.18 ms
+   * - Browser, prepared reference, complete typed field
+     - 21.30 ms
+   * - Browser, rebuild reference each pair, complete typed field
+     - 103.65 ms
+   * - Browser, rebuild each pair, summary then separate full-field export
+     - 111.60 ms
+   * - Previous row with preloaded external ImageBitmap inputs
+     - 141.15 ms
+
+The native repeat sustains 60.46 calls/s over thirty synchronous calls, but its
+p95 is 22.27 ms, so this does not renew a 16.67 ms deadline claim. Its roughly
+1.76 s initial reference preparation is excluded. Browser medians use thirty
+ordinary calls, excluding ten extra diagnostic calls per variant. All fields
+retain the same geometry and accepted population and satisfy the existing
+identity accuracy gates. ImageBitmap input costs are not assumed equal to
+camera VideoFrame costs.
+
+The reference graph alone takes about 86.8 ms with grayscale bytes. Separate
+completion measurements locate its largest individual stage at fine-level
+``prepare_subsets``: roughly 28–31 ms, including a fence. That stage builds
+normalization products, subset statistics, Hessians and inverses; this is not
+a timing of matrix inversion alone. The Gaussian/spline/gradient passes add
+substantial work at both levels. Per-pass fences have a 2.6–2.75 ms baseline,
+perturb scheduling, and must not be treated as pure GPU kernel timestamps.
+
+An actual PWA diagnostic then separates input transfer, preparation and solving
+with extra completion fences. It uses a static simulated camera, four seconds
+warmup and twelve seconds observation, with no live drawing or bitmap transfer.
+The following are stage wall medians; ranges span the recording-off/on cases.
+They diagnose costs, not unmodified application FPS:
+
+.. list-table:: Actual camera path, consecutive pairs, UHD, preview suspended
+   :header-rows: 1
+
+   * - Stage
+     - Elapsed wall time
+   * - Both input uploads/conversion readiness
+     - 16.6–17.6 ms
+   * - Rebuild reference on GPU
+     - 80.8–92.8 ms
+   * - Target prefilter, LK resolution and small summaries
+     - 15.1–19.0 ms
+   * - Additional complete-field export when recording
+     - 4.3 ms
+   * - Worker/main field handoff when recording
+     - About 1.0 ms
+   * - Asynchronous storage admission when recording
+     - 52.4 ms, overlapping subsequent computation
+
+There is also about 10–14 ms median between completion of one calculation and
+admission of the next input. In recorded consecutive mode the field is ready
+on CPU after about 136 ms, and admitted to disk/library after about 195 ms.
+Storage elapsed time is neither main-thread CPU occupancy nor fully additive
+to the calculation period. Summing these independent medians would ignore
+overlap and variation. The extra diagnostic fences also make these rates
+different from the unmodified application controls.
+
+This localizes the main loss to per-pair preparation, followed by external
+input transfer and synchronization/recording overhead. It does not show the LK
+stage itself becoming ten times slower. Reducing display rate is useful for
+monitoring but cannot remove the new reference graph. Fixed-reference and
+consecutive DIC remain scientifically distinct modes.
+
+All 1,080 attempted GPU timestamp durations were zero and were rejected. No
+cost attribution uses them. The raw wall samples, explicit temporary-site
+patches, diagnostic scripts, rejected timestamp capture and finite-field checks
+are retained in ``benchmarks/results/browser-bottleneck-20261101/``. The planned
+twenty-run display-cadence campaign was stopped when the owner requested this
+diagnosis; its twelve completed controls are retained without claiming a full
+matrix. No numerical shader or public default was changed for attribution.
