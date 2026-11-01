@@ -64,7 +64,10 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     stopReplay();pendingSeek=id;
     if(seeking)return;
     seeking=true;
-    try {while(pendingSeek!==null){const next=pendingSeek;pendingSeek=null;await selectEntry(next,{preserveView:true});}}
+    try {while(pendingSeek!==null){
+      if(selectionBusy){await new Promise(resolve=>setTimeout(resolve,25));continue;}
+      const next=pendingSeek;pendingSeek=null;await selectEntry(next,{preserveView:true});
+    }}
     finally {seeking=false;}
   }
   let projectRevision=0, downloadedRevision=0;
@@ -167,6 +170,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     return entry;
   }
   function returnLive(restore = false) {
+    pendingSeek=null;
     stopReplay();rememberView();
     historyAbort?.abort();history=null;
     reviewing = false; selectionSerial++;selectionBusy=false;storage.pin(null);storage.evict();requestId++; pendingAnalysis = false; clearTimeout(debounce);
