@@ -182,8 +182,7 @@ cannot hide expensive per-pair preparation. For a cadence check, select
 **Fixed reference** and temporarily disable recording. This compares each target
 to the captured reference; it changes the physical meaning of an incremental
 measurement, so it must be an explicit user choice. If only consecutive mode is
-slow, accelerating its CPU reference preparation is a separate numerical/GPU
-work item. See :ref:`camera-pipeline-diagnosis` for the measured simulated-camera
+slow, try the explicit experimental GPU preparation described below. See :ref:`camera-pipeline-diagnosis` for the measured simulated-camera
 control and its limits.
 
 The Solve pane distinguishes applied settings from pending edits. It reports
@@ -198,6 +197,31 @@ statuses and do not shrink the ROI. Choose **Status · entire ROI** to distingui
 excluded, unavailable, rejected, unconverged, valid and flagged/replaced cells.
 A failed cell is not a valid zero displacement. The mask remains in image
 coordinates when the pair reference changes; it is not advected with material.
+
+Try GPU preparation for consecutive images
+------------------------------------------
+
+In **Solve**, check **Experimental GPU reference preparation**, then capture a
+**new reference** to apply it. Choose **Consecutive images** and initially leave
+recording off to distinguish computation from durable result storage. This
+opt-in is independent of the custom-solver checkbox. The applied solver summary
+reports CPU or GPU preparation; pending edits do not modify an active analysis.
+
+The GPU mode reuses resources and recomputes intensities, gradients and inverse
+Hessians for every pair. The stage HUD shows **GPU reference + observable solver
+call** as one combined time. Separate preparation time is unavailable in this
+mode. Completed FPS still includes scheduling/rendering and, when enabled,
+recording admission. A fast numerical kernel does not establish camera cadence.
+
+The experimental mode supports translation/affine, uniform integration and one
+slot. It keeps the applied image-coordinate ROI; changing it needs a new
+preparation. Temporal history is discarded on each new pair reference. It does
+not accumulate incremental deformation. CPU preparation remains the default;
+uncheck the option and capture another reference to return to it.
+
+This option adds persistent scratch textures/buffers, counted by the existing
+GPU resource report. It does not use disk recording memory as GPU memory. See
+:doc:`../explanation/gpu-reference-preparation` for validation and timing limits.
 
 Build and edit a mask with domains and holes
 --------------------------------------------

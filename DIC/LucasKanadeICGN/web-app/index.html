@@ -54,6 +54,7 @@
         </div>
         <p class="hint" id="roi-summary">Full image · no mask.</p>
         </div><div class="control-group" id="pane-solve" hidden><h2>Correlation settings</h2><p id="applied-solver-summary" class="hint">No reference prepared.</p><p id="last-reference-summary" class="hint"></p>
+          <label class="check"><input id="gpu-reference-preparation" type="checkbox">Experimental GPU reference preparation</label><p class="hint">Opt in before capturing a new reference. Translation/affine, uniform full windows and one slot. Consecutive pairs reuse resources and prepare the reference together with solving on GPU. CPU preparation remains the default.</p>
           <p class="hint">The preset keeps the existing two-level affine B-spline configuration. Custom settings take effect only when you capture the reference or apply the mask again.</p>
           <label class="check"><input id="custom-solver" type="checkbox">Use custom settings</label>
           <fieldset id="solver-settings" disabled><legend>Next reference preparation</legend>

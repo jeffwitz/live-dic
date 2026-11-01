@@ -86,7 +86,8 @@ async function receive({ data }) {
       pipelineTimingUpdatedAt=performance.now();
       const preparationMs=data.timing?.pairReferencePreparationWallMs??0,solveMs=data.timing?.totalWallMs??data.timing?.wallMs;
       const ms=value=>Number.isFinite(value)?value.toFixed(1)+' ms':'unavailable';
-      $('pipeline-timing').textContent=`Latest sampled field (1 Hz): reference preparation ${ms(preparationMs)} · observable solver call ${ms(solveMs)}${recordedReadbackMs||storageAdmissionMs?` · recorded-field readback ${ms(recordedReadbackMs)} · main-thread storage/admission ${ms(storageAdmissionMs)}`:''}. ${data.comparison?.mode==='consecutive'?'Consecutive mode rebuilds the reference on CPU for every pair; fixed-reference FPS does not apply.':'The fixed reference is reused.'}`;
+      const gpuPair=data.timing?.gpuReferenceIncluded;
+      $('pipeline-timing').textContent=`Latest sampled field (1 Hz): ${gpuPair?`GPU reference + observable solver call ${ms(solveMs)}`:`reference preparation ${ms(preparationMs)} · observable solver call ${ms(solveMs)}`}${recordedReadbackMs||storageAdmissionMs?` · recorded-field readback ${ms(recordedReadbackMs)} · main-thread storage/admission ${ms(storageAdmissionMs)}`:''}. ${data.comparison?.mode==='consecutive'?(gpuPair?'Consecutive mode recomputes the reference on GPU for every pair.':'Consecutive mode rebuilds the reference on CPU for every pair; fixed-reference FPS does not apply.'):'The fixed reference is reused.'}`;
     }
     if (!workbench.reviewing) $('run-state').textContent = source==='camera'&&sourceSettings.deliveryState==='stopped'?'Camera stopped · last completed field':`${source} · ${data.width} × ${data.height} · ${data.comparison?.mode ?? 'fixed'} · ${paused ? 'paused' : 'running'}`;
     if (data.comparison) { sourceSettings.lastComparison = data.comparison; updateLocalPosition(data.comparison.target);$('last-reference-summary').textContent=`Last pair: ${data.comparison.referenceAdmissible} numerically admissible references / ${data.selected} requested ROI windows. Every selected window remains requested.`; }
@@ -179,7 +180,7 @@ async function updateReferenceControls() {
   const cfg=referenceInfo.config,total=referenceInfo.grid[0]*referenceInfo.grid[1];
   let selected=0,valid=0;
   for(let i=0;i<total;i++)if(!referenceInfo.roiSelected||referenceInfo.roiSelected[i]){selected++;if(referenceInfo.referenceValid?.[i])valid++;}
-  $('applied-solver-summary').textContent=`Applied ${cfg.motionModel} · ${cfg.interpolation} · ${cfg.pyramidLevels} level(s)\nWindow ${referenceInfo.subsetSize} px · step ${referenceInfo.subsetStride} px · ${Math.round(100*(1-referenceInfo.subsetStride/referenceInfo.subsetSize))}% overlap\nIteration limits (coarse → fine): ${cfg.iterationsPerLevel.join(' / ')}\nGrid ${referenceInfo.grid.join(' × ')} · ${selected} selected / ${total} positions\n${valid} admissible prepared references; target convergence remains to be measured.`;
+  $('applied-solver-summary').textContent=`Applied ${cfg.motionModel} · ${cfg.interpolation} · ${cfg.pyramidLevels} level(s)\nWindow ${referenceInfo.subsetSize} px · step ${referenceInfo.subsetStride} px · ${Math.round(100*(1-referenceInfo.subsetStride/referenceInfo.subsetSize))}% overlap\nIteration limits (coarse → fine): ${cfg.iterationsPerLevel.join(' / ')}\nGrid ${referenceInfo.grid.join(' × ')} · ${selected} selected / ${total} positions\n${valid} admissible prepared references; target convergence remains to be measured.\nReference preparation: ${cfg.referencePreparation??'cpu'}.`;
   $('last-reference-summary').textContent='Awaiting a target field.';
   const translationOnly = referenceInfo.config?.motionModel === 'translation';
   for (const option of $('component').options) if ([3,4,5,7].includes(Number(option.value))) option.disabled = translationOnly;
@@ -619,7 +620,7 @@ window.addEventListener('pagehide', () => { workbench.destroy(); sourceAbort.abo
 window.addEventListener('error', (event) => { status.errors.push(event.message); message(event.message, true); });
 window.addEventListener('unhandledrejection', (event) => { const text = String(event.reason); status.errors.push(text); message(text, true); });
 if (smoke) { globalThis.liveDicReport = () => send('report'); globalThis.liveDicWorkbench = workbench; globalThis.liveDicRoi = roi; globalThis.liveDicSourceState = () => ({source,paused,loadingSource,inFlight,index:imageIndex,fileCount:localImages.length,localBusy:!!imageTask,loop:!!imageLoop,settings:sourceSettings,comparison:$('comparison').value,videoTime:video.currentTime,videoPaused:video.paused}); }
-for (const id of ['custom-solver','motion-model','subset-size','subset-stride','interpolation','pyramid-levels','coarse-iterations','fine-iterations','outlier-policy','temporal-start']) $(id).onchange = () => {
+for (const id of ['gpu-reference-preparation','custom-solver','motion-model','subset-size','subset-stride','interpolation','pyramid-levels','coarse-iterations','fine-iterations','outlier-policy','temporal-start']) $(id).onchange = () => {
   $('solver-settings').disabled = !$('custom-solver').checked;
   $('subset-stride').max = $('subset-size').value;
   if (Number($('subset-stride').value) > Number($('subset-size').value)) $('subset-stride').value = $('subset-size').value;

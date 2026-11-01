@@ -32,6 +32,7 @@ export function installWorkspace({ shortcuts }) {
 export function solverOptions() {
   const get = id => document.getElementById(id);
   const base = { profile: get('profile').value };
+  if (get('gpu-reference-preparation')?.checked) base.referencePreparation = 'gpu';
   if (!get('custom-solver').checked) return base;
   const size = Number(get('subset-size').value), stride = Number(get('subset-stride').value);
   const levels = Number(get('pyramid-levels').value), coarse = Number(get('coarse-iterations').value), fine = Number(get('fine-iterations').value);

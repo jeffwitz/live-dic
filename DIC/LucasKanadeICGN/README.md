@@ -18,6 +18,11 @@ analytic demo through the shared WebGPU core, with worker backpressure, full
 ROI, temporal history, GPU display and offline assets. Its results lab preserves
 computed fields while adding explicit smoothing, strain fitting, point/line/gauge
 measurements and NPZ export/import. Recording is optional and adds full readback.
+Consecutive-image acquisition has an opt-in **Experimental GPU reference
+preparation** checkbox in Solve. Apply it with a new reference. See the
+[GPU preparation explanation](docs/explanation/gpu-reference-preparation.rst)
+for the tested scope and timing boundary; CPU preparation remains the default.
+
 [Open the published workbench](https://jeffwitz.github.io/live-dic/) without installing a local server.
 Hand-held camera use is
 not qualified for metrology. Python remains the primary NumPy supervisor.

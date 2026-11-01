@@ -290,3 +290,28 @@ The camera stage diagnostic is sampled from the latest admitted field at about
 1 Hz; it is not a distribution of exposure-to-display latency. Consecutive
 reference construction currently includes CPU preparation on every pair.
 Resetting the timing window on mode changes improves reporting, not its speed.
+
+
+Experimental browser GPU reference preparation
+----------------------------------------------
+
+``referencePreparation='gpu'`` is an explicit JavaScript/PWA option; Python
+native preparation and all existing defaults are unchanged. It uses portable
+float32 WGSL, while the existing CPU reference preparation uses float64.
+Consequently it does not promise bitwise-identical gradients or inverse
+Hessians, nor identical decisions for numerically marginal textures. Tests
+compare healthy reference quantities, flat rejections, analytical fractional
+motions and field accuracy without loosening existing scientific gates.
+
+The initial implementation supports one slot, uniform full windows,
+translation and affine. It does not implement quadratic, partial masks or
+Gaussian weighting. GPU memory is higher because reference scratch and
+independent input textures persist. Consecutive pairs discard cross-reference
+temporal history and use every configured pyramid level. They are incremental
+measurements, not cumulative material tracking. Recorded fields still require
+an explicit readback and durable storage admission.
+
+Hardware/browser observations qualify only that tested configuration. A
+software browser validates execution and numerical results, never live FPS.
+The simulated static camera controls are not physical-camera tests. See
+:doc:`gpu-reference-preparation` and the current performance campaign.

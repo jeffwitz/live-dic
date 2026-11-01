@@ -90,15 +90,18 @@ export function createSession(send) {
         const operation = (async () => {
           try {
             let preparationMs = 0;
-            if (message.referenceFrame) {
+            const gpuPair = !!message.referenceFrame && activeOptions.referencePreparation === 'gpu';
+            if (message.referenceFrame && !gpuPair) {
               const started = performance.now();
               const info = await engine.setReference(message.referenceFrame,{roiMask:mask});
               preparationMs = performance.now()-started;
               referenceAdmissible = [...info.referenceValid].reduce((n,v,i)=>n+ +(v && (!info.roiSelected || info.roiSelected[i])),0);
             }
-            if (message.reset) engine.resetTemporalState();
+            if (message.reset && !gpuPair) engine.resetTemporalState();
             engine.setAnalyticTruth(message.truth ?? null);
-            last = await engine.register(message.frame);
+            last = gpuPair
+              ? await engine.registerPair(message.referenceFrame, message.frame) : await engine.register(message.frame);
+            if (gpuPair) { preparationMs = null; referenceAdmissible = last.referenceAdmissible; }
             last.timing.pairReferencePreparationWallMs = preparationMs;
             lastComparison = {...message.comparison, referenceAdmissible, requested:last.selected, fixedImageCoordinateRoi:true};
             const age = performance.now() - available;
@@ -119,7 +122,7 @@ export function createSession(send) {
             while (completionTimes.length > 1 && completionTimes[0] < performance.now() - 3000) completionTimes.shift();
             ages.push(age); if (ages.length > 120) ages.shift();
             sampleLog.push({ frame: message.frameIndex, workerAvailableMs: available, captureTimestampUs: message.frame.timestamp ?? null, completedMs: performance.now(),
-              ageMs: age, comparison:lastComparison, referencePreparationMs:preparationMs, gpuFieldObservableMs: last.timing.wallMs, truthRmse: last.truthRmse,
+              ageMs: age, comparison:lastComparison, referencePreparationMs:preparationMs, gpuReferenceIncluded:gpuPair, gpuFieldObservableMs: last.timing.wallMs, truthRmse: last.truthRmse,
               acceptance: last.acceptance, accepted: last.accepted, meanIterations: last.meanIterations });
             if (sampleLog.length > 18000) sampleLog.shift();
             const sorted = [...ages].sort((a, b) => a - b);

@@ -102,6 +102,9 @@ Options and native correspondence
    * - ``pipelineDepth``
      - Register-stream slot depth; JS default 1
      - Independent target buffers, shared reference/history, bounded admission.
+   * - ``referencePreparation``
+     - Browser-only; ``'cpu'`` by default
+     - Opt-in ``'gpu'`` prepares translation/affine references on GPU; one slot, uniform weights.
    * - ``readback``
      - Full typed field by default
      - full, decimated, none; native always materializes its NumPy result.
@@ -137,6 +140,55 @@ history. Inputs and output static ROI arrays must not be mutated by a consumer.
 Modification of the caller's original mask after preparation does not affect
 GPU computation. ``roiSelected`` is static data shared by results, not copied
 per frame.
+
+Consecutive pairs with GPU preparation (experimental)
+-----------------------------------------------------
+
+With ``referencePreparation: 'gpu'``, a cold ``setReference`` prepares geometry,
+ROI permissions, pipelines and resources. It also returns the initial numeric
+validity mask. Then call:
+
+.. code-block:: javascript
+
+   const engine = await DICEngine.create({
+     width: 1920, height: 1080,
+     referencePreparation: 'gpu', motionModel: 'affine',
+     interpolation: 'bspline', pyramidLevels: 2,
+     pipelineDepth: 1, readback: 'full',
+   });
+   await engine.setReference(firstFrame, { roiMask });
+   const field = await engine.registerPair(previousFrame, currentFrame);
+   // Caller retains/closes both frames after the promise resolves.
+   engine.destroy();
+
+``registerPair`` updates all reference levels, gradients, Hessians and inverse
+Hessians, then solves the target in one GPU submission. It reuses the geometry,
+ROI and allocations; it performs no intermediate CPU image readback or numeric
+reference preparation. The returned field uses the same parameter/status layout
+as ``register``. The optional ``referenceAdmissible`` count is read with the
+final field; the changing dense numeric validity mask stays on GPU. After a
+pair, ``engine.reference.referenceValid`` is null and ``referenceValidity`` is
+``'gpu-resident'``. Static ``roiSelected`` remains available.
+
+Every pair discards temporal history from the previous reference. All configured
+pyramid levels still solve; no previous field is interpreted as a seed in the
+new reference coordinates. ``timing.gpuReferenceIncluded`` is true and the wall
+time includes both preparation and solving. There is no separately measured
+zero-cost preparation time. ``timing.gpuMs`` remains null on this path; these
+wall measurements are not GPU timestamps.
+
+Translation/affine, the three interpolators, existing subset sizes/strides and
+full ROI are supported. Quadratic and depth greater than one are rejected.
+``registerPair`` on a CPU-preparation engine is rejected. Input dimensions are
+validated before mutation. A later execution failure invalidates the reference;
+call ``setReference`` again to recover. A completely excluded ROI submits no
+pair work. ``register`` can still reuse a GPU-prepared fixed reference.
+
+For cold numerical diagnostics only, ``await engine.exportReference(level)``
+returns copied reference pixels, metadata, inverse Hessians, numeric validity
+and its count. It allocates and synchronizes, requires an idle GPU-preparation
+engine, and must not be called in a live loop. See
+:doc:`../explanation/gpu-reference-preparation` for arithmetic and limitations.
 
 Ordering and lifetime
 ---------------------

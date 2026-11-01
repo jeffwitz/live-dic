@@ -26,7 +26,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def median(rows, key):
-    return float(np.median([row[key] for row in rows])) if rows else None
+    values = [row[key] for row in rows if row.get(key) is not None]
+    return float(np.median(values)) if values else None
 
 
 def main():
@@ -37,6 +38,9 @@ def main():
     parser.add_argument("--duration", type=float, default=10)
     parser.add_argument("--warmup", type=float, default=3)
     parser.add_argument("--software", action="store_true")
+    parser.add_argument(
+        "--gpu-reference", action="store_true", help="opt into persistent GPU reference preparation"
+    )
     args = parser.parse_args()
     if not 1 <= args.duration <= 3600 or not 0 <= args.warmup <= 60:
         parser.error("duration must be 1..3600 seconds; warmup must be 0..60 seconds")
@@ -73,6 +77,7 @@ def main():
         "duration_seconds": args.duration,
         "warmup_seconds": args.warmup,
         "software_requested": args.software,
+        "gpu_reference_requested": args.gpu_reference,
     }
     try:
         with tempfile.TemporaryDirectory(
@@ -97,6 +102,10 @@ def main():
                 url = f"http://127.0.0.1:{server.port}/{quote(site.name)}/?smoke=1"
                 browser._evaluate(f"location.assign({json.dumps(url)});true")
                 wait(browser, "globalThis.liveDicStatus?.completed>=2")
+                if args.gpu_reference:
+                    browser._evaluate(
+                        "document.getElementById('gpu-reference-preparation').checked=true;true"
+                    )
                 browser._evaluate(
                     f"document.getElementById('resolution').value={json.dumps(args.resolution)};document.getElementById('camera').onclick().then(()=>true)"
                 )

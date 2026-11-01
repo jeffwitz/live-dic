@@ -153,6 +153,7 @@ when exporting a measurement with :doc:`how-to/export-results`.
    explanation/motion-models
    explanation/displacement-outliers
    explanation/subset-size
+   explanation/gpu-reference-preparation
    explanation/gpu-optimization
    explanation/shared-kernel
    explanation/native-backend
