@@ -651,3 +651,16 @@ qualification rather than infer mobile coverage from desktop results.
   failures/recovery, exact reloads and multipart interchange. This is functional
   evidence, not recording-FPS or all-OS/discrete-hardware qualification. The
   new software-browser CI job is configured but was not observed remotely here.
+
+### Camera stage diagnosis — 2026-11-01
+
+- Keep comparison-mode age/FPS windows separate. The visible age starts at
+  worker input and includes per-pair CPU reference preparation; it is not a
+  pure GPU timestamp or exposure-to-display latency. Stage text is sampled at
+  about 1 Hz to avoid per-frame diagnostic layout work.
+- `tools/diagnose_camera_pipeline.py` uses a clearly simulated static camera.
+  The 1080p controls in `browser-camera-diagnosis-20261101/` distinguish fast
+  fixed-reference solving from slow CPU preparation for consecutive pairs.
+  Do not call these physical-camera measurements or a GPU-preparation speedup.
+- The local native/browser-enabled suite passed 263 tests, and the UHD GUI
+  check passed. This is not an observed result of a new remote CI execution.

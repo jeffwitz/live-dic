@@ -1,0 +1,22 @@
+{
+  "baseline.json": {
+    "sha256": "fa5fae4483c4a5c5dc3984f5e18a000c7a729c8a0c5a7d152fade14dafa74c0d",
+    "bytes": 84579
+  },
+  "timing-reset.json": {
+    "sha256": "af862e5977caba6eed32751aca015f2ecf5001e7054d03a59feb4b4c9d3bf09b",
+    "bytes": 85450
+  },
+  "sampled-hud.json": {
+    "sha256": "46947c71516dc4ae2f99a3d474871988f5458ceee499f97811b9dc0244d92f81",
+    "bytes": 1117623
+  },
+  "suite.log": {
+    "sha256": "04466ef38e1babf5920ca42193bac06bec2834d1b3a56695d4ebbb452d56e475",
+    "bytes": 43032
+  },
+  "workbench.json": {
+    "sha256": "fa1ecd042f9a809da0922f397e0741ca9594bd58300bc96d3fb5c4942f5a4b66",
+    "bytes": 22140
+  }
+}

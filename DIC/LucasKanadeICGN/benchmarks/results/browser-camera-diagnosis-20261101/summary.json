@@ -1,0 +1,34 @@
+{
+  "source_revision": "b9ee40e40baeee81ec4c801b9d4b14957210a3a7",
+  "dirty": false,
+  "kind": "Static simulated camera control; no physical camera or general real-time qualification",
+  "adapter": {
+    "vendor": "intel",
+    "architecture": "xe-2lpg",
+    "device": "",
+    "description": ""
+  },
+  "cases": [
+    {
+      "mode": "fixed",
+      "recording": false,
+      "completed_fps": 60.150186016043904,
+      "median_preparation_ms": 0.0,
+      "median_observable_solver_ms": 6.5999999940395355
+    },
+    {
+      "mode": "fixed",
+      "recording": true,
+      "completed_fps": 31.48046512787955,
+      "median_preparation_ms": 0.0,
+      "median_observable_solver_ms": 6.5999999940395355
+    },
+    {
+      "mode": "consecutive",
+      "recording": false,
+      "completed_fps": 2.7987166026052326,
+      "median_preparation_ms": 335.34999999403954,
+      "median_observable_solver_ms": 8.800000011920929
+    }
+  ]
+}
