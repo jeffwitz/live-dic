@@ -218,6 +218,31 @@ jobs:
           path: browser-storage/report.json
           if-no-files-found: warn
 
+  browser-pipeline:
+    name: Linux / Chromium UHD recording overlap
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install the Python browser harness
+        run: |
+          python -m pip install ./DIC/LucasKanadeICGN/python
+          command -v google-chrome || command -v chromium
+      - name: Exercise bounded admission, failure recovery, late decode and export
+        run: |
+          python tools/build_pages.py --output _site
+          python tools/qualify_browser_pipeline.py --site _site --software --output browser-pipeline/report.json
+      - name: Retain the pipeline qualification report, including failures
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-pipeline-report
+          path: browser-pipeline/report.json
+          if-no-files-found: warn
+
   browser-software:
     name: Linux / Chromium SwiftShader and native CPU parity
     runs-on: ubuntu-latest
