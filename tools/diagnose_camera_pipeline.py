@@ -160,7 +160,8 @@ def main():
                     stop = browser._evaluate(
                         "({completed:liveDicStatus.completed,fps:document.getElementById('fps').textContent,age:document.getElementById('age').textContent,state:liveDicSourceState(),fields:liveDicWorkbench.report().count,diskFields:liveDicWorkbench.report().storage.diskFields,storage:liveDicWorkbench.report().storage,epochMs:performance.timeOrigin+performance.now(),pipeline:document.getElementById('pipeline-timing').textContent,errors:liveDicStatus.errors})"
                     )
-                    elapsed = time.monotonic() - started
+                    host_elapsed = time.monotonic() - started
+                    elapsed = (stop["epochMs"] - start["epochMs"]) / 1000
                     assert not stop["errors"], stop["errors"]
                     worker = browser._evaluate("liveDicReport()")
                     rows = [
@@ -172,6 +173,8 @@ def main():
                         "mode": mode,
                         "recording": recording,
                         "elapsed_seconds": elapsed,
+                        "host_elapsed_seconds": host_elapsed,
+                        "throughput_boundary": "Main-thread count snapshots on its monotonic clock; computed replies and committed disk fields reported separately",
                         "completed_fps": (stop["completed"] - start["completed"]) / elapsed,
                         "committed_fps": (stop["diskFields"] - start["diskFields"]) / elapsed,
                         "median_preparation_ms": median(rows, "referencePreparationMs"),
@@ -183,6 +186,21 @@ def main():
                     case["pipeline"] = browser._evaluate(
                         "globalThis.liveDicPipelineReport?.()??null"
                     )
+                    pipeline = case["pipeline"]
+                    samples = (
+                        (
+                            pipeline["recording"]["samples"]
+                            if args.overlap_pipeline
+                            else pipeline["synchronousAdmissions"]
+                        )
+                        if pipeline
+                        else []
+                    )
+                    case["admission_samples"] = [
+                        sample
+                        for sample in samples
+                        if start["epochMs"] <= sample["admittedEpochMs"] <= stop["epochMs"]
+                    ]
                     report["cases"].append(case)
                     report["capabilities"] = worker["capabilities"]
                     report["user_agent"] = browser._evaluate("navigator.userAgent")

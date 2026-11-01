@@ -319,7 +319,7 @@ The simulated static camera controls are not physical-camera tests. See
 
 
 Bounded browser recording overlap and preview
---------------------------------------------
+---------------------------------------------
 
 The experimental pipeline checkbox is opt-in. It preserves one GPU computation
 at a time and permits a two-field CPU recording queue to overlap IndexedDB

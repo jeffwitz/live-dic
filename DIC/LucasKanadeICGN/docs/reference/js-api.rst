@@ -394,7 +394,7 @@ not retain GPU resources. See :doc:`../how-to/store-long-sequences`.
 
 
 Standalone PWA supervisor settings
----------------------------------
+----------------------------------
 
 The application Worker accepts ``options.supervision`` in its reference/ROI
 preparation message. It is separate from the numerical ``DICEngine`` API;

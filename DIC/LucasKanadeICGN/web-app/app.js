@@ -210,6 +210,7 @@ async function drain() {
   if (supervision.displayRate && transport && referenceInfo) await send('flush');
   updatePipelineState(true);
   if (imageTask) await imageTask.catch(() => {});
+  if (supervision.overlapRecording && imageLoop) await imageLoop.catch(() => {});
 }
 function clearPreviousCapture() { previousCapture?.frame.close(); previousCapture = null; }
 function pauseSource() { paused = true; clearTimeout(imageDelay); imageWake?.(); imageWake=null; if (source === 'video-file') video.pause(); clearPreviousCapture(); }
@@ -275,7 +276,7 @@ function clearLiveMetrics() {for(const id of ['fps','age','acceptance','iteratio
 function countDrop() { dropped++; $('drops').textContent = dropped; }
 async function processFrame(frame, frameIndex = null, { force = false, reset = false, input = null, referenceFrame = null, referenceInput = null, playback = false } = {}) {
   const token = generation, mode = source === 'plate' ? 'fixed' : $('comparison').value;
-  if (paused && !force) { frame.close(); referenceFrame?.close(); return false; }
+  if (paused && (!force || (supervision.overlapRecording && playback))) { frame.close(); referenceFrame?.close(); return false; }
   input = { kind:source, ordinal:++receivedOrdinal, timestampUs:frame.timestamp ?? null,
     timestampClock:frame.timestamp==null?null:source==='camera'&&sourceSettings.frameDelivery==='MediaStreamTrackProcessor'?'Track-processor VideoFrame clock; origin is browser/device defined':'HTMLVideoElement media timeline', ...input };
   if (mode === 'consecutive' && !referenceFrame) {

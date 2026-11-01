@@ -224,7 +224,7 @@ GPU resource report. It does not use disk recording memory as GPU memory. See
 :doc:`../explanation/gpu-reference-preparation` for validation and timing limits.
 
 Overlap recording and control the live preview
----------------------------------------------
+----------------------------------------------
 
 In **Solve**, check **Experimental pipeline overlap**, choose the maximum display
 rate and preview width, then capture a new reference or apply the mask. The
