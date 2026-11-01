@@ -1,0 +1,60 @@
+{
+  "sites": {
+    "baseline": {
+      "build": {
+        "commit": "388cc5e0617f2e1d52391912b0ed046bcdc48fdc",
+        "dirty": false,
+        "shaders": {
+          "full_pyramid.wgsl": "d00ef999c5dbc23013928e95ea6ca498a52fbb63850056c05bdbd3c963dc0401",
+          "icgn.wgsl": "a60231689fbc3d29953fd98eb8d04649ec93cbec0f5a89a65446df716152299b",
+          "icgn_subgroup.wgsl": "d68225b1b6b6b21071e59ea6109bbd24dc0fd8b6734b6ebc4f7d59356799a034",
+          "input.wgsl": "d269f8bf203e3363a6e753476c49de27188329409fa5a848358ea031bb554f7e",
+          "reference.wgsl": "0d86eefde8fb6ac25a7cfd46b23c71b7bc6e827696602cd13229c4cab29102c2",
+          "result.wgsl": "a587a3112670a702578df6c13f75addd4136e43fa6c7efba7959aa472d0e3267",
+          "subgroup_probe.wgsl": "6e4d149ed7f17969ede557a3062742d8da6c62cb6dd745d5510112c1489fed61"
+        },
+        "demo_manifest_sha256": "c78c445a38a8541d632f28e85ec1154e492b4195c7b8f5d4755597e07605f24a",
+        "plate_image_sha256": {
+          "reference.png": "26135118b554c5996443f07abd2a89273a344154338c4c7f428ab283f85f7192",
+          "frame_095.png": "af0f4c09d2e9292beb4cbbabe01c6651a2e914c1b36b569a5861a8be431d3faf",
+          "frame_225.png": "abe3693810e289b8a2029833011a0d59fdf7ff1ea975eea91b12dc5e708d2897"
+        },
+        "cache_version": "388cc5e0617f2e1d52391912b0ed046bcdc48fdc"
+      },
+      "worker_epoch_added": true,
+      "session_sha256": "6463fd82949c3b46ea5df9b20b9b353d460df09b9cb5893b5c5743a107df23c8",
+      "clock_patch": "Only old Worker record metadata gains performance.timeOrigin+available; no GPU pass/fence added. Both sites use the same CLI storage probe."
+    },
+    "candidate": {
+      "build": {
+        "commit": "e781957c1044630f2c6d39403cebce6fbce7841d",
+        "dirty": false,
+        "shaders": {
+          "full_pyramid.wgsl": "d00ef999c5dbc23013928e95ea6ca498a52fbb63850056c05bdbd3c963dc0401",
+          "icgn.wgsl": "a60231689fbc3d29953fd98eb8d04649ec93cbec0f5a89a65446df716152299b",
+          "icgn_subgroup.wgsl": "d68225b1b6b6b21071e59ea6109bbd24dc0fd8b6734b6ebc4f7d59356799a034",
+          "input.wgsl": "d269f8bf203e3363a6e753476c49de27188329409fa5a848358ea031bb554f7e",
+          "reference.wgsl": "0d86eefde8fb6ac25a7cfd46b23c71b7bc6e827696602cd13229c4cab29102c2",
+          "result.wgsl": "a587a3112670a702578df6c13f75addd4136e43fa6c7efba7959aa472d0e3267",
+          "subgroup_probe.wgsl": "6e4d149ed7f17969ede557a3062742d8da6c62cb6dd745d5510112c1489fed61"
+        },
+        "demo_manifest_sha256": "c78c445a38a8541d632f28e85ec1154e492b4195c7b8f5d4755597e07605f24a",
+        "plate_image_sha256": {
+          "reference.png": "26135118b554c5996443f07abd2a89273a344154338c4c7f428ab283f85f7192",
+          "frame_095.png": "af0f4c09d2e9292beb4cbbabe01c6651a2e914c1b36b569a5861a8be431d3faf",
+          "frame_225.png": "abe3693810e289b8a2029833011a0d59fdf7ff1ea975eea91b12dc5e708d2897"
+        },
+        "cache_version": "e781957c1044630f2c6d39403cebce6fbce7841d"
+      },
+      "worker_epoch_added": false,
+      "session_sha256": "9f6caac762c05506f63d7928d7423722feed8744fa0b9d8db3c168006cc30fd3",
+      "clock_patch": "Only old Worker record metadata gains performance.timeOrigin+available; no GPU pass/fence added. Both sites use the same CLI storage probe."
+    }
+  },
+  "common_source_tree": {
+    "baseline": "c691f0be12a0a0e4d93720628d486321c4f0bfb0",
+    "candidate": "c691f0be12a0a0e4d93720628d486321c4f0bfb0",
+    "identical": true
+  },
+  "candidate_commit": "e781957c1044630f2c6d39403cebce6fbce7841d"
+}

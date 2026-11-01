@@ -1,0 +1,114 @@
+{
+  "commands.json.gz": {
+    "bytes_uncompressed": 17883,
+    "sha256_uncompressed": "b652d6df5ca55cc4769f90005557ac8ffd3aa017eff36a698db8e759984dd785"
+  },
+  "followup-commands.json.gz": {
+    "bytes_uncompressed": 3371,
+    "sha256_uncompressed": "c22ace3ac35b90757844be87af48f236dc6cd190a67a49e5dc606d70cf4dd3dd"
+  },
+  "followup-webgpu-1-baseline.json.gz": {
+    "bytes_uncompressed": 24062,
+    "sha256_uncompressed": "af5cb712345eb354b642418665fb17d9beb746a34ba7536c2b632f6bf687cc0b"
+  },
+  "followup-webgpu-2-candidate.json.gz": {
+    "bytes_uncompressed": 24080,
+    "sha256_uncompressed": "a3e8b943ecfccbe392edb9a4fe8595d0912dfd6dd6cd0e975550aaa7cb65c609"
+  },
+  "followup-webgpu-3-candidate.json.gz": {
+    "bytes_uncompressed": 24064,
+    "sha256_uncompressed": "f823d49aa796764094ca0f15811772572cf9ffc501a2a8260bd507c882bd6423"
+  },
+  "followup-webgpu-4-baseline.json.gz": {
+    "bytes_uncompressed": 24073,
+    "sha256_uncompressed": "c0eb3fa1b63fbe2540aaea2687262f346f17139a1c84041bb5c9e1bfd5c8cc95"
+  },
+  "native-depth2-1.json.gz": {
+    "bytes_uncompressed": 24932,
+    "sha256_uncompressed": "b06a6f8f4d84df002f77be40912cb95cdee9bd71c7eb9b33f0eeab085ed44dba"
+  },
+  "native-depth2-2.json.gz": {
+    "bytes_uncompressed": 24919,
+    "sha256_uncompressed": "09226c4dedb3c4006ab5644681d59b870241361691d3151db31cfa56bfebd309"
+  },
+  "pwa-1-baseline.json.gz": {
+    "bytes_uncompressed": 861429,
+    "sha256_uncompressed": "ddaa421f43178166dfc5e126be031dcd3369bef85bca1bdbdba454330ea871e6"
+  },
+  "pwa-2-baseline.json.gz": {
+    "bytes_uncompressed": 872773,
+    "sha256_uncompressed": "e63754c86b874dd9e08f3971d317ba0729a2c019af4118698f4dcbb19bc64409"
+  },
+  "pwa-3-candidate-default.json.gz": {
+    "bytes_uncompressed": 965333,
+    "sha256_uncompressed": "71746a3ea029bb1d12269e548c26c24856790ba69cfc5dc0ef35a8a0a8af3e89"
+  },
+  "pwa-4-candidate-preview.json.gz": {
+    "bytes_uncompressed": 2185549,
+    "sha256_uncompressed": "ccb3373ab03f5e0104286f51901e9d738af30aabd4784fc1bb216efff2457c13"
+  },
+  "pwa-5-baseline.json.gz": {
+    "bytes_uncompressed": 874585,
+    "sha256_uncompressed": "7d96ee088fa213719128dcbc19f03dca64ed4f9ca78d51584dba0040e6f7d5fd"
+  },
+  "pwa-6-candidate-preview.json.gz": {
+    "bytes_uncompressed": 2216032,
+    "sha256_uncompressed": "dc28bdd5bcbebd24996c0903f62c007385b9c5615bfa1a939a6598176e5119d2"
+  },
+  "pwa-7-candidate-default.json.gz": {
+    "bytes_uncompressed": 1006691,
+    "sha256_uncompressed": "5a40680b6658afb39c6744eed4e189e3c0198b37b5b02ca0d72335e421481fbe"
+  },
+  "pwa-8-baseline.json.gz": {
+    "bytes_uncompressed": 936843,
+    "sha256_uncompressed": "9c38397e19d23ad925fdcf20587488deec88b28f3aed0e973878d0f48b5beae3"
+  },
+  "python-native-pyramid-1-baseline.json.gz": {
+    "bytes_uncompressed": 24977,
+    "sha256_uncompressed": "d32af29dae4c1f7e991d3692f3230a02195b14e9a505d97352d4246ecef940db"
+  },
+  "python-native-pyramid-2-baseline.json.gz": {
+    "bytes_uncompressed": 24947,
+    "sha256_uncompressed": "b0b761d2744dd4e8ffcc0a4b03ea3a367bd2d212e0b3e9c83086a466440c0197"
+  },
+  "python-native-pyramid-3-candidate.json.gz": {
+    "bytes_uncompressed": 24943,
+    "sha256_uncompressed": "ff0c21a67ef47392f71cfba01a56606069a32a3edf88ecc73b399cb582012521"
+  },
+  "python-native-pyramid-4-baseline.json.gz": {
+    "bytes_uncompressed": 24918,
+    "sha256_uncompressed": "bb1cb153047d7c3a1c876585185ff114974e0a3fe022a31d2e7eb2fb04a6ac5b"
+  },
+  "python-native-pyramid-5-candidate.json.gz": {
+    "bytes_uncompressed": 24964,
+    "sha256_uncompressed": "959f7c515b822a9bbe05775cd36a9e066c30cf2a988e6fbd7a2a6dc08d3c2927"
+  },
+  "python-native-pyramid-6-baseline.json.gz": {
+    "bytes_uncompressed": 24971,
+    "sha256_uncompressed": "c6c9e9380192034ebd4380224e9806d007e00239631bcc8105ca035df5e09a8c"
+  },
+  "python-webgpu-wgsl-1-baseline.json.gz": {
+    "bytes_uncompressed": 24087,
+    "sha256_uncompressed": "767781ad807a874247310beb05046e77e068d1a702373115a27dd9abd0beb7f3"
+  },
+  "python-webgpu-wgsl-2-baseline.json.gz": {
+    "bytes_uncompressed": 24058,
+    "sha256_uncompressed": "0a85f12041f389bd7fb6f7d7a2c47377ac76ffc9e0f5a81c8f0f3e5245cf80d7"
+  },
+  "python-webgpu-wgsl-3-candidate.json.gz": {
+    "bytes_uncompressed": 24095,
+    "sha256_uncompressed": "4030154de9e8c4ee4d17e8c78477a7bcce705564662a66dad65f279de79f7c65"
+  },
+  "python-webgpu-wgsl-4-baseline.json.gz": {
+    "bytes_uncompressed": 24070,
+    "sha256_uncompressed": "677869fb0b7a0060d46e53f0efb74ce56aaf0add3ef6183c99fe681e91775ac6"
+  },
+  "python-webgpu-wgsl-5-candidate.json.gz": {
+    "bytes_uncompressed": 24080,
+    "sha256_uncompressed": "e155efa8890687eca2c4521bc8ade640af157553a102d4552b3853c7955243ee"
+  },
+  "python-webgpu-wgsl-6-baseline.json.gz": {
+    "bytes_uncompressed": 24093,
+    "sha256_uncompressed": "ce7b359c53eb3acd9965d8b61df0ca08b74e88ec4b1f26a43755fbbd4ba4d0c1"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "reason": "One Python/Chromium candidate repeat is slower than the baseline-only envelope while the other is faster; the complete production source trees are identical. Resolve this timing inconsistency without altering the original classification or quality gates.",
+  "scope": "Only Python webgpu-wgsl resident-image to materialized NumPy field; original UHD identity/frame40 sequence, unchanged original arguments, 300 frames and 20 warmups.",
+  "order": ["baseline", "candidate", "candidate", "baseline"],
+  "comparison": "Keep the primary result labelled inconclusive. Report both new controls and both candidates, using the new reference-only range as a local variability check. A nonreproduced isolated slowdown is not a proof of universal nonregression. No repeated probing until passing and no relaxed accuracy/latency gates.",
+  "isolation": "Run after the complete predeclared primary campaign, with no tests/builds. Archive all results including further slowdowns."
+}

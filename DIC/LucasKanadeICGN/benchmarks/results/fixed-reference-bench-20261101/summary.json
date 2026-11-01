@@ -1,0 +1,498 @@
+{
+  "rows": [
+    {
+      "run": "followup-webgpu-1-baseline",
+      "backend": "webgpu-wgsl",
+      "median_ms": 39.169720985228196,
+      "p95_ms": 44.03956507449038,
+      "p99_ms": 45.53539194748736,
+      "fps": 25.352003554613717,
+      "quality": {
+        "selected": 30916,
+        "accepted_min": 30910,
+        "accepted_fraction_min": 0.9998059257342476,
+        "displacement_rmse_max_px": 0.024201424043536927,
+        "displacement_p95_max_px": 0.045541843181042596,
+        "gradient_component_rmse_max": 0.0010642226954118445
+      }
+    },
+    {
+      "run": "followup-webgpu-2-candidate",
+      "backend": "webgpu-wgsl",
+      "median_ms": 39.288669504458085,
+      "p95_ms": 43.43285938957706,
+      "p99_ms": 46.046028487035066,
+      "fps": 25.313721267447328,
+      "quality": {
+        "selected": 30916,
+        "accepted_min": 30910,
+        "accepted_fraction_min": 0.9998059257342476,
+        "displacement_rmse_max_px": 0.024201424043536927,
+        "displacement_p95_max_px": 0.045541843181042596,
+        "gradient_component_rmse_max": 0.0010642226954118445
+      }
+    },
+    {
+      "run": "followup-webgpu-3-candidate",
+      "backend": "webgpu-wgsl",
+      "median_ms": 39.29030100698583,
+      "p95_ms": 43.40341537317727,
+      "p99_ms": 44.579447534051724,
+      "fps": 25.421671806038358,
+      "quality": {
+        "selected": 30916,
+        "accepted_min": 30910,
+        "accepted_fraction_min": 0.9998059257342476,
+        "displacement_rmse_max_px": 0.024201424043536927,
+        "displacement_p95_max_px": 0.045541843181042596,
+        "gradient_component_rmse_max": 0.0010642226954118445
+      }
+    },
+    {
+      "run": "followup-webgpu-4-baseline",
+      "backend": "webgpu-wgsl",
+      "median_ms": 39.565541985211894,
+      "p95_ms": 44.74151471222285,
+      "p99_ms": 47.456209125812165,
+      "fps": 25.141908653110015,
+      "quality": {
+        "selected": 30916,
+        "accepted_min": 30910,
+        "accepted_fraction_min": 0.9998059257342476,
+        "displacement_rmse_max_px": 0.024201424043536927,
+        "displacement_p95_max_px": 0.045541843181042596,
+        "gradient_component_rmse_max": 0.0010642226954118445
+      }
+    },
+    {
+      "run": "native-depth2-1",
+      "backend": "native-pyramid",
+      "median_ms": 21.494295506272465,
+      "p95_ms": 22.998960726545192,
+      "p99_ms": 24.055126711027697,
+      "fps": 92.94002069130889,
+      "quality": {
+        "selected": 30916,
+        "accepted_min": 30910,
+        "accepted_fraction_min": 0.9998059257342476,
+        "displacement_rmse_max_px": 0.02420074343413482,
+        "displacement_p95_max_px": 0.04553851653676483,
+        "gradient_component_rmse_max": 0.0010642171263256942
+      }
+    },
+    {
+      "run": "native-depth2-2",
+      "backend": "native-pyramid",
+      "median_ms": 21.82558347703889,
+      "p95_ms": 26.402777541079562,
+      "p99_ms": 28.583144182921384,
+      "fps": 90.04412780730925,
+      "quality": {
+        "selected": 30916,
+        "accepted_min": 30910,
+        "accepted_fraction_min": 0.9998059257342476,
+        "displacement_rmse_max_px": 0.02420074343413482,
+        "displacement_p95_max_px": 0.04553851653676483,
+        "gradient_component_rmse_max": 0.0010642171263256942
+      }
+    },
+    {
+      "run": "pwa-1-baseline",
+      "backend": "pwa",
+      "recording": false,
+      "computed_fps": 20.872250865525917,
+      "committed_fps": 0.0,
+      "display_fps": null
+    },
+    {
+      "run": "pwa-1-baseline",
+      "backend": "pwa",
+      "recording": true,
+      "computed_fps": 11.766758906090296,
+      "committed_fps": 11.766758906090296,
+      "display_fps": null
+    },
+    {
+      "run": "pwa-2-baseline",
+      "backend": "pwa",
+      "recording": false,
+      "computed_fps": 21.368053566739654,
+      "committed_fps": 0.0,
+      "display_fps": null
+    },
+    {
+      "run": "pwa-2-baseline",
+      "backend": "pwa",
+      "recording": true,
+      "computed_fps": 11.673384768226866,
+      "committed_fps": 11.673384768226866,
+      "display_fps": null
+    },
+    {
+      "run": "pwa-3-candidate-default",
+      "backend": "pwa",
+      "recording": false,
+      "computed_fps": 21.059234749643185,
+      "committed_fps": 0.0,
+      "display_fps": 0.0
+    },
+    {
+      "run": "pwa-3-candidate-default",
+      "backend": "pwa",
+      "recording": true,
+      "computed_fps": 11.641036458767749,
+      "committed_fps": 11.641036458767749,
+      "display_fps": 0.0
+    },
+    {
+      "run": "pwa-4-candidate-preview",
+      "backend": "pwa",
+      "recording": false,
+      "computed_fps": 35.258571178864834,
+      "committed_fps": 0.0,
+      "display_fps": 0.9988413464766646
+    },
+    {
+      "run": "pwa-4-candidate-preview",
+      "backend": "pwa",
+      "recording": true,
+      "computed_fps": 29.353181818325854,
+      "committed_fps": 29.353181818325854,
+      "display_fps": 0.9986119391566419
+    },
+    {
+      "run": "pwa-5-baseline",
+      "backend": "pwa",
+      "recording": false,
+      "computed_fps": 21.225815618949255,
+      "committed_fps": 0.0,
+      "display_fps": null
+    },
+    {
+      "run": "pwa-5-baseline",
+      "backend": "pwa",
+      "recording": true,
+      "computed_fps": 11.992384718590563,
+      "committed_fps": 11.992384718590563,
+      "display_fps": null
+    },
+    {
+      "run": "pwa-6-candidate-preview",
+      "backend": "pwa",
+      "recording": false,
+      "computed_fps": 37.305606237499234,
+      "committed_fps": 0.0,
+      "display_fps": 0.9987615332603744
+    },
+    {
+      "run": "pwa-6-candidate-preview",
+      "backend": "pwa",
+      "recording": true,
+      "computed_fps": 28.79140955185351,
+      "committed_fps": 28.84130800861582,
+      "display_fps": 0.9482599453154339
+    },
+    {
+      "run": "pwa-7-candidate-default",
+      "backend": "pwa",
+      "recording": false,
+      "computed_fps": 21.524385928195677,
+      "committed_fps": 0.0,
+      "display_fps": 0.0
+    },
+    {
+      "run": "pwa-7-candidate-default",
+      "backend": "pwa",
+      "recording": true,
+      "computed_fps": 12.533455899411292,
+      "committed_fps": 12.533455899411292,
+      "display_fps": 0.0
+    },
+    {
+      "run": "pwa-8-baseline",
+      "backend": "pwa",
+      "recording": false,
+      "computed_fps": 22.62296566649224,
+      "committed_fps": 0.0,
+      "display_fps": null
+    },
+    {
+      "run": "pwa-8-baseline",
+      "backend": "pwa",
+      "recording": true,
+      "computed_fps": 13.035791114987312,
+      "committed_fps": 13.035791114987312,
+      "display_fps": null
+    },
+    {
+      "run": "python-native-pyramid-1-baseline",
+      "backend": "native-pyramid",
+      "median_ms": 11.675863002892584,
+      "p95_ms": 13.159819183056243,
+      "p99_ms": 13.462027528439648,
+      "fps": 87.10878911454692,
+      "quality": {
+        "selected": 30916,
+        "accepted_min": 30910,
+        "accepted_fraction_min": 0.9998059257342476,
+        "displacement_rmse_max_px": 0.02420074343413482,
+        "displacement_p95_max_px": 0.04553851653676483,
+        "gradient_component_rmse_max": 0.0010642171263256942
+      }
+    },
+    {
+      "run": "python-native-pyramid-2-baseline",
+      "backend": "native-pyramid",
+      "median_ms": 11.347052495693788,
+      "p95_ms": 13.313444826053455,
+      "p99_ms": 13.747001581941731,
+      "fps": 87.32533617026917,
+      "quality": {
+        "selected": 30916,
+        "accepted_min": 30910,
+        "accepted_fraction_min": 0.9998059257342476,
+        "displacement_rmse_max_px": 0.02420074343413482,
+        "displacement_p95_max_px": 0.04553851653676483,
+        "gradient_component_rmse_max": 0.0010642171263256942
+      }
+    },
+    {
+      "run": "python-native-pyramid-3-candidate",
+      "backend": "native-pyramid",
+      "median_ms": 11.475633014924824,
+      "p95_ms": 13.076689676381648,
+      "p99_ms": 13.35088680847548,
+      "fps": 87.84096625428039,
+      "quality": {
+        "selected": 30916,
+        "accepted_min": 30910,
+        "accepted_fraction_min": 0.9998059257342476,
+        "displacement_rmse_max_px": 0.02420074343413482,
+        "displacement_p95_max_px": 0.04553851653676483,
+        "gradient_component_rmse_max": 0.0010642171263256942
+      }
+    },
+    {
+      "run": "python-native-pyramid-4-baseline",
+      "backend": "native-pyramid",
+      "median_ms": 11.51638399460353,
+      "p95_ms": 13.840296809212306,
+      "p99_ms": 15.185439084889365,
+      "fps": 87.28998913189815,
+      "quality": {
+        "selected": 30916,
+        "accepted_min": 30910,
+        "accepted_fraction_min": 0.9998059257342476,
+        "displacement_rmse_max_px": 0.02420074343413482,
+        "displacement_p95_max_px": 0.04553851653676483,
+        "gradient_component_rmse_max": 0.0010642171263256942
+      }
+    },
+    {
+      "run": "python-native-pyramid-5-candidate",
+      "backend": "native-pyramid",
+      "median_ms": 11.651669483399019,
+      "p95_ms": 13.533389632357284,
+      "p99_ms": 14.939848246867767,
+      "fps": 86.65248657026663,
+      "quality": {
+        "selected": 30916,
+        "accepted_min": 30910,
+        "accepted_fraction_min": 0.9998059257342476,
+        "displacement_rmse_max_px": 0.02420074343413482,
+        "displacement_p95_max_px": 0.04553851653676483,
+        "gradient_component_rmse_max": 0.0010642171263256942
+      }
+    },
+    {
+      "run": "python-native-pyramid-6-baseline",
+      "backend": "native-pyramid",
+      "median_ms": 11.497791478177533,
+      "p95_ms": 13.918057206319647,
+      "p99_ms": 15.324704740196465,
+      "fps": 86.48053550355262,
+      "quality": {
+        "selected": 30916,
+        "accepted_min": 30910,
+        "accepted_fraction_min": 0.9998059257342476,
+        "displacement_rmse_max_px": 0.02420074343413482,
+        "displacement_p95_max_px": 0.04553851653676483,
+        "gradient_component_rmse_max": 0.0010642171263256942
+      }
+    },
+    {
+      "run": "python-webgpu-wgsl-1-baseline",
+      "backend": "webgpu-wgsl",
+      "median_ms": 40.86920799454674,
+      "p95_ms": 46.52582053677179,
+      "p99_ms": 48.27676293323745,
+      "fps": 24.39753093715154,
+      "quality": {
+        "selected": 30916,
+        "accepted_min": 30910,
+        "accepted_fraction_min": 0.9998059257342476,
+        "displacement_rmse_max_px": 0.024201424043536927,
+        "displacement_p95_max_px": 0.045541843181042596,
+        "gradient_component_rmse_max": 0.0010642226954118445
+      }
+    },
+    {
+      "run": "python-webgpu-wgsl-2-baseline",
+      "backend": "webgpu-wgsl",
+      "median_ms": 40.2728994959034,
+      "p95_ms": 45.552055138978176,
+      "p99_ms": 49.004367091692984,
+      "fps": 24.711419281598875,
+      "quality": {
+        "selected": 30916,
+        "accepted_min": 30910,
+        "accepted_fraction_min": 0.9998059257342476,
+        "displacement_rmse_max_px": 0.024201424043536927,
+        "displacement_p95_max_px": 0.045541843181042596,
+        "gradient_component_rmse_max": 0.0010642226954118445
+      }
+    },
+    {
+      "run": "python-webgpu-wgsl-3-candidate",
+      "backend": "webgpu-wgsl",
+      "median_ms": 40.14257050585002,
+      "p95_ms": 45.055768548627384,
+      "p99_ms": 46.888175077037886,
+      "fps": 24.871597183456572,
+      "quality": {
+        "selected": 30916,
+        "accepted_min": 30910,
+        "accepted_fraction_min": 0.9998059257342476,
+        "displacement_rmse_max_px": 0.024201424043536927,
+        "displacement_p95_max_px": 0.045541843181042596,
+        "gradient_component_rmse_max": 0.0010642226954118445
+      }
+    },
+    {
+      "run": "python-webgpu-wgsl-4-baseline",
+      "backend": "webgpu-wgsl",
+      "median_ms": 40.583054011221975,
+      "p95_ms": 46.03018271154724,
+      "p99_ms": 48.171805178862996,
+      "fps": 24.54462436150304,
+      "quality": {
+        "selected": 30916,
+        "accepted_min": 30910,
+        "accepted_fraction_min": 0.9998059257342476,
+        "displacement_rmse_max_px": 0.024201424043536927,
+        "displacement_p95_max_px": 0.045541843181042596,
+        "gradient_component_rmse_max": 0.0010642226954118445
+      }
+    },
+    {
+      "run": "python-webgpu-wgsl-5-candidate",
+      "backend": "webgpu-wgsl",
+      "median_ms": 41.93123447475955,
+      "p95_ms": 49.35949526843615,
+      "p99_ms": 54.36530927370766,
+      "fps": 23.510549649071276,
+      "quality": {
+        "selected": 30916,
+        "accepted_min": 30910,
+        "accepted_fraction_min": 0.9998059257342476,
+        "displacement_rmse_max_px": 0.024201424043536927,
+        "displacement_p95_max_px": 0.045541843181042596,
+        "gradient_component_rmse_max": 0.0010642226954118445
+      }
+    },
+    {
+      "run": "python-webgpu-wgsl-6-baseline",
+      "backend": "webgpu-wgsl",
+      "median_ms": 40.55132149369456,
+      "p95_ms": 47.12002987798769,
+      "p99_ms": 52.683472199714735,
+      "fps": 24.299697459059892,
+      "quality": {
+        "selected": 30916,
+        "accepted_min": 30910,
+        "accepted_fraction_min": 0.9998059257342476,
+        "displacement_rmse_max_px": 0.024201424043536927,
+        "displacement_p95_max_px": 0.045541843181042596,
+        "gradient_component_rmse_max": 0.0010642226954118445
+      }
+    }
+  ],
+  "primary_decisions": {
+    "native-pyramid": {
+      "median_ms": {
+        "reference_median": 11.507087736390531,
+        "reference_range": 0.3288105071987957,
+        "candidates": [
+          11.475633014924824,
+          11.651669483399019
+        ],
+        "decision": "within measured reference range"
+      },
+      "p95_ms": {
+        "reference_median": 13.57687081763288,
+        "reference_range": 0.7582380232634041,
+        "candidates": [
+          13.076689676381648,
+          13.533389632357284
+        ],
+        "decision": "within measured reference range"
+      },
+      "p99_ms": {
+        "reference_median": 14.46622033341555,
+        "reference_range": 1.8626772117568162,
+        "candidates": [
+          13.35088680847548,
+          14.939848246867767
+        ],
+        "decision": "within measured reference range"
+      },
+      "fps": {
+        "reference_median": 87.19938912322255,
+        "reference_range": 0.8448006667165515,
+        "candidates": [
+          87.84096625428039,
+          86.65248657026663
+        ],
+        "decision": "within measured reference range"
+      }
+    },
+    "webgpu-wgsl": {
+      "median_ms": {
+        "reference_median": 40.56718775245827,
+        "reference_range": 0.5963084986433387,
+        "candidates": [
+          40.14257050585002,
+          41.93123447475955
+        ],
+        "decision": "inconclusive"
+      },
+      "p95_ms": {
+        "reference_median": 46.278001624159515,
+        "reference_range": 1.5679747390095145,
+        "candidates": [
+          45.055768548627384,
+          49.35949526843615
+        ],
+        "decision": "inconclusive"
+      },
+      "p99_ms": {
+        "reference_median": 48.64056501246522,
+        "reference_range": 4.511667020851739,
+        "candidates": [
+          46.888175077037886,
+          54.36530927370766
+        ],
+        "decision": "inconclusive"
+      },
+      "fps": {
+        "reference_median": 24.47107764932729,
+        "reference_range": 0.4117218225389827,
+        "candidates": [
+          24.871597183456572,
+          23.510549649071276
+        ],
+        "decision": "inconclusive"
+      }
+    }
+  }
+}
