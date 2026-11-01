@@ -1,0 +1,18 @@
+{
+  "purpose": "Short paired controls, not universal real-time or physical-camera qualification",
+  "source": "Original tensile reference as static fake 60 Hz camera, native UHD or unresized 1080p crop",
+  "numerical_configuration": "Affine, 16/16, B-spline, two fixed levels, median, existing iterations and tolerance; GPU reference preparation in all variants",
+  "variants": {
+    "synchronous": "No supervisor option: synchronous recording, every-field native-size preview",
+    "queue": "Bounded recording overlap, displayRate=0, previewMaxWidth=0",
+    "preview": "Bounded recording overlap, displayRate=30, previewMaxWidth=1920"
+  },
+  "ordering_per_resolution": ["synchronous", "queue", "preview", "preview", "queue", "synchronous"],
+  "warmup_seconds": 4,
+  "observation_seconds": 20,
+  "primary_throughput": "Committed disk fields per second, separately from computed replies",
+  "latency": "Worker arrival to disk/library admission; median, p95 and p99 from raw samples",
+  "accuracy": {"finite": true, "accepted_fraction_min": 0.9, "identity_displacement_rmse_max_px": 0.005, "adjacent_received_pairs": true, "unchanged_numerical_dimensions": true},
+  "ownership": {"capacity_max": 2, "no_unsaved_fields_or_storage_failure": true, "final_drain": true},
+  "performance_interpretation": "Report both repeats/ranges. Call a throughput advantage reproduced only if both candidate committed rates exceed the maximum baseline rate plus 2/observation_seconds (field-count boundary allowance). Two repeats do not provide a statistical or thermal qualification. Never claim 60 FPS unless actually observed at the required boundary."
+}

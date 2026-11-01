@@ -201,6 +201,39 @@ def main():
                         for sample in samples
                         if start["epochMs"] <= sample["admittedEpochMs"] <= stop["epochMs"]
                     ]
+                    # Finish outstanding work outside the timed window, then
+                    # score the actual last committed field of the static scene.
+                    browser._evaluate("""(async()=>{
+                      if(!liveDicSourceState().paused)await document.getElementById('pause').onclick();
+                      while(liveDicSourceState().inFlight)await new Promise(resolve=>setTimeout(resolve,10));
+                      await liveDicWorkbench.flush();return true;
+                    })()""")
+                    if recording:
+                        case["quality"] = browser._evaluate("""(async()=>{
+                          const store=liveDicWorkbench.storage;if(!store.backend||!store.session)return null;
+                          const saved=await store.backend.read(store.session.id,store.session.nextId-1);if(!saved)return null;
+                          const field=saved.field;let count=0,sum=0,max=0;
+                          for(let i=0;i<field.status.length;i++)if(field.status[i]>=.5){
+                            const u=field.parameters[6*i],v=field.parameters[6*i+3],error=Math.hypot(u,v);
+                            sum+=error*error;max=Math.max(max,error);count++;
+                          }
+                          return {width:field.width,height:field.height,grid:field.grid,config:field.config,
+                            finite:field.parameters.every(Number.isFinite),accepted:count,total:field.status.length,
+                            displacementRmse:count?Math.sqrt(sum/count):null,maxDisplacementError:count?max:null,
+                            parameterType:field.parameters.constructor.name,truth:'Identical static fake-camera frames; displacement (0,0)'};
+                        })()""")
+                    case["adjacent_pairs"] = (
+                        all(
+                            row["comparison"]["target"]["ordinal"]
+                            - row["comparison"]["reference"].get(
+                                "ordinal", row["comparison"]["target"]["ordinal"] - 1
+                            )
+                            == 1
+                            for row in rows
+                        )
+                        if mode == "consecutive"
+                        else None
+                    )
                     report["cases"].append(case)
                     report["capabilities"] = worker["capabilities"]
                     report["user_agent"] = browser._evaluate("navigator.userAgent")
