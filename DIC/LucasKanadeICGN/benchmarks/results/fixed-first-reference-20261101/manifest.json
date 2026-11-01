@@ -1,0 +1,21 @@
+{
+  "production_revision": "1fa909d333802e5fb49e2d6c20f62f4fa70497ab",
+  "source_note": "Native production code at 1fa909d; browser site at 1baf913 has identical canonical core sources. Test/document additions were pending; production kernels/defaults unchanged.",
+  "report_uncompressed_sha256": "9d9c4f7d988f3ab4f559c13f157a58acec35c3566e06a1d92bd4ae9ff5e94dc5",
+  "core_sha256": {
+    "temporal.js": "d179f2e34f1acc8db5489a2beac360bfca563bdd48abdfc46e76d0ae7d3cf14f",
+    "reference.js": "9e7ee740e6f3b589df844fbcef9fe56ce56a51098dc8192accfd5168282a7a89",
+    "roi.js": "34498b19d39989cce51a99520e66c1b43c0578e234ce5e25ade2396066eed510",
+    "gpu-memory.js": "46a7c53ea0e07dd411ec309afedf6a90b6d0faf0a4f7e5e2d1550dc8f173f2c3",
+    "result.js": "938c07b80ee807ad102ef2a28884ad3288027fa00aa178b7100353ccc4ebb885",
+    "input.js": "3975ddceaa68d153602c61c666fa6be19cc3dfc148eaff44838c423ca32aa13a",
+    "reference-gpu.js": "088d6fb5e6a9907004155533c575e9c6dadd91309d40f55eeaeb54ae9518d0a5",
+    "ring.js": "52e28bbd0acd385d222f604becb658f9080da93891335b24fad402fca845ca2d",
+    "shaders.js": "deb98c3c573f3c22d97f63707113453cec59c4f4b323a82f8c46c107dc531b7f",
+    "device.js": "249ff3690fe6b04e03d3fd3b85b4f34df4ef5e69863a92556ae937b8f6827e8f",
+    "pyramid.js": "4af6698b049b9f23e6bf1fd4da47b937faf99824b6983c7f8659364d32ad2b39",
+    "engine.js": "ae444b2c5ec6a123cb3b7b85f1dd3d07ec0cef2fd4c22008e549bedc8ae51589"
+  },
+  "qualification_script_sha256": "30264d9be86d10f7d28bbff7da256afbc1ca530f2f2fe855a478677a05208070",
+  "full_tests_uncompressed_sha256": "041fecb7ccc67d8e336631d30c0bdc1a41866eac8df7fc30313ff720b84dc368"
+}

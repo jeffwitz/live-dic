@@ -72,16 +72,59 @@ for qualification, but every frame and field still crosses the
 Python/Chromium boundary. A high-throughput Three.js deployment needs the
 JavaScript supervision model described in :doc:`../explanation/supervision`.
 
+Keep the first image as the reference
+-------------------------------------
+
+The first functional milestone is a persistent first-image reference: prepare
+``I0`` once, then obtain ``I0 -> I1``, ``I0 -> I2`` and so on. Reference pyramid,
+gradients, subset statistics and inverse Hessians stay in memory and are shared
+by the target slots. Only current-image data and solver results change.
+
+For an iterable of acquired NumPy images:
+
+.. code-block:: python
+
+   from pathlib import Path
+
+   from lucas_kanade_icgn import ICGNWGPUFullPyramid
+
+   frames = iter(frame_source)
+   output = Path("fields")
+   output.mkdir(exist_ok=True)
+
+   with ICGNWGPUFullPyramid(outlier_policy="median") as engine:
+       engine.set_reference(next(frames))
+       for index, result in enumerate(
+           engine.register_stream(frames, pipeline_depth=1), start=1
+       ):
+           result.save_npz(output / f"field_{index:06d}.npz")
+
+``set_reference`` is outside the loop. Every saved displacement and gradient
+therefore refers to the first image, rather than the immediately preceding
+target. Optional temporal prediction can reuse previous **estimates** as solver
+initialization while preserving this reference. A new explicit reference or ROI
+preparation starts a new analysis. In the browser workbench choose **Fixed
+reference**, capture/load the first image and keep that reference for playback.
+
+Prepared-data storage in GPU memory and field-file storage are distinct.
+``save_npz`` above is a synchronous functional example; compression and disk
+writes add to application elapsed time. Qualify their cost when measuring
+recorded throughput, separately from the numerical engine call.
+
 Measure the correct boundary
 ----------------------------
 
-``result.timing`` reports stages measured inside the browser. The
-``perf_counter`` measurement in this tutorial also includes Python image
-normalization, binary loopback transfer into Chromium, GPU upload, packed
-result transfer, and NumPy result construction. Targets are not PNG-encoded
-and their fields do not return as JSON. The outer measurement remains the
-relevant one for a Python processing loop because the browser and GPU copies
-are still real work.
+For the native engine, the outer ``perf_counter`` measurement includes Python
+input normalization, GPU upload, solving, readback and NumPy result/statistics
+construction. In the file-based example it also includes target image decoding.
+Use already acquired contiguous NumPy images to measure the resident-image
+boundary used by the live numerical benchmarks. Reference preparation remains
+a separate one-time cost.
+
+When explicitly using ``ICGNWebGL``, additional binary loopback transfer into
+Chromium and back is included. Targets are not PNG-encoded and their fields do
+not return as JSON. Browser adapter timing must not be described as the native
+in-process path.
 
 The next step is to replace the file list with NumPy frames produced by an
 acquisition source. See :doc:`../how-to/process-live-frames`.

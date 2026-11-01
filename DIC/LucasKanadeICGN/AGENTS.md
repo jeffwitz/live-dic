@@ -757,3 +757,18 @@ qualification rather than infer mobile coverage from desktop results.
   controls to prioritize diagnosis. Keep those raw runs and the incomplete
   criteria explicit. No shader/default optimization was authorized by that
   diagnosis request; decide the next optimization from the measured costs.
+
+### First-image reference milestone — 2026-11-01
+
+- The owner prioritizes one persistent first-image reference: prepare I0 once,
+  retain its pyramid/gradients/statistics/Hessians, and compute every I0 -> In.
+  Work on per-pair changing-reference preparation is secondary to this milestone.
+  Temporal seeds may change initial estimates, never the reference image.
+- `fixed-first-reference-20261101/` qualifies the original UHD identity/frame-40
+  sequence in native and browser engines, both browser preparation paths, static
+  metadata/Hessian hashes and twelve exact NPZ round trips. This is functional
+  evidence, not new 4K60 or physical-camera qualification.
+- The browser cache regression includes a failed target followed by recovery,
+  translation/affine, no repeated preparation/allocation during registration and
+  unchanged prepared data. Preserve the one-time-preparation contract when
+  optimizing recording, display or native/browser orchestration.

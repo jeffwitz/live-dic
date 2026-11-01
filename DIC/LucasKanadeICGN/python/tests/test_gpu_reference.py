@@ -135,6 +135,55 @@ class GpuReferenceExecutionTests(unittest.TestCase):
         """)
         self.assertTrue(actual)
 
+    def test_fixed_reference_keeps_prepared_hessians_after_targets_and_failure(self):
+        actual = self.evaluate("""
+          let cases=0;
+          for(const referencePreparation of ['cpu','gpu'])for(const motionModel of ['translation','affine']) {
+            const width=128,height=128,reference=texture(width,height);
+            const engine=await DICEngine.create({width,height,motionModel,referencePreparation,readback:'full',outlierPolicy:'median'});
+            let referenceCalls=0;const prepare=engine.host.setReference.bind(engine.host);
+            engine.host.setReference=(...args)=>{referenceCalls++;return prepare(...args);};
+            try {
+              await engine.setReference(reference);
+              const levels=engine.host.memoryResources().levels;
+              const buffers=levels.map(level=>level.buffers.metadata);
+              async function snapshot() {
+                const values=[];
+                for(const buffer of buffers){
+                  const copy=engine.device.createBuffer({size:buffer.size,usage:GPUBufferUsage.COPY_DST|GPUBufferUsage.MAP_READ});
+                  try {
+                    const encoder=engine.device.createCommandEncoder();encoder.copyBufferToBuffer(buffer,0,copy,0,buffer.size);engine.device.queue.submit([encoder.finish()]);
+                    await copy.mapAsync(GPUMapMode.READ);values.push(new Uint8Array(copy.getMappedRange()).slice());copy.unmap();
+                  }finally{copy.destroy();}
+                }return values;
+              }
+              const before=await snapshot(),device=engine.device,create=device.createCommandEncoder.bind(device);
+              let preparationPasses=0,allocations=0;
+              const methods=['createBuffer','createTexture','createComputePipelineAsync'],originals={};
+              for(const method of methods){originals[method]=device[method].bind(device);device[method]=(...args)=>{allocations++;return originals[method](...args);};}
+              device.createCommandEncoder=(...args)=>{
+                const encoder=create(...args),begin=encoder.beginComputePass.bind(encoder);
+                encoder.beginComputePass=(...args)=>{const pass=begin(...args),set=pass.setPipeline.bind(pass);pass.setPipeline=pipeline=>{if(pipeline.label.startsWith('Reference '))preparationPasses++;return set(pipeline);};return pass;};return encoder;
+              };
+              const results=[];
+              try{for(const current of [reference,new Uint8Array(width*height),reference])results.push(await engine.register(current));}
+              finally{device.createCommandEncoder=create;for(const method of methods)device[method]=originals[method];}
+              const after=await snapshot();
+              check(referenceCalls===1,'fixed mode prepared a different reference');
+              check(preparationPasses===0&&allocations===0,'fixed targets repeated preparation or allocation');
+              check(buffers.every((buffer,i)=>engine.host.memoryResources().levels[i].buffers.metadata===buffer),'reference buffer identity changed');
+              check(before.every((bytes,i)=>bytes.length===after[i].length&&bytes.every((v,j)=>v===after[i][j])),'prepared statistics/Hessians changed');
+              for(const index of [0,2]){
+                const result=results[index];check(result.accepted>0,'identity did not recover');
+                check(result.parameters.every(Number.isFinite),'nonfinite fixed field');
+                for(let i=0;i<result.status.length;i++)if(result.status[i]>=.5){check(Math.hypot(result.parameters[6*i],result.parameters[6*i+3])<.005,'identity displacement');}
+              }
+              check(results[1].accepted===0,'flat target unexpectedly accepted');cases++;
+            }finally{engine.destroy();}
+          }return {cases};
+        """)
+        self.assertEqual(actual["cases"], 4)
+
     def test_pairs_reuse_resources_submit_once_and_keep_inputs_independent(self):
         actual = self.evaluate("""
           const width=128,height=128,options={width,height,outlierPolicy:'disabled',pyramidLevels:2,readback:'full'};

@@ -149,7 +149,16 @@ Fixed or consecutive reference
 ------------------------------
 
 **Fixed reference** remains the default. Every target is compared with the
-captured reference. **Consecutive received images** performs a new IC-GN
+captured reference. For the first-image workflow, load/capture the first image
+once and keep this selection: all fields are ``I0 -> In``. Its gradients,
+statistics and inverse Hessians remain prepared on GPU. The experimental GPU
+reference-preparation option is not required for this steady-state reuse;
+it changes how the initial preparation is performed. Temporal initialization
+can reuse a preceding field estimate without changing the reference image.
+Explicitly capturing a replacement reference or applying a new ROI starts a
+new preparation.
+
+**Consecutive received images** performs a new IC-GN
 correlation between the previous input and the current input; it does not
 subtract two displacement fields and it never chooses the last successful
 result as the next reference. This is an incremental field, not an accumulated

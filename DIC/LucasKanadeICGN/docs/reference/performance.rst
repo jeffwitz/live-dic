@@ -1618,3 +1618,27 @@ are retained in ``benchmarks/results/browser-bottleneck-20261101/``. The planned
 twenty-run display-cadence campaign was stopped when the owner requested this
 diagnosis; its twelve completed controls are retained without claiming a full
 matrix. No numerical shader or public default was changed for attribution.
+
+
+First-image reference: functional milestone
+-------------------------------------------
+
+The owner prioritizes a single prepared first image: every field describes
+``I0 -> In``. ``set_reference`` / ``setReference`` executes once; the reference
+pyramid, derivatives, statistics and Hessian inverses remain available for
+later targets. Optional temporal estimates do not replace that reference.
+
+``benchmarks/results/fixed-first-reference-20261101/`` qualifies the original
+UHD reference/frame-40 sequence in native Python and the browser core, with CPU
+and GPU browser preparation separately. Complete packed metadata/Hessian hashes
+at both levels remain unchanged across all targets. Twelve field exports are
+reread exactly from NPZ without pickle. Frame 40 retains 99.9806% interior
+coverage, approximately 0.02420 px displacement RMSE and 0.0010643 gradient RMSE
+per component under the existing fixture gates.
+
+The additional browser regression checks translation/affine and recovery after
+an unusable target, with no repeated preparation or GPU allocation during
+registration. The complete local native/browser-enabled suite passes 280 tests.
+This establishes functional reference reuse and interchange, not a new live
+60 FPS recording claim. Use :doc:`../tutorials/realtime-sequence` for the native
+first-image loop and :doc:`../how-to/run-in-browser` for the equivalent GUI mode.
