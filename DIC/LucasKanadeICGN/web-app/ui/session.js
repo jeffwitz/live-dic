@@ -27,18 +27,23 @@ export function createSession(send) {
   let supervision = supervisionOptions(), supervisionConfigured = false;
   let displayTimer = null, lastDrawnAt = -Infinity, pendingPresentation = false;
   let lastScale, lastPresentation = null, lastResultId = null, lastWorkerArrivalEpochMs = null;
+  let presentationStats = {draws:0,bitmaps:0,drawWallMs:0,bitmapWallMs:0};
   function cancelPresentation() { clearTimeout(displayTimer); displayTimer = null; pendingPresentation = false; }
   function paintLast() {
     if (!last || !renderer) return;
+    const started = supervisionConfigured ? performance.now() : 0;
     lastScale = renderer.draw(engine, last, { ...display, previewMaxWidth: showingReference ? 0 : supervision.previewMaxWidth,
       ...(showingReference ? {opacity:0,imageTexture:referenceTexture} : {}) });
     lastDrawnAt = performance.now(); pendingPresentation = false;
+    if (supervisionConfigured) {presentationStats.draws++;presentationStats.drawWallMs+=lastDrawnAt-started;}
     lastPresentation = {width:canvas.width,height:canvas.height,resultId:lastResultId,
       comparison:lastComparison,workerArrivalEpochMs:lastWorkerArrivalEpochMs,
       renderedEpochMs:performance.timeOrigin+performance.now(),referencePreview:showingReference||!lastComparison};
   }
   function present(message = {}, transfer = [], includeBitmap = true) {
+    const started = supervisionConfigured ? performance.now() : 0;
     const bitmap = includeBitmap && bitmapPresentation && canvas ? canvas.transferToImageBitmap() : null;
+    if (supervisionConfigured && bitmap) {presentationStats.bitmaps++;presentationStats.bitmapWallMs+=performance.now()-started;}
     const dimensions = bitmap ? {width:message.width??engine?.reference?.width??canvas.width,
       height:message.height??engine?.reference?.height??canvas.height} : {};
     send({ ...message, ...dimensions, ...(bitmap ? { bitmap } : {}),
@@ -67,6 +72,7 @@ export function createSession(send) {
     const { profile: profileName, supervision: requestedSupervision, ...engineOptions } = options;
     supervision = selectedSupervision; supervisionConfigured = requestedSupervision !== undefined;
     lastDrawnAt = -Infinity; lastPresentation = null; lastResultId = null; lastWorkerArrivalEpochMs = null;
+    presentationStats = {draws:0,bitmaps:0,drawWallMs:0,bitmapWallMs:0};
     if (!['portable', 'qualified-latency'].includes(profileName)) throw new Error('Unsupported application profile');
     engine = await DICEngine.create({ ...LATENCY_OPTIONS, width, height, ...engineOptions, readback: 'none', pipelineDepth: 1 });
     engine.device.lost.then((info) => { if (info.reason !== 'destroyed') send({ type: 'error', message: `GPU device lost: ${info.message}` }); });
@@ -144,8 +150,10 @@ export function createSession(send) {
             if (plateScore) last.truthRmse = plateScore.displacementRmsePx;
             showingReference = false;
             lastResultId = id; lastWorkerArrivalEpochMs = performance.timeOrigin + available;
-            const paint = !supervision.displayRate || performance.now()-lastDrawnAt >= 1000/supervision.displayRate;
-            if (paint) { cancelPresentation(); paintLast(); } else schedulePresentation();
+            const paint = supervision.previewEnabled && (!supervision.displayRate || performance.now()-lastDrawnAt >= 1000/supervision.displayRate);
+            if (paint) { cancelPresentation(); paintLast(); }
+            else if (supervision.previewEnabled) schedulePresentation();
+            else pendingPresentation = true;
             const scale = lastScale;
             let record = null;
             if (recordThisFrame) {
@@ -211,9 +219,11 @@ export function createSession(send) {
           supervisor:gpuMemoryUsage({referenceTexture,rendererConfig:renderer?.config}),
           limits:capabilities?.limits??null,physicalVramBytes:null,freeVramBytes:null,
           note:'GPU API allocations are distinct from the CPU results cache. Physical residency/free VRAM and unified/discrete placement are not exposed. Canvas swapchains and driver allocations are not counted.'});
-      } else if (type === 'report') send({ type: 'report', id, samples: sampleLog, capabilities });
+      } else if (type === 'report') send({ type: 'report', id, samples: sampleLog, capabilities,
+        presentation:{...presentationStats,snapshotEpochMs:performance.timeOrigin+performance.now(),supervision} });
       else if (type === 'destroy') {
-        await Promise.all([...outstanding]); renderer?.destroy(); referenceTexture?.destroy(); engine?.destroy(); reference?.close();
+        await Promise.all([...outstanding]); cancelPresentation();
+        renderer?.destroy(); referenceTexture?.destroy(); engine?.destroy(); reference?.close();
         engine = renderer = reference = null; send({ type: 'destroy', id });
       }
     } catch (error) {

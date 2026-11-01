@@ -416,11 +416,15 @@ For a custom supervisor around the application session:
    }, [referenceFrame]);
 
 ``supervision`` is omitted by default. Its defaults are
-``{overlapRecording:false, displayRate:0, previewMaxWidth:0}``.
+``{overlapRecording:false, displayRate:0, previewMaxWidth:0, previewEnabled:true}``.
 ``overlapRecording`` must be boolean; the recording capacity is fixed at two,
 including reserved computations. ``displayRate`` is finite in 0..240 Hz, with
 zero meaning every field. ``previewMaxWidth`` is an integer in 0..16384, zero
 meaning native width; presentation preserves aspect ratio and never upsamples.
+``previewEnabled`` is boolean. False suppresses live field drawing and bitmap
+transfer while computation and recording continue. It does not change the
+meaning of ``displayRate:0``. Reference capture, explicit display/inspection and
+``flush`` still present a view; suspension is not a renderer-free engine mode.
 Unknown keys and invalid types throw before reference replacement. The GUI
 exposes a small set of these values. Changes require coherent new preparation.
 
@@ -431,6 +435,11 @@ flag and worker timing origin. Skipped preview updates do not skip computations
 or recorded fields. The explicit ``flush`` session message waits for current
 work and presents the latest pending field. The PWA uses it outside the live
 loop during pause/export/source transitions.
+
+The session ``report`` reply contains presentation draw/bitmap counts and CPU
+API wall-time totals, with a Worker snapshot timestamp. These counters are
+active for explicit supervision settings. They help distinguish presented and
+computed rates; draw-submission wall time is not elapsed GPU render time.
 
 The bounded ``RecordingQueue`` owns full typed fields until library admission.
 A disk failure blocks new reservations and routes completed fields to explicit

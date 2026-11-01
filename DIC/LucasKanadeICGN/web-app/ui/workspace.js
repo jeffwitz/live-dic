@@ -34,7 +34,8 @@ export function solverOptions() {
   const base = { profile: get('profile').value };
   if (get('gpu-reference-preparation')?.checked) base.referencePreparation = 'gpu';
   if (get('overlap-pipeline')?.checked) base.supervision = {overlapRecording:true,
-    displayRate:Number(get('display-rate').value),previewMaxWidth:Number(get('preview-width').value)};
+    displayRate:get('display-rate').value==='off'?0:Number(get('display-rate').value),
+    previewEnabled:get('display-rate').value!=='off',previewMaxWidth:Number(get('preview-width').value)};
   if (!get('custom-solver').checked) return base;
   const size = Number(get('subset-size').value), stride = Number(get('subset-stride').value);
   const levels = Number(get('pyramid-levels').value), coarse = Number(get('coarse-iterations').value), fine = Number(get('fine-iterations').value);

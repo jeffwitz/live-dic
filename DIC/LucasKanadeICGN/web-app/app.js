@@ -76,13 +76,13 @@ recordingQueue = new RecordingQueue({
 function updatePipelineState(force = false) {
   if (!force && performance.now()-pipelineStateUpdatedAt < 1000) return;
   pipelineStateUpdatedAt=performance.now();
-  if (!supervision.overlapRecording && !supervision.displayRate && !supervision.previewMaxWidth) {
+  if (!supervision.overlapRecording && !supervision.displayRate && !supervision.previewMaxWidth && supervision.previewEnabled) {
     $('pipeline-state').textContent='Synchronous recording and native-size presentation.'; return;
   }
   const q=recordingQueue.report(),sample=q.samples.at(-1);
   const shown=lastPresentation?.comparison?.target;
   const identity=lastPresentation?.referencePreview?'reference':shown?.ordinal??shown?.index??shown?.timeSeconds??'reference';
-  $('pipeline-state').textContent=`Applied: display ${supervision.displayRate||'every computed field'}${supervision.displayRate?' Hz':''}, preview ≤ ${supervision.previewMaxWidth||'native'} px. Shown input ${identity}. Recording queue ${q.pending}/${q.capacity} (calculation included), ${q.admitted} library admissions, ${q.retainedAfterFailure} retained after failure.${sample?` Latest receive → admission ${sample.receiveToAdmissionMs.toFixed(1)} ms.`:''}${q.blocked?' Admission blocked; export or retry RAM fields.':''}`;
+  $('pipeline-state').textContent=`Applied: display ${supervision.previewEnabled?`${supervision.displayRate||'every computed field'}${supervision.displayRate?' Hz':''}`:'suspended (calculation/recording continue)'}, preview ≤ ${supervision.previewMaxWidth||'native'} px. Shown input ${identity}. Recording queue ${q.pending}/${q.capacity} (calculation included), ${q.admitted} library admissions, ${q.retainedAfterFailure} retained after failure.${sample?` Latest receive → admission ${sample.receiveToAdmissionMs.toFixed(1)} ms.`:''}${q.blocked?' Admission blocked; export or retry RAM fields.':''}`;
 }
 function details() {
   const settings=sourceSettings.actual; $('camera-summary').hidden=source!=='camera';
@@ -150,7 +150,8 @@ async function receive({ data }) {
       const gpuPair=data.timing?.gpuReferenceIncluded;
       $('pipeline-timing').textContent=`Latest sampled field (1 Hz): ${gpuPair?`GPU reference + observable solver call ${ms(solveMs)}`:`reference preparation ${ms(preparationMs)} · observable solver call ${ms(solveMs)}`}${recordedReadbackMs||storageAdmissionMs?` · recorded-field readback ${ms(recordedReadbackMs)} · main-thread storage/admission ${ms(storageAdmissionMs)}`:''}. ${data.comparison?.mode==='consecutive'?(gpuPair?'Consecutive mode recomputes the reference on GPU for every pair.':'Consecutive mode rebuilds the reference on CPU for every pair; fixed-reference FPS does not apply.'):'The fixed reference is reused.'}`;
     }
-    const updateHud = !supervision.displayRate || performance.now()-lastHudAt>=1000/supervision.displayRate;
+    const hudRate = supervision.previewEnabled ? supervision.displayRate : 1;
+    const updateHud = !hudRate || performance.now()-lastHudAt>=1000/hudRate;
     if (updateHud) lastHudAt=performance.now();
     if (updateHud && !workbench.reviewing) $('run-state').textContent = source==='camera'&&sourceSettings.deliveryState==='stopped'?'Camera stopped · last completed field':`${source} · ${data.width} × ${data.height} · ${data.comparison?.mode ?? 'fixed'} · ${paused ? 'paused' : 'running'}`;
     if (data.comparison) { sourceSettings.lastComparison = data.comparison; updateLocalPosition(data.comparison.target);$('last-reference-summary').textContent=`Last pair: ${data.comparison.referenceAdmissible} numerically admissible references / ${data.selected} requested ROI windows. Every selected window remains requested.`; }
@@ -207,7 +208,7 @@ async function drain() {
   while (inFlight) await new Promise((resolve) => setTimeout(resolve, 10));
   await recordingQueue.drain();
   await workbench.flush();
-  if (supervision.displayRate && transport && referenceInfo) await send('flush');
+  if ((supervision.displayRate || !supervision.previewEnabled) && transport && referenceInfo) await send('flush');
   updatePipelineState(true);
   if (imageTask) await imageTask.catch(() => {});
   if (supervision.overlapRecording && imageLoop) await imageLoop.catch(() => {});
@@ -622,7 +623,7 @@ $('pause').onclick = async () => {
   workbench.returnLive();
   if (roiEditing) { message('Apply the mask before resuming.'); return; }
   if (source === 'plate') return runPlateTarget().catch(e => message(e.message,true));
-  if (!paused) { pauseSource(); $('pause').textContent = 'Play'; if(supervision.overlapRecording||supervision.displayRate)await drain(); return; }
+  if (!paused) { pauseSource(); $('pause').textContent = 'Play'; if(supervision.overlapRecording||supervision.displayRate||!supervision.previewEnabled)await drain(); return; }
   try {
     await send('show-reference',{show:false});
     if (source === 'images') return playImages();

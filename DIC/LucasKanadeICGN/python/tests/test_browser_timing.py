@@ -15,6 +15,12 @@ PROJECT = Path(__file__).resolve().parents[2]
 @unittest.skipUnless(shutil.which("node"), "Node is needed for browser timing contracts")
 class BrowserTimingTests(unittest.TestCase):
     def test_preview_throttling_keeps_every_measurement_and_flushes_latest_pair(self):
+        self._exercise_preview(True)
+
+    def test_suspended_preview_records_every_field_and_flushes_only_on_request(self):
+        self._exercise_preview(False)
+
+    def _exercise_preview(self, preview_enabled):
         runtime = tempfile.TemporaryDirectory()
         self.addCleanup(runtime.cleanup)
         root = Path(runtime.name)
@@ -41,26 +47,33 @@ class BrowserTimingTests(unittest.TestCase):
           const engine={{device:{{lost:new Promise(()=>{{}}),addEventListener(){{}},createShaderModule:()=>({{}}),createRenderPipeline:()=>({{}}),
              createBuffer:()=>({{destroy(){{}}}}),createTexture:()=>({{destroy(){{}}}}),queue:{{copyExternalImageToTexture(){{}}}}}},
              ring:{{idle:true}},resetTemporalState(){{}},setAnalyticTruth(){{}},destroy(){{}},setReference:async()=>info,
-             register:async()=>({{width:64,height:64,grid:[4,4],config:info.config,timing:{{wallMs:0}},accepted:4,selected:16}})}};
+             register:async()=>({{width:64,height:64,grid:[4,4],config:info.config,timing:{{wallMs:0}},accepted:4,selected:16}}),
+             exportField:async()=>({{width:64,height:64,parameters:new Float32Array(96),status:new Float32Array(16),iterations:new Float32Array(16)}})}};
           DICEngine.create=async options=>{{engineOptions=options;return engine;}};
           const draws=[];FieldRenderer.prototype.draw=function(engine,result,options){{
             const width=options.previewMaxWidth||64;this.canvas.width=width;this.canvas.height=width;draws.push(width);return 1;
           }};
           const messages=[],session=createSession(m=>messages.push(m));
           await session.handle({{type:'boot',canvas,measure:false}});
-          await session.handle({{type:'reference',frame:frame(),options:{{profile:'portable',supervision:{{displayRate:10,previewMaxWidth:32}}}}}});
+          await session.handle({{type:'reference',frame:frame(),options:{{profile:'portable',supervision:{{displayRate:10,previewMaxWidth:32,previewEnabled:{json.dumps(preview_enabled)}}}}}}});
           const targets=[];
-          for(let i=1;i<=3;i++){{clock+=10;const target=frame();targets.push(target);await session.handle({{type:'frame',id:i,frame:target,comparison:{{mode:'fixed',target:{{ordinal:i}}}}}});}}
-          const before={{draws:[...draws],measurements:messages.filter(m=>m.type==='result').length,timers:timers.size}};
+          for(let i=1;i<=3;i++){{clock+={10 if preview_enabled else 1000};const target=frame();targets.push(target);await session.handle({{type:'frame',id:i,frame:target,recordRequested:true,comparison:{{mode:'fixed',target:{{ordinal:i}}}}}});}}
+          const results=messages.filter(m=>m.type==='result');
+          const before={{draws:[...draws],measurements:results.length,timers:timers.size,recordWidths:results.map(m=>m.record.field.width)}};
           await session.handle({{type:'flush',id:9}});const flushed=messages.at(-1);
           await session.handle({{type:'show-reference',show:true}});const reference=messages.at(-1);
+          clock+=10;const final=frame();targets.push(final);
+          await session.handle({{type:'frame',id:4,frame:final,comparison:{{mode:'fixed',target:{{ordinal:4}}}}}});
           await session.handle({{type:'destroy'}});
           console.log(JSON.stringify({{before,flushed,reference,draws,timers:timers.size,closed:targets.every(t=>t.closed),numericalOptionsUnchanged:!('supervision' in engineOptions)}}));
         """
         actual = json.loads(
             subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
         )
-        self.assertEqual(actual["before"], dict(draws=[32], measurements=3, timers=1))
+        self.assertEqual(
+            actual["before"],
+            dict(draws=[32], measurements=3, timers=int(preview_enabled), recordWidths=[64] * 3),
+        )
         self.assertEqual(actual["flushed"]["presentation"]["resultId"], 3)
         self.assertEqual(actual["flushed"]["presentation"]["width"], 32)
         self.assertTrue(actual["reference"]["presentation"]["referencePreview"])

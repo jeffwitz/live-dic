@@ -39,7 +39,8 @@ def main():
     parser.add_argument("--warmup", type=float, default=3)
     parser.add_argument("--software", action="store_true")
     parser.add_argument("--overlap-pipeline", action="store_true")
-    parser.add_argument("--display-rate", type=int, choices=[0, 15, 30, 60], default=30)
+    parser.add_argument("--display-rate", type=int, choices=[0, 1, 5, 10, 15, 30, 60], default=30)
+    parser.add_argument("--suspend-preview", action="store_true")
     parser.add_argument("--preview-width", type=int, choices=[0, 1280, 1920], default=1920)
     parser.add_argument("--comparison", choices=["all", "fixed", "consecutive"], default="all")
     parser.add_argument("--recording", choices=["all", "on", "off"], default="all")
@@ -47,6 +48,8 @@ def main():
         "--gpu-reference", action="store_true", help="opt into persistent GPU reference preparation"
     )
     args = parser.parse_args()
+    if args.suspend_preview and not args.overlap_pipeline:
+        parser.error("--suspend-preview requires --overlap-pipeline")
     if not 1 <= args.duration <= 3600 or not 0 <= args.warmup <= 60:
         parser.error("duration must be 1..3600 seconds; warmup must be 0..60 seconds")
     site = args.site.resolve()
@@ -85,6 +88,7 @@ def main():
         "gpu_reference_requested": args.gpu_reference,
         "overlap_pipeline_requested": args.overlap_pipeline,
         "display_rate_requested": args.display_rate,
+        "preview_suspended_requested": args.suspend_preview,
         "preview_width_requested": args.preview_width,
         "comparison_requested": args.comparison,
         "recording_requested": args.recording,
@@ -117,8 +121,9 @@ def main():
                         "document.getElementById('gpu-reference-preparation').checked=true;true"
                     )
                 if args.overlap_pipeline:
+                    display_value = "off" if args.suspend_preview else str(args.display_rate)
                     browser._evaluate(
-                        f"document.getElementById('overlap-pipeline').checked=true;document.getElementById('display-rate').value={json.dumps(str(args.display_rate))};document.getElementById('preview-width').value={json.dumps(str(args.preview_width))};true"
+                        f"document.getElementById('overlap-pipeline').checked=true;document.getElementById('display-rate').value={json.dumps(display_value)};document.getElementById('preview-width').value={json.dumps(str(args.preview_width))};true"
                     )
                 browser._evaluate(
                     f"document.getElementById('resolution').value={json.dumps(args.resolution)};document.getElementById('camera').onclick().then(()=>true)"
@@ -183,6 +188,22 @@ def main():
                         "stop": stop,
                         "samples": rows,
                     }
+                    if previous.get("presentation") and worker.get("presentation"):
+                        before, after = previous["presentation"], worker["presentation"]
+                        display_elapsed = (
+                            after["snapshotEpochMs"] - before["snapshotEpochMs"]
+                        ) / 1000
+                        case["presentation"] = {
+                            "before": before,
+                            "after": after,
+                            "elapsed_seconds": display_elapsed,
+                            "draws": after["draws"] - before["draws"],
+                            "bitmaps": after["bitmaps"] - before["bitmaps"],
+                            "draw_fps": (after["draws"] - before["draws"]) / display_elapsed,
+                            "draw_submission_wall_ms": after["drawWallMs"] - before["drawWallMs"],
+                            "bitmap_wall_ms": after["bitmapWallMs"] - before["bitmapWallMs"],
+                            "timing_boundary": "Worker presentation counter snapshots; CPU/API wall times, not GPU timestamps",
+                        }
                     case["pipeline"] = browser._evaluate(
                         "globalThis.liveDicPipelineReport?.()??null"
                     )

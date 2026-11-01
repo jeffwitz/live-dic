@@ -86,7 +86,7 @@ class SupervisionOptionsTests(unittest.TestCase):
     def test_defaults_are_synchronous_and_preview_geometry_does_not_change_source(self):
         script = f"""
           import {{supervisionOptions,presentationSize}} from {json.dumps((UI / "supervision.js").as_uri())};
-          const invalid=[null,{{overlapRecording:1}},{{displayRate:-1}},{{displayRate:NaN}},{{previewMaxWidth:1.5}},{{unknown:1}}];
+          const invalid=[null,{{overlapRecording:1}},{{previewEnabled:0}},{{displayRate:-1}},{{displayRate:NaN}},{{previewMaxWidth:1.5}},{{unknown:1}}];
           const rejected=invalid.map(value=>{{try{{supervisionOptions(value);return false;}}catch{{return true;}}}});
           console.log(JSON.stringify({{defaults:supervisionOptions(),native:presentationSize(3840,2160),preview:presentationSize(3840,2160,1920),odd:presentationSize(99,97,64),rejected}}));
         """
@@ -94,7 +94,8 @@ class SupervisionOptionsTests(unittest.TestCase):
             subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
         )
         self.assertEqual(
-            actual["defaults"], dict(overlapRecording=False, displayRate=0, previewMaxWidth=0)
+            actual["defaults"],
+            dict(overlapRecording=False, displayRate=0, previewMaxWidth=0, previewEnabled=True),
         )
         self.assertEqual(actual["native"], [3840, 2160])
         self.assertEqual(actual["preview"], [1920, 1080])

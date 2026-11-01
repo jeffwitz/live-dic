@@ -255,6 +255,14 @@ The preview never enlarges an image. Mask editing explicitly restores the
 native-size reference preview. A paused/exported view is flushed to the latest
 completed pair rather than leaving the last throttled preview on screen.
 
+Choose **1 Hz**, **5 Hz** or **10 Hz** for slow visual monitoring independent
+of recording cadence. **Suspend live preview · keep computing/recording**
+suppresses live field drawing and bitmap transfer; progress still updates at
+about 1 Hz. It does not pause acquisition or omit computed fields. Explicit
+inspection, reference/mask views and Pause/export can still draw the latest
+view. Apply a new reference to change this setting, as with the other pipeline
+controls. A low display rate is a maximum, not a target computational rate.
+
 The pipeline status distinguishes the displayed input, pending recording slots
 and library admissions. Computed FPS may temporarily lead committed FPS by up
 to the bounded capacity. Recording benchmarks must report committed throughput

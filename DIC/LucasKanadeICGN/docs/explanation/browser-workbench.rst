@@ -278,6 +278,14 @@ mapping. Mask editing forces native-size reference presentation, while numerical
 inputs, subsets and all saved/exported arrays remain unchanged. Existing
 unthrottled native-size defaults remain in place.
 
+Slow monitoring can request 1, 5 or 10 Hz. Suspending live preview prevents both
+live render calls and bitmap creation; the supervisor still records every
+admitted calculation, updates progress and flushes the latest view on explicit
+pause/export. There is no queue of old display frames to catch up later. This
+control can bound display overhead, but cannot remove reference preparation,
+correlation, field readback or database cost. Inspect both committed rate and
+age before attributing a whole-application bottleneck to display.
+
 The application keeps a single GPU owner and uses asynchronous browser disk
 I/O. Another display Worker/device would require exchanging resources instead
 of directly reading the existing field buffer, without removing GPU work. The

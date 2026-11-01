@@ -337,3 +337,7 @@ unsaved-data guard and export independent backups. Device-loss or unexpected
 CPU retention failures stop admission rather than discarding a pending field.
 See :doc:`browser-workbench` and :doc:`../how-to/run-in-browser` for ownership and
 recovery rules. No 60 FPS or all-platform claim follows from this option alone.
+The live preview can run at 1/5/10 Hz or be suspended. Explicit inspection and
+pause/export flushes still draw; suppressing live presentation does not remove
+numerical preparation, full-field readback or storage. Its maximum display rate
+must not be used as an acquisition or computed-field FPS claim.

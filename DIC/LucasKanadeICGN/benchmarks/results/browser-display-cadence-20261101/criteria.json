@@ -1,0 +1,16 @@
+{
+  "purpose": "Separate display cadence from computation and committed disk throughput; no physical-camera or all-device claim",
+  "source": "Unchanged original 3840x2160 tensile reference as a static fake 60 Hz camera",
+  "configuration": "GPU reference preparation, affine16/16 B-spline, two fixed levels, median, unchanged iterations/tolerances, recording on, two CPU queue slots, 1920px preview",
+  "comparison_modes": ["consecutive", "fixed"],
+  "ordering_per_mode": ["30", "10", "5", "1", "off", "off", "1", "5", "10", "30"],
+  "warmup_seconds": 4,
+  "observation_seconds": 20,
+  "throughput": "Computed replies and committed disk fields counted separately between main-thread monotonic snapshots",
+  "display": "Worker draw and bitmap counts with their own snapshot interval; low-rate rendering must not gate computation or recording",
+  "latency": "Worker arrival to disk/library admission p50/p95/p99, not sensor exposure",
+  "quality": {"finite": true, "accepted_fraction_min": 0.9, "identity_displacement_rmse_max_px": 0.005, "full_dimensions": [3840,2160], "adjacent_received_pairs_when_consecutive": true},
+  "ownership": {"peak_pending_max": 2, "no_unsaved_fields": true, "no_storage_errors": true, "final_drain_outside_window": true},
+  "display_gates": {"off_live_draws": 0, "off_live_bitmaps": 0, "maximum_rate_allowance": "Requested maximum plus 2/observation_seconds for snapshot boundaries"},
+  "interpretation": "Publish both repeats and actual display rate. Call a gain reproduced only when both candidate committed rates exceed both 30Hz-preview baseline rates plus 2/20 fields per second. Short controls do not establish thermal statistics or 60FPS; fixed and consecutive modes must never be combined. Do not change accuracy, input size, recording, reference policy or iteration schedule to reach cadence."
+}
