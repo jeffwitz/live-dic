@@ -1,0 +1,50 @@
+{
+  "1-baseline.json.gz": {
+    "bytes_uncompressed": 2432280,
+    "sha256_uncompressed": "46d8c73a8a7691408c2fe9d894a911f109d9978a4f4c1f018a49477aea23233c"
+  },
+  "2-candidate.json.gz": {
+    "bytes_uncompressed": 2399036,
+    "sha256_uncompressed": "d56de46f33e47eeac35c0a326e7d6095c8d4644a9df798d08ff45b73e9c1f856"
+  },
+  "3-candidate.json.gz": {
+    "bytes_uncompressed": 2402017,
+    "sha256_uncompressed": "a865cadfec4513361b12ed96adabd01144745681062fecafab6885d007f83bcf"
+  },
+  "4-baseline.json.gz": {
+    "bytes_uncompressed": 2395519,
+    "sha256_uncompressed": "890be97882c99dc1ccf76c762f0aef5a3c2e87a53cf818323a97af8c5684325a"
+  },
+  "commands.json.gz": {
+    "bytes_uncompressed": 2745,
+    "sha256_uncompressed": "b69629f6cbe6635b81ef27bde42d9ea1e76ccba52d189a71e7ab631e1d8bb91d"
+  },
+  "renderer-hardware.json.gz": {
+    "bytes_uncompressed": 3462,
+    "sha256_uncompressed": "debd29def7b82b54ae3f33d2cac6e8e843e1b330c9f295cc777ce622a64f8f57"
+  },
+  "renderer-software.json.gz": {
+    "bytes_uncompressed": 3462,
+    "sha256_uncompressed": "d5beb4f463cc331b1206584fdd4c58bc09b903a7ea4c92500ae88fa5e711b6f9"
+  },
+  "offline-export.json.gz": {
+    "bytes_uncompressed": 11076255,
+    "sha256_uncompressed": "9b3d5bb9eeb00b0f1d8efd48afdab5fe313ca6c2bba34805df018f41af3347af"
+  },
+  "editor-hardware.json.gz": {
+    "bytes_uncompressed": 10590,
+    "sha256_uncompressed": "661f6e11bd1cdf024e3ca8905414214084cc24c61ed4e0155f9a2930b60166d3"
+  },
+  "pipeline-hardware.json.gz": {
+    "bytes_uncompressed": 40008,
+    "sha256_uncompressed": "8e63f487baf5f3715c2aaf702e7b914580d34f510d441980e18914977ad67968"
+  },
+  "workbench-hardware.json.gz": {
+    "bytes_uncompressed": 23702,
+    "sha256_uncompressed": "48251346d7b76631593d3258daf66fd8e04ec88d25750bf4a2f9e2046e8b3faa"
+  },
+  "workbench-software.json.gz": {
+    "bytes_uncompressed": 23697,
+    "sha256_uncompressed": "afd2dbc441309f39c95158220cf5b46f0400cd1c8d7cb5486c813ff073401672"
+  }
+}
