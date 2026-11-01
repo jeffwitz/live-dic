@@ -1,0 +1,11 @@
+--- a/app.js
++++ b/app.js
+@@ -276,7 +276,7 @@
+ function countDrop() { dropped++; $('drops').textContent = dropped; }
+ async function processFrame(frame, frameIndex = null, { force = false, reset = false, input = null, referenceFrame = null, referenceInput = null, playback = false } = {}) {
+   const token = generation, mode = source === 'plate' ? 'fixed' : $('comparison').value;
+-  if (paused && (!force || (supervision.overlapRecording && playback))) { frame.close(); referenceFrame?.close(); return false; }
++  if (paused && !force) { frame.close(); referenceFrame?.close(); return false; }
+   input = { kind:source, ordinal:++receivedOrdinal, timestampUs:frame.timestamp ?? null,
+     timestampClock:frame.timestamp==null?null:source==='camera'&&sourceSettings.frameDelivery==='MediaStreamTrackProcessor'?'Track-processor VideoFrame clock; origin is browser/device defined':'HTMLVideoElement media timeline', ...input };
+   if (mode === 'consecutive' && !referenceFrame) {

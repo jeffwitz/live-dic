@@ -1,0 +1,18 @@
+{
+  "kernel": "Linux jeff-HP-EliteBook-X-G1i 7.0.0-38-generic #38~24.04.4-Ubuntu SMP PREEMPT_DYNAMIC Mon Sep 14 16:37:11 UTC 2 x86_64 x86_64 x86_64 GNU/Linux",
+  "mesa_vulkan_package": "mesa-vulkan-drivers:amd64\t25.2.8-0ubuntu0.24.04.4",
+  "power_profile_after_campaign": "performance",
+  "browser": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+  "adapter": {
+    "vendor": "intel",
+    "architecture": "xe-2lpg",
+    "device": "",
+    "description": ""
+  },
+  "pci": "Intel Lunar Lake 8086:64a0 revision 04, observed via lspci -nn",
+  "python": "3.11.14 (main, Jan 27 2026, 23:58:49) [Clang 21.1.4 ]",
+  "wgpu": "0.32.0",
+  "numpy": "2.4.6",
+  "pillow": "13.0.0",
+  "scope": "One Linux integrated-GPU desktop; no physical-camera, discrete-GPU or all-OS claim. Software-adapter runs qualify correctness only."
+}

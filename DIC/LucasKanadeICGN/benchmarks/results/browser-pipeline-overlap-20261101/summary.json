@@ -1,0 +1,214 @@
+{
+  "1920x1080": {
+    "synchronous": {
+      "repeats": [
+        {
+          "file": "1920x1080-1-synchronous.json.gz",
+          "committed_fps": 16.818633208005952,
+          "computed_fps": 16.818633208005952,
+          "admission_sample_count": 337,
+          "worker_to_admission_ms_p50_p95_p99": [
+            52.000244140625,
+            59.4203125,
+            62.68822265624998
+          ],
+          "accepted": 7788,
+          "total": 8040,
+          "identity_displacement_rmse_px": 7.988049274583588e-07,
+          "peak_pending": 0
+        },
+        {
+          "file": "1920x1080-6-synchronous.json.gz",
+          "committed_fps": 16.776764222510717,
+          "computed_fps": 16.776764222510717,
+          "admission_sample_count": 336,
+          "worker_to_admission_ms_p50_p95_p99": [
+            50.0499267578125,
+            60.1248779296875,
+            63.050061035156226
+          ],
+          "accepted": 7788,
+          "total": 8040,
+          "identity_displacement_rmse_px": 7.988049274583588e-07,
+          "peak_pending": 0
+        }
+      ]
+    },
+    "queue": {
+      "repeats": [
+        {
+          "file": "1920x1080-2-queue.json.gz",
+          "committed_fps": 19.328255712323635,
+          "computed_fps": 19.328255712323635,
+          "admission_sample_count": 387,
+          "worker_to_admission_ms_p50_p95_p99": [
+            54.2001953125,
+            64.6699951171875,
+            69.33809082031247
+          ],
+          "accepted": 7788,
+          "total": 8040,
+          "identity_displacement_rmse_px": 7.988049274583588e-07,
+          "peak_pending": 2
+        },
+        {
+          "file": "1920x1080-5-queue.json.gz",
+          "committed_fps": 19.427464188971125,
+          "computed_fps": 19.427464188971125,
+          "admission_sample_count": 389,
+          "worker_to_admission_ms_p50_p95_p99": [
+            55.69970703125,
+            64.699951171875,
+            67.9119140625
+          ],
+          "accepted": 7788,
+          "total": 8040,
+          "identity_displacement_rmse_px": 7.988049274583588e-07,
+          "peak_pending": 2
+        }
+      ],
+      "passes_predeclared_short_control": true
+    },
+    "preview": {
+      "repeats": [
+        {
+          "file": "1920x1080-3-preview.json.gz",
+          "committed_fps": 19.775280898876407,
+          "computed_fps": 19.72534332084894,
+          "admission_sample_count": 396,
+          "worker_to_admission_ms_p50_p95_p99": [
+            56.10009765625,
+            66.0250244140625,
+            69.61009521484375
+          ],
+          "accepted": 7788,
+          "total": 8040,
+          "identity_displacement_rmse_px": 7.988049274583588e-07,
+          "peak_pending": 2
+        },
+        {
+          "file": "1920x1080-4-preview.json.gz",
+          "committed_fps": 20.023868997617306,
+          "computed_fps": 20.023868997617306,
+          "admission_sample_count": 401,
+          "worker_to_admission_ms_p50_p95_p99": [
+            53.300048828125,
+            65.500244140625,
+            71.30029296875
+          ],
+          "accepted": 7788,
+          "total": 8040,
+          "identity_displacement_rmse_px": 7.988049274583588e-07,
+          "peak_pending": 2
+        }
+      ],
+      "passes_predeclared_short_control": true
+    }
+  },
+  "3840x2160": {
+    "synchronous": {
+      "repeats": [
+        {
+          "file": "3840x2160-1-synchronous.json.gz",
+          "committed_fps": 4.484349663466978,
+          "computed_fps": 4.484349663466978,
+          "admission_sample_count": 90,
+          "worker_to_admission_ms_p50_p95_p99": [
+            218.8001708984375,
+            244.49013671875,
+            259.39820068359376
+          ],
+          "accepted": 31654,
+          "total": 32400,
+          "identity_displacement_rmse_px": 7.628060488531195e-07,
+          "peak_pending": 0
+        },
+        {
+          "file": "3840x2160-6-synchronous.json.gz",
+          "committed_fps": 4.5442061371751015,
+          "computed_fps": 4.5442061371751015,
+          "admission_sample_count": 91,
+          "worker_to_admission_ms_p50_p95_p99": [
+            213.89990234375,
+            253.9000244140625,
+            269.5400146484375
+          ],
+          "accepted": 31654,
+          "total": 32400,
+          "identity_displacement_rmse_px": 7.628060488531195e-07,
+          "peak_pending": 0
+        }
+      ]
+    },
+    "queue": {
+      "repeats": [
+        {
+          "file": "3840x2160-2-queue.json.gz",
+          "committed_fps": 5.645399054901106,
+          "computed_fps": 5.645399054901106,
+          "admission_sample_count": 113,
+          "worker_to_admission_ms_p50_p95_p99": [
+            228.699951171875,
+            268.620068359375,
+            371.31576171874957
+          ],
+          "accepted": 31654,
+          "total": 32400,
+          "identity_displacement_rmse_px": 7.628060488531195e-07,
+          "peak_pending": 2
+        },
+        {
+          "file": "3840x2160-5-queue.json.gz",
+          "committed_fps": 5.840946532874046,
+          "computed_fps": 5.840946532874046,
+          "admission_sample_count": 117,
+          "worker_to_admission_ms_p50_p95_p99": [
+            230.699951171875,
+            275.8800292968749,
+            299.69990234375
+          ],
+          "accepted": 31654,
+          "total": 32400,
+          "identity_displacement_rmse_px": 7.628060488531195e-07,
+          "peak_pending": 2
+        }
+      ],
+      "passes_predeclared_short_control": true
+    },
+    "preview": {
+      "repeats": [
+        {
+          "file": "3840x2160-3-preview.json.gz",
+          "committed_fps": 6.642029564522573,
+          "computed_fps": 6.592089492608869,
+          "admission_sample_count": 133,
+          "worker_to_admission_ms_p50_p95_p99": [
+            194.300048828125,
+            228.319970703125,
+            249.07988281250013
+          ],
+          "accepted": 31654,
+          "total": 32400,
+          "identity_displacement_rmse_px": 7.628060488531195e-07,
+          "peak_pending": 2
+        },
+        {
+          "file": "3840x2160-4-preview.json.gz",
+          "committed_fps": 6.644949854333728,
+          "computed_fps": 6.594987825353775,
+          "admission_sample_count": 133,
+          "worker_to_admission_ms_p50_p95_p99": [
+            195.699951171875,
+            232.0798828125,
+            251.73598632812508
+          ],
+          "accepted": 31654,
+          "total": 32400,
+          "identity_displacement_rmse_px": 7.628060488531195e-07,
+          "peak_pending": 2
+        }
+      ],
+      "passes_predeclared_short_control": true
+    }
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "compression": "gzip with mtime=0; hashes refer to uncompressed bytes",
+  "files": {
+    "1920x1080-1-synchronous.json.gz": {
+      "uncompressed_sha256": "86c2e78de0c1ec2f80a9e11e1eaf4a3fb6d971610cd8599d6c3c8aa542ba0c56",
+      "uncompressed_bytes": 523618
+    },
+    "1920x1080-2-queue.json.gz": {
+      "uncompressed_sha256": "cc9bb06d3906221ce19e08bcc6a0ed50af2d584d7cfc361ff469aacbb8356692",
+      "uncompressed_bytes": 737618
+    },
+    "1920x1080-3-preview.json.gz": {
+      "uncompressed_sha256": "2788e18a2e60616c2e8615c30d788325076586fa82a7cd55155417c955818aca",
+      "uncompressed_bytes": 750942
+    },
+    "1920x1080-4-preview.json.gz": {
+      "uncompressed_sha256": "1997d9642651879044d9706a8919d53193242d293d45f1cbf67e6e92a190528e",
+      "uncompressed_bytes": 762948
+    },
+    "1920x1080-5-queue.json.gz": {
+      "uncompressed_sha256": "7ce1180f85455e7c3dd0f329152a1454f4e28e9b1251fc9cc18708cab51cf3f6",
+      "uncompressed_bytes": 739056
+    },
+    "1920x1080-6-synchronous.json.gz": {
+      "uncompressed_sha256": "cb29f4db90fddfad81591746572c520135cca57c6f9b8937ba1d95472a64849f",
+      "uncompressed_bytes": 520342
+    },
+    "3840x2160-1-synchronous.json.gz": {
+      "uncompressed_sha256": "56a365ee60043597921bd0308e3b9038e5ee56b67da442f6913d33166e80b92d",
+      "uncompressed_bytes": 147242
+    },
+    "3840x2160-2-queue.json.gz": {
+      "uncompressed_sha256": "07c85782420522b9532508303f7a67ae48a9f9e6b4ac3fc0629b0638f7f88b1e",
+      "uncompressed_bytes": 223068
+    },
+    "3840x2160-3-preview.json.gz": {
+      "uncompressed_sha256": "621d54f2fe467b78d0e96905203813ed261bcd38a29cf7cc6d176973aaa5eb1f",
+      "uncompressed_bytes": 259551
+    },
+    "3840x2160-4-preview.json.gz": {
+      "uncompressed_sha256": "842dc0b59c32a8f10084475312692357a4f931d0d32a87f00e58aa27303d0fa5",
+      "uncompressed_bytes": 259237
+    },
+    "3840x2160-5-queue.json.gz": {
+      "uncompressed_sha256": "f6bd3cabe3e292eda739d2e8a410c53ab9113234d1976a7c1ac1a16ddebaa6cc",
+      "uncompressed_bytes": 230814
+    },
+    "3840x2160-6-synchronous.json.gz": {
+      "uncompressed_sha256": "9442d7e6566670aae7fb8b83e2f93101ea5e6b1e7e152f74cead5d82ee02424a",
+      "uncompressed_bytes": 150957
+    },
+    "late-decode-negative.json.gz": {
+      "uncompressed_sha256": "313ea8296af6e64ae4f58a4cc6a038b826fa8f55f8a5576fe91deb2480761242",
+      "uncompressed_bytes": 40691
+    },
+    "software-first-correction.json.gz": {
+      "uncompressed_sha256": "352879058038b5f58324c2c3f0db54f1aa9a3ea1d7240317825a57a34aad868b",
+      "uncompressed_bytes": 39126
+    },
+    "full-tests.log.gz": {
+      "uncompressed_sha256": "177b3b2eeebb18feb3734fcdc3352ce77599655e7be21f5916b3c253dabef874",
+      "uncompressed_bytes": 380
+    },
+    "default-uhd-workbench.json.gz": {
+      "uncompressed_sha256": "5f5f9e8eb50e57d09b99f6caa2b7d57df815eebca9b613e808c78cfc865eaf66",
+      "uncompressed_bytes": 22250
+    },
+    "hardware-clean.json.gz": {
+      "uncompressed_sha256": "288cbc598921f5744e4036c19bdb669b01595cfc082ec48a69714a577d06c84f",
+      "uncompressed_bytes": 39196
+    },
+    "software-clean.json.gz": {
+      "uncompressed_sha256": "623531974605792035a9e0a45c020814d56ca5fa67653708865d0f517f9540a3",
+      "uncompressed_bytes": 39200
+    },
+    "sphinx.log.gz": {
+      "uncompressed_sha256": "9478a04eea9ebdc1050840405c80f2a7adba6546f93fec7972505ec13d53ef89",
+      "uncompressed_bytes": 3683
+    },
+    "ruff.log.gz": {
+      "uncompressed_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "uncompressed_bytes": 19
+    },
+    "format.log.gz": {
+      "uncompressed_sha256": "1a3c6aa46d7f5260e23740995cfa3cf8617f1bd5d18465e940eb76f39be45866",
+      "uncompressed_bytes": 27
+    }
+  },
+  "source": {
+    "timed_site_commit": "60f055da59690336257e346827e6826a6a03c516",
+    "timed_site_dirty": false,
+    "functional_source_note": "Earlier functional build labels retain d1e9604 plus dirty changes; these four application modules exactly match the clean timed site. The negative control differs only by the preserved app.js patch.",
+    "module_sha256": {
+      "app.js": "15a72c5abe134da81db820ee25254e1edfbd6fc4b71c240ed31b842a19fc9214",
+      "ui/session.js": "e8ef190643550f9408d6f4967b47c414cd889a1633ee624e6cc8b28172e58c71",
+      "ui/recording-queue.js": "1d68719eef87c21a4f608adfada378fab16c46c3f0e179226a65d5f841a94fea",
+      "render/field.js": "eebf105d4ada83b3cd8ec1c06010cccd75174c96d72cf9470e3518d1e44e96cf"
+    }
+  }
+}
