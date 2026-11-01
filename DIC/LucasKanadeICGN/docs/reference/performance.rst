@@ -1251,3 +1251,62 @@ The enhanced software-browser CI step is prepared; no remote result is claimed.
 See the `editor reports and screenshots
 <https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/browser-mask-editor-20261031>`_
 and :doc:`../how-to/run-in-browser` for reproducible commands and UI conventions.
+
+.. _camera-pipeline-diagnosis:
+
+1080p simulated-camera pipeline diagnosis
+-----------------------------------------
+
+A static 1920 × 1080 native-size crop of the checked-in UHD tensile reference
+was supplied through Chromium's fake Y4M camera at 60 Hz on Intel Xe-2/Lunar
+Lake. The reference uses two levels, affine 16/16, B-spline and median, with the
+existing application preset. Each case warmed for three seconds and observed
+ten seconds. This is a pipeline control, **not a physical-camera or sustained
+real-time qualification**. No physical camera was opened.
+
+.. list-table:: Observed baseline at ``2851e7b``
+   :header-rows: 1
+
+   * - Comparison
+     - Recording
+     - Completed fields/s
+     - Median pair reference preparation
+     - Median observable solver call
+   * - Fixed reference
+     - Off
+     - 56.64
+     - 0 ms
+     - 6.55 ms
+   * - Fixed reference
+     - On
+     - 29.98
+     - 0 ms
+     - 7.00 ms
+   * - Consecutive received images
+     - Off
+     - 2.70
+     - 338.15 ms
+     - 8.70 ms
+
+Completed-field rate includes admission/display/recording effects and the
+60 Hz input cadence. It is not the reciprocal of the solver-call time.
+Reference preparation and solver times are wall measurements with separate
+boundaries; they are not GPU hardware timestamps. A few FPS in consecutive
+mode can therefore coexist with a fast solver. This control does not establish
+the configuration or bottleneck of a user's separate physical-camera session.
+
+Switching to consecutive mode previously retained the fixed-reference rolling
+age/FPS windows, temporarily showing a misleadingly small median age. The
+controller now resets those windows. A deterministic-clock regression asserts
+that new samples contain only the new mode. The UI samples per-stage wall times
+at about 1 Hz and separates reference preparation, solver call, extra recorded
+readback and main-thread storage/admission. It does not accelerate the CPU
+reference construction. Fixed reference remains an explicit measurement choice,
+not an automatic substitution for incremental DIC.
+
+The raw baseline and diagnostic follow-up are retained in the
+`camera pipeline reports
+<https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/browser-camera-diagnosis-20261101>`_.
+Reproduce with ``tools/diagnose_camera_pipeline.py --site PATH --output REPORT``.
+Use ``--resolution 3840x2160`` for a separate UHD control; do not infer its
+performance from these 1080p values.

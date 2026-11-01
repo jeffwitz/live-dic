@@ -285,3 +285,8 @@ not expose physical/free VRAM or reliable unified/discrete placement. Mapped
 buffers may be host-backed. A unified GPU shares the physical RAM pool; do not
 add CPU and GPU figures as if they were separate free-memory budgets. These
 diagnostics do not prove that a long recording meets a live FPS target.
+
+The camera stage diagnostic is sampled from the latest admitted field at about
+1 Hz; it is not a distribution of exposure-to-display latency. Consecutive
+reference construction currently includes CPU preparation on every pair.
+Resetting the timing window on mode changes improves reporting, not its speed.

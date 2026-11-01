@@ -77,6 +77,8 @@ export function createSession(send) {
         await Promise.all([...outstanding]);
         if (message.mode === 'fixed' && reference) await referenceFrom(reference,activeOptions,mask);
         else engine?.resetTemporalState();
+        // Never mix fixed-reference timings with a newly selected per-pair path.
+        ages.length = 0; completionTimes.length = 0;
         send({type:'comparison',id});
       } else if (type === 'recording') {
         recording = message.enabled === true;

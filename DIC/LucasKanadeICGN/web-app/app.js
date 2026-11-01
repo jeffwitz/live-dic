@@ -17,6 +17,7 @@ let roiEditing = false, appliedShapes = [], plateManifest = null;
 let draftMaskSource = null, appliedMaskSource = null, appliedEditorState = null, editorWasActive = false;
 let generation = 0, previousFrame = -1, referenceInfo, capabilities, sourceSettings = {}, requests = 0;
 let buildInfo = null;
+let pipelineTimingUpdatedAt = -Infinity;
 const pending = new Map(), video = $('video');
 sourceButtons.forEach(id => $(id).disabled = true);
 const status = globalThis.liveDicStatus = { ready: false, completed: 0, errors: [], results: [] };
@@ -79,7 +80,14 @@ async function receive({ data }) {
   if (data.type === 'result') {
     if (data.plateScore) { sourceSettings.analyticScore = data.plateScore; details(); }
     $('export').disabled = false; workbench.setReady(true);
-    if (data.record) { try { await workbench.add(data.record.field, { ...data.record.metadata, acquisition: {source:sourceSettings.source}, build: buildInfo, roiGeometry: roiMetadata() }); } catch(e) { pauseSource();message(e.message,true); } delete data.record; }
+    const recordedReadbackMs=data.record?.metadata.recordingReadbackWallMs??0;let storageAdmissionMs=0;
+    if (data.record) { const started=performance.now();try { await workbench.add(data.record.field, { ...data.record.metadata, acquisition: {source:sourceSettings.source}, build: buildInfo, roiGeometry: roiMetadata() }); } catch(e) { pauseSource();message(e.message,true); }storageAdmissionMs=performance.now()-started;delete data.record; }
+    if(performance.now()-pipelineTimingUpdatedAt>=1000){
+      pipelineTimingUpdatedAt=performance.now();
+      const preparationMs=data.timing?.pairReferencePreparationWallMs??0,solveMs=data.timing?.totalWallMs??data.timing?.wallMs;
+      const ms=value=>Number.isFinite(value)?value.toFixed(1)+' ms':'unavailable';
+      $('pipeline-timing').textContent=`Latest sampled field (1 Hz): reference preparation ${ms(preparationMs)} · observable solver call ${ms(solveMs)}${recordedReadbackMs||storageAdmissionMs?` · recorded-field readback ${ms(recordedReadbackMs)} · main-thread storage/admission ${ms(storageAdmissionMs)}`:''}. ${data.comparison?.mode==='consecutive'?'Consecutive mode rebuilds the reference on CPU for every pair; fixed-reference FPS does not apply.':'The fixed reference is reused.'}`;
+    }
     if (!workbench.reviewing) $('run-state').textContent = source==='camera'&&sourceSettings.deliveryState==='stopped'?'Camera stopped · last completed field':`${source} · ${data.width} × ${data.height} · ${data.comparison?.mode ?? 'fixed'} · ${paused ? 'paused' : 'running'}`;
     if (data.comparison) { sourceSettings.lastComparison = data.comparison; updateLocalPosition(data.comparison.target);$('last-reference-summary').textContent=`Last pair: ${data.comparison.referenceAdmissible} numerically admissible references / ${data.selected} requested ROI windows. Every selected window remains requested.`; }
     status.completed++; status.results.push(data); if (status.results.length > (smoke ? 18000 : 120)) status.results.shift();
@@ -193,7 +201,7 @@ async function captureReference(frame = null) {
   await updateReferenceControls();
   previousFrame = -1; details(); message('Reference captured. Camera and results stay on this device.');
 }
-function clearLiveMetrics() {for(const id of ['fps','age','acceptance','iterations','error'])$(id).textContent='—';delete sourceSettings.lastComparison;$('last-reference-summary').textContent='Awaiting a target field.';}
+function clearLiveMetrics() {for(const id of ['fps','age','acceptance','iterations','error'])$(id).textContent='—';pipelineTimingUpdatedAt=-Infinity;$('pipeline-timing').textContent='Awaiting a target field; stage times will appear here.';delete sourceSettings.lastComparison;$('last-reference-summary').textContent='Awaiting a target field.';}
 function countDrop() { dropped++; $('drops').textContent = dropped; }
 async function processFrame(frame, frameIndex = null, { force = false, reset = false, input = null, referenceFrame = null, referenceInput = null } = {}) {
   const token = generation, mode = source === 'plate' ? 'fixed' : $('comparison').value;

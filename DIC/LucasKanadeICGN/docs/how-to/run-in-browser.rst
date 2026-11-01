@@ -168,6 +168,24 @@ preparation on every pair. Its reference-preparation time is reported separately
 and included in worker result age. **This mode is not qualified for 4K60**; the
 fixed-reference GPU timings must not be used to describe it.
 
+To diagnose a low camera cadence, first note the actual decoded dimensions,
+adapter identity, comparison mode and recording checkbox. **Completed FPS** is
+completed fields per second, not the negotiated camera frame rate. The stage
+line samples the latest admitted field at about 1 Hz: reference preparation,
+observable solver call, and, when recording, extra full readback and main-thread
+storage/admission. These are wall times with different boundaries, not hardware
+GPU timestamps or exposure-to-display latency. Recording admission includes the
+cache/index update and any review selection; it is not isolated disk I/O.
+
+Changing comparison mode clears the age/FPS windows so fixed-reference samples
+cannot hide expensive per-pair preparation. For a cadence check, select
+**Fixed reference** and temporarily disable recording. This compares each target
+to the captured reference; it changes the physical meaning of an incremental
+measurement, so it must be an explicit user choice. If only consecutive mode is
+slow, accelerating its CPU reference preparation is a separate numerical/GPU
+work item. See :ref:`camera-pipeline-diagnosis` for the measured simulated-camera
+control and its limits.
+
 The Solve pane distinguishes applied settings from pending edits. It reports
 window/step, overlap, pyramid/iteration schedule, grid dimensions, ROI selection
 and prepared-reference admissibility. The last-pair count can change in consecutive
@@ -494,7 +512,7 @@ Record fields deliberately
 --------------------------
 
 **Keep computed fields for review** records every completed admitted field. It
-adds a full readback and can lower throughput. **GPU field age** keeps its
+adds a full readback and can lower throughput. **Worker input → GPU field** keeps its
 observable-GPU boundary; each recorded field separately reports full-readback
 time and worker-arrival-to-recorded-field age. These are not camera-to-Python
 timings. Video/camera can still drop and count work under backpressure; folders
