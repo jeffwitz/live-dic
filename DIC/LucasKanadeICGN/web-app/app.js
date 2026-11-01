@@ -179,6 +179,7 @@ async function receive({ data }) {
     if (updateHud) {
     $('fps').textContent = source === 'plate' ? 'Static pair' : data.fps.toFixed(1);
     $('age').textContent = `${data.ageMedian.toFixed(1)} / ${data.ageP95.toFixed(1)} ms`;
+    if(data.globalTranslation)$('last-reference-summary').textContent+=` Fourier seed (${data.globalTranslation.dx}, ${data.globalTranslation.dy}) px · correlation ${data.globalTranslation.correlation.toFixed(3)}.`;
     $('acceptance').textContent = `${data.accepted} / ${data.selected}`;
     $('iterations').textContent = data.meanIterations?.toFixed(2) ?? '—';
     $('error').textContent = data.truthRmse == null ? '—' : `${data.truthRmse.toFixed(4)} px`;
@@ -277,7 +278,7 @@ async function updateReferenceControls() {
   const cfg=referenceInfo.config,total=referenceInfo.grid[0]*referenceInfo.grid[1];
   let selected=0,valid=0;
   for(let i=0;i<total;i++)if(!referenceInfo.roiSelected||referenceInfo.roiSelected[i]){selected++;if(referenceInfo.referenceValid?.[i])valid++;}
-  $('applied-solver-summary').textContent=`Applied ${cfg.motionModel} · ${cfg.interpolation} · ${cfg.pyramidLevels} level(s)\nWindow ${referenceInfo.subsetSize} px · step ${referenceInfo.subsetStride} px · ${Math.round(100*(1-referenceInfo.subsetStride/referenceInfo.subsetSize))}% overlap\nIteration limits (coarse → fine): ${cfg.iterationsPerLevel.join(' / ')}\nGrid ${referenceInfo.grid.join(' × ')} · ${selected} selected / ${total} positions\n${valid} admissible prepared references; target convergence remains to be measured.\nReference preparation: ${cfg.referencePreparation??'cpu'}.`;
+  $('applied-solver-summary').textContent=`Applied ${cfg.motionModel} · ${cfg.interpolation} · ${cfg.pyramidLevels} level(s)\nWindow ${referenceInfo.subsetSize} px · step ${referenceInfo.subsetStride} px · ${Math.round(100*(1-referenceInfo.subsetStride/referenceInfo.subsetSize))}% overlap\nIteration limits (coarse → fine): ${cfg.iterationsPerLevel.join(' / ')}\nGrid ${referenceInfo.grid.join(' × ')} · ${selected} selected / ${total} positions\n${valid} admissible prepared references; target convergence remains to be measured.\nReference preparation: ${cfg.referencePreparation??'cpu'}. Initialization: ${cfg.initialization}.`;
   $('last-reference-summary').textContent='Awaiting a target field.';
 }
 async function captureReference(frame = null) {
@@ -795,11 +796,18 @@ for(const id of ['display-rate','preview-width'])$(id).onchange=()=>{
   const options={displayRate:$('display-rate').value==='off'?0:Number($('display-rate').value),previewEnabled:$('display-rate').value!=='off',previewMaxWidth:Number($('preview-width').value)};
   send('presentation',{options}).catch(e=>message(e.message,true));
 };
-for (const id of ['overlap-pipeline','gpu-reference-preparation','custom-solver','motion-model','subset-size','subset-stride','interpolation','pyramid-levels','coarse-iterations','fine-iterations','outlier-policy','temporal-start']) $(id).onchange = () => {
+$('large-shift-preset').onclick = () => {
+  $('custom-solver').checked=true;$('pyramid-levels').value='4';
+  $('coarse-iterations').value='20';$('fine-iterations').value='16';
+  $('temporal-start').checked=false;$('fourier-start').checked=false;
+  $('custom-solver').onchange();
+};
+for (const id of ['fourier-start','overlap-pipeline','gpu-reference-preparation','custom-solver','motion-model','subset-size','subset-stride','interpolation','pyramid-levels','coarse-iterations','fine-iterations','outlier-policy','temporal-start']) $(id).onchange = () => {
   $('solver-settings').disabled = !$('custom-solver').checked;
+  $('temporal-start').disabled = $('fourier-start').checked;
   $('subset-stride').max = $('subset-size').value;
   if (Number($('subset-stride').value) > Number($('subset-size').value)) $('subset-stride').value = $('subset-size').value;
-  try { const requested = options(); $('solver-summary').textContent = $('custom-solver').checked ? `Pending: ${requested.motionModel} · ${requested.subsetSize}/${requested.subsetStride} · ${requested.pyramidLevels} level(s). Capture reference or Apply mask to apply.` : `Preset with ${requested.referencePreparation??'cpu'} reference preparation selected for the next reference. Current fields keep their original configuration.`; }
+  try { const requested = options(); $('solver-summary').textContent = $('custom-solver').checked ? `Pending: ${requested.motionModel} · ${requested.subsetSize}/${requested.subsetStride} · ${requested.pyramidLevels} level(s). Capture reference or Apply mask to apply.` : `Preset with ${requested.referencePreparation??'cpu'} reference preparation${requested.initialization==='fourier'?' and Fourier initialization':''} selected for the next reference. Current fields keep their original configuration.`; }
   catch(e) { $('solver-summary').textContent = e.message; }
 };
 init().catch((error) => { status.errors.push(error.message); message(error.message, true); });

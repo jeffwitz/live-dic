@@ -176,6 +176,7 @@ class NativeTimingTests(unittest.TestCase):
             queue=SimpleNamespace(submit=lambda commands: clock.advance(1.0)),
         )
         engine = object.__new__(ICGNWGPUFullPyramid)
+        engine._fourier = None
         engine._reference_ready = True
         engine._root = root
         engine._levels = [root]

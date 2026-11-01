@@ -104,9 +104,15 @@ def _parser() -> argparse.ArgumentParser:
         help="force the Three.js backend to use its WebGL2 compatibility path",
     )
     parser.add_argument(
+        "--initialization",
+        choices=("zero", "fourier"),
+        default="zero",
+        help="Global Fourier translation seed (webgpu-wgsl only)",
+    )
+    parser.add_argument(
         "--pyramid-levels",
         type=int,
-        help="full-pyramid level count for the webgpu-wgsl backend (1 to 3)",
+        help="full-pyramid level count for the webgpu-wgsl backend (1 to 4)",
     )
     parser.add_argument(
         "--iterations-per-level",
@@ -358,6 +364,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     try:
         with ICGNWebGL(
+            initialization=args.initialization,
             repo_root=args.repo_root,
             chromium=args.chromium,
             startup_timeout=args.startup_timeout,

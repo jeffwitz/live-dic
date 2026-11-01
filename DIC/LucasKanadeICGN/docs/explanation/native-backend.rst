@@ -354,3 +354,16 @@ The recommended full-pyramid path does not request or load subgroup support.
 Its UHD figures above measure a different GPU-resident, two-level workload and
 must not be compared directly with these 512 x 512 single-scale solver reports.
 
+
+Fourier bootstrap for sparse pairs
+----------------------------------
+
+``ICGNWGPUFullPyramid(initialization="fourier")`` caches a centred, textured
+reference window spectrum. It computes a separate global translation for each
+target, writes translation seeds at the coarsest scale, then executes the normal
+fixed pyramid and filtering. There is no change to canonical WGSL equations.
+Reference FFT preparation stays cold; target FFT and the seed upload are part
+of each complete call. The browser core implements the same crop, 2×2 average,
+Hann taper, zero padding, phase normalization and acceptance guards in ordinary
+JavaScript. Its CPU cache is counted separately from GPU API resources.
+See :doc:`../how-to/register-large-shifts` for the contract and limitations.

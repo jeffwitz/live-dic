@@ -394,3 +394,15 @@ maximum texture dimension. There is no automatic spatial tiling or silent
 resizing. A supplied GPUDevice must have sufficient limits; only an owned
 device may be recreated during a cold reference change. Minimum/coarsest subset
 constraints still apply. See :doc:`browser-portability`.
+
+Sparse pairs and global initialization
+--------------------------------------
+
+The opt-in Fourier mode is a global translation seed, not a replacement for
+local affine/translation correlation. It requires overlapping texture in a
+<=1024-square crop and may fail on repeated textures, rotation or strong
+nonrigid motion. Score/overlap/correlation rejection is heuristic. CPU FFT and
+browser target-window readback add latency; this mode has no 4K60 claim.
+Quadratic, velocity prediction and temporal fine correction are unsupported
+combinations. Four local pyramid levels alone do not guarantee capture of
+large shifts. See :doc:`../how-to/register-large-shifts`.

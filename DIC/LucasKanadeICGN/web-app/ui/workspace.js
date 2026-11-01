@@ -39,15 +39,18 @@ export function solverOptions() {
   if (get('display-rate') && get('preview-width')) base.supervision = {overlapRecording:!!get('overlap-pipeline')?.checked,
     displayRate:get('display-rate').value==='off'?0:Number(get('display-rate').value),
     previewEnabled:get('display-rate').value!=='off',previewMaxWidth:Number(get('preview-width').value)};
+  const fourier = !!get('fourier-start')?.checked;
+  if (fourier) Object.assign(base,{initialization:'fourier',temporalPrediction:'none',temporalFineCorrection:false,divergencePatience:null});
   if (!get('custom-solver').checked) return base;
   const size = Number(get('subset-size').value), stride = Number(get('subset-stride').value);
   const levels = Number(get('pyramid-levels').value), coarse = Number(get('coarse-iterations').value), fine = Number(get('fine-iterations').value);
   if (!Number.isInteger(stride) || stride < 1 || stride > size) throw new Error('Grid step must be an integer between 1 and the window width');
-  if (![coarse, fine].every(v => Number.isInteger(v) && v > 0 && v <= 200)) throw new Error('GN limits must be integers between 1 and 200');
-  const temporal = get('temporal-start').checked;
+  if (![1,2,3,4].includes(levels)) throw new Error('Pyramid levels must be between 1 and 4');
+  if (![coarse, fine].every(v => Number.isInteger(v) && v > 0 && v <= 30)) throw new Error('GN limits must be integers between 1 and 30');
+  const temporal = !fourier && get('temporal-start').checked;
   return { ...base, subsetSize: size, subsetStride: stride, motionModel: get('motion-model').value,
     interpolation: get('interpolation').value, outlierPolicy: get('outlier-policy').value,
-    pyramidLevels: levels, iterationsPerLevel: levels === 1 ? [fine] : levels === 2 ? [coarse, fine] : [coarse, 4, fine],
-    initialization: temporal ? 'temporal' : 'zero', temporalPrediction: temporal ? 'velocity' : 'none',
+    pyramidLevels: levels, iterationsPerLevel: levels === 1 ? [fine] : levels === 2 ? [coarse, fine] : levels === 3 ? [coarse, 4, fine] : [coarse, 8, 8, fine],
+    initialization: fourier ? 'fourier' : temporal ? 'temporal' : 'zero', temporalPrediction: temporal ? 'velocity' : 'none',
     temporalFineCorrection: temporal && levels === 2, divergencePatience: temporal ? 3 : null };
 }

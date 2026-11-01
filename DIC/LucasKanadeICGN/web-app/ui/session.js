@@ -171,11 +171,11 @@ export function createSession(send) {
             while (completionTimes.length > 1 && completionTimes[0] < performance.now() - 3000) completionTimes.shift();
             ages.push(age); if (ages.length > 120) ages.shift();
             sampleLog.push({ frame: message.frameIndex, workerAvailableMs: available, captureTimestampUs: message.frame.timestamp ?? null, completedMs: performance.now(),
-              ageMs: age, comparison:lastComparison, referencePreparationMs:preparationMs, gpuReferenceIncluded:gpuPair, gpuFieldObservableMs: last.timing.wallMs, truthRmse: last.truthRmse,
+              ageMs: age, ...(last.config?.globalTranslation?{globalTranslation:last.config.globalTranslation}:{}), comparison:lastComparison, referencePreparationMs:preparationMs, gpuReferenceIncluded:gpuPair, gpuFieldObservableMs: last.timing.wallMs, truthRmse: last.truthRmse,
               acceptance: last.acceptance, accepted: last.accepted, meanIterations: last.meanIterations });
             if (sampleLog.length > 18000) sampleLog.shift();
             const sorted = [...ages].sort((a, b) => a - b);
-            present({ type: 'result', id, completed, received, width: last.width, height: last.height,
+            present({ type: 'result', id, completed, received, ...(last.config?.globalTranslation?{globalTranslation:last.config.globalTranslation}:{}), width: last.width, height: last.height,
               fps: completionTimes.length > 1 ? 1000 * (completionTimes.length - 1) / (completionTimes.at(-1) - completionTimes[0]) : 0, ageMedian: sorted[Math.floor(sorted.length * .5)],
               ageP95: sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * .95))],
               accepted: last.accepted, selected: last.selected, meanIterations: last.meanIterations,
@@ -215,7 +215,7 @@ export function createSession(send) {
         await Promise.all([...outstanding]);
         if (!engine) throw new Error('No field is available');
         const start = performance.now(), field = await engine.exportField();
-        const metadata = { configuration: engine.reference.config, capabilities, profile, analysisEpoch, comparison:lastComparison, createdAt: new Date().toISOString(),
+        const metadata = { configuration: field.config??engine.reference.config, capabilities, profile, analysisEpoch, comparison:lastComparison, createdAt: new Date().toISOString(),
           exportSerial: ++exportSerial, readbackWallMs: performance.now() - start,
           width: field.width, height: field.height, grid: field.grid, subsetSize: field.subsetSize,
           subsetStride: field.subsetStride, samples: sampleLog,

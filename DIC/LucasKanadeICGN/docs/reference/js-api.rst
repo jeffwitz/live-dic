@@ -490,3 +490,17 @@ A changed quantity/palette applies to following compatible results. Initial
 project/session import restores its saved view. Each field retains its saved processing recipe. Explicit batch application
 sets a uniform recipe across compatible fields. Raw coefficients are unchanged. Slider admission is bounded to one load and the
 latest pending request.
+
+Large rigid shifts
+------------------
+
+``initialization: 'fourier'`` enables a per-target CPU phase-correlation seed
+on a <=1024-square reference crop. Supported models are translation and affine;
+CPU/GPU reference preparation and bounded slots are supported. Velocity and
+temporal fine correction require the separate temporal mode. Full exported
+fields preserve ``config.globalTranslation`` and ``timing.fourierWallMs``.
+``memoryUsage().cpuInitializationBytes`` counts the reference FFT cache and
+slot seed arrays separately from GPU resources. External target conversion
+reads back only the cropped window; the ordinary path adds no such readback.
+See :doc:`../how-to/register-large-shifts` for rejection and latency limits.
+``pyramidLevels`` accepts 1–4; its default remains two.

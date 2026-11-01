@@ -83,8 +83,8 @@ def main() -> int:
         raise ValueError("width and height must each be at least 64 pixels")
     if args.warmups < 0 or args.repeats < 1:
         raise ValueError("warmups must be non-negative and repeats must be positive")
-    if any(level not in (2, 3) for level in args.levels):
-        raise ValueError("full-pyramid levels must be 2 or 3")
+    if any(level not in (2, 3, 4) for level in args.levels):
+        raise ValueError("full-pyramid levels must be 2, 3 or 4")
     reference, target = _pair(args.texture, args.width, args.height)
     measurements: dict[str, Any] = {}
 

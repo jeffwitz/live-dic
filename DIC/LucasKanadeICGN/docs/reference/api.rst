@@ -31,7 +31,7 @@ Browser control engine
 .. autoclass:: lucas_kanade_icgn.ICGNWebGL
    :members: start, info, set_reference, register, register_pair, register_many, benchmark, close
 
-For ``backend="webgpu-wgsl"``, ``pyramid_levels`` accepts one to three levels
+For ``backend="webgpu-wgsl"``, ``pyramid_levels`` accepts one to four levels
 and defaults to two. ``iterations_per_level`` and ``tolerance_per_level`` are
 coarse-to-fine tuples with exactly one value per level. Pyramid options are
 rejected by the independent Three.js/TSL and GPU-IO implementations.
@@ -136,7 +136,14 @@ scale for every target. Pyramid
 reduction, polynomial seed transfer, and all IC-GN solves remain GPU-resident in one
 command submission. Per-level iteration and tolerance tuples are ordered from
 coarse to fine. Two levels are the default and recommended native configuration;
-three levels are opt-in for a larger expected displacement range.
+three and four levels are opt-in local capture-range experiments.
+
+``initialization="fourier"`` estimates a global rigid translation on a cached
+reference crop of at most 1024² pixels before every target. It supports
+translation/affine and leaves the local solve equations unchanged. It adds CPU
+FFT latency; results retain ``config["globalTranslation"]`` and
+``timing["fourierWallMs"]``. The raw browser wrapper accepts this same option;
+Three.js/GPU-IO refuse it. See :doc:`../how-to/register-large-shifts`.
 
 ``initialization="zero"`` preserves historical initialization.
 ``initialization="temporal"`` projects the previous accepted fine field onto

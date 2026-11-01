@@ -81,7 +81,7 @@ def _arguments() -> argparse.Namespace:
         dest="backends",
         help="backend to run; repeat the option to run several",
     )
-    parser.add_argument("--pyramid-levels", type=int, choices=(1, 2, 3), default=2)
+    parser.add_argument("--pyramid-levels", type=int, choices=(1, 2, 3, 4), default=2)
     parser.add_argument(
         "--subset-size",
         type=int,

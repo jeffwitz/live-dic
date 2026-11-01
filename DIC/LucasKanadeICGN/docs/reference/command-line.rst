@@ -69,7 +69,11 @@ Solver options
    value creates overlapping subsets and currently requires
    ``--backend webgpu-wgsl``.
 
-``--pyramid-levels {1,2,3}``
+``--initialization {zero,fourier}``
+   Opt-in Fourier global-translation bootstrap for ``webgpu-wgsl`` only. The
+   default is zero initialization. See :doc:`../how-to/register-large-shifts`.
+
+``--pyramid-levels {1,2,3,4}``
    Full-pyramid depth for ``webgpu-wgsl``. The backend default is two levels;
    one selects the original single-scale path.
 

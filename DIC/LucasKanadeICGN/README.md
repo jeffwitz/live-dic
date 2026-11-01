@@ -142,3 +142,10 @@ and saved-field plane-strain von Mises analysis. The original UHD plate-with-hol
 loads its editable rectangle/circle preset and both analytical load states.
 See the [browser guide](docs/how-to/run-in-browser.rst) for the scientific
 conventions and the distinction between static scoring and video timing.
+
+For sparse image pairs with large rigid shifts, the opt-in
+`initialization="fourier"` bootstrap estimates a global translation on a
+textured window up to 1024 × 1024 before local refinement. It is available in
+the native full pyramid and raw WebGPU browser workbench; it adds CPU latency
+and does not change real-time defaults. See the
+[large-shift guide](docs/how-to/register-large-shifts.rst).

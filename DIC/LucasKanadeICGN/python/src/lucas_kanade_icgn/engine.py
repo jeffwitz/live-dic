@@ -910,6 +910,7 @@ class ICGNWebGL:
         outlier_policy: str = "replace",
         subset_size: int = DEFAULT_SUBSET_SIZE,
         subset_stride: int | None = None,
+        initialization: str = "zero",
     ) -> None:
         if startup_timeout <= 0:
             raise ValueError("startup_timeout must be greater than zero")
@@ -919,6 +920,13 @@ class ICGNWebGL:
             raise ValueError("backend must be 'gpuio', 'three-tsl', or 'webgpu-wgsl'")
         if force_three_webgl and backend != "three-tsl":
             raise ValueError("force_three_webgl is supported only by the 'three-tsl' backend")
+        if not isinstance(initialization, str) or initialization not in {"zero", "fourier"}:
+            raise ValueError("initialization must be zero or fourier")
+        if initialization == "fourier" and backend != "webgpu-wgsl":
+            raise ValueError("Fourier initialization requires backend=webgpu-wgsl")
+        if initialization == "fourier" and motion_model == "quadratic":
+            raise ValueError("Fourier initialization supports translation and affine models")
+        self.initialization = initialization
         self.interpolation = normalize_interpolation(interpolation)
         self.motion_model = normalize_motion_model(motion_model)
         self.outlier_policy = normalize_outlier_policy(outlier_policy)
@@ -949,9 +957,9 @@ class ICGNWebGL:
         try:
             level_count = 2 if pyramid_levels is None else operator.index(pyramid_levels)
         except TypeError as error:
-            raise ValueError("pyramid_levels must be an integer from 1 to 3") from error
-        if isinstance(pyramid_levels, bool) or not 1 <= level_count <= 3:
-            raise ValueError("pyramid_levels must be an integer from 1 to 3")
+            raise ValueError("pyramid_levels must be an integer from 1 to 4") from error
+        if isinstance(pyramid_levels, bool) or not 1 <= level_count <= 4:
+            raise ValueError("pyramid_levels must be an integer from 1 to 4")
         try:
             raw_iteration_schedule = (
                 None if iterations_per_level is None else tuple(iterations_per_level)
@@ -1194,6 +1202,8 @@ class ICGNWebGL:
             options["znccMin"] = float(zncc_min)
         if self.backend == "webgpu-wgsl":
             options["pyramidLevels"] = self.pyramid_levels
+            if self.initialization != "zero":
+                options["initialization"] = self.initialization
             if self.iterations_per_level is not None:
                 options["iterationsPerLevel"] = list(self.iterations_per_level)
             if self.tolerance_per_level is not None:
@@ -1558,6 +1568,7 @@ def register_pair(
     outlier_policy: str = "replace",
     subset_size: int = DEFAULT_SUBSET_SIZE,
     subset_stride: int | None = None,
+    initialization: str = "zero",
     iterations: int | None = None,
     tolerance: float | None = None,
     zncc_min: float | None = None,
@@ -1583,6 +1594,7 @@ def register_pair(
         outlier_policy=outlier_policy,
         subset_size=subset_size,
         subset_stride=subset_stride,
+        initialization=initialization,
     ) as engine:
         return engine.register_pair(
             reference,

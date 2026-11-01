@@ -33,6 +33,7 @@ Start here
 * :doc:`how-to/use-roi` for a boolean reference mask; white/True retains pixels.
   The default full-window policy rejects any subset touching a forbidden pixel.
   :doc:`how-to/use-partial-roi` covers explicit boundary supports.
+* :doc:`how-to/register-large-shifts` for opt-in Fourier initialization of sparse image pairs.
 * :doc:`reference/api` for exact defaults and public interfaces.
 * `Open the browser workbench <https://jeffwitz.github.io/live-dic/>`_ directly.
 * :doc:`tutorials/browser-experiment` for a guided visual UHD experiment,
@@ -127,6 +128,7 @@ when exporting a measurement with :doc:`how-to/export-results`.
    how-to/use-roi
    how-to/use-partial-roi
    how-to/use-temporal-initialization
+   how-to/register-large-shifts
    how-to/compare-plate-hole-masks
 
 .. toctree::

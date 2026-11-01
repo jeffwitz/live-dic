@@ -769,3 +769,11 @@ Run this without other tests/builds or GPU campaigns in parallel. Add
 software time is not a hardware performance result. The source replay is
 30 Hz. The report separates worker-field ages and an explicit full export;
 it does not measure camera exposure-to-screen latency.
+
+Large translations in separated images
+---------------------------------------
+
+In Solve, enable **Fourier initialization · up to 1024 × 1024**, then prepare
+the reference again. It supplies a global translation seed for each target;
+the regular pyramid still refines the field. It adds CPU/readback latency and
+refuses ambiguous matches. See :doc:`register-large-shifts`.

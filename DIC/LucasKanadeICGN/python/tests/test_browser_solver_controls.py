@@ -44,7 +44,7 @@ class SolverControlTests(unittest.TestCase):
           const values={{profile:{{value:'portable'}},'custom-solver':{{checked:false}},'subset-size':{{value:'16'}},'subset-stride':{{value:'16'}},'pyramid-levels':{{value:'2'}},'coarse-iterations':{{value:'8'}},'fine-iterations':{{value:'16'}},'temporal-start':{{checked:true}},'motion-model':{{value:'affine'}},interpolation:{{value:'bspline'}},'outlier-policy':{{value:'median'}}}};
           globalThis.document={{getElementById:id=>values[id]}};const preset=solverOptions();values['custom-solver'].checked=true;
           let count=0;const errors=[];
-          for(const model of ['translation','affine'])for(const level of [1,2,3])for(const mode of ['bspline','linear','cubic'])for(const policy of ['median','replace','flag','disabled'])for(const temporal of [false,true]){{
+          for(const model of ['translation','affine'])for(const level of [1,2,3,4])for(const mode of ['bspline','linear','cubic'])for(const policy of ['median','replace','flag','disabled'])for(const temporal of [false,true]){{
             values['motion-model'].value=model;values['pyramid-levels'].value=String(level);values.interpolation.value=mode;values['outlier-policy'].value=policy;values['temporal-start'].checked=temporal;
             try{{const {{profile,...options}}=solverOptions();const engine=new DICEngine({{...options,width:3840,height:2160}});engine.destroy();count++;}}catch(e){{errors.push(e.message);}}
           }}console.log(JSON.stringify({{preset,count,errors}}));
@@ -56,4 +56,4 @@ class SolverControlTests(unittest.TestCase):
         )
         self.assertEqual(result["preset"], {"profile": "portable"})
         self.assertEqual(result["errors"], [])
-        self.assertEqual(result["count"], 144)
+        self.assertEqual(result["count"], 192)

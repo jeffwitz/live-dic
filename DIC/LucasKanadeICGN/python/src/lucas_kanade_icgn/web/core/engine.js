@@ -71,7 +71,8 @@ export class DICEngine {
     this.inputs.forEach((input) => input.destroy()); this.inputs = [];
     for (let i = 0; i < this.ring.depth; i++) this.inputs.push(await createInputConverter(this.device, width, height));
     if (this.options.referencePreparation === 'gpu') {
-      source = { width, height, gpuSource: source };
+      if(this.options.initialization==='fourier'&&!(source instanceof Uint8Array))pixels=await this.inputs[0].referencePixels(source);
+      source = { width, height, gpuSource: source,...(this.options.initialization==='fourier'?{pixels}:{}) };
     } else {
       if (!(source instanceof Uint8Array)) pixels = await this.inputs[0].referencePixels(source);
       if (pixels instanceof Uint8Array) {
@@ -142,6 +143,7 @@ export class DICEngine {
   get device() { return this.host?.device; }
   get imageTexture() { this.assertOpen(); return this.host.imageTexture; }
   get fieldBuffer() { this.assertOpen(); return this.host.fieldBuffer; }
-  memoryUsage() { return gpuMemoryUsage(this.closed?null:{host:this.host.memoryResources(),inputs:this.inputs}); }
+  memoryUsage() { const usage=gpuMemoryUsage(this.closed?null:{host:this.host.memoryResources(),inputs:this.inputs});
+    if(!this.closed&&this.options.initialization==='fourier')usage.cpuInitializationBytes=this.host.cpuMemoryBytes();return usage; }
   destroy() { if (this.closed) return; this.closed = true; this.host.destroy(); this.inputs.forEach((input) => input.destroy()); this.inputs = []; this.host = null; this.options = null; }
 }

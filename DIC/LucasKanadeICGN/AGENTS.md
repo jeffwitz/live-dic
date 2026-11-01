@@ -848,3 +848,20 @@ qualification rather than infer mobile coverage from desktop results.
 - Real adapter limits remain explicit failures. Automatic spatial tiling is
   not implemented and must not be claimed. The size qualifier uses analytic
   translations at 4112×3008, odd dimensions and wide images without resampling.
+
+### Large rigid-shift initialization — 2026-11-01
+
+- `initialization="fourier"` is opt-in in the native full pyramid and shared
+  browser core/PWA. It caches a <=1024-square reference FFT, estimates each
+  target independently on CPU and seeds the unchanged GPU solve. Keep zero
+  and temporal defaults and the single persistent-reference contract intact.
+- Preserve the linear-correlation padding, 2×2 averaging, Hann taper and
+  peak/overlap/aligned-correlation guards. Target samples are not clipped by
+  the reference mask. This is a rigid bootstrap, not rotation or arbitrary
+  deformation recovery and not a real-time performance claim.
+- External browser targets add a window readback only in this opt-in mode.
+  Keep cached FFT bytes separate from GPU API accounting, per-slot seed
+  provenance in exports, error recovery and ordered native pending results.
+- Four local levels are also opt-in; existing 1–3-level schedules stay exact.
+  The four-level trial alone fails some larger-shift controls. Keep this
+  negative result visible rather than implying an unlimited capture range.

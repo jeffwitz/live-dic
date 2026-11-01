@@ -11,7 +11,14 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image
-from uhd_partial_cases import TRANSLATION, UHD_SHAPE, boundary_mask, crack_pair, translation_pair
+from uhd_partial_cases import (
+    TRANSLATION,
+    UHD_SHAPE,
+    boundary_mask,
+    crack_pair,
+    fractional_shift,
+    translation_pair,
+)
 
 from lucas_kanade_icgn import ICGNWGPU, ICGNWGPUFullPyramid
 
@@ -77,6 +84,50 @@ class UHDFixtureIntegrityTests(unittest.TestCase):
 
 @unittest.skipUnless(os.environ.get("ICGN_RUN_GPU_TESTS") == "1", "set ICGN_RUN_GPU_TESTS=1")
 class UHDRegistrationRegressionTests(unittest.TestCase):
+    def test_four_level_pyramid_captures_large_fractional_rigid_motion(self) -> None:
+        reference = _image("reference.png")
+        truth = (16.35, -8.2)
+        target = fractional_shift(reference, truth)
+        for model in ("translation", "affine"):
+            with (
+                self.subTest(model=model),
+                ICGNWGPUFullPyramid(
+                    pyramid_levels=4, motion_model=model, outlier_policy="disabled"
+                ) as engine,
+            ):
+                engine.set_reference(reference)
+                result = engine.register(target)
+                interior, _, _ = _interior(result, 192)
+                accepted = interior & result.accepted_mask
+                distance = np.linalg.norm(result.displacement[accepted] - truth, axis=-1)
+                self.assertEqual(result.config["pyramidLevels"], 4)
+                self.assertTrue(np.isfinite(result.parameters).all())
+                self.assertGreaterEqual(accepted.sum() / interior.sum(), 0.90)
+                self.assertLess(float(np.sqrt(np.mean(distance**2))), 0.05)
+                self.assertLess(float(np.percentile(distance, 95)), 0.10)
+
+    def test_fourier_initialization_refines_large_fractional_uhd_motion(self) -> None:
+        reference = _image("reference.png")
+        truth = (128.35, -64.2)
+        target = fractional_shift(reference, truth)
+        for model in ("translation", "affine"):
+            with (
+                self.subTest(model=model),
+                ICGNWGPUFullPyramid(
+                    initialization="fourier", motion_model=model, outlier_policy="disabled"
+                ) as engine,
+            ):
+                engine.set_reference(reference)
+                result = engine.register(target)
+                interior, _, _ = _interior(result, 192)
+                accepted = interior & result.accepted_mask
+                distance = np.linalg.norm(result.displacement[accepted] - truth, axis=-1)
+                self.assertTrue(np.isfinite(result.parameters).all())
+                self.assertGreaterEqual(accepted.sum() / interior.sum(), 0.90)
+                self.assertLess(float(np.sqrt(np.mean(distance**2))), 0.05)
+                self.assertLess(float(np.percentile(distance, 95)), 0.10)
+                self.assertLessEqual(abs(result.config["globalTranslation"]["dx"] - truth[0]), 2)
+
     def test_uhd_partial_other_sizes_overlap_and_gaussian_supports(self) -> None:
         reference, target = translation_pair("archived-speckle")
         roi = boundary_mask()
@@ -339,3 +390,46 @@ class UHDRegistrationRegressionTests(unittest.TestCase):
                         )
                 finally:
                     engine.close()
+
+
+@unittest.skipUnless(
+    os.environ.get("ICGN_RUN_BROWSER_TESTS") == "1", "set ICGN_RUN_BROWSER_TESTS=1"
+)
+class UHDFourierBrowserRegressionTests(unittest.TestCase):
+    def test_large_fractional_motion_uses_shared_browser_core(self):
+        from lucas_kanade_icgn import ICGNWebGL
+
+        flags = (
+            (
+                "--use-angle=swiftshader",
+                "--enable-unsafe-webgpu",
+                "--use-webgpu-adapter=swiftshader",
+                "--use-vulkan=swiftshader",
+            )
+            if os.environ.get("ICGN_BROWSER_SOFTWARE") == "1"
+            else ()
+        )
+        reference = _image("reference.png")
+        truth = (128.35, -64.2)
+        target = fractional_shift(reference, truth)
+        for model in ("translation", "affine"):
+            with (
+                self.subTest(model=model),
+                ICGNWebGL(
+                    backend="webgpu-wgsl",
+                    initialization="fourier",
+                    motion_model=model,
+                    outlier_policy="disabled",
+                    chromium_args=flags,
+                    call_timeout=240,
+                ) as engine,
+            ):
+                engine.set_reference(reference)
+                result = engine.register(target)
+                interior, _, _ = _interior(result, 192)
+                accepted = interior & result.accepted_mask
+                error = np.linalg.norm(result.displacement[accepted] - truth, axis=-1)
+                self.assertGreaterEqual(accepted.sum() / interior.sum(), 0.90)
+                self.assertLess(float(np.sqrt(np.mean(error**2))), 0.05)
+                self.assertLess(float(np.percentile(error, 95)), 0.10)
+                self.assertLessEqual(abs(result.config["globalTranslation"]["dx"] - truth[0]), 2)

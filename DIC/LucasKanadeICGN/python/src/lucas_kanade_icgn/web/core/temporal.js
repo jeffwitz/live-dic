@@ -4,7 +4,7 @@ import { seedPermissions } from './roi.js';
 export function validateTemporal(options) {
   const initialization = options.initialization === undefined ? 'zero' : options.initialization;
   const prediction = options.temporalPrediction === undefined ? 'none' : options.temporalPrediction;
-  if (!['zero', 'temporal'].includes(initialization)) throw new Error("initialization must be 'zero' or 'temporal'");
+  if (!['zero', 'temporal', 'fourier'].includes(initialization)) throw new Error("initialization must be 'zero', 'temporal' or 'fourier'");
   if (!['none', 'velocity'].includes(prediction)) throw new Error("temporalPrediction must be 'none' or 'velocity'");
   if (prediction !== 'none' && initialization !== 'temporal') throw new Error('temporalPrediction requires temporal initialization');
   if (options.temporalFineCorrection && (initialization !== 'temporal' || (options.pyramidLevels ?? 2) !== 2)) {
@@ -21,7 +21,7 @@ export function validateTemporal(options) {
 }
 
 export async function createTemporalGraph(device, shader, levels, seedEdges, options, roiMask, size, stride, shared = null) {
-  if ((options.initialization ?? 'zero') === 'zero') return null;
+  if ((options.initialization ?? 'zero') !== 'temporal') return null;
   const owned = [], fine = levels[0], coarse = levels.at(-1);
   const velocity = options.temporalPrediction === 'velocity', correction = !!options.temporalFineCorrection;
   const model = options.motionModel === 'quadratic' ? 2 : options.motionModel === 'translation' ? 1 : 0;

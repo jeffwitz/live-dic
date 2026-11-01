@@ -308,6 +308,7 @@ class NativeReferenceTests(unittest.TestCase):
         self.assertEqual(_DEFAULT_ITERATION_SCHEDULES[1], (30,))
         self.assertEqual(_DEFAULT_ITERATION_SCHEDULES[2], (8, 16))
         self.assertEqual(_DEFAULT_ITERATION_SCHEDULES[3], (6, 8, 16))
+        self.assertEqual(_DEFAULT_ITERATION_SCHEDULES[4], (12, 8, 8, 16))
         self.assertEqual(_DEFAULT_TOLERANCES, (1e-2, 5e-3, 5e-3))
         self.assertEqual(
             _schedule(None, level_count=2, defaults=(8, 12, 30), name="iterations"),

@@ -24,19 +24,22 @@ export async function createInputConverter(device, width, height) {
     pass.setPipeline(pipeline); pass.setBindGroup(0, bindGroup);
     pass.dispatchWorkgroups(Math.ceil(width / 16), Math.ceil(height / 16)); pass.end();
   }
-  async function referencePixels(frame) {
+  async function referencePixels(frame, region = null) {
+    const x=region?.x??0,y=region?.y??0,w=region?.size??width,h=region?.size??height;
+    if(x<0||y<0||x+w>width||y+h>height)throw new Error('Readback region exceeds the image');
     copy(frame);
     const encoder = device.createCommandEncoder(); encode(encoder);
-    const bytesPerRow = Math.ceil(width * 4 / 256) * 256;
-    const readback = device.createBuffer({ size: bytesPerRow * height,
+    const bytesPerRow = Math.ceil(w * 4 / 256) * 256;
+    const readback = device.createBuffer({ size: bytesPerRow * h,
       usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
-    encoder.copyTextureToBuffer({ texture }, { buffer: readback, bytesPerRow, rowsPerImage: height }, [width, height]);
+    encoder.copyTextureToBuffer({ texture,origin:[x,y] }, { buffer: readback, bytesPerRow, rowsPerImage: h }, [w, h]);
     device.queue.submit([encoder.finish()]);
-    await readback.mapAsync(GPUMapMode.READ);
-    const mapped = new Uint8Array(readback.getMappedRange()), pixels = new Uint8Array(width * height);
-    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) pixels[y * width + x] = mapped[y * bytesPerRow + 4 * x];
-    readback.unmap(); readback.destroy();
-    return pixels;
+    try {
+      await readback.mapAsync(GPUMapMode.READ);
+      const mapped = new Uint8Array(readback.getMappedRange()), pixels = new Uint8Array(w * h);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) pixels[y * w + x] = mapped[y * bytesPerRow + 4 * x];
+      return pixels;
+    } finally {if(readback.mapState==='mapped')readback.unmap();readback.destroy();}
   }
   return { texture, source, pipeline, bindGroup, copy, encode, referencePixels,
     destroy() { source.destroy(); texture.destroy(); } };

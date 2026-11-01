@@ -21,6 +21,7 @@ from typing import Any
 import numpy as np
 
 from .engine import ICGNError, ImageInput, ReferenceInfo, RegistrationResult, _as_uint8_gray
+from .fourier import FourierInitializer
 from .interpolation import normalize_interpolation
 from .motion import (
     MOTION_MODEL_PIPELINE_CONSTANTS,
@@ -51,8 +52,10 @@ _DEFAULT_ITERATION_SCHEDULES = {
     1: (30,),
     2: (8, 16),
     3: (6, 8, 16),
+    4: (12, 8, 8, 16),
 }
 _DEFAULT_TOLERANCES = (1e-2, 5e-3, 5e-3)
+_FOUR_LEVEL_TOLERANCES = (1e-2, *_DEFAULT_TOLERANCES)
 
 
 @dataclass(slots=True)
@@ -81,6 +84,7 @@ class _FullPyramidSlot:
     reduction_edges: list[_ReductionEdge]
     seed_edges: dict[int, _SeedEdge]
     temporal: _TemporalSlot | None = None
+    fourier_seed: Any | None = None
 
 
 @dataclass(slots=True)
@@ -109,15 +113,16 @@ class _PendingFullPyramidRegistration:
     encoding_wall_ms: float
     submission_wall_ms: float
     levels_used: int | None = None
+    global_translation: dict[str, Any] | None = None
 
 
 def _level_count(value: int) -> int:
     try:
         count = operator.index(value)
     except TypeError as error:
-        raise ValueError("pyramid_levels must be an integer from 1 to 3") from error
-    if isinstance(value, bool) or not 1 <= count <= 3:
-        raise ValueError("pyramid_levels must be an integer from 1 to 3")
+        raise ValueError("pyramid_levels must be an integer from 1 to 4") from error
+    if isinstance(value, bool) or not 1 <= count <= 4:
+        raise ValueError("pyramid_levels must be an integer from 1 to 4")
     return count
 
 
@@ -149,7 +154,7 @@ class ICGNWGPUFullPyramid:
 
     The default uses two levels because it provides the largest measured 4K60
     margin while retaining the robust coarse-to-fine capture range.  Three
-    levels remain available for larger expected displacements.
+    and four levels remain available for larger expected displacements.
 
     ``iterations_per_level`` and ``tolerance_per_level`` are ordered from the
     coarsest level to the finest level.  Reference preparation is performed
@@ -238,8 +243,12 @@ class ICGNWGPUFullPyramid:
                 "temporal_fine_correction requires temporal initialization and two levels"
             )
         self.temporal_fine_correction = temporal_fine_correction
-        if not isinstance(initialization, str) or initialization not in ("zero", "temporal"):
-            raise ValueError("initialization must be 'zero' or 'temporal'")
+        if not isinstance(initialization, str) or initialization not in (
+            "zero",
+            "temporal",
+            "fourier",
+        ):
+            raise ValueError("initialization must be 'zero', 'temporal' or 'fourier'")
         if temporal_max_age is not None:
             try:
                 age = operator.index(temporal_max_age)
@@ -255,6 +264,11 @@ class ICGNWGPUFullPyramid:
         self._temporal_buffers: dict[str, Any] = {}
         self.interpolation = normalize_interpolation(interpolation)
         self.motion_model = normalize_motion_model(motion_model)
+        if initialization == "fourier" and self.motion_model == "quadratic":
+            raise ValueError(
+                "Fourier initialization currently supports translation and affine models"
+            )
+        self._fourier = None
         self.outlier_policy = normalize_outlier_policy(outlier_policy)
         self.subset_size = normalize_subset_size(subset_size)
         self.subset_stride = normalize_subset_stride(
@@ -278,7 +292,7 @@ class ICGNWGPUFullPyramid:
         tolerance_values = _schedule(
             tolerance_per_level,
             level_count=self.pyramid_levels,
-            defaults=_DEFAULT_TOLERANCES,
+            defaults=_FOUR_LEVEL_TOLERANCES if self.pyramid_levels == 4 else _DEFAULT_TOLERANCES,
             name="tolerance_per_level",
         )
         self.iterations_per_level = tuple(int(value) for value in iteration_values)
@@ -1009,6 +1023,18 @@ class ICGNWGPUFullPyramid:
     def _create_full_slot(self, slot_index: int) -> _FullPyramidSlot:
         level_slots = tuple(level._pipeline_slots[slot_index] for level in self._levels)
         seed_edges = self._create_seed_edges(level_slots)
+        fourier_seed = None
+        if self.initialization == "fourier":
+            coarse = self._levels[-1]
+            coarse._ensure_seed_resources(level_slots[-1])
+            count = coarse.grid_width * coarse.grid_height
+            fourier_seed = np.zeros((count, state_float_count(self.motion_model)), np.float32)
+            selected = (
+                np.ones(count, np.uint32)
+                if coarse.roi is None
+                else coarse.roi.selected.ravel().astype(np.uint32)
+            )
+            self.device.queue.write_buffer(level_slots[-1].buffers["active_mask"], 0, selected)
         return _FullPyramidSlot(
             level_slots=level_slots,
             reduction_edges=self._create_reduction_edges(level_slots),
@@ -1016,6 +1042,7 @@ class ICGNWGPUFullPyramid:
             temporal=self._create_temporal_slot(level_slots[0], level_slots[-1], seed_edges.get(0))
             if self.initialization == "temporal"
             else None,
+            fourier_seed=fourier_seed,
         )
 
     def _ensure_full_slots(self, depth: int) -> list[_FullPyramidSlot]:
@@ -1057,7 +1084,9 @@ class ICGNWGPUFullPyramid:
             values = _schedule(
                 tolerance_per_level,
                 level_count=self.pyramid_levels,
-                defaults=_DEFAULT_TOLERANCES,
+                defaults=_FOUR_LEVEL_TOLERANCES
+                if self.pyramid_levels == 4
+                else _DEFAULT_TOLERANCES,
                 name="tolerance_per_level",
             )
             new_tolerances = tuple(float(value) for value in values)
@@ -1073,6 +1102,11 @@ class ICGNWGPUFullPyramid:
         mask = validate_roi(
             roi_mask, roi_policy, reference.shape, self.motion_model, roi_truncation
         )
+        fourier = (
+            FourierInitializer(reference, mask)
+            if self.initialization == "fourier" and (mask is None or mask.any())
+            else None
+        )
         references = [reference]
         masks = [mask]
         for _ in range(1, self.pyramid_levels):
@@ -1084,6 +1118,7 @@ class ICGNWGPUFullPyramid:
         self._zncc_min = new_zncc_min
         self._reference_ready = False
         self._clear_level_resources()
+        self._fourier = fourier
         reference_build_wall_ms = 0.0
         for level_index, level_reference in enumerate(references):
             engine = (
@@ -1162,6 +1197,10 @@ class ICGNWGPUFullPyramid:
                     else {}
                 ),
             )
+        elif self.initialization == "fourier":
+            self._root._pyramid_config.update(
+                initialization="fourier", fourierWindow=None if fourier is None else fourier.window
+            )
 
         first_slot = self._create_full_slot(0)
         self._full_slots = [first_slot]
@@ -1192,6 +1231,14 @@ class ICGNWGPUFullPyramid:
                 "spatialWeighting": self.spatial_weighting,
                 "solverWorkgroupSize": self.solver_workgroup_size,
                 "gaussianSigma": self.gaussian_sigma,
+                **(
+                    {
+                        "initialization": "fourier",
+                        "fourierWindow": None if fourier is None else fourier.window,
+                    }
+                    if self.initialization == "fourier"
+                    else {}
+                ),
             },
             device=self.device_name,
             grid=(fine.grid_width, fine.grid_height),
@@ -1307,9 +1354,11 @@ class ICGNWGPUFullPyramid:
         coarsest._encode_registration_passes(
             encoder,
             coarsest_slot,
-            coarsest._portable_solver if slot.temporal is None else coarsest._seeded_solver,
+            coarsest._portable_solver
+            if slot.temporal is None and slot.fourier_seed is None
+            else coarsest._seeded_solver,
             solver_bind_group=coarsest_slot.bind_group
-            if slot.temporal is None
+            if slot.temporal is None and slot.fourier_seed is None
             else coarsest_slot.seeded_bind_group,
             compute_pass=compute_pass,
         )
@@ -1386,6 +1435,18 @@ class ICGNWGPUFullPyramid:
         accepted_at: float,
         input_preparation_wall_ms: float,
     ) -> _PendingFullPyramidRegistration:
+        estimate = None
+        if self._fourier is not None:
+            try:
+                estimate = self._fourier.estimate(frame)
+            except ValueError as error:
+                raise ICGNError(str(error)) from error
+            scale = 1 << (self.pyramid_levels - 1)
+            slot.fourier_seed[:, 0] = estimate["dx"] / scale
+            slot.fourier_seed[:, 3] = estimate["dy"] / scale
+            self.device.queue.write_buffer(
+                slot.level_slots[-1].buffers["seed_state"], 0, slot.fourier_seed
+            )
         upload_wall_ms = self._root._upload_frame(slot.level_slots[0], frame)
         command, encoding_wall_ms = self._encode_slot(slot)
         submission_started = time.perf_counter()
@@ -1399,6 +1460,7 @@ class ICGNWGPUFullPyramid:
             encoding_wall_ms=encoding_wall_ms,
             submission_wall_ms=submission_wall_ms,
             levels_used=getattr(self, "_adaptive_next_levels", self.pyramid_levels),
+            global_translation=estimate,
         )
 
     def _retire_slot(self, pending: _PendingFullPyramidRegistration) -> RegistrationResult:
@@ -1456,6 +1518,9 @@ class ICGNWGPUFullPyramid:
             )
             result.config["pyramidLevelsUsed"] = pending.levels_used
         result_build_wall_ms = (time.perf_counter() - result_started) * 1_000.0
+        if pending.global_translation is not None:
+            result.config["globalTranslation"] = pending.global_translation
+            result.timing["fourierWallMs"] = pending.global_translation["wallMs"]
         total_wall_ms = (time.perf_counter() - pending.accepted_at) * 1_000.0
         result.timing = {
             **result.timing,
@@ -1531,16 +1596,22 @@ class ICGNWGPUFullPyramid:
             slot = available.popleft()
             accepted_at = time.perf_counter()
             preparation_started = time.perf_counter()
-            frame = self._root._prepare_target(target)
-            preparation_wall_ms = (time.perf_counter() - preparation_started) * 1_000.0
-            pending.append(
-                self._submit_slot(
+            try:
+                frame = self._root._prepare_target(target)
+                preparation_wall_ms = (time.perf_counter() - preparation_started) * 1_000.0
+                submission = self._submit_slot(
                     slot,
                     frame,
                     accepted_at=accepted_at,
                     input_preparation_wall_ms=preparation_wall_ms,
                 )
-            )
+            except Exception:
+                # Preserve earlier ordered results when a Fourier target is rejected.
+                if self.initialization == "fourier":
+                    while pending:
+                        yield self._retire_slot(pending.popleft())
+                raise
+            pending.append(submission)
 
         while pending:
             completed = pending.popleft()
@@ -1555,6 +1626,7 @@ class ICGNWGPUFullPyramid:
             return
         self._reference_ready = False
         self._clear_level_resources()
+        self._fourier = None
         self._closed = True
         # Drop the wrapper's pipeline/device aliases before the root collects
         # native wrappers. Shared levels never destroy the root's device.
