@@ -1754,3 +1754,59 @@ buffers and ROI exclusions on hardware and SwiftShader. Results palette/range
 edits reuse cached arrays/statistics without running the analysis again.
 The final complete local suite passes 283 tests with GPU/browser enabled;
 this is not a newly observed remote-CI result.
+
+Large rigid shifts with Fourier initialization (2026-11-01)
+-----------------------------------------------------------
+
+This opt-in CPU bootstrap targets sparse image pairs rather than real-time
+camera streams. The campaign uses the original native UHD tensile texture,
+zero-filled integer translations and the unchanged two-level B-spline solver,
+16/16 grid, ``(8,16)`` iterations and median output. Native times include
+Fourier, upload, GPU solve, materialized NumPy field and statistics; reference
+preparation is excluded. Five warmups and thirty calls per case, Intel Arc 130V
+under Linux/Vulkan. These are descriptive single-slot latencies.
+
+.. list-table:: Native resident NumPy image to materialized field, Fourier included
+   :header-rows: 1
+
+   * - Rigid shift (px)
+     - Translation median / p95 (ms)
+     - Affine median / p95 (ms)
+     - Common-interior accepted coverage
+   * - (+64, -32)
+     - 54.345 / 58.961
+     - 56.423 / 60.560
+     - 100%
+   * - (+256, -128)
+     - 58.497 / 77.426
+     - 70.673 / 73.810
+     - 100%
+   * - (+512, -128)
+     - 60.268 / 66.785
+     - 73.392 / 91.000
+     - 100%
+   * - (+700, -200)
+     - 61.327 / 74.643
+     - 77.833 / 83.757
+     - 100%
+
+Both native raw and median paths qualify all four motions for both models.
+The actual PWA affine/raw controls also qualify all four, with no application
+errors. Their four separate Worker-arrival-to-observable-field samples are
+230.8–278.5 ms; external-window readback plus JavaScript Fourier initialization
+alone takes 211.4–225.8 ms. Full field export is separate. These are neither
+Python end-to-end latencies nor a browser p95/FPS campaign.
+
+Four local levels alone qualify ``(16,-8)`` but fail ``(32,-16)`` and
+``(64,-32)`` on this texture. Fourier changes the initial guess, not the
+correlation equations or acceptance thresholds. Independent native/browser
+UHD tests refine ``(128.35,-64.2)`` with the usual RMSE/p95/coverage gates.
+This first CPU implementation has no 4K60 claim; existing real-time defaults
+remain unchanged. No timing comparison to a 1024-square LK solve is available.
+
+The populations, exact configuration, source/input hashes, negative controls,
+raw samples and reproduction commands are retained in
+``benchmarks/results/large-rigid-shifts-20261101/``. Local-only controls use a
+fixed reference interior, whereas larger Fourier cases require an interior
+common to both images; do not treat their coverage rates as a paired comparison.
+See :doc:`../how-to/register-large-shifts` for activation and limits.

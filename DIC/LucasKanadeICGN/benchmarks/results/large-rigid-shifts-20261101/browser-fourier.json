@@ -1,0 +1,1945 @@
+{
+  "commit": "f514eb0cecb5d927983c5df3b9e1ebd2d2de113e",
+  "dirty": false,
+  "command": "tools/qualify_large_translations.py --fourier --browser-only --site /tmp/live-dic-fourier-site --output /tmp/fourier-browser-final.json",
+  "platform": "Linux-7.0.0-38-generic-x86_64-with-glibc2.39",
+  "versions": {
+    "numpy": "2.4.6",
+    "wgpu": "0.32.0",
+    "Pillow": "13.0.0"
+  },
+  "reference_sha256": "7cadf6032d7c5ac2de74ae542573a3b38069dc8c1c075ef9576641601996aeec",
+  "reference_pixel_sha256": "a92d306a131829675d1023abd6d95375baa86f317fcd108e797900caa7511b50",
+  "mode": "fourier",
+  "source_sha256": {
+    "tools/qualify_large_translations.py": "c04c6f45db70dd1dade77886209bbe0c3c5a20672062817b93a8c438bd020b22",
+    "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/fourier.py": "0ef020e76ad346fcd27c052de260c10f5b1f753485407592c0a9667599dbf52b",
+    "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/full_pyramid_backend.py": "05370d6e017184a6fca41bf983f2b51ee70a351f57dadd347462444ac28c995b",
+    "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/fourier.js": "4ab98d375eec1694eca5710fbba35e1dcc76219f8b9729e0a9187a64f36b3c43",
+    "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/pyramid.js": "40d9a504d90552cb8ee95ad07b4dbd8abccb76b9a8f53947f3c971687a90613e",
+    "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/temporal.js": "20cead897c08d9e45d0a4e927a51f7da0c775aa3c7acfd0ad2a19c4934cb82a7"
+  },
+  "schedules": {
+    "default_four": [
+      12,
+      8,
+      8,
+      16
+    ],
+    "trial_four": [
+      20,
+      8,
+      8,
+      16
+    ],
+    "baseline_two": [
+      8,
+      16
+    ]
+  },
+  "warmups": 3,
+  "repeats": 15,
+  "native": null,
+  "browser": {
+    "build": {
+      "commit": "f514eb0cecb5d927983c5df3b9e1ebd2d2de113e",
+      "dirty": false,
+      "shaders": {
+        "full_pyramid.wgsl": "d00ef999c5dbc23013928e95ea6ca498a52fbb63850056c05bdbd3c963dc0401",
+        "icgn.wgsl": "a60231689fbc3d29953fd98eb8d04649ec93cbec0f5a89a65446df716152299b",
+        "icgn_subgroup.wgsl": "d68225b1b6b6b21071e59ea6109bbd24dc0fd8b6734b6ebc4f7d59356799a034",
+        "input.wgsl": "d269f8bf203e3363a6e753476c49de27188329409fa5a848358ea031bb554f7e",
+        "reference.wgsl": "0d86eefde8fb6ac25a7cfd46b23c71b7bc6e827696602cd13229c4cab29102c2",
+        "result.wgsl": "a587a3112670a702578df6c13f75addd4136e43fa6c7efba7959aa472d0e3267",
+        "subgroup_probe.wgsl": "6e4d149ed7f17969ede557a3062742d8da6c62cb6dd745d5510112c1489fed61"
+      },
+      "demo_manifest_sha256": "c78c445a38a8541d632f28e85ec1154e492b4195c7b8f5d4755597e07605f24a",
+      "plate_image_sha256": {
+        "reference.png": "26135118b554c5996443f07abd2a89273a344154338c4c7f428ab283f85f7192",
+        "frame_095.png": "af0f4c09d2e9292beb4cbbabe01c6651a2e914c1b36b569a5861a8be431d3faf",
+        "frame_225.png": "abe3693810e289b8a2029833011a0d59fdf7ff1ea975eea91b12dc5e708d2897"
+      },
+      "cache_version": "f514eb0cecb5d927983c5df3b9e1ebd2d2de113e"
+    },
+    "software": false,
+    "records": [
+      {
+        "levels": 2,
+        "shift": [
+          64,
+          -32
+        ],
+        "metrics": {
+          "population": 23108,
+          "accepted": 23108,
+          "accepted_coverage": 1.0,
+          "accurate_coverage": 1.0,
+          "displacement_rmse_px": 1.6711424446274507e-06,
+          "displacement_p95_px": 1.9073486328125e-06,
+          "qualified": true
+        },
+        "config": {
+          "subsetSize": 16,
+          "subsetStride": 16,
+          "initialization": "fourier",
+          "temporalPrediction": "none",
+          "temporalFineCorrection": false,
+          "temporalMaxAge": null,
+          "divergencePatience": null,
+          "divergenceMinIterations": 4,
+          "pyramidPolicy": "fixed",
+          "spatialWeighting": "uniform",
+          "solverWorkgroupSize": 16,
+          "pipelineDepth": 1,
+          "iterations": 16,
+          "tolerance": 0.005,
+          "znccMin": 0.8,
+          "pyramidLevels": 2,
+          "iterationsPerLevel": [
+            8,
+            16
+          ],
+          "tolerancePerLevel": [
+            0.005,
+            0.005
+          ],
+          "interpolation": "bspline",
+          "motionModel": "affine",
+          "outlierPolicy": "disabled",
+          "fourierWindow": {
+            "x": 1408,
+            "y": 568,
+            "size": 1024,
+            "sampleStep": 2
+          }
+        },
+        "metadata": {
+          "configuration": {
+            "subsetSize": 16,
+            "subsetStride": 16,
+            "initialization": "fourier",
+            "temporalPrediction": "none",
+            "temporalFineCorrection": false,
+            "temporalMaxAge": null,
+            "divergencePatience": null,
+            "divergenceMinIterations": 4,
+            "pyramidPolicy": "fixed",
+            "spatialWeighting": "uniform",
+            "solverWorkgroupSize": 16,
+            "pipelineDepth": 1,
+            "iterations": 16,
+            "tolerance": 0.005,
+            "znccMin": 0.8,
+            "pyramidLevels": 2,
+            "iterationsPerLevel": [
+              8,
+              16
+            ],
+            "tolerancePerLevel": [
+              0.005,
+              0.005
+            ],
+            "interpolation": "bspline",
+            "motionModel": "affine",
+            "outlierPolicy": "disabled",
+            "fourierWindow": {
+              "x": 1408,
+              "y": 568,
+              "size": 1024,
+              "sampleStep": 2
+            },
+            "globalTranslation": {
+              "dx": 64,
+              "dy": -32,
+              "peakScore": 2511.6311417585266,
+              "overlap": 0.908203125,
+              "correlation": 0.9999999999938087,
+              "window": {
+                "x": 1408,
+                "y": 568,
+                "size": 1024,
+                "sampleStep": 2
+              },
+              "method": "linear-phase-correlation",
+              "wallMs": 211.39999997615814
+            }
+          },
+          "capabilities": {
+            "supported": true,
+            "adapter": {
+              "vendor": "intel",
+              "architecture": "xe-2lpg",
+              "device": "",
+              "description": ""
+            },
+            "limits": {
+              "maxStorageBuffersPerShaderStage": 16,
+              "maxBindGroups": 4,
+              "maxStorageBufferBindingSize": 4294967292,
+              "maxBufferSize": 4294967292,
+              "maxComputeWorkgroupStorageSize": 65536,
+              "maxComputeInvocationsPerWorkgroup": 1024,
+              "maxTextureDimension2D": 16384
+            },
+            "features": [
+              "depth32float-stencil8",
+              "chromium-experimental-subgroup-matrix",
+              "rg11b10ufloat-renderable",
+              "texture-formats-tier1",
+              "bgra8unorm-storage",
+              "chromium-experimental-multi-draw-indirect",
+              "texture-compression-bc",
+              "dual-source-blending",
+              "core-features-and-limits",
+              "chromium-experimental-sampling-resource-table",
+              "chromium-experimental-timestamp-query-inside-passes",
+              "float32-filterable",
+              "indirect-first-instance",
+              "float32-blendable",
+              "atomic-vec2u-min-max",
+              "subgroup-size-control",
+              "texture-compression-unaligned",
+              "texture-compression-etc2",
+              "depth-clip-control",
+              "texture-compression-bc-sliced-3d",
+              "timestamp-query",
+              "shader-f16",
+              "texture-formats-tier2",
+              "clip-distances",
+              "primitive-index",
+              "texture-component-swizzle",
+              "subgroups"
+            ],
+            "resolutions": [
+              [
+                1280,
+                720
+              ],
+              [
+                1920,
+                1080
+              ],
+              [
+                3840,
+                2160
+              ]
+            ],
+            "recommendedProfile": "portable",
+            "reasons": [
+              "Start at 720p; measure the real graph before raising resolution"
+            ],
+            "profiles": {
+              "portable": true,
+              "qualified-latency": true,
+              "minimal": false
+            }
+          },
+          "profile": "portable",
+          "analysisEpoch": "5971a117-3d67-48b7-9628-364fb2e68d08",
+          "comparison": {
+            "mode": "fixed",
+            "reference": {
+              "kind": "images",
+              "index": 0,
+              "name": "frame_000.png",
+              "size": 3039598,
+              "type": "image/png",
+              "lastModified": 1793572627567
+            },
+            "target": {
+              "kind": "images",
+              "ordinal": 1,
+              "timestampUs": null,
+              "timestampClock": null,
+              "index": 1,
+              "name": "frame_001.png",
+              "size": 2954998,
+              "type": "image/png",
+              "lastModified": 1793572627962
+            },
+            "referenceAdmissible": 32400,
+            "requested": 32400,
+            "fixedImageCoordinateRoi": true
+          },
+          "createdAt": "2026-11-01T22:37:14.243Z",
+          "exportSerial": 1,
+          "readbackWallMs": 4.799999952316284,
+          "width": 3840,
+          "height": 2160,
+          "grid": [
+            240,
+            135
+          ],
+          "subsetSize": 16,
+          "subsetStride": 16,
+          "samples": [
+            {
+              "frame": 1,
+              "workerAvailableMs": 4870.399999976158,
+              "captureTimestampUs": null,
+              "completedMs": 5101.5,
+              "ageMs": 230.80000001192093,
+              "globalTranslation": {
+                "dx": 64,
+                "dy": -32,
+                "peakScore": 2511.6311417585266,
+                "overlap": 0.908203125,
+                "correlation": 0.9999999999938087,
+                "window": {
+                  "x": 1408,
+                  "y": 568,
+                  "size": 1024,
+                  "sampleStep": 2
+                },
+                "method": "linear-phase-correlation",
+                "wallMs": 211.39999997615814
+              },
+              "comparison": {
+                "mode": "fixed",
+                "reference": {
+                  "kind": "images",
+                  "index": 0,
+                  "name": "frame_000.png",
+                  "size": 3039598,
+                  "type": "image/png",
+                  "lastModified": 1793572627567
+                },
+                "target": {
+                  "kind": "images",
+                  "ordinal": 1,
+                  "timestampUs": null,
+                  "timestampClock": null,
+                  "index": 1,
+                  "name": "frame_001.png",
+                  "size": 2954998,
+                  "type": "image/png",
+                  "lastModified": 1793572627962
+                },
+                "referenceAdmissible": 32400,
+                "requested": 32400,
+                "fixedImageCoordinateRoi": true
+              },
+              "referencePreparationMs": 0,
+              "gpuReferenceIncluded": false,
+              "gpuFieldObservableMs": 230.30000001192093,
+              "truthRmse": null,
+              "acceptance": 0.9559567901234568,
+              "accepted": 30973,
+              "meanIterations": 1.0664126820133666
+            }
+          ],
+          "timingBoundary": "Worker frame available to observable GPU field plus small HUD summary; full field is read only for this export",
+          "roi": null,
+          "build": {
+            "commit": "f514eb0cecb5d927983c5df3b9e1ebd2d2de113e",
+            "dirty": false,
+            "shaders": {
+              "full_pyramid.wgsl": "d00ef999c5dbc23013928e95ea6ca498a52fbb63850056c05bdbd3c963dc0401",
+              "icgn.wgsl": "a60231689fbc3d29953fd98eb8d04649ec93cbec0f5a89a65446df716152299b",
+              "icgn_subgroup.wgsl": "d68225b1b6b6b21071e59ea6109bbd24dc0fd8b6734b6ebc4f7d59356799a034",
+              "input.wgsl": "d269f8bf203e3363a6e753476c49de27188329409fa5a848358ea031bb554f7e",
+              "reference.wgsl": "0d86eefde8fb6ac25a7cfd46b23c71b7bc6e827696602cd13229c4cab29102c2",
+              "result.wgsl": "a587a3112670a702578df6c13f75addd4136e43fa6c7efba7959aa472d0e3267",
+              "subgroup_probe.wgsl": "6e4d149ed7f17969ede557a3062742d8da6c62cb6dd745d5510112c1489fed61"
+            },
+            "demo_manifest_sha256": "c78c445a38a8541d632f28e85ec1154e492b4195c7b8f5d4755597e07605f24a",
+            "plate_image_sha256": {
+              "reference.png": "26135118b554c5996443f07abd2a89273a344154338c4c7f428ab283f85f7192",
+              "frame_095.png": "af0f4c09d2e9292beb4cbbabe01c6651a2e914c1b36b569a5861a8be431d3faf",
+              "frame_225.png": "abe3693810e289b8a2029833011a0d59fdf7ff1ea975eea91b12dc5e708d2897"
+            },
+            "cache_version": "f514eb0cecb5d927983c5df3b9e1ebd2d2de113e"
+          },
+          "acquisition": {
+            "source": "local image files",
+            "ordering": "natural relative filename, lexical tie-break",
+            "files": [
+              {
+                "name": "frame_000.png",
+                "size": 3039598,
+                "type": "image/png",
+                "lastModified": 1793572627567
+              },
+              {
+                "name": "frame_001.png",
+                "size": 2954998,
+                "type": "image/png",
+                "lastModified": 1793572627962
+              },
+              {
+                "name": "frame_002.png",
+                "size": 2692830,
+                "type": "image/png",
+                "lastModified": 1793572628323
+              },
+              {
+                "name": "frame_003.png",
+                "size": 2519849,
+                "type": "image/png",
+                "lastModified": 1793572628650
+              },
+              {
+                "name": "frame_004.png",
+                "size": 2308716,
+                "type": "image/png",
+                "lastModified": 1793572628943
+              }
+            ],
+            "ignored": [],
+            "reference": {
+              "kind": "images",
+              "index": 0,
+              "name": "frame_000.png",
+              "size": 3039598,
+              "type": "image/png",
+              "lastModified": 1793572627567
+            },
+            "lastComparison": {
+              "mode": "fixed",
+              "reference": {
+                "kind": "images",
+                "index": 0,
+                "name": "frame_000.png",
+                "size": 3039598,
+                "type": "image/png",
+                "lastModified": 1793572627567
+              },
+              "target": {
+                "kind": "images",
+                "ordinal": 1,
+                "timestampUs": null,
+                "timestampClock": null,
+                "index": 1,
+                "name": "frame_001.png",
+                "size": 2954998,
+                "type": "image/png",
+                "lastModified": 1793572627962
+              },
+              "referenceAdmissible": 32400,
+              "requested": 32400,
+              "fixedImageCoordinateRoi": true
+            }
+          },
+          "roiGeometry": {
+            "version": 1,
+            "composition": "union of roots; exact pixel-containment alternates domain/hole/island",
+            "baseImage": null,
+            "shapes": []
+          },
+          "display": {
+            "mode": 2,
+            "scale": null,
+            "opacity": 1,
+            "arrowStep": null,
+            "arrowGain": null
+          },
+          "parameterOrder": [
+            "tx",
+            "du_dx",
+            "du_dy",
+            "ty",
+            "dv_dx",
+            "dv_dy"
+          ],
+          "parameterUnits": [
+            "px",
+            "gradient",
+            "gradient",
+            "px",
+            "gradient",
+            "gradient"
+          ]
+        }
+      },
+      {
+        "levels": 2,
+        "shift": [
+          256,
+          -128
+        ],
+        "metrics": {
+          "population": 20600,
+          "accepted": 20600,
+          "accepted_coverage": 1.0,
+          "accurate_coverage": 1.0,
+          "displacement_rmse_px": 1.596466215088746e-06,
+          "displacement_p95_px": 0.0,
+          "qualified": true
+        },
+        "config": {
+          "subsetSize": 16,
+          "subsetStride": 16,
+          "initialization": "fourier",
+          "temporalPrediction": "none",
+          "temporalFineCorrection": false,
+          "temporalMaxAge": null,
+          "divergencePatience": null,
+          "divergenceMinIterations": 4,
+          "pyramidPolicy": "fixed",
+          "spatialWeighting": "uniform",
+          "solverWorkgroupSize": 16,
+          "pipelineDepth": 1,
+          "iterations": 16,
+          "tolerance": 0.005,
+          "znccMin": 0.8,
+          "pyramidLevels": 2,
+          "iterationsPerLevel": [
+            8,
+            16
+          ],
+          "tolerancePerLevel": [
+            0.005,
+            0.005
+          ],
+          "interpolation": "bspline",
+          "motionModel": "affine",
+          "outlierPolicy": "disabled",
+          "fourierWindow": {
+            "x": 1408,
+            "y": 568,
+            "size": 1024,
+            "sampleStep": 2
+          }
+        },
+        "metadata": {
+          "configuration": {
+            "subsetSize": 16,
+            "subsetStride": 16,
+            "initialization": "fourier",
+            "temporalPrediction": "none",
+            "temporalFineCorrection": false,
+            "temporalMaxAge": null,
+            "divergencePatience": null,
+            "divergenceMinIterations": 4,
+            "pyramidPolicy": "fixed",
+            "spatialWeighting": "uniform",
+            "solverWorkgroupSize": 16,
+            "pipelineDepth": 1,
+            "iterations": 16,
+            "tolerance": 0.005,
+            "znccMin": 0.8,
+            "pyramidLevels": 2,
+            "iterationsPerLevel": [
+              8,
+              16
+            ],
+            "tolerancePerLevel": [
+              0.005,
+              0.005
+            ],
+            "interpolation": "bspline",
+            "motionModel": "affine",
+            "outlierPolicy": "disabled",
+            "fourierWindow": {
+              "x": 1408,
+              "y": 568,
+              "size": 1024,
+              "sampleStep": 2
+            },
+            "globalTranslation": {
+              "dx": 256,
+              "dy": -128,
+              "peakScore": 570.8493180189944,
+              "overlap": 0.65625,
+              "correlation": 1.0000000000011375,
+              "window": {
+                "x": 1408,
+                "y": 568,
+                "size": 1024,
+                "sampleStep": 2
+              },
+              "method": "linear-phase-correlation",
+              "wallMs": 216.10000002384186
+            }
+          },
+          "capabilities": {
+            "supported": true,
+            "adapter": {
+              "vendor": "intel",
+              "architecture": "xe-2lpg",
+              "device": "",
+              "description": ""
+            },
+            "limits": {
+              "maxStorageBuffersPerShaderStage": 16,
+              "maxBindGroups": 4,
+              "maxStorageBufferBindingSize": 4294967292,
+              "maxBufferSize": 4294967292,
+              "maxComputeWorkgroupStorageSize": 65536,
+              "maxComputeInvocationsPerWorkgroup": 1024,
+              "maxTextureDimension2D": 16384
+            },
+            "features": [
+              "depth32float-stencil8",
+              "chromium-experimental-subgroup-matrix",
+              "rg11b10ufloat-renderable",
+              "texture-formats-tier1",
+              "bgra8unorm-storage",
+              "chromium-experimental-multi-draw-indirect",
+              "texture-compression-bc",
+              "dual-source-blending",
+              "core-features-and-limits",
+              "chromium-experimental-sampling-resource-table",
+              "chromium-experimental-timestamp-query-inside-passes",
+              "float32-filterable",
+              "indirect-first-instance",
+              "float32-blendable",
+              "atomic-vec2u-min-max",
+              "subgroup-size-control",
+              "texture-compression-unaligned",
+              "texture-compression-etc2",
+              "depth-clip-control",
+              "texture-compression-bc-sliced-3d",
+              "timestamp-query",
+              "shader-f16",
+              "texture-formats-tier2",
+              "clip-distances",
+              "primitive-index",
+              "texture-component-swizzle",
+              "subgroups"
+            ],
+            "resolutions": [
+              [
+                1280,
+                720
+              ],
+              [
+                1920,
+                1080
+              ],
+              [
+                3840,
+                2160
+              ]
+            ],
+            "recommendedProfile": "portable",
+            "reasons": [
+              "Start at 720p; measure the real graph before raising resolution"
+            ],
+            "profiles": {
+              "portable": true,
+              "qualified-latency": true,
+              "minimal": false
+            }
+          },
+          "profile": "portable",
+          "analysisEpoch": "5971a117-3d67-48b7-9628-364fb2e68d08",
+          "comparison": {
+            "mode": "fixed",
+            "reference": {
+              "kind": "images",
+              "index": 0,
+              "name": "frame_000.png",
+              "size": 3039598,
+              "type": "image/png",
+              "lastModified": 1793572627567
+            },
+            "target": {
+              "kind": "images",
+              "ordinal": 2,
+              "timestampUs": null,
+              "timestampClock": null,
+              "index": 2,
+              "name": "frame_002.png",
+              "size": 2692830,
+              "type": "image/png",
+              "lastModified": 1793572628323
+            },
+            "referenceAdmissible": 32400,
+            "requested": 32400,
+            "fixedImageCoordinateRoi": true
+          },
+          "createdAt": "2026-11-01T22:37:14.914Z",
+          "exportSerial": 2,
+          "readbackWallMs": 3.600000023841858,
+          "width": 3840,
+          "height": 2160,
+          "grid": [
+            240,
+            135
+          ],
+          "subsetSize": 16,
+          "subsetStride": 16,
+          "samples": [
+            {
+              "frame": 1,
+              "workerAvailableMs": 4870.399999976158,
+              "captureTimestampUs": null,
+              "completedMs": 5101.5,
+              "ageMs": 230.80000001192093,
+              "globalTranslation": {
+                "dx": 64,
+                "dy": -32,
+                "peakScore": 2511.6311417585266,
+                "overlap": 0.908203125,
+                "correlation": 0.9999999999938087,
+                "window": {
+                  "x": 1408,
+                  "y": 568,
+                  "size": 1024,
+                  "sampleStep": 2
+                },
+                "method": "linear-phase-correlation",
+                "wallMs": 211.39999997615814
+              },
+              "comparison": {
+                "mode": "fixed",
+                "reference": {
+                  "kind": "images",
+                  "index": 0,
+                  "name": "frame_000.png",
+                  "size": 3039598,
+                  "type": "image/png",
+                  "lastModified": 1793572627567
+                },
+                "target": {
+                  "kind": "images",
+                  "ordinal": 1,
+                  "timestampUs": null,
+                  "timestampClock": null,
+                  "index": 1,
+                  "name": "frame_001.png",
+                  "size": 2954998,
+                  "type": "image/png",
+                  "lastModified": 1793572627962
+                },
+                "referenceAdmissible": 32400,
+                "requested": 32400,
+                "fixedImageCoordinateRoi": true
+              },
+              "referencePreparationMs": 0,
+              "gpuReferenceIncluded": false,
+              "gpuFieldObservableMs": 230.30000001192093,
+              "truthRmse": null,
+              "acceptance": 0.9559567901234568,
+              "accepted": 30973,
+              "meanIterations": 1.0664126820133666
+            },
+            {
+              "frame": 2,
+              "workerAvailableMs": 5530.199999988079,
+              "captureTimestampUs": null,
+              "completedMs": 5780.699999988079,
+              "ageMs": 250.19999998807907,
+              "globalTranslation": {
+                "dx": 256,
+                "dy": -128,
+                "peakScore": 570.8493180189944,
+                "overlap": 0.65625,
+                "correlation": 1.0000000000011375,
+                "window": {
+                  "x": 1408,
+                  "y": 568,
+                  "size": 1024,
+                  "sampleStep": 2
+                },
+                "method": "linear-phase-correlation",
+                "wallMs": 216.10000002384186
+              },
+              "comparison": {
+                "mode": "fixed",
+                "reference": {
+                  "kind": "images",
+                  "index": 0,
+                  "name": "frame_000.png",
+                  "size": 3039598,
+                  "type": "image/png",
+                  "lastModified": 1793572627567
+                },
+                "target": {
+                  "kind": "images",
+                  "ordinal": 2,
+                  "timestampUs": null,
+                  "timestampClock": null,
+                  "index": 2,
+                  "name": "frame_002.png",
+                  "size": 2692830,
+                  "type": "image/png",
+                  "lastModified": 1793572628323
+                },
+                "referenceAdmissible": 32400,
+                "requested": 32400,
+                "fixedImageCoordinateRoi": true
+              },
+              "referencePreparationMs": 0,
+              "gpuReferenceIncluded": false,
+              "gpuFieldObservableMs": 249.5999999642372,
+              "truthRmse": null,
+              "acceptance": 0.8660802469135802,
+              "accepted": 28061,
+              "meanIterations": 1.0735896796265278
+            }
+          ],
+          "timingBoundary": "Worker frame available to observable GPU field plus small HUD summary; full field is read only for this export",
+          "roi": null,
+          "build": {
+            "commit": "f514eb0cecb5d927983c5df3b9e1ebd2d2de113e",
+            "dirty": false,
+            "shaders": {
+              "full_pyramid.wgsl": "d00ef999c5dbc23013928e95ea6ca498a52fbb63850056c05bdbd3c963dc0401",
+              "icgn.wgsl": "a60231689fbc3d29953fd98eb8d04649ec93cbec0f5a89a65446df716152299b",
+              "icgn_subgroup.wgsl": "d68225b1b6b6b21071e59ea6109bbd24dc0fd8b6734b6ebc4f7d59356799a034",
+              "input.wgsl": "d269f8bf203e3363a6e753476c49de27188329409fa5a848358ea031bb554f7e",
+              "reference.wgsl": "0d86eefde8fb6ac25a7cfd46b23c71b7bc6e827696602cd13229c4cab29102c2",
+              "result.wgsl": "a587a3112670a702578df6c13f75addd4136e43fa6c7efba7959aa472d0e3267",
+              "subgroup_probe.wgsl": "6e4d149ed7f17969ede557a3062742d8da6c62cb6dd745d5510112c1489fed61"
+            },
+            "demo_manifest_sha256": "c78c445a38a8541d632f28e85ec1154e492b4195c7b8f5d4755597e07605f24a",
+            "plate_image_sha256": {
+              "reference.png": "26135118b554c5996443f07abd2a89273a344154338c4c7f428ab283f85f7192",
+              "frame_095.png": "af0f4c09d2e9292beb4cbbabe01c6651a2e914c1b36b569a5861a8be431d3faf",
+              "frame_225.png": "abe3693810e289b8a2029833011a0d59fdf7ff1ea975eea91b12dc5e708d2897"
+            },
+            "cache_version": "f514eb0cecb5d927983c5df3b9e1ebd2d2de113e"
+          },
+          "acquisition": {
+            "source": "local image files",
+            "ordering": "natural relative filename, lexical tie-break",
+            "files": [
+              {
+                "name": "frame_000.png",
+                "size": 3039598,
+                "type": "image/png",
+                "lastModified": 1793572627567
+              },
+              {
+                "name": "frame_001.png",
+                "size": 2954998,
+                "type": "image/png",
+                "lastModified": 1793572627962
+              },
+              {
+                "name": "frame_002.png",
+                "size": 2692830,
+                "type": "image/png",
+                "lastModified": 1793572628323
+              },
+              {
+                "name": "frame_003.png",
+                "size": 2519849,
+                "type": "image/png",
+                "lastModified": 1793572628650
+              },
+              {
+                "name": "frame_004.png",
+                "size": 2308716,
+                "type": "image/png",
+                "lastModified": 1793572628943
+              }
+            ],
+            "ignored": [],
+            "reference": {
+              "kind": "images",
+              "index": 0,
+              "name": "frame_000.png",
+              "size": 3039598,
+              "type": "image/png",
+              "lastModified": 1793572627567
+            },
+            "lastComparison": {
+              "mode": "fixed",
+              "reference": {
+                "kind": "images",
+                "index": 0,
+                "name": "frame_000.png",
+                "size": 3039598,
+                "type": "image/png",
+                "lastModified": 1793572627567
+              },
+              "target": {
+                "kind": "images",
+                "ordinal": 2,
+                "timestampUs": null,
+                "timestampClock": null,
+                "index": 2,
+                "name": "frame_002.png",
+                "size": 2692830,
+                "type": "image/png",
+                "lastModified": 1793572628323
+              },
+              "referenceAdmissible": 32400,
+              "requested": 32400,
+              "fixedImageCoordinateRoi": true
+            }
+          },
+          "roiGeometry": {
+            "version": 1,
+            "composition": "union of roots; exact pixel-containment alternates domain/hole/island",
+            "baseImage": null,
+            "shapes": []
+          },
+          "display": {
+            "mode": 2,
+            "scale": null,
+            "opacity": 1,
+            "arrowStep": null,
+            "arrowGain": null
+          },
+          "parameterOrder": [
+            "tx",
+            "du_dx",
+            "du_dy",
+            "ty",
+            "dv_dx",
+            "dv_dy"
+          ],
+          "parameterUnits": [
+            "px",
+            "gradient",
+            "gradient",
+            "px",
+            "gradient",
+            "gradient"
+          ]
+        }
+      },
+      {
+        "levels": 2,
+        "shift": [
+          512,
+          -128
+        ],
+        "metrics": {
+          "population": 18952,
+          "accepted": 18952,
+          "accepted_coverage": 1.0,
+          "accurate_coverage": 1.0,
+          "displacement_rmse_px": 1.6477399914222724e-06,
+          "displacement_p95_px": 0.0,
+          "qualified": true
+        },
+        "config": {
+          "subsetSize": 16,
+          "subsetStride": 16,
+          "initialization": "fourier",
+          "temporalPrediction": "none",
+          "temporalFineCorrection": false,
+          "temporalMaxAge": null,
+          "divergencePatience": null,
+          "divergenceMinIterations": 4,
+          "pyramidPolicy": "fixed",
+          "spatialWeighting": "uniform",
+          "solverWorkgroupSize": 16,
+          "pipelineDepth": 1,
+          "iterations": 16,
+          "tolerance": 0.005,
+          "znccMin": 0.8,
+          "pyramidLevels": 2,
+          "iterationsPerLevel": [
+            8,
+            16
+          ],
+          "tolerancePerLevel": [
+            0.005,
+            0.005
+          ],
+          "interpolation": "bspline",
+          "motionModel": "affine",
+          "outlierPolicy": "disabled",
+          "fourierWindow": {
+            "x": 1408,
+            "y": 568,
+            "size": 1024,
+            "sampleStep": 2
+          }
+        },
+        "metadata": {
+          "configuration": {
+            "subsetSize": 16,
+            "subsetStride": 16,
+            "initialization": "fourier",
+            "temporalPrediction": "none",
+            "temporalFineCorrection": false,
+            "temporalMaxAge": null,
+            "divergencePatience": null,
+            "divergenceMinIterations": 4,
+            "pyramidPolicy": "fixed",
+            "spatialWeighting": "uniform",
+            "solverWorkgroupSize": 16,
+            "pipelineDepth": 1,
+            "iterations": 16,
+            "tolerance": 0.005,
+            "znccMin": 0.8,
+            "pyramidLevels": 2,
+            "iterationsPerLevel": [
+              8,
+              16
+            ],
+            "tolerancePerLevel": [
+              0.005,
+              0.005
+            ],
+            "interpolation": "bspline",
+            "motionModel": "affine",
+            "outlierPolicy": "disabled",
+            "fourierWindow": {
+              "x": 1408,
+              "y": 568,
+              "size": 1024,
+              "sampleStep": 2
+            },
+            "globalTranslation": {
+              "dx": 512,
+              "dy": -128,
+              "peakScore": 120.78943791829997,
+              "overlap": 0.4375,
+              "correlation": 0.9999999999988077,
+              "window": {
+                "x": 1408,
+                "y": 568,
+                "size": 1024,
+                "sampleStep": 2
+              },
+              "method": "linear-phase-correlation",
+              "wallMs": 225.80000001192093
+            }
+          },
+          "capabilities": {
+            "supported": true,
+            "adapter": {
+              "vendor": "intel",
+              "architecture": "xe-2lpg",
+              "device": "",
+              "description": ""
+            },
+            "limits": {
+              "maxStorageBuffersPerShaderStage": 16,
+              "maxBindGroups": 4,
+              "maxStorageBufferBindingSize": 4294967292,
+              "maxBufferSize": 4294967292,
+              "maxComputeWorkgroupStorageSize": 65536,
+              "maxComputeInvocationsPerWorkgroup": 1024,
+              "maxTextureDimension2D": 16384
+            },
+            "features": [
+              "depth32float-stencil8",
+              "chromium-experimental-subgroup-matrix",
+              "rg11b10ufloat-renderable",
+              "texture-formats-tier1",
+              "bgra8unorm-storage",
+              "chromium-experimental-multi-draw-indirect",
+              "texture-compression-bc",
+              "dual-source-blending",
+              "core-features-and-limits",
+              "chromium-experimental-sampling-resource-table",
+              "chromium-experimental-timestamp-query-inside-passes",
+              "float32-filterable",
+              "indirect-first-instance",
+              "float32-blendable",
+              "atomic-vec2u-min-max",
+              "subgroup-size-control",
+              "texture-compression-unaligned",
+              "texture-compression-etc2",
+              "depth-clip-control",
+              "texture-compression-bc-sliced-3d",
+              "timestamp-query",
+              "shader-f16",
+              "texture-formats-tier2",
+              "clip-distances",
+              "primitive-index",
+              "texture-component-swizzle",
+              "subgroups"
+            ],
+            "resolutions": [
+              [
+                1280,
+                720
+              ],
+              [
+                1920,
+                1080
+              ],
+              [
+                3840,
+                2160
+              ]
+            ],
+            "recommendedProfile": "portable",
+            "reasons": [
+              "Start at 720p; measure the real graph before raising resolution"
+            ],
+            "profiles": {
+              "portable": true,
+              "qualified-latency": true,
+              "minimal": false
+            }
+          },
+          "profile": "portable",
+          "analysisEpoch": "5971a117-3d67-48b7-9628-364fb2e68d08",
+          "comparison": {
+            "mode": "fixed",
+            "reference": {
+              "kind": "images",
+              "index": 0,
+              "name": "frame_000.png",
+              "size": 3039598,
+              "type": "image/png",
+              "lastModified": 1793572627567
+            },
+            "target": {
+              "kind": "images",
+              "ordinal": 3,
+              "timestampUs": null,
+              "timestampClock": null,
+              "index": 3,
+              "name": "frame_003.png",
+              "size": 2519849,
+              "type": "image/png",
+              "lastModified": 1793572628650
+            },
+            "referenceAdmissible": 32400,
+            "requested": 32400,
+            "fixedImageCoordinateRoi": true
+          },
+          "createdAt": "2026-11-01T22:37:15.553Z",
+          "exportSerial": 3,
+          "readbackWallMs": 3.399999976158142,
+          "width": 3840,
+          "height": 2160,
+          "grid": [
+            240,
+            135
+          ],
+          "subsetSize": 16,
+          "subsetStride": 16,
+          "samples": [
+            {
+              "frame": 1,
+              "workerAvailableMs": 4870.399999976158,
+              "captureTimestampUs": null,
+              "completedMs": 5101.5,
+              "ageMs": 230.80000001192093,
+              "globalTranslation": {
+                "dx": 64,
+                "dy": -32,
+                "peakScore": 2511.6311417585266,
+                "overlap": 0.908203125,
+                "correlation": 0.9999999999938087,
+                "window": {
+                  "x": 1408,
+                  "y": 568,
+                  "size": 1024,
+                  "sampleStep": 2
+                },
+                "method": "linear-phase-correlation",
+                "wallMs": 211.39999997615814
+              },
+              "comparison": {
+                "mode": "fixed",
+                "reference": {
+                  "kind": "images",
+                  "index": 0,
+                  "name": "frame_000.png",
+                  "size": 3039598,
+                  "type": "image/png",
+                  "lastModified": 1793572627567
+                },
+                "target": {
+                  "kind": "images",
+                  "ordinal": 1,
+                  "timestampUs": null,
+                  "timestampClock": null,
+                  "index": 1,
+                  "name": "frame_001.png",
+                  "size": 2954998,
+                  "type": "image/png",
+                  "lastModified": 1793572627962
+                },
+                "referenceAdmissible": 32400,
+                "requested": 32400,
+                "fixedImageCoordinateRoi": true
+              },
+              "referencePreparationMs": 0,
+              "gpuReferenceIncluded": false,
+              "gpuFieldObservableMs": 230.30000001192093,
+              "truthRmse": null,
+              "acceptance": 0.9559567901234568,
+              "accepted": 30973,
+              "meanIterations": 1.0664126820133666
+            },
+            {
+              "frame": 2,
+              "workerAvailableMs": 5530.199999988079,
+              "captureTimestampUs": null,
+              "completedMs": 5780.699999988079,
+              "ageMs": 250.19999998807907,
+              "globalTranslation": {
+                "dx": 256,
+                "dy": -128,
+                "peakScore": 570.8493180189944,
+                "overlap": 0.65625,
+                "correlation": 1.0000000000011375,
+                "window": {
+                  "x": 1408,
+                  "y": 568,
+                  "size": 1024,
+                  "sampleStep": 2
+                },
+                "method": "linear-phase-correlation",
+                "wallMs": 216.10000002384186
+              },
+              "comparison": {
+                "mode": "fixed",
+                "reference": {
+                  "kind": "images",
+                  "index": 0,
+                  "name": "frame_000.png",
+                  "size": 3039598,
+                  "type": "image/png",
+                  "lastModified": 1793572627567
+                },
+                "target": {
+                  "kind": "images",
+                  "ordinal": 2,
+                  "timestampUs": null,
+                  "timestampClock": null,
+                  "index": 2,
+                  "name": "frame_002.png",
+                  "size": 2692830,
+                  "type": "image/png",
+                  "lastModified": 1793572628323
+                },
+                "referenceAdmissible": 32400,
+                "requested": 32400,
+                "fixedImageCoordinateRoi": true
+              },
+              "referencePreparationMs": 0,
+              "gpuReferenceIncluded": false,
+              "gpuFieldObservableMs": 249.5999999642372,
+              "truthRmse": null,
+              "acceptance": 0.8660802469135802,
+              "accepted": 28061,
+              "meanIterations": 1.0735896796265278
+            },
+            {
+              "frame": 3,
+              "workerAvailableMs": 6149,
+              "captureTimestampUs": null,
+              "completedMs": 6420,
+              "ageMs": 270.80000001192093,
+              "globalTranslation": {
+                "dx": 512,
+                "dy": -128,
+                "peakScore": 120.78943791829997,
+                "overlap": 0.4375,
+                "correlation": 0.9999999999988077,
+                "window": {
+                  "x": 1408,
+                  "y": 568,
+                  "size": 1024,
+                  "sampleStep": 2
+                },
+                "method": "linear-phase-correlation",
+                "wallMs": 225.80000001192093
+              },
+              "comparison": {
+                "mode": "fixed",
+                "reference": {
+                  "kind": "images",
+                  "index": 0,
+                  "name": "frame_000.png",
+                  "size": 3039598,
+                  "type": "image/png",
+                  "lastModified": 1793572627567
+                },
+                "target": {
+                  "kind": "images",
+                  "ordinal": 3,
+                  "timestampUs": null,
+                  "timestampClock": null,
+                  "index": 3,
+                  "name": "frame_003.png",
+                  "size": 2519849,
+                  "type": "image/png",
+                  "lastModified": 1793572628650
+                },
+                "referenceAdmissible": 32400,
+                "requested": 32400,
+                "fixedImageCoordinateRoi": true
+              },
+              "referencePreparationMs": 0,
+              "gpuReferenceIncluded": false,
+              "gpuFieldObservableMs": 270.4000000357628,
+              "truthRmse": null,
+              "acceptance": 0.8041049382716049,
+              "accepted": 26053,
+              "meanIterations": 1.0798756381222891
+            }
+          ],
+          "timingBoundary": "Worker frame available to observable GPU field plus small HUD summary; full field is read only for this export",
+          "roi": null,
+          "build": {
+            "commit": "f514eb0cecb5d927983c5df3b9e1ebd2d2de113e",
+            "dirty": false,
+            "shaders": {
+              "full_pyramid.wgsl": "d00ef999c5dbc23013928e95ea6ca498a52fbb63850056c05bdbd3c963dc0401",
+              "icgn.wgsl": "a60231689fbc3d29953fd98eb8d04649ec93cbec0f5a89a65446df716152299b",
+              "icgn_subgroup.wgsl": "d68225b1b6b6b21071e59ea6109bbd24dc0fd8b6734b6ebc4f7d59356799a034",
+              "input.wgsl": "d269f8bf203e3363a6e753476c49de27188329409fa5a848358ea031bb554f7e",
+              "reference.wgsl": "0d86eefde8fb6ac25a7cfd46b23c71b7bc6e827696602cd13229c4cab29102c2",
+              "result.wgsl": "a587a3112670a702578df6c13f75addd4136e43fa6c7efba7959aa472d0e3267",
+              "subgroup_probe.wgsl": "6e4d149ed7f17969ede557a3062742d8da6c62cb6dd745d5510112c1489fed61"
+            },
+            "demo_manifest_sha256": "c78c445a38a8541d632f28e85ec1154e492b4195c7b8f5d4755597e07605f24a",
+            "plate_image_sha256": {
+              "reference.png": "26135118b554c5996443f07abd2a89273a344154338c4c7f428ab283f85f7192",
+              "frame_095.png": "af0f4c09d2e9292beb4cbbabe01c6651a2e914c1b36b569a5861a8be431d3faf",
+              "frame_225.png": "abe3693810e289b8a2029833011a0d59fdf7ff1ea975eea91b12dc5e708d2897"
+            },
+            "cache_version": "f514eb0cecb5d927983c5df3b9e1ebd2d2de113e"
+          },
+          "acquisition": {
+            "source": "local image files",
+            "ordering": "natural relative filename, lexical tie-break",
+            "files": [
+              {
+                "name": "frame_000.png",
+                "size": 3039598,
+                "type": "image/png",
+                "lastModified": 1793572627567
+              },
+              {
+                "name": "frame_001.png",
+                "size": 2954998,
+                "type": "image/png",
+                "lastModified": 1793572627962
+              },
+              {
+                "name": "frame_002.png",
+                "size": 2692830,
+                "type": "image/png",
+                "lastModified": 1793572628323
+              },
+              {
+                "name": "frame_003.png",
+                "size": 2519849,
+                "type": "image/png",
+                "lastModified": 1793572628650
+              },
+              {
+                "name": "frame_004.png",
+                "size": 2308716,
+                "type": "image/png",
+                "lastModified": 1793572628943
+              }
+            ],
+            "ignored": [],
+            "reference": {
+              "kind": "images",
+              "index": 0,
+              "name": "frame_000.png",
+              "size": 3039598,
+              "type": "image/png",
+              "lastModified": 1793572627567
+            },
+            "lastComparison": {
+              "mode": "fixed",
+              "reference": {
+                "kind": "images",
+                "index": 0,
+                "name": "frame_000.png",
+                "size": 3039598,
+                "type": "image/png",
+                "lastModified": 1793572627567
+              },
+              "target": {
+                "kind": "images",
+                "ordinal": 3,
+                "timestampUs": null,
+                "timestampClock": null,
+                "index": 3,
+                "name": "frame_003.png",
+                "size": 2519849,
+                "type": "image/png",
+                "lastModified": 1793572628650
+              },
+              "referenceAdmissible": 32400,
+              "requested": 32400,
+              "fixedImageCoordinateRoi": true
+            }
+          },
+          "roiGeometry": {
+            "version": 1,
+            "composition": "union of roots; exact pixel-containment alternates domain/hole/island",
+            "baseImage": null,
+            "shapes": []
+          },
+          "display": {
+            "mode": 2,
+            "scale": null,
+            "opacity": 1,
+            "arrowStep": null,
+            "arrowGain": null
+          },
+          "parameterOrder": [
+            "tx",
+            "du_dx",
+            "du_dy",
+            "ty",
+            "dv_dx",
+            "dv_dy"
+          ],
+          "parameterUnits": [
+            "px",
+            "gradient",
+            "gradient",
+            "px",
+            "gradient",
+            "gradient"
+          ]
+        }
+      },
+      {
+        "levels": 2,
+        "shift": [
+          700,
+          -200
+        ],
+        "metrics": {
+          "population": 16856,
+          "accepted": 16856,
+          "accepted_coverage": 1.0,
+          "accurate_coverage": 1.0,
+          "displacement_rmse_px": 1.7590039602790374e-06,
+          "displacement_p95_px": 0.0,
+          "qualified": true
+        },
+        "config": {
+          "subsetSize": 16,
+          "subsetStride": 16,
+          "initialization": "fourier",
+          "temporalPrediction": "none",
+          "temporalFineCorrection": false,
+          "temporalMaxAge": null,
+          "divergencePatience": null,
+          "divergenceMinIterations": 4,
+          "pyramidPolicy": "fixed",
+          "spatialWeighting": "uniform",
+          "solverWorkgroupSize": 16,
+          "pipelineDepth": 1,
+          "iterations": 16,
+          "tolerance": 0.005,
+          "znccMin": 0.8,
+          "pyramidLevels": 2,
+          "iterationsPerLevel": [
+            8,
+            16
+          ],
+          "tolerancePerLevel": [
+            0.005,
+            0.005
+          ],
+          "interpolation": "bspline",
+          "motionModel": "affine",
+          "outlierPolicy": "disabled",
+          "fourierWindow": {
+            "x": 1408,
+            "y": 568,
+            "size": 1024,
+            "sampleStep": 2
+          }
+        },
+        "metadata": {
+          "configuration": {
+            "subsetSize": 16,
+            "subsetStride": 16,
+            "initialization": "fourier",
+            "temporalPrediction": "none",
+            "temporalFineCorrection": false,
+            "temporalMaxAge": null,
+            "divergencePatience": null,
+            "divergenceMinIterations": 4,
+            "pyramidPolicy": "fixed",
+            "spatialWeighting": "uniform",
+            "solverWorkgroupSize": 16,
+            "pipelineDepth": 1,
+            "iterations": 16,
+            "tolerance": 0.005,
+            "znccMin": 0.8,
+            "pyramidLevels": 2,
+            "iterationsPerLevel": [
+              8,
+              16
+            ],
+            "tolerancePerLevel": [
+              0.005,
+              0.005
+            ],
+            "interpolation": "bspline",
+            "motionModel": "affine",
+            "outlierPolicy": "disabled",
+            "fourierWindow": {
+              "x": 1408,
+              "y": 568,
+              "size": 1024,
+              "sampleStep": 2
+            },
+            "globalTranslation": {
+              "dx": 700,
+              "dy": -200,
+              "peakScore": 13.875797500378885,
+              "overlap": 0.254608154296875,
+              "correlation": 1.0000000000011278,
+              "window": {
+                "x": 1408,
+                "y": 568,
+                "size": 1024,
+                "sampleStep": 2
+              },
+              "method": "linear-phase-correlation",
+              "wallMs": 224.39999997615814
+            }
+          },
+          "capabilities": {
+            "supported": true,
+            "adapter": {
+              "vendor": "intel",
+              "architecture": "xe-2lpg",
+              "device": "",
+              "description": ""
+            },
+            "limits": {
+              "maxStorageBuffersPerShaderStage": 16,
+              "maxBindGroups": 4,
+              "maxStorageBufferBindingSize": 4294967292,
+              "maxBufferSize": 4294967292,
+              "maxComputeWorkgroupStorageSize": 65536,
+              "maxComputeInvocationsPerWorkgroup": 1024,
+              "maxTextureDimension2D": 16384
+            },
+            "features": [
+              "depth32float-stencil8",
+              "chromium-experimental-subgroup-matrix",
+              "rg11b10ufloat-renderable",
+              "texture-formats-tier1",
+              "bgra8unorm-storage",
+              "chromium-experimental-multi-draw-indirect",
+              "texture-compression-bc",
+              "dual-source-blending",
+              "core-features-and-limits",
+              "chromium-experimental-sampling-resource-table",
+              "chromium-experimental-timestamp-query-inside-passes",
+              "float32-filterable",
+              "indirect-first-instance",
+              "float32-blendable",
+              "atomic-vec2u-min-max",
+              "subgroup-size-control",
+              "texture-compression-unaligned",
+              "texture-compression-etc2",
+              "depth-clip-control",
+              "texture-compression-bc-sliced-3d",
+              "timestamp-query",
+              "shader-f16",
+              "texture-formats-tier2",
+              "clip-distances",
+              "primitive-index",
+              "texture-component-swizzle",
+              "subgroups"
+            ],
+            "resolutions": [
+              [
+                1280,
+                720
+              ],
+              [
+                1920,
+                1080
+              ],
+              [
+                3840,
+                2160
+              ]
+            ],
+            "recommendedProfile": "portable",
+            "reasons": [
+              "Start at 720p; measure the real graph before raising resolution"
+            ],
+            "profiles": {
+              "portable": true,
+              "qualified-latency": true,
+              "minimal": false
+            }
+          },
+          "profile": "portable",
+          "analysisEpoch": "5971a117-3d67-48b7-9628-364fb2e68d08",
+          "comparison": {
+            "mode": "fixed",
+            "reference": {
+              "kind": "images",
+              "index": 0,
+              "name": "frame_000.png",
+              "size": 3039598,
+              "type": "image/png",
+              "lastModified": 1793572627567
+            },
+            "target": {
+              "kind": "images",
+              "ordinal": 4,
+              "timestampUs": null,
+              "timestampClock": null,
+              "index": 4,
+              "name": "frame_004.png",
+              "size": 2308716,
+              "type": "image/png",
+              "lastModified": 1793572628943
+            },
+            "referenceAdmissible": 32400,
+            "requested": 32400,
+            "fixedImageCoordinateRoi": true
+          },
+          "createdAt": "2026-11-01T22:37:16.192Z",
+          "exportSerial": 4,
+          "readbackWallMs": 3.5,
+          "width": 3840,
+          "height": 2160,
+          "grid": [
+            240,
+            135
+          ],
+          "subsetSize": 16,
+          "subsetStride": 16,
+          "samples": [
+            {
+              "frame": 1,
+              "workerAvailableMs": 4870.399999976158,
+              "captureTimestampUs": null,
+              "completedMs": 5101.5,
+              "ageMs": 230.80000001192093,
+              "globalTranslation": {
+                "dx": 64,
+                "dy": -32,
+                "peakScore": 2511.6311417585266,
+                "overlap": 0.908203125,
+                "correlation": 0.9999999999938087,
+                "window": {
+                  "x": 1408,
+                  "y": 568,
+                  "size": 1024,
+                  "sampleStep": 2
+                },
+                "method": "linear-phase-correlation",
+                "wallMs": 211.39999997615814
+              },
+              "comparison": {
+                "mode": "fixed",
+                "reference": {
+                  "kind": "images",
+                  "index": 0,
+                  "name": "frame_000.png",
+                  "size": 3039598,
+                  "type": "image/png",
+                  "lastModified": 1793572627567
+                },
+                "target": {
+                  "kind": "images",
+                  "ordinal": 1,
+                  "timestampUs": null,
+                  "timestampClock": null,
+                  "index": 1,
+                  "name": "frame_001.png",
+                  "size": 2954998,
+                  "type": "image/png",
+                  "lastModified": 1793572627962
+                },
+                "referenceAdmissible": 32400,
+                "requested": 32400,
+                "fixedImageCoordinateRoi": true
+              },
+              "referencePreparationMs": 0,
+              "gpuReferenceIncluded": false,
+              "gpuFieldObservableMs": 230.30000001192093,
+              "truthRmse": null,
+              "acceptance": 0.9559567901234568,
+              "accepted": 30973,
+              "meanIterations": 1.0664126820133666
+            },
+            {
+              "frame": 2,
+              "workerAvailableMs": 5530.199999988079,
+              "captureTimestampUs": null,
+              "completedMs": 5780.699999988079,
+              "ageMs": 250.19999998807907,
+              "globalTranslation": {
+                "dx": 256,
+                "dy": -128,
+                "peakScore": 570.8493180189944,
+                "overlap": 0.65625,
+                "correlation": 1.0000000000011375,
+                "window": {
+                  "x": 1408,
+                  "y": 568,
+                  "size": 1024,
+                  "sampleStep": 2
+                },
+                "method": "linear-phase-correlation",
+                "wallMs": 216.10000002384186
+              },
+              "comparison": {
+                "mode": "fixed",
+                "reference": {
+                  "kind": "images",
+                  "index": 0,
+                  "name": "frame_000.png",
+                  "size": 3039598,
+                  "type": "image/png",
+                  "lastModified": 1793572627567
+                },
+                "target": {
+                  "kind": "images",
+                  "ordinal": 2,
+                  "timestampUs": null,
+                  "timestampClock": null,
+                  "index": 2,
+                  "name": "frame_002.png",
+                  "size": 2692830,
+                  "type": "image/png",
+                  "lastModified": 1793572628323
+                },
+                "referenceAdmissible": 32400,
+                "requested": 32400,
+                "fixedImageCoordinateRoi": true
+              },
+              "referencePreparationMs": 0,
+              "gpuReferenceIncluded": false,
+              "gpuFieldObservableMs": 249.5999999642372,
+              "truthRmse": null,
+              "acceptance": 0.8660802469135802,
+              "accepted": 28061,
+              "meanIterations": 1.0735896796265278
+            },
+            {
+              "frame": 3,
+              "workerAvailableMs": 6149,
+              "captureTimestampUs": null,
+              "completedMs": 6420,
+              "ageMs": 270.80000001192093,
+              "globalTranslation": {
+                "dx": 512,
+                "dy": -128,
+                "peakScore": 120.78943791829997,
+                "overlap": 0.4375,
+                "correlation": 0.9999999999988077,
+                "window": {
+                  "x": 1408,
+                  "y": 568,
+                  "size": 1024,
+                  "sampleStep": 2
+                },
+                "method": "linear-phase-correlation",
+                "wallMs": 225.80000001192093
+              },
+              "comparison": {
+                "mode": "fixed",
+                "reference": {
+                  "kind": "images",
+                  "index": 0,
+                  "name": "frame_000.png",
+                  "size": 3039598,
+                  "type": "image/png",
+                  "lastModified": 1793572627567
+                },
+                "target": {
+                  "kind": "images",
+                  "ordinal": 3,
+                  "timestampUs": null,
+                  "timestampClock": null,
+                  "index": 3,
+                  "name": "frame_003.png",
+                  "size": 2519849,
+                  "type": "image/png",
+                  "lastModified": 1793572628650
+                },
+                "referenceAdmissible": 32400,
+                "requested": 32400,
+                "fixedImageCoordinateRoi": true
+              },
+              "referencePreparationMs": 0,
+              "gpuReferenceIncluded": false,
+              "gpuFieldObservableMs": 270.4000000357628,
+              "truthRmse": null,
+              "acceptance": 0.8041049382716049,
+              "accepted": 26053,
+              "meanIterations": 1.0798756381222891
+            },
+            {
+              "frame": 4,
+              "workerAvailableMs": 6781.599999964237,
+              "captureTimestampUs": null,
+              "completedMs": 7060.300000011921,
+              "ageMs": 278.5,
+              "globalTranslation": {
+                "dx": 700,
+                "dy": -200,
+                "peakScore": 13.875797500378885,
+                "overlap": 0.254608154296875,
+                "correlation": 1.0000000000011278,
+                "window": {
+                  "x": 1408,
+                  "y": 568,
+                  "size": 1024,
+                  "sampleStep": 2
+                },
+                "method": "linear-phase-correlation",
+                "wallMs": 224.39999997615814
+              },
+              "comparison": {
+                "mode": "fixed",
+                "reference": {
+                  "kind": "images",
+                  "index": 0,
+                  "name": "frame_000.png",
+                  "size": 3039598,
+                  "type": "image/png",
+                  "lastModified": 1793572627567
+                },
+                "target": {
+                  "kind": "images",
+                  "ordinal": 4,
+                  "timestampUs": null,
+                  "timestampClock": null,
+                  "index": 4,
+                  "name": "frame_004.png",
+                  "size": 2308716,
+                  "type": "image/png",
+                  "lastModified": 1793572628943
+                },
+                "referenceAdmissible": 32400,
+                "requested": 32400,
+                "fixedImageCoordinateRoi": true
+              },
+              "referencePreparationMs": 0,
+              "gpuReferenceIncluded": false,
+              "gpuFieldObservableMs": 277.69999998807907,
+              "truthRmse": null,
+              "acceptance": 0.7366666666666667,
+              "accepted": 23868,
+              "meanIterations": 1.0861823361823362
+            }
+          ],
+          "timingBoundary": "Worker frame available to observable GPU field plus small HUD summary; full field is read only for this export",
+          "roi": null,
+          "build": {
+            "commit": "f514eb0cecb5d927983c5df3b9e1ebd2d2de113e",
+            "dirty": false,
+            "shaders": {
+              "full_pyramid.wgsl": "d00ef999c5dbc23013928e95ea6ca498a52fbb63850056c05bdbd3c963dc0401",
+              "icgn.wgsl": "a60231689fbc3d29953fd98eb8d04649ec93cbec0f5a89a65446df716152299b",
+              "icgn_subgroup.wgsl": "d68225b1b6b6b21071e59ea6109bbd24dc0fd8b6734b6ebc4f7d59356799a034",
+              "input.wgsl": "d269f8bf203e3363a6e753476c49de27188329409fa5a848358ea031bb554f7e",
+              "reference.wgsl": "0d86eefde8fb6ac25a7cfd46b23c71b7bc6e827696602cd13229c4cab29102c2",
+              "result.wgsl": "a587a3112670a702578df6c13f75addd4136e43fa6c7efba7959aa472d0e3267",
+              "subgroup_probe.wgsl": "6e4d149ed7f17969ede557a3062742d8da6c62cb6dd745d5510112c1489fed61"
+            },
+            "demo_manifest_sha256": "c78c445a38a8541d632f28e85ec1154e492b4195c7b8f5d4755597e07605f24a",
+            "plate_image_sha256": {
+              "reference.png": "26135118b554c5996443f07abd2a89273a344154338c4c7f428ab283f85f7192",
+              "frame_095.png": "af0f4c09d2e9292beb4cbbabe01c6651a2e914c1b36b569a5861a8be431d3faf",
+              "frame_225.png": "abe3693810e289b8a2029833011a0d59fdf7ff1ea975eea91b12dc5e708d2897"
+            },
+            "cache_version": "f514eb0cecb5d927983c5df3b9e1ebd2d2de113e"
+          },
+          "acquisition": {
+            "source": "local image files",
+            "ordering": "natural relative filename, lexical tie-break",
+            "files": [
+              {
+                "name": "frame_000.png",
+                "size": 3039598,
+                "type": "image/png",
+                "lastModified": 1793572627567
+              },
+              {
+                "name": "frame_001.png",
+                "size": 2954998,
+                "type": "image/png",
+                "lastModified": 1793572627962
+              },
+              {
+                "name": "frame_002.png",
+                "size": 2692830,
+                "type": "image/png",
+                "lastModified": 1793572628323
+              },
+              {
+                "name": "frame_003.png",
+                "size": 2519849,
+                "type": "image/png",
+                "lastModified": 1793572628650
+              },
+              {
+                "name": "frame_004.png",
+                "size": 2308716,
+                "type": "image/png",
+                "lastModified": 1793572628943
+              }
+            ],
+            "ignored": [],
+            "reference": {
+              "kind": "images",
+              "index": 0,
+              "name": "frame_000.png",
+              "size": 3039598,
+              "type": "image/png",
+              "lastModified": 1793572627567
+            },
+            "lastComparison": {
+              "mode": "fixed",
+              "reference": {
+                "kind": "images",
+                "index": 0,
+                "name": "frame_000.png",
+                "size": 3039598,
+                "type": "image/png",
+                "lastModified": 1793572627567
+              },
+              "target": {
+                "kind": "images",
+                "ordinal": 4,
+                "timestampUs": null,
+                "timestampClock": null,
+                "index": 4,
+                "name": "frame_004.png",
+                "size": 2308716,
+                "type": "image/png",
+                "lastModified": 1793572628943
+              },
+              "referenceAdmissible": 32400,
+              "requested": 32400,
+              "fixedImageCoordinateRoi": true
+            }
+          },
+          "roiGeometry": {
+            "version": 1,
+            "composition": "union of roots; exact pixel-containment alternates domain/hole/island",
+            "baseImage": null,
+            "shapes": []
+          },
+          "display": {
+            "mode": 2,
+            "scale": null,
+            "opacity": 1,
+            "arrowStep": null,
+            "arrowGain": null
+          },
+          "parameterOrder": [
+            "tx",
+            "du_dx",
+            "du_dy",
+            "ty",
+            "dv_dx",
+            "dv_dy"
+          ],
+          "parameterUnits": [
+            "px",
+            "gradient",
+            "gradient",
+            "px",
+            "gradient",
+            "gradient"
+          ]
+        }
+      }
+    ],
+    "errors": []
+  }
+}

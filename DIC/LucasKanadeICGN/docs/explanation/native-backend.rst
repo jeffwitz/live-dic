@@ -367,3 +367,14 @@ of each complete call. The browser core implements the same crop, 2×2 average,
 Hann taper, zero padding, phase normalization and acceptance guards in ordinary
 JavaScript. Its CPU cache is counted separately from GPU API resources.
 See :doc:`../how-to/register-large-shifts` for the contract and limitations.
+
+The seed comes from the maximum of the inverse FFT of the normalized cross
+spectrum ``FFT(target) * conj(FFT(reference))``. A 1024-square crop is averaged
+to 512-square samples, tapered, then padded to 1024-square transforms to avoid
+wrapping the original window. Reference samples/spectrum are cached. The
+integer FFT peak supplies a two-pixel-resolution displacement; the GPU refines
+it without changing tolerances. The guards require peak-to-sidelobe score
+>=8 (excluding the wrapped 11×11 peak neighbourhood), crop overlap >=25%, and
+aligned untapered normalized correlation >=0.2. Texture standard deviation
+must reach one grayscale level. These thresholds are heuristic rejection
+criteria, not statistical confidence bounds or a uniqueness guarantee.
