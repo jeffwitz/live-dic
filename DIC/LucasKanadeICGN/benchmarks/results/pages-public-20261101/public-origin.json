@@ -1,0 +1,265 @@
+{
+  "url": "https://jeffwitz.github.io/live-dic/?smoke=1&case=plate&offline=1",
+  "expected_commit": "a49de5ba6526d56f0482e69405a5a8cda982d859",
+  "build": {
+    "commit": "a49de5ba6526d56f0482e69405a5a8cda982d859",
+    "dirty": false,
+    "shaders": {
+      "full_pyramid.wgsl": "d00ef999c5dbc23013928e95ea6ca498a52fbb63850056c05bdbd3c963dc0401",
+      "icgn.wgsl": "a60231689fbc3d29953fd98eb8d04649ec93cbec0f5a89a65446df716152299b",
+      "icgn_subgroup.wgsl": "d68225b1b6b6b21071e59ea6109bbd24dc0fd8b6734b6ebc4f7d59356799a034",
+      "input.wgsl": "d269f8bf203e3363a6e753476c49de27188329409fa5a848358ea031bb554f7e",
+      "result.wgsl": "a587a3112670a702578df6c13f75addd4136e43fa6c7efba7959aa472d0e3267",
+      "subgroup_probe.wgsl": "6e4d149ed7f17969ede557a3062742d8da6c62cb6dd745d5510112c1489fed61"
+    },
+    "demo_manifest_sha256": "c78c445a38a8541d632f28e85ec1154e492b4195c7b8f5d4755597e07605f24a",
+    "plate_image_sha256": {
+      "reference.png": "26135118b554c5996443f07abd2a89273a344154338c4c7f428ab283f85f7192",
+      "frame_095.png": "af0f4c09d2e9292beb4cbbabe01c6651a2e914c1b36b569a5861a8be431d3faf",
+      "frame_225.png": "abe3693810e289b8a2029833011a0d59fdf7ff1ea975eea91b12dc5e708d2897"
+    },
+    "cache_version": "a49de5ba6526d56f0482e69405a5a8cda982d859"
+  },
+  "online": {
+    "fresh": true,
+    "completed": 1,
+    "errors": [],
+    "result": {
+      "type": "result",
+      "id": 6,
+      "completed": 1,
+      "received": 1,
+      "width": 3840,
+      "height": 2160,
+      "fps": 0,
+      "ageMedian": 34.400000005960464,
+      "ageP95": 34.400000005960464,
+      "accepted": 31474,
+      "selected": 32220,
+      "meanIterations": 1.984844633665883,
+      "truthRmse": 0.009069284135071482,
+      "scale": 0.002,
+      "counters": {
+        "temporallySeededCoarseSubsets": 0,
+        "temporalAcceptedUpdates": 31474,
+        "velocityPredictedSubsets": 0
+      },
+      "timing": {
+        "gpuMs": null,
+        "wallMs": 31.399999976158142,
+        "totalWallMs": 31.899999976158142,
+        "pairReferencePreparationWallMs": 0
+      },
+      "frameIndex": 95,
+      "plateScore": {
+        "population": "selected reference centres, r >= 288 px and 32 px image margin; ezz = 0",
+        "count": 29901,
+        "requested": 29901,
+        "coverage": 1,
+        "displacementRmsePx": 0.009069284135071482,
+        "vmRmse": 0.0001608957381546621
+      },
+      "comparison": {
+        "mode": "fixed",
+        "reference": {
+          "kind": "plate",
+          "frame": 0
+        },
+        "target": {
+          "kind": "plate",
+          "frame": 95,
+          "primary": 250,
+          "secondary": 0
+        },
+        "referenceAdmissible": 32220,
+        "requested": 32220,
+        "fixedImageCoordinateRoi": true
+      },
+      "record": null
+    }
+  },
+  "offline": {
+    "fresh": true,
+    "completed": 1,
+    "errors": [],
+    "result": {
+      "type": "result",
+      "id": 6,
+      "completed": 1,
+      "received": 1,
+      "width": 3840,
+      "height": 2160,
+      "fps": 0,
+      "ageMedian": 34.099999994039536,
+      "ageP95": 34.099999994039536,
+      "accepted": 31474,
+      "selected": 32220,
+      "meanIterations": 1.984844633665883,
+      "truthRmse": 0.009069284135071482,
+      "scale": 0.002,
+      "counters": {
+        "temporallySeededCoarseSubsets": 0,
+        "temporalAcceptedUpdates": 31474,
+        "velocityPredictedSubsets": 0
+      },
+      "timing": {
+        "gpuMs": null,
+        "wallMs": 31.799999982118607,
+        "totalWallMs": 32.099999994039536,
+        "pairReferencePreparationWallMs": 0
+      },
+      "frameIndex": 95,
+      "plateScore": {
+        "population": "selected reference centres, r >= 288 px and 32 px image margin; ezz = 0",
+        "count": 29901,
+        "requested": 29901,
+        "coverage": 1,
+        "displacementRmsePx": 0.009069284135071482,
+        "vmRmse": 0.0001608957381546621
+      },
+      "comparison": {
+        "mode": "fixed",
+        "reference": {
+          "kind": "plate",
+          "frame": 0
+        },
+        "target": {
+          "kind": "plate",
+          "frame": 95,
+          "primary": 250,
+          "secondary": 0
+        },
+        "referenceAdmissible": 32220,
+        "requested": 32220,
+        "fixedImageCoordinateRoi": true
+      },
+      "record": null
+    }
+  },
+  "source": {
+    "reference": {
+      "kind": "plate",
+      "frame": 0
+    },
+    "source": "original native-UHD analytic plate",
+    "outputSize": [
+      3840,
+      2160
+    ],
+    "mechanics": {
+      "center_px": [
+        1920,
+        1080
+      ],
+      "hole_radius_px": 112,
+      "pixel_mm": 0.01,
+      "young_MPa": 210000,
+      "poisson": 0.3,
+      "plane_strain": true,
+      "outer_image_edges": "observation window in an infinite medium, not traction-free specimen edges"
+    },
+    "load": {
+      "frame": 95,
+      "primary": 250,
+      "secondary": 0
+    },
+    "analyticScore": {
+      "population": "selected reference centres, r >= 288 px and 32 px image margin; ezz = 0",
+      "count": 29901,
+      "requested": 29901,
+      "coverage": 1,
+      "displacementRmsePx": 0.009069284135071482,
+      "vmRmse": 0.0001608957381546621
+    },
+    "lastComparison": {
+      "mode": "fixed",
+      "reference": {
+        "kind": "plate",
+        "frame": 0
+      },
+      "target": {
+        "kind": "plate",
+        "frame": 95,
+        "primary": 250,
+        "secondary": 0
+      },
+      "referenceAdmissible": 32220,
+      "requested": 32220,
+      "fixedImageCoordinateRoi": true
+    }
+  },
+  "service_worker": {
+    "scope": "https://jeffwitz.github.io/live-dic/",
+    "active": "activated",
+    "controller": true,
+    "caches": [
+      "live-dic-%2Flive-dic%2F-a49de5ba6526d56f0482e69405a5a8cda982d859"
+    ]
+  },
+  "verified_source_hashes": {
+    "shaders/full_pyramid.wgsl": "d00ef999c5dbc23013928e95ea6ca498a52fbb63850056c05bdbd3c963dc0401",
+    "shaders/icgn.wgsl": "a60231689fbc3d29953fd98eb8d04649ec93cbec0f5a89a65446df716152299b",
+    "shaders/icgn_subgroup.wgsl": "d68225b1b6b6b21071e59ea6109bbd24dc0fd8b6734b6ebc4f7d59356799a034",
+    "shaders/input.wgsl": "d269f8bf203e3363a6e753476c49de27188329409fa5a848358ea031bb554f7e",
+    "shaders/result.wgsl": "a587a3112670a702578df6c13f75addd4136e43fa6c7efba7959aa472d0e3267",
+    "shaders/subgroup_probe.wgsl": "6e4d149ed7f17969ede557a3062742d8da6c62cb6dd745d5510112c1489fed61",
+    "demo/plate/reference.png": "26135118b554c5996443f07abd2a89273a344154338c4c7f428ab283f85f7192",
+    "demo/plate/frame_095.png": "af0f4c09d2e9292beb4cbbabe01c6651a2e914c1b36b569a5861a8be431d3faf",
+    "demo/plate/frame_225.png": "abe3693810e289b8a2029833011a0d59fdf7ff1ea975eea91b12dc5e708d2897"
+  },
+  "cached_asset_count": 48,
+  "cached_urls": [
+    "https://jeffwitz.github.io/live-dic/",
+    "https://jeffwitz.github.io/live-dic/ATTRIBUTION.md",
+    "https://jeffwitz.github.io/live-dic/app.js",
+    "https://jeffwitz.github.io/live-dic/build.json",
+    "https://jeffwitz.github.io/live-dic/demo/manifest.json",
+    "https://jeffwitz.github.io/live-dic/demo/plate/frame_095.png",
+    "https://jeffwitz.github.io/live-dic/demo/plate/frame_225.png",
+    "https://jeffwitz.github.io/live-dic/demo/plate/reference.png",
+    "https://jeffwitz.github.io/live-dic/demo/plate.json",
+    "https://jeffwitz.github.io/live-dic/demo/reference.png",
+    "https://jeffwitz.github.io/live-dic/demo/tensile.webm",
+    "https://jeffwitz.github.io/live-dic/icons/icon-192.png",
+    "https://jeffwitz.github.io/live-dic/icons/icon-512.png",
+    "https://jeffwitz.github.io/live-dic/icons/icon.svg",
+    "https://jeffwitz.github.io/live-dic/index.html",
+    "https://jeffwitz.github.io/live-dic/manifest.webmanifest",
+    "https://jeffwitz.github.io/live-dic/render/field.js",
+    "https://jeffwitz.github.io/live-dic/shaders/full_pyramid.wgsl",
+    "https://jeffwitz.github.io/live-dic/shaders/icgn.wgsl",
+    "https://jeffwitz.github.io/live-dic/shaders/icgn_subgroup.wgsl",
+    "https://jeffwitz.github.io/live-dic/shaders/input.wgsl",
+    "https://jeffwitz.github.io/live-dic/shaders/result.wgsl",
+    "https://jeffwitz.github.io/live-dic/shaders/subgroup_probe.wgsl",
+    "https://jeffwitz.github.io/live-dic/ui/analysis-worker.js",
+    "https://jeffwitz.github.io/live-dic/ui/app.css",
+    "https://jeffwitz.github.io/live-dic/ui/archive.js",
+    "https://jeffwitz.github.io/live-dic/ui/figure.js",
+    "https://jeffwitz.github.io/live-dic/ui/history.js",
+    "https://jeffwitz.github.io/live-dic/ui/local-media.js",
+    "https://jeffwitz.github.io/live-dic/ui/mask-image.js",
+    "https://jeffwitz.github.io/live-dic/ui/plate-truth.js",
+    "https://jeffwitz.github.io/live-dic/ui/postprocess.js",
+    "https://jeffwitz.github.io/live-dic/ui/roi-geometry.js",
+    "https://jeffwitz.github.io/live-dic/ui/roi.js",
+    "https://jeffwitz.github.io/live-dic/ui/session.js",
+    "https://jeffwitz.github.io/live-dic/ui/workbench.js",
+    "https://jeffwitz.github.io/live-dic/ui/workspace.js",
+    "https://jeffwitz.github.io/live-dic/web/core/device.js",
+    "https://jeffwitz.github.io/live-dic/web/core/engine.js",
+    "https://jeffwitz.github.io/live-dic/web/core/input.js",
+    "https://jeffwitz.github.io/live-dic/web/core/pyramid.js",
+    "https://jeffwitz.github.io/live-dic/web/core/reference.js",
+    "https://jeffwitz.github.io/live-dic/web/core/result.js",
+    "https://jeffwitz.github.io/live-dic/web/core/ring.js",
+    "https://jeffwitz.github.io/live-dic/web/core/roi.js",
+    "https://jeffwitz.github.io/live-dic/web/core/shaders.js",
+    "https://jeffwitz.github.io/live-dic/web/core/temporal.js",
+    "https://jeffwitz.github.io/live-dic/worker.js"
+  ],
+  "uncached_network_probe_reachable": false,
+  "user_agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+  "checked_at": "2026-11-01T10:32:08.681338+00:00",
+  "scope": "Actual public HTTPS Pages origin; original UHD plate field online and after CDP offline reload with HTTP cache disabled. An uncached probe must fail. Functional qualification, not a camera or FPS campaign."
+}

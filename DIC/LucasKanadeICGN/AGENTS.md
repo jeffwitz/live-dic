@@ -622,3 +622,9 @@ qualification rather than infer mobile coverage from desktop results.
   248 local tests with GPU/browser flags. Public-origin verification must also
   check actual service-worker activation and an offline reload; HTTP 200 on
   the landing page alone is insufficient. Retain the original fixture hashes.
+
+- Public-origin verification is recorded in `pages-public-20261101/`: actual
+  HTTPS UHD calculation and offline reload, 48 cached assets, six canonical
+  WGSL hashes and three original PNG hashes checked. Network emulation must
+  include the service-worker target and reject an uncached network probe;
+  page-only offline emulation can leave service-worker fetches online.
