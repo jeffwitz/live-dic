@@ -405,7 +405,10 @@ The live view offers **Norm-coloured displacement vectors** and **Current image
 only**. It copies the associated current image and draws sparse GPU glyphs;
 it does not create a scalar field raster, interpolate displacements or compute
 strain. Adjust subset spacing, vector opacity, norm colour maximum and length
-magnification independently. The colourbar is in measured image pixels.
+magnification independently. Auto spacing samples near the centre of each
+block, keeping roughly 20 columns by 12 rows of glyphs; small fields stay
+dense. Fixed spacing is also available. This samples the display only: all
+subsets are still calculated and recorded. The colourbar is in measured pixels.
 
 A vector's tip is at its current subset centre: reference centre plus measured
 ``(u,v)``. Its tail is tip minus magnified displacement. At magnification one,

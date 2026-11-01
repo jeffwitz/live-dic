@@ -687,7 +687,7 @@ $('apply-roi').onclick = () => sourceChange(async () => {
 $('clear-roi').onclick = () => sourceChange(async () => { workbench.returnLive(); pauseSource(); await drain(); workbench.setMask(null); workbench.setReady(false);$('export').disabled=true;clearLiveMetrics(); roiEditing = false; roi.reset(referenceInfo.width, referenceInfo.height); appliedShapes = []; draftMaskSource = appliedMaskSource = null; $('roi-editor').hidden = true;
   referenceInfo = (await send('roi', { mask: null, options: options() })).info; await updateReferenceControls(); appliedEditorState=roi.state(); $('mask-import-summary').textContent='Full image · no imported base mask.'; $('pause').textContent = 'Resume'; details(); if (source === 'plate') await runPlateTarget(); });
 function displayOptions() { return { mode: Number($('component').value), scale: $('scale').value === 'auto' ? null : Number($('scale').value),
-  opacity: Number($('opacity').value), arrowStep: Number($('arrow-step').value), arrowGain: $('arrow-gain').value==='auto'?null:Number($('arrow-gain').value) }; }
+  opacity: Number($('opacity').value), arrowStep: $('arrow-step').value==='auto'?null:Number($('arrow-step').value), arrowGain: $('arrow-gain').value==='auto'?null:Number($('arrow-gain').value) }; }
 for (const id of ['component','scale','opacity','arrow-step','arrow-gain']) $(id).onchange = () => {if(transport&&referenceInfo)send('display',{display:displayOptions()}).catch(e=>message(e.message,true));};
 function download(name, content, type) {
   const url = URL.createObjectURL(new Blob([content], { type })), link = document.createElement('a');

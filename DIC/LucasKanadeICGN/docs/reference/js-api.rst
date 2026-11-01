@@ -255,7 +255,7 @@ with the binary ``roi`` data. Unapplied edits are not exported as applied data.
 
 ``web-app/render/live-vectors.js`` is the live presentation adapter, separate
 from ``DICEngine``. It accepts mode 2 (vectors) or 8 (image only), ``arrowStep``
-(positive integer grid spacing), ``arrowGain`` (positive length magnification
+(positive integer grid spacing, or null for an automatic overview), ``arrowGain`` (positive length magnification
 or null for automatic), ``scale`` (positive norm maximum in image pixels or
 null for automatic), and ``opacity`` (0..1 for glyphs). It reads the existing
 GPU image and field, with no full-field readback or derived strain map.

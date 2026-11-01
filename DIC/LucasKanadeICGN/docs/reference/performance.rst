@@ -1401,8 +1401,9 @@ Bounded browser recording and independent preview
 
 The opt-in PWA supervisor overlaps a single GPU calculation with asynchronous
 IndexedDB admission through a two-slot CPU queue. A separate preview width/rate
-does not resize numerical images or change solver settings. The existing
-synchronous recording and native-size display remain the defaults. Activation
+does not resize numerical images or change solver settings. At this campaign
+revision synchronous recording and native-size display were the defaults. The
+current live-vector GUI instead chooses 10 Hz/1920 px preview. Activation
 is described in :doc:`../how-to/run-in-browser`.
 
 These controls use a **static simulated 60 Hz camera**, consecutive received
@@ -1644,7 +1645,7 @@ This establishes functional reference reuse and interchange, not a new live
 first-image loop and :doc:`../how-to/run-in-browser` for the equivalent GUI mode.
 
 Fixed-first-reference requalification (2026-11-01)
--------------------------------------------------
+---------------------------------------------------
 
 The `complete protocol and lossless records <https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/fixed-reference-bench-20261101>`_
 compare ``388cc5e`` with ``e781957``. The entire packaged ``python/src`` tree is

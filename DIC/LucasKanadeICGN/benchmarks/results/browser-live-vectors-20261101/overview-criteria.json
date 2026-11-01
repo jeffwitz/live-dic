@@ -1,0 +1,8 @@
+{
+  "reason": "Visual inspection found the initial fixed-step glyphs too dense and thin on a small fit-to-window viewport. The final presentation now samples about 20 columns by 12 rows at block centres, with thicker shafts. This is a presentation refinement, not a changed numerical solver or a repeat until the timing gate passes.",
+  "baseline": "Same frozen e781957 scalar site",
+  "candidate": "Final automatic-overview renderer; clean commit/build recorded in reports",
+  "protocol": "Repeat the original A/B/B/A protocol exactly: static original UHD reference camera, common-zero numerical profile, 10 Hz/1920 px preview, bounded recording overlap enabled, 4 seconds warmup and 20 seconds recording off/on observations.",
+  "decisions": "Retain all initial controls and their inconclusive recording result. Report this new matrix separately using its own reference-only spread. Do not widen tolerances with candidate measurements or infer speedup below control variability. Keep identity/ownership gates unchanged.",
+  "isolation": "Complete the final tests and builds before timing; no tests/builds during observations. Same Intel hardware, driver, runtime and performance profile."
+}

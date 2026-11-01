@@ -16,7 +16,10 @@ function roundedMaximum(value) {
 }
 
 /** Presentation values only: never normalize or modify the measured field. */
-export function vectorAppearance(result, { scale = null, arrowStep = 4, arrowGain = null, previewMaxWidth = 0 } = {}) {
+export function vectorAppearance(result, { scale = null, arrowStep = null, arrowGain = null, previewMaxWidth = 0 } = {}) {
+  // A monitoring overview needs a few hundred glyphs, not thousands of tiny
+  // arrows. Keep small fields dense and let users select a fixed step instead.
+  arrowStep ??= Math.max(1, Math.ceil(result.grid[0] / 20), Math.ceil(result.grid[1] / 12));
   if (!Number.isInteger(arrowStep) || arrowStep < 1) throw new Error('Vector spacing must be a positive subset count');
   if (scale !== null && (!Number.isFinite(scale) || scale <= 0)) throw new Error('Vector colour maximum must be positive');
   if (arrowGain !== null && (!Number.isFinite(arrowGain) || arrowGain <= 0)) throw new Error('Vector magnification must be positive or automatic');
@@ -77,7 +80,8 @@ export class LiveVectorRenderer {
       }
       @vertex fn glyph(@builtin(vertex_index) vertex:u32,@builtin(instance_index) instance:u32)->Vertex {
         let columns=(config.gx+config.step-1u)/config.step;
-        let ix=(instance%columns)*config.step;let iy=(instance/columns)*config.step;
+        let ix=min(config.gx-1u,(instance%columns)*config.step+config.step/2u);
+        let iy=min(config.gy-1u,(instance/columns)*config.step+config.step/2u);
         let base=(iy*config.gx+ix)*config.stride;
         let status=field.values[base+config.parameters];
         var output:Vertex;output.position=vec4<f32>(-2,-2,0,1);output.colour=vec4<f32>(0);
@@ -104,8 +108,8 @@ export class LiveVectorRenderer {
             if vertex<6u {let c=corners[vertex];point+=vec2<f32>(c.x*2.0-1.0,c.y)*1.25;}
           } else {
             let direction=delta/distance;let normal=vec2<f32>(-direction.y,direction.x);
-            let head=min(distance*.4,8.0);let start=end-delta;let neck=end-direction*head;
-            if vertex<6u {let c=corners[vertex];point=mix(start,neck,c.x)+normal*c.y;}
+            let head=min(distance*.4,12.0);let start=end-delta;let neck=end-direction*head;
+            if vertex<6u {let c=corners[vertex];point=mix(start,neck,c.x)+normal*c.y*2.0;}
             else if vertex<9u {
               let points=array<vec2<f32>,3>(end,neck+normal*head*.5,neck-normal*head*.5);point=points[vertex-6u];
             } else {point=start;}
@@ -121,7 +125,7 @@ export class LiveVectorRenderer {
         targets: [{ format, blend: { color: { srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha' },
           alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha' } } }] }, primitive: { topology: 'triangle-list' } });
   }
-  draw(engine, result, { mode = 2, scale = null, opacity = 1, imageTexture = null, arrowStep = 4, arrowGain = null, previewMaxWidth = 0 } = {}) {
+  draw(engine, result, { mode = 2, scale = null, opacity = 1, imageTexture = null, arrowStep = null, arrowGain = null, previewMaxWidth = 0 } = {}) {
     if (![2,8].includes(mode)) throw new Error('Live view supports norm-coloured vectors or the current image; use Results for scalar fields');
     if (!Number.isFinite(opacity) || opacity < 0 || opacity > 1) throw new Error('Vector opacity must be 0..1');
     const appearance = vectorAppearance(result, { scale, arrowStep, arrowGain, previewMaxWidth });
@@ -131,7 +135,7 @@ export class LiveVectorRenderer {
     const texture = imageTexture ?? engine.imageTexture;
     const bytes = new ArrayBuffer(64), u = new Uint32Array(bytes), f = new Float32Array(bytes);
     u.set([result.width,result.height,...result.grid,result.config.motionModel==='quadratic'?16:8,
-      result.config.motionModel==='quadratic'?12:6,arrowStep,+(texture.format==='r8unorm')]);
+      result.config.motionModel==='quadratic'?12:6,appearance.arrowStep,+(texture.format==='r8unorm')]);
     f.set([result.subsetSize,result.subsetStride,maximumPx,gain,viewWidth,viewHeight,opacity,0],8);
     this.device.queue.writeBuffer(this.config,0,bytes);
     let background = this.backgroundGroups.get(texture);

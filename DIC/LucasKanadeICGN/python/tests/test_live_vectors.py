@@ -15,10 +15,11 @@ class LiveVectorTests(unittest.TestCase):
         script = f"""
           import {{vectorAppearance,vectorColour}} from {json.dumps((APP / "render/live-vectors.js").as_uri())};
           const result={{width:3840,height:2160,grid:[240,135],subsetSize:16,subsetStride:16,maxAbs:[3,4,5]}};
-          const before=JSON.stringify(result),a=vectorAppearance(result,{{previewMaxWidth:1920}});
+          const automatic=vectorAppearance(result);
+          const before=JSON.stringify(result),a=vectorAppearance(result,{{previewMaxWidth:1920,arrowStep:4}});
           const b=vectorAppearance(result,{{scale:10,arrowGain:3,arrowStep:8}});
           const invalid=[{{arrowStep:0}},{{scale:0}},{{arrowGain:-1}}].map(options=>{{try{{vectorAppearance(result,options);return false;}}catch{{return true;}}}});
-          console.log(JSON.stringify({{a,b,invalid,unchanged:JSON.stringify(result)===before,
+          console.log(JSON.stringify({{a,b,automatic,invalid,unchanged:JSON.stringify(result)===before,
             colours:[0,.5,1].map(vectorColour)}}));
         """
         value = self.node(script)
@@ -28,6 +29,8 @@ class LiveVectorTests(unittest.TestCase):
         self.assertAlmostEqual(value["a"]["gain"], 5.12)
         self.assertEqual(value["b"]["maximumPx"], 10)
         self.assertEqual(value["b"]["gain"], 3)
+        self.assertEqual(value["automatic"]["arrowStep"], 12)
+        self.assertEqual(value["automatic"]["instances"], 240)
         self.assertEqual(value["colours"], [[21, 57, 99], [31, 132, 138], [241, 206, 95]])
         self.assertTrue(value["unchanged"])
         self.assertEqual(value["invalid"], [True] * 3)

@@ -296,8 +296,9 @@ recent completed field when a presentation is due, rather than queueing old
 preview frames. A timer/explicit flush presents the final field when inputs
 pause. Preview width affects only the canvas raster and shader coordinate
 mapping. Mask editing forces native-size reference presentation, while numerical
-inputs, subsets and all saved/exported arrays remain unchanged. Existing
-unthrottled native-size defaults remain in place.
+inputs, subsets and all saved/exported arrays remain unchanged. Custom session
+clients retain unthrottled/native-size protocol defaults; the PWA explicitly
+chooses 10 Hz/1920 px for lightweight live monitoring.
 
 Slow monitoring can request 1, 5 or 10 Hz. Suspending live preview prevents both
 live render calls and bitmap creation; the supervisor still records every
