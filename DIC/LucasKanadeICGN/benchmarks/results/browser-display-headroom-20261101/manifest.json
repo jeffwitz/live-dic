@@ -1,0 +1,21 @@
+{
+  "protocol": "Static fake native-UHD camera, consecutive GPU preparation, recording off; three-second warmup and twelve-second observations. Single short observations, no reliable speedup claim.",
+  "powerProfileObserved": "performance",
+  "cases": {
+    "baseline.json.gz": {
+      "sha256Uncompressed": "fde28f05b33bd22e1813fa52bed9b01776f464037d5f0adc5790c1ee9f4067e7",
+      "completedFps": 4.738810925780676,
+      "pairCallMedianMs": 184.30000001192093
+    },
+    "resize-guard.json.gz": {
+      "sha256Uncompressed": "ae3f8f17e99613f77ef3e032c571bb8bc5acc6cc472764a7f97948665b25f6b3",
+      "completedFps": 4.884186303513601,
+      "pairCallMedianMs": 182.19999998807907
+    },
+    "no-presentation.json.gz": {
+      "sha256Uncompressed": "5430bd49af6d19550ec9b1cc5571b6d27efc0d2703d26ee703deb07c41e69621",
+      "completedFps": 5.079369769881166,
+      "pairCallMedianMs": 178.59999997913837
+    }
+  }
+}

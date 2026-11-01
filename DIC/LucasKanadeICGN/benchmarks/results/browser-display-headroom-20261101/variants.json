@@ -1,0 +1,28 @@
+{
+  "resize-guard": {
+    "name": "resize-guard",
+    "baseHashes": {
+      "app.js": "a65953a7ceead2642442d043196bec3268e23b8d7062ef73c4598cac808c36fd",
+      "ui/session.js": "33128421d952b020a13064531dd033d2a5f918d5c7a72db337cfae8b9659cf1b"
+    },
+    "patchedHashes": {
+      "app.js": "e074095e733137f3495c52b2812f0a4f755594f54139406d00651420c4914169",
+      "ui/session.js": "33128421d952b020a13064531dd033d2a5f918d5c7a72db337cfae8b9659cf1b",
+      "render/field.js": "f523dcc9a486f87cfae97bb97c1dc6ad5b040e858d3327e4ed06be048d7111e2"
+    },
+    "meaning": "No numerical kernel, image or iteration changes. No-presentation is an upper-headroom control, not a usable UI."
+  },
+  "no-presentation": {
+    "name": "no-presentation",
+    "baseHashes": {
+      "app.js": "a65953a7ceead2642442d043196bec3268e23b8d7062ef73c4598cac808c36fd",
+      "ui/session.js": "33128421d952b020a13064531dd033d2a5f918d5c7a72db337cfae8b9659cf1b"
+    },
+    "patchedHashes": {
+      "app.js": "8559f0488b31014eebe7131f0eb9c371282ab994cc731f385da4b71d44e55736",
+      "ui/session.js": "77b2d28837e4afdbd4cf37e829c11033b036e115dbecf29e3345a034be2a175d",
+      "render/field.js": "2bf9773968a851f1aab4f4a947c687b159ad008f226763e43fbd9b7100aed421"
+    },
+    "meaning": "No numerical kernel, image or iteration changes. No-presentation is an upper-headroom control, not a usable UI."
+  }
+}

@@ -245,7 +245,7 @@ A live-mode library uses an explicit selection placeholder, so its first recorde
 field can be opened without creating a duplicate frozen field.
 
 Acquisition, computation and presentation
----------------------------------------
+-----------------------------------------
 
 The normal application already uses a dedicated Worker for image upload,
 reference preparation, solving and GPU field rendering. The main thread

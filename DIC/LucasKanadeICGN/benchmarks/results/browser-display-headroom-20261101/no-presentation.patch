@@ -1,0 +1,32 @@
+--- a/app.js
++++ b/app.js
+@@ -68,8 +68,7 @@
+ }
+ async function receive({ data }) {
+   if (data.bitmap) {
+-    $('field').width = data.width; $('field').height = data.height;
+-    $('field').getContext('bitmaprenderer').transferFromImageBitmap(data.bitmap);
++    data.bitmap.close();
+     delete data.bitmap;
+   }
+   if (data.type === 'error') {
+--- a/ui/session.js
++++ b/ui/session.js
+@@ -24,7 +24,7 @@
+   const completionTimes = [];
+   const outstanding = new Set();
+   function present(message = {}, transfer = []) {
+-    const bitmap = bitmapPresentation && canvas ? canvas.transferToImageBitmap() : null;
++    const bitmap = false && bitmapPresentation && canvas ? canvas.transferToImageBitmap() : null;
+     send({ ...message, ...(bitmap ? { bitmap, width: canvas.width, height: canvas.height } : {}) }, bitmap ? [bitmap, ...transfer] : transfer);
+   }
+   async function referenceFrom(frame, options, roiMask = null) {
+--- a/render/field.js
++++ b/render/field.js
+@@ -135,3 +135,6 @@
+   }
+   destroy() { this.config.destroy(); this.context.unconfigure(); }
+ }
++
++// Diagnostic only: remove all live field rendering.
++FieldRenderer.prototype.draw = () => 1;

@@ -243,7 +243,7 @@ rigid subset motion. Do not compare its zero deformation terms with affine
 strain output; compare displacement, accepted subsets, iterations, and timing.
 
 Isolate a browser camera comparison mode
----------------------------------------
+----------------------------------------
 
 ``tools/diagnose_camera_pipeline.py`` accepts ``--comparison consecutive``
 or ``fixed`` and ``--recording off`` or ``on`` for targeted controls. Both

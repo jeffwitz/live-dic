@@ -1,0 +1,33 @@
+diff --git a/tools/diagnose_camera_pipeline.py b/tools/diagnose_camera_pipeline.py
+index 216d430..10f54e2 100644
+--- a/tools/diagnose_camera_pipeline.py
++++ b/tools/diagnose_camera_pipeline.py
+@@ -38,6 +38,8 @@ def main():
+     parser.add_argument("--duration", type=float, default=10)
+     parser.add_argument("--warmup", type=float, default=3)
+     parser.add_argument("--software", action="store_true")
++    parser.add_argument("--comparison", choices=["all", "fixed", "consecutive"], default="all")
++    parser.add_argument("--recording", choices=["all", "on", "off"], default="all")
+     parser.add_argument(
+         "--gpu-reference", action="store_true", help="opt into persistent GPU reference preparation"
+     )
+@@ -78,6 +80,8 @@ def main():
+         "warmup_seconds": args.warmup,
+         "software_requested": args.software,
+         "gpu_reference_requested": args.gpu_reference,
++        "comparison_requested": args.comparison,
++        "recording_requested": args.recording,
+     }
+     try:
+         with tempfile.TemporaryDirectory(
+@@ -119,6 +123,10 @@ def main():
+                     ("consecutive", False),
+                     ("consecutive", True),
+                 ]:
++                    if args.comparison != "all" and mode != args.comparison:
++                        continue
++                    if args.recording != "all" and recording != (args.recording == "on"):
++                        continue
+                     browser._evaluate(
+                         "(async()=>{if(!liveDicSourceState().paused)await document.getElementById('pause').onclick();while(liveDicSourceState().inFlight)await new Promise(r=>setTimeout(r,20));return true;})()"
+                     )
