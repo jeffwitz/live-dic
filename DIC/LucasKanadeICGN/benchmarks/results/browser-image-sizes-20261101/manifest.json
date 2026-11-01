@@ -1,0 +1,10 @@
+{
+  "hardware.json": {
+    "bytes": 34091,
+    "sha256": "ead2216cfc9a624b07eeeafcaf2badaba4d8ccf5fbdb4165edf4f5c66fe5a634"
+  },
+  "installed-wheel.json": {
+    "bytes": 278,
+    "sha256": "953374b6fef1a461937e2acf2a832c818288c674aeae0885bfe053dd66d79a9c"
+  }
+}

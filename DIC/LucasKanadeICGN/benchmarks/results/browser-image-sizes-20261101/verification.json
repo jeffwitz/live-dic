@@ -1,0 +1,20 @@
+{
+  "revision": "5ce6496c8a986e7ccfa21202b5fdeed33b2773d0",
+  "source_sha256": {
+    "device.js": "1e87c1ba4e1e0d6e165727860bae2da7edadd675d20df6910da004dd22a235fb",
+    "engine.js": "22705e52aa226a6757473cdd89c3892ba734fb38668e1b4e16b00c5aaeefd95a",
+    "pyramid.js": "828b3e0379e17e67f15cca23a873ae05a2a0fcde30f6604659d8eb33645f204a"
+  },
+  "hardware_build_matches_commit": true,
+  "wgsl_unchanged": true,
+  "wheel_sha256": "991d23e1f3f35eadeef3a846d80b112bd00685f6256c87d972b9633236d5f931",
+  "checks": {
+    "full_gpu_browser": "289 tests passed; no skips",
+    "swiftshader_core": "8 tests passed; no skips",
+    "ruff": "passed",
+    "format": "86 files passed",
+    "node": "3 changed core modules passed",
+    "sphinx": "strict build passed",
+    "wheel": "47 files matched checkout; installed in fresh Python 3.11 environment outside checkout"
+  }
+}

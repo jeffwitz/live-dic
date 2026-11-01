@@ -1,0 +1,13 @@
+test_core_is_instantiable_without_page_globals_and_destroy_is_idempotent (test_browser_core.BrowserCoreExecutionTests.test_core_is_instantiable_without_page_globals_and_destroy_is_idempotent) ... ok
+test_decimated_readback_is_a_gpu_sample_of_the_complete_field (test_browser_core.BrowserCoreExecutionTests.test_decimated_readback_is_a_gpu_sample_of_the_complete_field) ... ok
+test_device_negotiates_large_reference_and_preserves_injected_ownership (test_browser_core.BrowserCoreExecutionTests.test_device_negotiates_large_reference_and_preserves_injected_ownership) ... ok
+test_full_roi_empty_and_missing_coarse_seed (test_browser_core.BrowserCoreExecutionTests.test_full_roi_empty_and_missing_coarse_seed) ... ok
+test_integer_bt709_conversion_and_gpu_only_results (test_browser_core.BrowserCoreExecutionTests.test_integer_bt709_conversion_and_gpu_only_results) ... ok
+test_constructor_rejects_unported_or_invalid_options_without_a_gpu (test_browser_core.BrowserGeometryTests.test_constructor_rejects_unported_or_invalid_options_without_a_gpu) ... ok
+test_full_roi_geometry_matches_native_conservative_links (test_browser_core.BrowserGeometryTests.test_full_roi_geometry_matches_native_conservative_links) ... ok
+test_slot_ring_starts_both_slots_and_delivers_in_order (test_browser_core.BrowserGeometryTests.test_slot_ring_starts_both_slots_and_delivers_in_order) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 29.665s
+
+OK
