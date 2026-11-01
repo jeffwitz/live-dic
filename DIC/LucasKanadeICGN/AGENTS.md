@@ -793,3 +793,18 @@ qualification rather than infer mobile coverage from desktop results.
   `python/src` remains identical to the fixed-reference baseline. No renderer
   speedup or recording nonregression is established: controls drift and one
   candidate has a long admission tail. Preserve those limits and raw samples.
+
+### Owner-requested prepare / solve / replay workflow — 2026-11-01
+
+- Interactive source/target seeking previews an input image without target
+  registration. Reference/mask preparation stays cold. Solve owns calculation
+  Start/Pause and image range. The owner requested a replayable analysis: the
+  GUI now initially selects saving, preserving this preference across sources.
+  Numerical defaults and custom session defaults are unchanged.
+- Results has quantity, Play/Pause, rate and slider directly above the image.
+  Playback and seeking must never request correlation. Quantity/style persist across compatible fields; saved recipes remain
+  field-specific unless a batch recipe is explicitly applied; initial import restores saved
+  settings. Preserve raw arrays, storage ownership and analysis provenance.
+- Rapid result seeks allow one load and only the newest pending request.
+  Canned smoke scenarios explicitly start unrecorded previews; the manual
+  workflow qualifier uses `?smoke=1&case=manual` and original UHD inputs.

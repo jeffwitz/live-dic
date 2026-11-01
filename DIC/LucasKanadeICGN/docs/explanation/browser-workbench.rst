@@ -6,6 +6,27 @@ is organized around a short path: choose input, define the reference and
 ROI, run correlation, then inspect and process the resulting fields. Pierre
 Margerit's foundational numerical work remains the basis of the engine.
 
+Three distinct user operations
+------------------------------
+
+Input preview, correlation and saved-result playback have separate controls.
+Input seeks draw one decoded image without a target solve. Reference/mask
+preparation remains a cold operation. Solve owns Start/Pause calculation and
+its explicit image range; the GUI initially selects full-field recording so a
+normal calculation produces replayable results. Custom session protocol and
+numerical defaults remain unchanged. Canned diagnostic URLs explicitly request
+unrecorded preview calculations; they do not define the interactive workflow.
+
+Results owns a transport beside the image: quantity, Play/Pause, rate and saved
+field slider. It pauses acquisition and reads the result library. Navigation
+keeps quantity/style for compatible fields; each field retains its saved recipe.
+Apply a batch recipe explicitly when uniform post-processing is required;
+initial archive/session import restores its saved view. Original coefficients
+are immutable. Fast dragging coalesces seeks to one load plus the newest request.
+Playback waits for analysis and does not invent acquisition timestamps or skip
+stored fields to meet a presentation rate. Source changes suspend recording
+until Solve starts again while preserving the user's save preference.
+
 Interface research
 ------------------
 

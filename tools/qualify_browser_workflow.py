@@ -66,7 +66,9 @@ def main():
                 "document.getElementById('pause').closest('#pane-solve')!==null"
             )
             browser._evaluate("document.getElementById('draw').onclick().then(()=>true)")
-            assert browser._evaluate("!liveDicSourceState().viewingInput&&!document.getElementById('field').hidden")
+            assert browser._evaluate(
+                "!liveDicSourceState().viewingInput&&!document.getElementById('field').hidden"
+            )
             assert browser._evaluate("liveDicPipelineReport().presentation.referencePreview")
             assert browser._evaluate("liveDicStatus.completed") == 0
             browser._evaluate("document.getElementById('cancel-roi').onclick().then(()=>true)")
@@ -149,14 +151,24 @@ def main():
             assert browser._evaluate("document.getElementById('review-component').value") == "exx"
             assert browser._evaluate("liveDicStatus.completed") == 3
             # Rapid seeks converge to the last requested saved result.
+            browser._evaluate("""(()=>{
+              const store=liveDicWorkbench.storage;globalThis.seekLoads=[];
+              globalThis.originalLoad=store.load.bind(store);let first=true;
+              store.load=async entry=>{seekLoads.push(entry.id);if(first){first=false;await new Promise(resolve=>globalThis.releaseSeek=resolve);}return originalLoad(entry);};
+              return true;
+            })()""")
             browser._evaluate(
                 "for(const index of [0,2,1]){document.getElementById('result-seek').value=index;document.getElementById('result-seek').oninput();}true"
             )
+            assert browser._evaluate("seekLoads") == [1]
+            browser._evaluate("releaseSeek();true")
             wait(
                 browser,
                 "liveDicWorkbench.report().selected===2&&liveDicWorkbench.report().recipe!==null",
             )
             assert browser._evaluate("liveDicStatus.completed") == 3
+            assert browser._evaluate("seekLoads") == [1, 2]
+            browser._evaluate("liveDicWorkbench.storage.load=originalLoad;true")
             raw_after = browser._evaluate(digest)
             assert raw_before == raw_after and all(row["size"] == [3840, 2160] for row in raw_after)
             pixels = asyncio.run(
@@ -175,6 +187,7 @@ def main():
                 final=browser._evaluate("liveDicWorkbench.report()"),
                 raw_fields=raw_after,
                 correlations=browser._evaluate("liveDicStatus.completed"),
+                coalesced_loads=browser._evaluate("seekLoads"),
                 errors=browser._evaluate("liveDicStatus.errors"),
             )
             assert not report["errors"], report["errors"]

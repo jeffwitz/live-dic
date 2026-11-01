@@ -458,3 +458,20 @@ acknowledges computation after handing ownership to the queue, so committed
 throughput and age must be reported separately. IndexedDB I/O is asynchronous;
 this does not create a second GPU device or transfer WebGPU buffers to another
 Worker.
+
+Application workflow controls
+------------------------------
+
+The standalone GUI starts target correlation from Solve. Its input timeline
+uses a separate image-preview canvas, outside the numerical session. Results
+playback navigates stored typed fields and never sends ``frame`` requests.
+The GUI initially selects saving; ``options.supervision`` and all numerical
+constructor defaults stay unchanged. Canned ``?smoke=1`` scenarios explicitly
+start an unrecorded preview; ``?smoke=1&case=manual`` exposes diagnostics while
+retaining the ordinary user-controlled workflow.
+
+Saved-result replay supports maximum rates 1, 2, 5, 10, 20 and 30 fields/s.
+A changed quantity/palette applies to following compatible results. Initial
+project/session import restores its saved view. Each field retains its saved processing recipe. Explicit batch application
+sets a uniform recipe across compatible fields. Raw coefficients are unchanged. Slider admission is bounded to one load and the
+latest pending request.

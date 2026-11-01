@@ -41,7 +41,7 @@ Choose the experiment and inspect its reference
 -----------------------------------------------
 
 1. In **Input**, choose **Plate with hole · UHD**. Wait for preparation and the
-   first static result. The source uses the original reference and load-95 PNG.
+   reference preparation. In Solve, press **Start calculation** for the first saved field. The source uses the original reference and load-95 PNG.
 2. Read the source label and choose **Solve**. The applied summary tells you the
    actual model, interpolation, window/step, pyramid schedule and grid. Keep
    the preset for this exercise. Pending edits are not applied to an old field.
@@ -91,15 +91,15 @@ geometric ROI. Prepared-reference admissibility describes numerical information
 in the reference. Acceptance describes the current solve. Every selected ROI
 window stays requested on the next image, even after a failed correlation.
 
-For this static pair, **Play** recalculates the selected load. Choose the other
+For this static pair, **Start calculation** in Solve calculates and saves the selected load. Choose the other
 plate load to inspect a different target against the same reference. This is
 not a live frame-rate benchmark.
 
 Freeze a field and choose a strain calculation
 ----------------------------------------------
 
-1. Choose **Inspect current field**. Acquisition pauses and the complete field
-   is retained in the results library. The saved view uses reference coordinates;
+1. Open **Results** after calculating. The complete field is already retained
+   in the results library. The saved view uses reference coordinates;
    it does not put an old field over an unrelated current camera image.
 2. Select **Equivalent strain**. The default analysis reads local model
    gradients. "Computed" includes the solver spatial policy shown in provenance;
@@ -177,8 +177,7 @@ material trajectories. Their reference preparation costs are included in result
 age; they do not inherit fixed-reference FPS claims.
 
 Use the saved-field slider or **Previous/Next result**. **Apply recipe to matching
-fields** gives compatible results the same derived processing. **Replay matching
-results · 2 Hz** waits for each analysis and only visits that analysis epoch,
+fields** gives compatible results the same derived processing. **Play results** waits for each analysis and only visits that analysis epoch,
 ROI, grid and reference mode. Its presentation rate is not acquisition time.
 
 Place a point, gauge or region and choose **Extract through saved fields**.

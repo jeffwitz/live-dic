@@ -18,7 +18,7 @@ Record and reopen
    Automatic mode uses the browser's coarse ``deviceMemory`` value, at most
    one eighth of that estimate, capped at 1 GiB and floored at 128 MiB. Unknown
    memory uses 128 MiB. No RAM is reserved by choosing a limit.
-3. Enable **Keep computed fields for review**, then start playback/acquisition.
+3. Enable **Save calculated fields for replay**, then start playback/acquisition.
    Fields are committed to IndexedDB from the first saved field, not only when
    RAM is full. This prevents a large first-spill pause and makes eviction safe.
 4. Older committed fields leave the RAM cache when required. Use Previous/Next,

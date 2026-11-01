@@ -15,7 +15,8 @@ Python example, or the [package README](python/README.md) for API usage.
 
 The [browser companion](docs/how-to/run-in-browser.rst) runs a local camera, video, image folder or
 analytic demo through the shared WebGPU core, with worker backpressure, full
-ROI, temporal history, GPU display and offline assets. Its results lab preserves
+ROI, temporal history, GPU display and offline assets. Input seeks preview images only. Solve starts calculation with saving selected;
+Results places quantity, Play/Pause and a timeline beside the image. Its results lab preserves
 computed fields while adding explicit smoothing, strain fitting, point/line/gauge
 measurements and NPZ export/import. Recording is optional and adds full readback.
 Consecutive-image acquisition has an opt-in **Experimental GPU reference

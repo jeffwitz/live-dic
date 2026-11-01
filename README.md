@@ -28,7 +28,8 @@ supervision, a bounded worker, editable multi-domain/full ROI with holes,
 temporal prediction, a lightweight live vector overlay on the current image,
 and on-demand CSV/JSON export. Vector colour represents displacement norm;
 a separate length key documents magnification. Scalar maps and strain analysis
-belong to the saved-results phase. A results workbench adds bounded opt-in field
+belong to the saved-results phase. Solve starts calculation with saving selected; Results provides quantity,
+Play/Pause and a timeline beside the image. A results workbench adds bounded field
 recording, point/line/extensometer extraction, reversible displacement smoothing,
 VSG strain, principal/equivalent strain, region statistics, length units and NumPy
 NPZ interchange. Results projects restore shared masks, recipes and measurements.

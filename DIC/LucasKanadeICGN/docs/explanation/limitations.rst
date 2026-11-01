@@ -352,3 +352,15 @@ full-resolution fields or a guarantee of 4K60 recording. Saved-field analysis
 pauses acquisition; palette and range edits reuse cached component arrays and
 statistics. Changing the recipe recomputes analysis. Camera images are not
 archived by field recording.
+
+Calculation and replay
+-----------------------
+
+Input previews do not calculate target fields. Start calculation explicitly in
+Solve; save fields to use Results playback. Saving is initially selected in the
+GUI and adds full readback/disk admission cost. A preview-only run has no saved
+sequence to replay. Video/camera admission retains its explicit dropped-frame
+policy; use an image folder when every input file must be calculated.
+Playback rate is a presentation maximum, never an acquisition FPS measurement.
+It waits for disk loading and derived analysis. Raw images are not recorded
+with fields, so saved scalar maps use reference coordinates.

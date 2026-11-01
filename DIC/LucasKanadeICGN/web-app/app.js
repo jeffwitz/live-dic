@@ -676,6 +676,7 @@ async function finishCalculation() {
     if(token!==generation||loadingSource)return;
     const count=workbench.report().count;
     $('solve-progress').textContent=count?`${count} saved field(s). Choose Results to select a quantity and replay.`:'No saved fields. Enable saving before calculation, or import results.';
+    if(count&&!$('message').classList.contains('error'))message(`${count} saved field(s) available. Choose a quantity and use Play results or the slider; correlation is paused.`);
     if(count)await workbench.openFirst({index:calculationStartIndex});
   })();finishingCalculation=operation;
   try{await operation;}finally{if(finishingCalculation===operation)finishingCalculation=null;}

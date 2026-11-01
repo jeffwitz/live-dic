@@ -9,6 +9,35 @@ native Python. Pierre Margerit's foundational GPU work made this project
 possible. Python remains the recommended supervisor for NumPy acquisition and
 complete NumPy result fields.
 
+Prepare, calculate, then replay
+-------------------------------
+
+1. **Input / Mask:** open the source, choose a reference and define the ROI.
+   The input slider and previous/next image buttons show image previews; they
+   do not request target correlation. Reference preparation builds static
+   gradients, statistics and Hessians once.
+2. **Solve → Start calculation:** calculate the chosen targets. **Save calculated
+   fields for replay** is selected initially. It records full fields through the
+   bounded RAM/disk library; turn it off deliberately for preview-only timing.
+   For image folders, choose **Current target only** or **Current target to end
+   of sequence**. Pause/resume continues after the last completed target; an
+   explicit input seek makes that previewed target the next one calculated.
+3. **Results:** after a completed finite calculation, or after pausing one,
+   stored fields open automatically. The quantity selector, **Play results**,
+   previous/next buttons and slider sit directly above the image. Choose u, v,
+   magnitude, strain, equivalent strain or status, then replay or scrub. These
+   controls read saved fields and never request a correlation.
+
+Playback keeps the chosen quantity, palette and limits across compatible
+fields. Each field retains its stored processing recipe. Use **Apply recipe to matching
+fields** explicitly for a consistent post-processing recipe across the sequence.
+Computed parameters remain unchanged and applied recipes stay in provenance.
+Imported projects/sessions restore their saved initial view. Replay rate is a
+maximum of 1–30 fields/s (initially 2), independent of acquisition timestamps.
+Slow analysis/loading reduces the actual rate instead of skipping saved fields.
+Fast slider drags keep one active disk load and only the newest pending seek.
+The Space shortcut plays/pauses saved results only in Results.
+
 Open or serve it
 ----------------
 
@@ -97,9 +126,9 @@ Use a camera
 4. Inspect exposure, focus and white-balance lock results. The app requests
    manual modes only when exposed by the camera API; unsupported locks remain
    visible. Watch acceptance and iteration counts when illumination changes.
-5. Use **Pause**, **Capture reference** or **Reset history** deliberately.
+5. Use **Pause calculation**, **Capture reference** or **Reset history** deliberately.
    Changing resolution restarts camera capture and prepares a new reference.
-   A disconnected/ended camera changes Play into **Restart camera**, preserving
+   A disconnected/ended camera changes the calculation action into **Restart camera**, preserving
    the last completed field for export. Restart captures a new reference; reapply
    the mask. This recovery does not manufacture missing measurements.
    A profile change takes effect at the next reference capture. After reference,
@@ -134,14 +163,14 @@ can decode them; animated image formats are treated as still images. Unsupported
 files are listed as ignored. TIFF is not admitted. No images are uploaded.
 
 Select a **Reference image**, then **Set selected reference**. The timeline,
-**Previous image** and **Next image** select the target. **Play** processes every
-image sequentially without skipping a file. The image rate cap limits replay
+**Previous image** and **Next image** select the target. **Start calculation** in Solve processes the selected range sequentially
+without skipping a file. The input slider itself never calculates a field. The image rate cap limits replay
 speed; zero removes that cap. This replay setting is not an acquisition clock.
 An undecodable image or a different image size stops playback with its filename;
 there is no implicit resampling. Change the source to begin a different size.
 
 **Open video** uses the browser decoder and a temporary local Blob URL. Use the
-timeline to seek while paused and **Play** to resume. Slow replay down to ×1/16
+timeline to preview while paused and **Start calculation** in Solve to calculate. Slow replay down to ×1/16
 is useful for expensive analysis or software adapters; the playback-speed control
 affects presentation, not the acquisition timestamps. Codec support depends on
 the browser. No codec or decoder is downloaded by the application. The actual
@@ -237,7 +266,7 @@ GPU resource report. It does not use disk recording memory as GPU memory. See
 Overlap recording and control the live preview
 ----------------------------------------------
 
-In **Results → Lightweight live preview**, choose display rate and preview
+In **Solve → Live monitor → Lightweight live preview**, choose display rate and preview
 width. The initial GUI values are 10 Hz maximum and 1920 px width. These
 settings apply immediately without preparing a reference, resetting seeds or
 changing recording. They are independent of recording overlap.
@@ -421,7 +450,7 @@ are dots. Grey crosses mark unavailable requested cells at reference centres;
 ROI-excluded cells have no glyph. A magnified arrow can cross a mask boundary;
 its current tip identifies its measurement, not a new valid sample.
 
-To display equivalent strain, choose **Inspect current field**, then
+To display equivalent strain, open **Results** after calculation, then
 **Equivalent strain** in Results. This pauses acquisition and analyses the
 stored field. For direct infinitesimal affine gradients and ``εzz=0``:
 
@@ -444,8 +473,8 @@ Correlation settings without hidden changes
 --------------------------------------------
 
 The numbered **Input / Mask / Solve / Results** navigation keeps the current
-step visible. Play/Pause and Capture reference remain beside the viewer. The
-quick guide explains the workflow and keyboard shortcuts (Space: Play/Pause;
+step visible. Calculation controls stay in Solve; saved-result playback stays above the image. Capture reference remains beside the viewer. The
+quick guide explains the workflow and keyboard shortcuts (Space: play/pause saved results in Results;
 R: capture reference; Esc: clear the current measurement). Shortcuts do not
 operate while editing an input, modal or mask.
 
@@ -461,7 +490,7 @@ use displacement-neighbourhood strain analysis in the results lab.
 Review and process a computed field
 -----------------------------------
 
-In **Results**, choose **Inspect current field**. Capture pauses and one full
+In **Results**, open **Results** after calculation. Capture pauses and one full
 field is read. The saved view uses reference image coordinates and a plain field
 background, never an older field overlaid on an unrelated current image.
 **Return to live view** restores GPU rendering. A saved field retains its own
@@ -577,14 +606,12 @@ sessions, failure recovery, memory accounting and independent backups.
 Browse and reuse processing
 ---------------------------
 
-Choose a recorded field in the live-mode dropdown to enter review. The placeholder
-keeps even a single newly recorded result selectable. In review, use the saved-result
-slider, dropdown or Previous/Next buttons. **Replay matching
-results · 2 Hz** only visits fields compatible with the selected analysis epoch,
-ROI, grid and reference mode. It waits for each CPU analysis before advancing;
-it never queues an experiment's fields at once. Two hertz is a presentation
-rate, not the acquisition clock. Selecting a measurement, changing processing
-or returning to live view stops replay.
+Opening Results selects a saved field automatically. Its visible transport bar
+provides the quantity selector, timeline slider, previous/next, field number and
+Play/Pause controls. Playback uses compatible saved order, waits for completed
+analysis and never resumes the acquisition source. Changing quantity or palette
+can continue during replay. Dragging the slider pauses replay and loads the
+latest requested field; it never recalculates it.
 
 **Apply recipe to matching fields** copies the current applied recipe to that
 same compatible population. It changes no computed parameter, status or iteration.
@@ -614,7 +641,7 @@ JSON containing units, input pair, analysis recipe and chosen geometry.
 Record fields deliberately
 --------------------------
 
-**Keep computed fields for review** records every completed admitted field. It
+**Save calculated fields for replay** records every completed admitted field. It
 adds a full readback and can lower throughput. **Worker input → GPU field** keeps its
 observable-GPU boundary; each recorded field separately reports full-readback
 time and worker-arrival-to-recorded-field age. These are not camera-to-Python
@@ -633,7 +660,7 @@ Disk/quota failures stop recording and acquisition explicitly, preserving the
 completed field in RAM. Export it or use **Retry saving RAM-only fields** before
 closing. Browser disk quotas, privacy settings and storage eviction still apply:
 export project parts for an independent backup. No images or results are
-uploaded. Switching sources preserves the library but disables recording until
+uploaded. Switching sources preserves the library and the save preference; recording resumes only after
 you explicitly enable it again.
 
 Review without WebGPU
