@@ -2,7 +2,7 @@ import { DEFAULT_RECIPE, analyzeField, componentValues, statistics, nearestIndex
 import { fieldArchive, importFieldArchive, projectArchive, importProjectArchive } from './archive.js';
 import { extractHistory, sameAnalysis } from './history.js';
 import { resultFigure } from './figure.js';
-import { FieldStorage, defaultCacheBytes, MiB } from './field-storage.js';
+import { FieldStorage, defaultCacheBytes, fieldArrayBytes, MiB } from './field-storage.js';
 
 const $ = id => document.getElementById(id);
 const number = value => value == null || !Number.isFinite(value) ? 'unavailable' : value.toPrecision(5);
@@ -93,7 +93,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   function memoryBytes(extra = []) {
     const masks = new Set(); let bytes = 0;
     for (const entry of [...entries, ...extra]) {
-      bytes += (entry.field.parameters?.byteLength ?? 0) + (entry.field.status?.byteLength ?? 0) + (entry.field.iterations?.byteLength ?? 0) + entry.metadataBytes;
+      bytes += fieldArrayBytes(entry.field) + entry.metadataBytes;
       if (entry.mask && !masks.has(entry.mask)) { masks.add(entry.mask); bytes += entry.mask.byteLength; }
     }
     return bytes;

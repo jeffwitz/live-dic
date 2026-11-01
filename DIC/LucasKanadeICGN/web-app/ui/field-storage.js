@@ -5,7 +5,12 @@ export const MAX_CACHE_BYTES = 1024 * MiB;
 const DATABASE = 'live-dic-results-v1';
 const STORES = ['sessions', 'settings', 'fields', 'catalog', 'masks'];
 const textBytes = value => new TextEncoder().encode(JSON.stringify(value)).byteLength;
-const arraysBytes = field => field.parameters.byteLength + field.status.byteLength + field.iterations.byteLength;
+/** Include auxiliary arrays such as roiSelected; shared backing buffers count once. */
+export function fieldArrayBytes(field) {
+  const buffers=new Set();let bytes=0;
+  for(const value of Object.values(field))if(ArrayBuffer.isView(value)&&!buffers.has(value.buffer)){buffers.add(value.buffer);bytes+=value.buffer.byteLength;}
+  return bytes;
+}
 
 export function defaultCacheBytes(memoryGiB = globalThis.navigator?.deviceMemory) {
   // deviceMemory is coarse, not free RAM. Unknown devices retain a conservative budget.
@@ -156,7 +161,7 @@ export class FieldStorage {
     const plain = geometry(entry.field), key = JSON.stringify(plain);
     if (!this.geometries.has(key)) this.geometries.set(key, plain);
     return {id: entry.id, label: entry.label, field: this.geometries.get(key),
-      metadata: compactMetadata(entry.metadata), recipe: entry.recipe, bytes: arraysBytes(entry.field)};
+      metadata: compactMetadata(entry.metadata), recipe: entry.recipe, bytes: fieldArrayBytes(entry.field)};
   }
   serial(operation) {
     const result = this.queue.then(operation); this.queue = result.catch(() => {}); return result;
@@ -202,7 +207,7 @@ export class FieldStorage {
   residentBytes() {
     const masks = new Set(); let bytes = 0;
     for (const entry of this.cache.values()) {
-      bytes += arraysBytes(entry.field) + (entry.metadataBytes ?? textBytes(entry.metadata));
+      bytes += fieldArrayBytes(entry.field) + (entry.metadataBytes ?? textBytes(entry.metadata));
       if (entry.mask && !masks.has(entry.mask)) { masks.add(entry.mask); bytes += entry.mask.byteLength; }
     }
     return bytes;

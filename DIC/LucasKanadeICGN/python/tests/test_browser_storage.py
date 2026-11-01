@@ -112,6 +112,15 @@ class BrowserStorageTests(unittest.TestCase):
         self.assertEqual(result["masks"], 1)
         self.assertEqual(result["bytes"], 4096 + 2 * (16 * (6 * 8 + 4 + 4) + 120))
 
+    def test_auxiliary_field_arrays_are_included_in_the_cache_budget(self):
+        result = javascript("""
+          const {store}=setup(4096),e=entry(1);e.field.roiSelected=new Uint8Array(16).fill(1);
+          e.field.selectionAlias=e.field.roiSelected;
+          await store.addMany([e]);console.log(JSON.stringify({resident:store.residentBytes(),payload:e.storage.descriptor.bytes}));
+        """)
+        self.assertEqual(result["payload"], 16 * (6 * 8 + 4 + 4) + 16)
+        self.assertEqual(result["resident"], result["payload"] + 120)
+
     def test_large_recovery_uses_bounded_batches_and_resumes_after_partial_commit(self):
         result = javascript("""
           const {disk,store}=setup(1024),mask=new Uint8Array(512*512).fill(1);disk.fail=true;
