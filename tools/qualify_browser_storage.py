@@ -273,6 +273,24 @@ def main():
                 and recovered["storage"]["unsavedFields"] == 0
             ), recovered
             report["injectedQuotaFailure"] = {"beforeRetry": failure, "afterRetry": recovered}
+            report["batchedRecovery"] = evaluate(
+                browser,
+                "const {FieldStorage,IndexedFieldDatabase}=await import('./ui/field-storage.js');"
+                "const db=await IndexedFieldDatabase.open(),write=db.write.bind(db);let unavailable=true,attempt=0;"
+                "db.write=async(...args)=>{if(unavailable||++attempt===3)throw new DOMException('Injected recovery quota','QuotaExceededError');return write(...args);};"
+                "const s=new FieldStorage({memoryLimit:1024**2,openDatabase:async()=>db});"
+                "for(let id=1;id<=12;id++)await s.addMany([{id,label:'Recovery '+id,field:structuredClone(seed.field),metadata:seed.metadata,mask:seed.mask}]);"
+                "unavailable=false;let reason=null;try{await s.retry();}catch(e){reason=e.message;}const partial=s.report();"
+                "db.write=write;await s.retry();const complete=s.report(),catalog=await db.catalog(s.session.id);"
+                "await s.close();return {reason,partial,complete,rows:catalog.length};",
+            )
+            assert report["batchedRecovery"]["partial"]["diskFields"] == 2, report[
+                "batchedRecovery"
+            ]
+            assert report["batchedRecovery"]["complete"]["unsavedFields"] == 0, report[
+                "batchedRecovery"
+            ]
+            assert report["batchedRecovery"]["rows"] == 12, report["batchedRecovery"]
             report["concurrentSessionDeletion"] = evaluate(
                 browser,
                 "const {FieldStorage}=await import('./ui/field-storage.js');const s=new FieldStorage();"
