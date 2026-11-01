@@ -82,7 +82,7 @@ class GpuReferenceExecutionTests(unittest.TestCase):
         actual = self.evaluate("""
           let cases=0,maxReferenceError=0,maxInverseError=0;
           for(const motionModel of ['translation','affine'])for(const interpolation of ['bspline','linear','cubic']) {
-            for(const [subsetSize,subsetStride,pyramidLevels] of [[16,16,2],[17,8,1],[32,16,1],[33,33,1]]) {
+            for(const [subsetSize,subsetStride,pyramidLevels] of [[8,8,3],[15,15,1],[16,16,2],[17,8,1],[31,16,1],[32,16,1],[33,33,1]]) {
               const width=99,height=97,pixels=texture(width,height), options={width,height,motionModel,interpolation,subsetSize,subsetStride,pyramidLevels};
               const engine=await DICEngine.create({...options,referencePreparation:'gpu'});
               try {
@@ -113,7 +113,7 @@ class GpuReferenceExecutionTests(unittest.TestCase):
           }
           return {cases,maxReferenceError,maxInverseError};
         """)
-        self.assertEqual(actual["cases"], 24)
+        self.assertEqual(actual["cases"], 42)
         self.assertLess(actual["maxReferenceError"], 0.001)
 
     def test_flat_references_are_invalid_and_finite_including_odd_subsets(self):

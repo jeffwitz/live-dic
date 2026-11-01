@@ -53,10 +53,14 @@ def main():
             browser._evaluate(f"location.assign({json.dumps(url)});true")
             wait(browser, f"location.href==={json.dumps(url)}")
             options = dict(
-                warmup=args.warmup, repetitions=args.repetitions, resolution=args.resolution
+                warmup=args.warmup,
+                repetitions=args.repetitions,
+                resolution=args.resolution,
+                motionModel=args.motion_model,
             )
             script = r"""(async()=>{
               const request=__OPTIONS__;
+              if(!['translation','affine'].includes(request.motionModel))throw new Error('Explicit qualification motion model required');
               const {DICEngine}=await import('/DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/engine.js');
               const width=request.resolution==='3840x2160'?3840:1920,height=width===3840?2160:1080;
               const load=async name=>{
