@@ -241,3 +241,14 @@ submissions.
 Repeat it with ``--motion-model translation`` when the application can assume
 rigid subset motion. Do not compare its zero deformation terms with affine
 strain output; compare displacement, accepted subsets, iterations, and timing.
+
+Isolate a browser camera comparison mode
+---------------------------------------
+
+``tools/diagnose_camera_pipeline.py`` accepts ``--comparison consecutive``
+or ``fixed`` and ``--recording off`` or ``on`` for targeted controls. Both
+default to ``all``, preserving the four-case diagnostic. Use ``--gpu-reference``
+explicitly for experimental GPU reference preparation and
+``--resolution 3840x2160`` for native-UHD delivery. Reports retain the selected
+filters. This is a static fake camera, never physical-camera qualification.
+Do not compare different warmup/case schedules as identical absolute FPS runs.

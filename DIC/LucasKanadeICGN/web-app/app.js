@@ -68,7 +68,11 @@ function updateScale(scale) {
 }
 async function receive({ data }) {
   if (data.bitmap) {
-    $('field').width = data.width; $('field').height = data.height;
+    // Assigning either size resets the canvas, even if the value is unchanged.
+    // Keep the presentation surface between frames of the same sequence.
+    const field = $('field');
+    if (field.width !== data.width) field.width = data.width;
+    if (field.height !== data.height) field.height = data.height;
     $('field').getContext('bitmaprenderer').transferFromImageBitmap(data.bitmap);
     delete data.bitmap;
   }

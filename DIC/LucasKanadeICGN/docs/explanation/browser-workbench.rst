@@ -243,3 +243,35 @@ worker response during a line-profile resize and then releases it. Pending or
 failed derived views are visibly dimmed and cannot produce derived exports.
 A live-mode library uses an explicit selection placeholder, so its first recorded
 field can be opened without creating a duplicate frozen field.
+
+Acquisition, computation and presentation
+---------------------------------------
+
+The normal application already uses a dedicated Worker for image upload,
+reference preparation, solving and GPU field rendering. The main thread
+receives transferable image bitmaps for presentation and handles controls and
+recorded-field admission. Browser video capture/decoding also has its own
+implementation scheduling. This is already a form of parallel execution.
+
+There are deliberate dependencies: the application admits one solve at a time,
+and acknowledgement of a recorded result follows durable storage admission.
+A second display Worker cannot remove the work performed by the same physical
+GPU. Moving field rendering to another GPU device would also require a data
+exchange instead of reading the existing device's field buffer directly.
+
+For future overlap, separate the display clock from the measurement clock:
+present the latest completed field rather than queueing every display update.
+A lower display rate/resolution must leave analytical image size, subset grid,
+solver parameters and numerical exports unchanged. Recording needs a bounded
+queue and an explicit drain barrier on pause/source changes/export. A full
+queue applies backpressure; storage failure must retain every completed field
+and stop further admission. Merely acknowledging before a write completes can
+otherwise lose fields or hide an ever-growing result age.
+
+The short native-UHD display-removal controls in
+``benchmarks/results/browser-display-headroom-20261101/`` retain most of the
+pair processing time even with rendering/presentation removed. They do not
+establish a repeatable display-optimization speedup or renew absolute FPS
+qualification. The normal presentation surface now retains its dimensions
+between same-size frames; this avoids unnecessary canvas resets while keeping
+the numerical graph and displayed image dimensions unchanged.

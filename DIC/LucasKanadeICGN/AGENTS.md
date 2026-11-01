@@ -694,3 +694,19 @@ qualification rather than infer mobile coverage from desktop results.
   distinct timing boundaries. Consecutive 1080p improves substantially, but the
   full UHD application remains far below 60 FPS. Do not turn this into a claim
   about physical cameras or other GPUs/OSs. Seven canonical WGSL files now ship.
+
+### Browser presentation headroom — 2026-11-01
+
+- The normal GPU Worker already owns upload, solving and GPU field rendering;
+  main-thread bitmap presentation is separate. Recorded-field acknowledgement
+  still follows durable storage admission. Another Worker alone cannot remove
+  shared GPU work. Future overlap must bound pending fields and include them
+  in pause/source/export drains, retaining all unsaved fields on disk failure.
+- Keep the same-size presentation canvas instead of resetting width/height per
+  bitmap. This does not reduce numerical/display dimensions. The actual UHD
+  workbench check still passes eight fields and its independent NumPy oracle.
+- `diagnose_camera_pipeline.py` can filter comparison/recording cases; `all`
+  preserves existing defaults. The short `browser-display-headroom-20261101/`
+  controls deliberately remove rendering only in temporary sites. They do not
+  qualify a repeatable speedup, replace earlier FPS tables, or implement an
+  asynchronous recording queue. Preserve their protocol/limitations and patches.
