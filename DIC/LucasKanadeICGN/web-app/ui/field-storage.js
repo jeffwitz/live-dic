@@ -295,14 +295,28 @@ export class FieldStorage {
     return this.serial(async () => {
       if (!this.backend) { this.opening = null; await this.database(); }
       if (!this.backend) throw new Error(this.warning);
-      const pending = [...this.cache.values()].filter(entry => !entry.storage?.saved), masks = [], records = [];
-      for (const entry of pending) {
-        const maskId = entry.storage.maskId;
-        if (maskId && !this.knownMasks.has(maskId) && !masks.some(mask => mask.id === maskId)) masks.push({id: maskId, data: entry.mask});
-        records.push({id: entry.id, field: entry.field, metadata: entry.metadata, maskId, descriptor: entry.storage.descriptor});
+      const pending = [...this.cache.values()].filter(entry => !entry.storage?.saved);
+      if(pending.length){
+        // A RAM-only sequence can be large. Commit bounded batches, not a 1 GiB clone.
+        let committed=(await this.backend.sessions()).find(value=>value.id===this.session.id);
+        if((committed?.count??0)!==this.session.count-pending.length)throw new Error('Stored session changed or was deleted; export retained RAM fields before closing');
+        const target=Math.max(256*1024,Math.min(64*MiB,this.memoryLimit/4));
+        while(pending.length){
+          const batch=[],masks=[],records=[];let bytes=0;
+          while(pending.length){
+            const entry=pending[0],maskId=entry.storage.maskId;
+            const needsMask=maskId&&!this.knownMasks.has(maskId)&&!masks.some(mask=>mask.id===maskId);
+            const cost=entry.storage.descriptor.bytes+(needsMask?entry.mask.byteLength:0);
+            if(batch.length&&(bytes+cost>target||batch.length===128))break;
+            pending.shift();batch.push(entry);bytes+=cost;
+            if(needsMask)masks.push({id:maskId,data:entry.mask});
+            records.push({id:entry.id,field:entry.field,metadata:entry.metadata,maskId,descriptor:entry.storage.descriptor});
+          }
+          const summary={...this.session,count:(committed?.count??0)+batch.length,bytes:(committed?.bytes??0)+bytes};
+          await this.backend.write(summary,records,masks);committed=summary;
+          batch.forEach(entry=>entry.storage.saved=true);masks.forEach(mask=>this.knownMasks.add(mask.id));this.evict();
+        }
       }
-      if (records.length) await this.backend.write(this.session, records, masks);
-      pending.forEach(entry => entry.storage.saved = true); masks.forEach(mask => this.knownMasks.add(mask.id));
       this.warning = null; this.evict();
     });
   }

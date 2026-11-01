@@ -112,6 +112,25 @@ class BrowserStorageTests(unittest.TestCase):
         self.assertEqual(result["masks"], 1)
         self.assertEqual(result["bytes"], 4096 + 2 * (16 * (6 * 8 + 4 + 4) + 120))
 
+    def test_large_recovery_uses_bounded_batches_and_resumes_after_partial_commit(self):
+        result = javascript("""
+          const {disk,store}=setup(1024),mask=new Uint8Array(512*512).fill(1);disk.fail=true;
+          for(let i=1;i<=20;i++)await store.addMany([entry(i,512,512,mask)]);
+          const expected=store.session.bytes,original=disk.write.bind(disk),batches=[];disk.fail=false;let fail=true;
+          disk.write=async(s,records,masks)=>{if(fail&&batches.length===1)throw Error('Second recovery batch failed');batches.push(records.length);await original(s,records,masks);};
+          let message='';try{await store.retry();}catch(e){message=e.message;}
+          const partial=store.report();fail=false;await store.retry();
+          console.log(JSON.stringify({message,partial,after:store.report(),count:disk.rows.size,masks:disk.staticMasks.size,batches,bytes:disk.summaries.get(store.session.id).bytes,expected}));
+        """)
+        self.assertIn("Second recovery batch", result["message"])
+        self.assertEqual(result["partial"]["diskFields"], 1)
+        self.assertEqual(result["partial"]["unsavedFields"], 19)
+        self.assertEqual(result["after"]["unsavedFields"], 0)
+        self.assertEqual(result["count"], 20)
+        self.assertEqual(result["masks"], 1)
+        self.assertLessEqual(max(result["batches"]), 4)
+        self.assertEqual(result["bytes"], result["expected"])
+
     def test_reopen_is_lazy_and_restores_analysis_without_loading_all_fields(self):
         result = javascript("""
           const {disk,store}=setup(),entries=[entry(1),entry(2),entry(3)];for(const e of entries)await store.addMany([e]);
