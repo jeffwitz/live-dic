@@ -187,6 +187,14 @@ Decoded depth, compression, orientation and conversion accompany reference
 and target file provenance in exports. Binary TIFF masks use the same
 conversion and the existing strict black/white or explicit threshold rule.
 
+Images need not match the 720p/1080p/UHD camera presets, be square or have
+sizes divisible by the subset size. They keep their original dimensions. A
+subset must still fit in the coarsest configured level. Reference preparation
+requests higher WebGPU limits when needed and supported by the adapter; there
+is no fixed UHD-size ceiling. Very large images can still exceed the real
+texture/buffer limits or available memory. They are refused with the required
+resource size; automatic spatial tiling is not implemented.
+
 Select a **Reference image**, then **Set selected reference**. The timeline,
 **Previous image** and **Next image** select the target. **Start calculation** in Solve processes the selected range sequentially
 without skipping a file. The input slider itself never calculates a field. The image rate cap limits replay

@@ -836,3 +836,15 @@ qualification rather than infer mobile coverage from desktop results.
   UHD fixtures, checks exact pixels/fields against PNG and exercises a new
   decoder Worker after stopping the origin server. The software CI step is
   configured; only local execution can be claimed until remotely observed.
+
+### Reference geometry and WebGPU limits — 2026-11-01
+
+- Larger-than-UHD images negotiate only required buffer/texture limits. Keep
+  the standard UHD request unchanged, preserve full input dimensions and check
+  metadata/Hessian size for overlapping strides as well as reference planes.
+- Limits are immutable on a GPUDevice. A cold reference change may replace an
+  owning device before converter allocation; never replace/destroy an injected
+  device. No negotiations or additional synchronization belong in live loops.
+- Real adapter limits remain explicit failures. Automatic spatial tiling is
+  not implemented and must not be claimed. The size qualifier uses analytic
+  translations at 4112×3008, odd dimensions and wide images without resampling.

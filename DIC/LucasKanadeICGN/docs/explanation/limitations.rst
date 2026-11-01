@@ -382,3 +382,15 @@ compressions/layouts are refused rather than partially decoded. TIFF import
 requires a Worker, including when correlation is unavailable. File/dimension
 limits and the 30-second decode timeout bound resource use; they do not promise
 real-time TIFF decompression. See :doc:`../how-to/run-in-browser`.
+
+Image dimensions beyond UHD
+---------------------------
+
+Browser reference preparation negotiates the buffer and texture limits needed
+by the original image, including nonstandard and odd dimensions. This removes
+the default 128 MiB storage-binding ceiling when the adapter permits a larger
+binding. It does not remove physical allocation limits or the adapter's
+maximum texture dimension. There is no automatic spatial tiling or silent
+resizing. A supplied GPUDevice must have sufficient limits; only an owned
+device may be recreated during a cold reference change. Minimum/coarsest subset
+constraints still apply. See :doc:`browser-portability`.

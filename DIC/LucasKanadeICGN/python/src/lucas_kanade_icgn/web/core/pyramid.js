@@ -1,4 +1,4 @@
-import { acquireDevice } from './device.js';
+import { acquireDevice, imageRequirements, assertImageLimits } from './device.js';
 import { createTargetSlot, attachExternalInput } from './ring.js';
 import { createTemporalGraph, validateTemporal } from './temporal.js';
 import { validateMask, planRoi, reduceMask, seedPermissions, hashMask } from './roi.js';
@@ -168,14 +168,24 @@ export function createPyramidHost(options = {}) {
     referenceReady = false;
   };
 
-  const ensureDevice = async () => {
-    if (device) return device;
-    ({ device, adapter, ownsDevice } = await acquireDevice(options));
+  const ensureDevice = async (geometry = {}) => {
+    const request={...hostOptions,...configuration,...geometry};
+    const required=imageRequirements(request);
+    if (device) {
+      try {assertImageLimits(device.limits,required);return device;}
+      catch(error){if(!ownsDevice)throw error;}
+    }
+    // Device limits are immutable. A larger replacement reference may need a
+    // new owning device, outside the live loop; never destroy an injected one.
+    const next=await acquireDevice(request);
+    let modules;
+    try {modules=await Promise.all([loadShader(next.device,'icgn.wgsl'),loadShader(next.device,'full_pyramid.wgsl')]);}
+    catch(error){if(next.ownsDevice)next.device.destroy();throw error;}
+    if(device){destroyRuntimeResources();if(ownsDevice)device.destroy();}
+    ({device,adapter,ownsDevice}=next);
     // GPU queries stay disabled until a wall-time sanity check qualifies them.
     timestampQueries = false;
-    [shaderModule, pyramidShaderModule] = await Promise.all([
-      loadShader(device, 'icgn.wgsl'), loadShader(device, 'full_pyramid.wgsl'),
-    ]);
+    [shaderModule, pyramidShaderModule] = modules;
     return device;
   };
 
@@ -194,7 +204,7 @@ export function createPyramidHost(options = {}) {
         && runtimePyramidLevels === levelCount
         && runtimeMotionModel === configuration.motionModel
         && runtimeOutlierPolicy === configuration.outlierPolicy) return false;
-    await ensureDevice();
+    await ensureDevice({width,height,roiMask});
     destroyRuntimeResources();
     FRAME_WIDTH = width;
     FRAME_HEIGHT = height;
@@ -203,11 +213,7 @@ export function createPyramidHost(options = {}) {
     GRID_HEIGHT = 1 + Math.floor((height - SUBSET_SIZE) / SUBSET_STRIDE);
     GRID_COUNT = GRID_WIDTH * GRID_HEIGHT;
 
-    const largestBufferBytes = PIXEL_COUNT * 4 * Float32Array.BYTES_PER_ELEMENT;
-    if (largestBufferBytes > device.limits.maxStorageBufferBindingSize
-        || largestBufferBytes > device.limits.maxBufferSize) {
-      throw new Error(`The ${width}x${height} reference exceeds this adapter's buffer limits`);
-    }
+    assertImageLimits(device.limits,imageRequirements({...configuration,width,height,roiMask}));
     const baseLayoutEntries = [
       { binding: 0, visibility: GPUShaderStage.COMPUTE, texture: { sampleType: 'float' } },
       { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } },
@@ -955,9 +961,10 @@ export function createPyramidHost(options = {}) {
 
   const setReference = async (dataUrl, referenceOptions = {}) => {
     const options = { ...hostOptions, ...referenceOptions };
-    await ensureDevice();
     configure(options, true);
     const image = typeof dataUrl === 'string' ? await loadImage(dataUrl) : dataUrl;
+    try {await ensureDevice({...options,width:image.width,height:image.height});}
+    catch(error){if(typeof dataUrl==='string')image.close?.();throw error;}
     const started = performance.now();
     const ownedMask = validateMask(options.roiMask, image.width, image.height, options.roiPolicy ?? 'full', configuration.motionModel);
     const maskSha256 = ownedMask ? await hashMask(ownedMask, image.width, image.height) : null;

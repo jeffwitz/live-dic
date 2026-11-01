@@ -90,6 +90,48 @@ class BrowserGeometryTests(unittest.TestCase):
     os.environ.get("ICGN_RUN_BROWSER_TESTS") == "1", "set ICGN_RUN_BROWSER_TESTS=1"
 )
 class BrowserCoreExecutionTests(unittest.TestCase):
+    def test_device_negotiates_large_reference_and_preserves_injected_ownership(self):
+        from lucas_kanade_icgn import ICGNWebGL
+
+        flags = (
+            (
+                "--use-angle=swiftshader",
+                "--enable-unsafe-webgpu",
+                "--use-webgpu-adapter=swiftshader",
+                "--use-vulkan=swiftshader",
+            )
+            if os.environ.get("ICGN_BROWSER_SOFTWARE") == "1"
+            else ()
+        )
+        with ICGNWebGL(backend="webgpu-wgsl", chromium_args=flags, call_timeout=300) as browser:
+            result = browser._evaluate("""(async()=>{
+              const {DICEngine}=await import('../core/engine.js'),width=4112,height=3008,required=width*height*16;
+              const adapter=await navigator.gpu.requestAdapter(),injected=await adapter.requestDevice({requiredLimits:{maxStorageBuffersPerShaderStage:8}});
+              let refusal;try{await DICEngine.create({device:injected,width,height});}catch(e){refusal=e.message;}
+              const probe=injected.createBuffer({size:4,usage:GPUBufferUsage.COPY_DST});probe.destroy();injected.destroy();
+              if(adapter.limits.maxStorageBufferBindingSize<required||adapter.limits.maxBufferSize<required){
+                let reason;try{await DICEngine.create({width,height});}catch(e){reason=e.message;}
+                return {supported:false,refusal,reason};
+              }
+              const e=await DICEngine.create({pyramidLevels:1,outlierPolicy:'disabled'});let small,large;
+              try{
+                small=await createImageBitmap(new ImageData(64,64));await e.setReference(small);
+                const old=e.device,rgba=new Uint8ClampedArray(width*height*4);for(let i=3;i<rgba.length;i+=4)rgba[i]=255;
+                large=await createImageBitmap(new ImageData(rgba,width,height));const info=await e.setReference(large),r=await e.register(large);
+                return {supported:true,refusal,replaced:old!==e.device,limit:e.device.limits.maxStorageBufferBindingSize,
+                  width:info.width,height:info.height,count:r.status.length,finite:r.parameters.every(Number.isFinite)};
+              }finally{small?.close();large?.close();e.destroy();}
+            })()""")
+        self.assertIn("maxStorageBufferBindingSize", result["refusal"])
+        if result["supported"]:
+            self.assertTrue(result["replaced"])
+            self.assertTrue(result["finite"])
+            self.assertGreaterEqual(result["limit"], 4112 * 3008 * 16)
+            self.assertEqual((result["width"], result["height"]), (4112, 3008))
+            self.assertEqual(result["count"], 257 * 188)
+        else:
+            self.assertIn("GPU adapter maxStorageBufferBindingSize", result["reason"])
+
     def test_core_is_instantiable_without_page_globals_and_destroy_is_idempotent(self):
         from lucas_kanade_icgn import ICGNWebGL
 

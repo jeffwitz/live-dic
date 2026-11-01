@@ -50,6 +50,21 @@ or thermal qualification. The minimal profile remains unavailable.
 the graph limits. The engine destroys only devices it owns. It does not
 require subgroups or compile a subgroup module.
 
+The requested buffer/texture limits follow the reference geometry. UHD keeps
+its original eight-storage-buffer request; larger frames request only the
+higher limits needed by their packed reference and subset metadata. The engine
+checks the adapter limits before allocation. A 4112 × 3008 reference needs
+197,902,336 bytes (188.73 MiB) for its reference planes, exceeding the default
+128 MiB binding even when the hardware supports it.
+
+For external frames with initially unknown dimensions, ``setReference`` can
+replace an owning device when larger limits are required. It occurs only during
+reference preparation, while the slot ring is idle. Recreate device-dependent
+custom rendering resources after such a replacement; read ``engine.device``
+after preparation. A supplied device is never replaced or destroyed and must
+have been created with sufficient limits. A genuine adapter limit produces a
+resource-specific error; no resizing or fallback to a different solver occurs.
+
 Options and native correspondence
 ---------------------------------
 

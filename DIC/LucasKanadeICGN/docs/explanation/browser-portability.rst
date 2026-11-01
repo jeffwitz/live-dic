@@ -330,3 +330,27 @@ on received input, independent of solver acceptance. This preserves the geometri
 ROI after numerical failures. Consecutive reference preparation is CPU/GPU cold
 work per pair and is included in its own timing boundary; it is not the ordinary
 fixed-reference real-time path.
+
+Image size and negotiated device limits
+---------------------------------------
+
+An adapter's advertised capability is different from the limits of a device
+created from it. Browser WebGPU defaults a storage-buffer binding to 128 MiB,
+even when the GPU permits gigabytes. The reference uses four float32 values
+per pixel: UHD needs 126.56 MiB, but 4112 × 3008 needs 188.73 MiB. Requesting
+only eight storage bindings therefore used to fail just above UHD.
+
+The core now calculates the largest reference/metadata resource for the actual
+image, subset stride and model. It requests only needed increases to
+``maxStorageBufferBindingSize``, ``maxBufferSize`` and
+``maxTextureDimension2D``. Standard UHD requests remain unchanged. Unknown-size
+external references can trigger an owning-device replacement during cold
+preparation; injected devices remain the caller's responsibility. Live
+registration does not negotiate limits, rebuild the device or alter images.
+
+This removes the artificial default limit; it is not out-of-core processing.
+Images exceeding a real adapter limit still need a separate tiled design,
+including correct pyramid, seed, filtering and boundary semantics. Raising
+limits does not allocate all advertised GPU memory and does not guarantee that
+the total working set fits. Inputs remain full resolution and their frames
+must match the prepared reference.

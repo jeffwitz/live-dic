@@ -64,6 +64,9 @@ export class DICEngine {
     if (source instanceof Uint8Array && source.length !== width * height) throw new Error('Expected width * height grayscale bytes');
     if (options.roiTruncation !== undefined && options.roiTruncation !== 'none') throw new Error('ROI truncation is not supported in the browser engine');
     const ownedMask = validateMask(options.roiMask, width, height, options.roiPolicy === undefined ? 'full' : options.roiPolicy, this.host.configuration.motionModel);
+    // Negotiate the real source shape before allocating conversion textures or
+    // reading pixels. This also covers engines created without width/height.
+    await this.host.ensureDevice({width,height,roiMask:ownedMask});
     this.reference = null;
     this.inputs.forEach((input) => input.destroy()); this.inputs = [];
     for (let i = 0; i < this.ring.depth; i++) this.inputs.push(await createInputConverter(this.device, width, height));

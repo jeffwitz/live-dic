@@ -1,5 +1,30 @@
 /** Capability checks use limits, never vendor-name performance guesses. */
 export const RESOLUTIONS = [[1280, 720], [1920, 1080], [3840, 2160]];
+/** Per-resource requirements, not total/free GPU memory. No raster resizing. */
+export function imageRequirements({ width, height, subsetSize = 16, subsetStride = subsetSize,
+  motionModel = 'affine', roiMask = null } = {}) {
+  if (width === undefined || height === undefined) return null;
+  if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width < 1 || height < 1
+      || !Number.isSafeInteger(width * height)) throw new Error('Invalid image dimensions');
+  const gridWidth=Math.max(0,1+Math.floor((width-subsetSize)/subsetStride));
+  const gridHeight=Math.max(0,1+Math.floor((height-subsetSize)/subsetStride));
+  const parameters=motionModel==='quadratic'?12:6,metadata=motionModel==='quadratic'?28:16;
+  const referenceBytes=width*height*16;
+  const metadataBytes=gridWidth*gridHeight*(metadata+parameters*parameters+(roiMask?4:0))*4;
+  const storageBytes=Math.max(referenceBytes,metadataBytes);
+  return {width,height,storageBytes,bufferBytes:storageBytes,textureDimension:Math.max(width,height),
+    largestResource:metadataBytes>referenceBytes?'subset metadata and inverse Hessians':'reference planes'};
+}
+export function assertImageLimits(limits, required, owner = 'GPU device') {
+  if (!required) return;
+  const requirements={maxStorageBufferBindingSize:required.storageBytes,maxBufferSize:required.bufferBytes,
+    maxTextureDimension2D:required.textureDimension};
+  for(const [key,need] of Object.entries(requirements))if(need>limits[key]){
+    const description=key==='maxTextureDimension2D'?`${need} pixels`:`${(need/1024**2).toFixed(2)} MiB for ${required.largestResource}`;
+    const available=key==='maxTextureDimension2D'?`${limits[key]} pixels`:`${(limits[key]/1024**2).toFixed(2)} MiB`;
+    throw new Error(`${required.width} × ${required.height} requires ${description}; ${owner} ${key} is ${available}. No resizing was applied. A larger device limit or tiled processing is required.`);
+  }
+}
 export function fitsResolution(limits, width, height) {
   return width <= limits.maxTextureDimension2D && height <= limits.maxTextureDimension2D
     && width * height * 16 <= limits.maxStorageBufferBindingSize
@@ -64,12 +89,20 @@ export async function measureProfiles(capabilities, { resolutions = capabilities
   };
 }
 
-/** Request only the explicit limit needed by the common graph. */
-export async function acquireDevice({ device: injected } = {}) {
-  if (injected) return { device: injected, adapter: null, ownsDevice: false };
+/** Larger images opt into only their required limits; UHD keeps its old request. */
+export async function acquireDevice({ device: injected, ...options } = {}) {
+  const required=imageRequirements(options);
+  if (injected) {assertImageLimits(injected.limits,required,'supplied GPU device');return { device: injected, adapter: null, ownsDevice: false };}
   if (!globalThis.navigator?.gpu) throw new Error('WebGPU is unavailable in this browser');
   const adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
   if (!adapter) throw new Error('No WebGPU adapter is available');
-  const device = await adapter.requestDevice({ requiredLimits: { maxStorageBuffersPerShaderStage: 8 } });
+  assertImageLimits(adapter.limits,required,'GPU adapter');
+  const requiredLimits={maxStorageBuffersPerShaderStage:8};
+  if(required){
+    if(required.storageBytes>128*1024**2)requiredLimits.maxStorageBufferBindingSize=required.storageBytes;
+    if(required.bufferBytes>256*1024**2)requiredLimits.maxBufferSize=required.bufferBytes;
+    if(required.textureDimension>8192)requiredLimits.maxTextureDimension2D=required.textureDimension;
+  }
+  const device = await adapter.requestDevice({ requiredLimits });
   return { device, adapter, ownsDevice: true };
 }
