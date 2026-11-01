@@ -28,6 +28,7 @@ def main():
     parser.add_argument("--warmup", type=int, default=5)
     parser.add_argument("--repetitions", type=int, default=30)
     parser.add_argument("--software", action="store_true")
+    parser.add_argument("--motion-model", choices=["affine", "translation"], default="affine")
     parser.add_argument("--resolution", choices=["3840x2160", "1920x1080"], default="3840x2160")
     args = parser.parse_args()
     if args.warmup < 0 or args.repetitions < 3:
@@ -66,12 +67,16 @@ def main():
                 const rgba=context.getImageData(0,0,width,height).data;
                 return Uint8Array.from({length:width*height},(_,i)=>rgba[i*4]);
               };
-              const reference=await load('reference.png'),target=await load('frame_040.png');
+              const reference=await load('reference.png');
+              let target=await load('frame_040.png');
+              if(request.motionModel==='translation') {
+                target=Uint8Array.from({length:reference.length},(_,i)=>reference[((Math.floor(i/width)+1)%height)*width+(i%width+width-2)%width]);
+              }
               const metadata=await(await fetch('/DIC/LucasKanadeICGN/assets/uhd_tensile/manifest.json')).json();
               const truthText=await(await fetch('/DIC/LucasKanadeICGN/assets/uhd_tensile/machine_truth.csv')).text();
               const lines=truthText.trim().split(/\r?\n/),keys=lines[0].split(','),truthRow=Object.fromEntries(keys.map((key,i)=>[key,lines[41].split(',')[i]]));
               const ex=Number(truthRow.stretch_x)-1,ey=Number(truthRow.stretch_y)-1;
-              const engineOptions={width,height,pyramidLevels:2,motionModel:'affine',subsetSize:16,subsetStride:16,interpolation:'bspline',outlierPolicy:'median',readback:'full'};
+              const engineOptions={width,height,pyramidLevels:2,motionModel:request.motionModel,subsetSize:16,subsetStride:16,interpolation:'bspline',outlierPolicy:'median',readback:'full'};
               const engines={cpu:await DICEngine.create(engineOptions),gpu:await DICEngine.create({...engineOptions,referencePreparation:'gpu'})};
               const costs={},fields={},cold={};
               const run=async mode=>{
@@ -105,8 +110,9 @@ def main():
                     if(x<32||x>=width-32||y<32||y>=height-32)continue;population++;
                     if(result.status[i]<=0)continue;accepted++;
                     const gx=x+(width===3840?0:900),gy=y+(width===3840?0:500),p=result.parameters.subarray(6*i,6*i+6);
-                    errors.push(Math.hypot(p[0]-ex*(gx-1920),p[3]-ey*(gy-1080)));
-                    gradientErrors.push((p[1]-ex)**2+p[2]**2+p[4]**2+(p[5]-ey)**2);
+                    const truth=request.motionModel==='translation'?[2,0,0,-1,0,0]:[ex*(gx-1920),ex,0,ey*(gy-1080),0,ey];
+                    errors.push(Math.hypot(p[0]-truth[0],p[3]-truth[3]));
+                    gradientErrors.push((p[1]-truth[1])**2+p[2]**2+p[4]**2+(p[5]-truth[5])**2);
                   }
                   const rmse=Math.sqrt(errors.reduce((a,b)=>a+b*b,0)/errors.length),p95=quantile(errors,.95),gradientRmse=Math.sqrt(gradientErrors.reduce((a,b)=>a+b,0)/(4*gradientErrors.length));
                   if(accepted/population<.9||rmse>=.05||p95>=.1||gradientRmse>=.002)throw new Error(`Analytical truth failed ${mode}: ${accepted}/${population}/${rmse}/${p95}/${gradientRmse}`);
@@ -115,7 +121,7 @@ def main():
                 return {boundary:'Resident Uint8Array pair -> materialized JS field; CPU includes setReference per pair; GPU reuses resources. No Python transport/capture/recording.',
                   browser:navigator.userAgent,adapter:await engines.gpu.host.info(),engineOptions,request,coldPreparationMs:cold,timings,
                   quality:{finite,cpuAccepted:a.accepted,gpuAccepted:b.accepted,commonAccepted:common,statusMismatch,displacementDifferenceRmse:Math.sqrt(sum/(2*common)),gradientDifferenceRmse:Math.sqrt(grad/(4*common)),maxParameterDifference:max},
-                  analytical,gpuMemory:engines.gpu.memoryUsage(),fixtureMetadata:metadata};
+                  analytical,gpuMemory:engines.gpu.memoryUsage(),fixtureMetadata:metadata,targetRecipe:request.motionModel==='translation'?'Original reference rolled (+2,-1) pixels; interior truth only':'Original frame_040.png'};
               }finally{engines.cpu.destroy();engines.gpu.destroy();}
             })()""".replace("__OPTIONS__", json.dumps(options))
             report = browser._evaluate(script)

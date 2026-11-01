@@ -113,7 +113,12 @@ def main():
                     browser,
                     "liveDicSourceState().source==='camera'&&!liveDicSourceState().loadingSource&&liveDicStatus.completed>=5",
                 )
-                for mode, recording in [("fixed", False), ("fixed", True), ("consecutive", False)]:
+                for mode, recording in [
+                    ("fixed", False),
+                    ("fixed", True),
+                    ("consecutive", False),
+                    ("consecutive", True),
+                ]:
                     browser._evaluate(
                         "(async()=>{if(!liveDicSourceState().paused)await document.getElementById('pause').onclick();while(liveDicSourceState().inFlight)await new Promise(r=>setTimeout(r,20));return true;})()"
                     )
