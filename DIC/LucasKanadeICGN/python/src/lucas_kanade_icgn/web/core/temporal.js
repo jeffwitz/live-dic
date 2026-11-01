@@ -107,6 +107,11 @@ export async function createTemporalGraph(device, shader, levels, seedEdges, opt
   }
   if (!shared) reset();
   return { shared: { current, coarseHistory, previous, prediction, links, seedConfig, cache }, counts, before: [predict, projection].filter(Boolean), refine,
+    clearForNewReference(encoder) {
+      // Status zero is unavailable to temporal projection. No CPU zero arrays
+      // or uploads are needed when consecutive GPU pairs change the reference.
+      for(const h of [current,coarseHistory,previous])if(h){encoder.clearBuffer(h.state);encoder.clearBuffer(h.ages);}
+    },
     after: [save, mergeFine, mergeCoarse].filter(Boolean), reset, memoryResources: () => owned,
     destroy() { owned.forEach((b) => b.destroy()); } };
 }

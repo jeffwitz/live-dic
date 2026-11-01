@@ -17,8 +17,12 @@ export class DICEngine {
       'interpolation', 'pyramidLevels', 'iterationsPerLevel', 'tolerancePerLevel', 'iterations', 'tolerance',
       'znccMin', 'outlierPolicy', 'initialization', 'temporalPrediction', 'temporalFineCorrection',
       'temporalMaxAge', 'divergencePatience', 'divergenceMinIterations', 'pipelineDepth', 'readback',
-      'spatialWeighting', 'roiPolicy', 'roiTruncation', 'pyramidPolicy', 'solverWorkgroupSize']);
+      'spatialWeighting', 'roiPolicy', 'roiTruncation', 'pyramidPolicy', 'solverWorkgroupSize', 'referencePreparation']);
     for (const key of Object.keys(options)) if (!supported.has(key)) throw new Error(`Unsupported engine option: ${key}`);
+    if (options.referencePreparation !== undefined && !['cpu', 'gpu'].includes(options.referencePreparation)) {
+      throw new Error("referencePreparation must be 'cpu' or 'gpu'");
+    }
+    if(options.referencePreparation==='gpu'&&((options.motionModel??'affine')==='quadratic'||(options.pipelineDepth??1)!==1))throw new Error('GPU reference preparation supports translation/affine and one slot');
     if (options.solverWorkgroupSize !== undefined && options.solverWorkgroupSize !== 16) throw new Error('The browser engine supports only solverWorkgroupSize=16');
     if (options.roiTruncation !== undefined && options.roiTruncation !== 'none') throw new Error('ROI truncation is not supported in the browser engine');
     if (options.temporalFineCorrection !== undefined && typeof options.temporalFineCorrection !== 'boolean') throw new Error('temporalFineCorrection must be boolean');
@@ -60,10 +64,14 @@ export class DICEngine {
     this.reference = null;
     this.inputs.forEach((input) => input.destroy()); this.inputs = [];
     for (let i = 0; i < this.ring.depth; i++) this.inputs.push(await createInputConverter(this.device, width, height));
+    if(this.options.referencePreparation==='gpu') {
+      source={width,height,gpuSource:source};
+    } else {
     if (!(source instanceof Uint8Array)) pixels = await this.inputs[0].referencePixels(source);
     if (pixels instanceof Uint8Array) {
       if (pixels.length !== width * height) throw new Error('Expected width * height grayscale bytes');
       source = { pixels, width, height };
+    }
     }
     this.reference = await this.host.setReference(source, { ...this.options, ...options, roiMask: ownedMask });
     return this.reference;
@@ -80,6 +88,30 @@ export class DICEngine {
       return result;
     });
   }
+  registerPair(referenceFrame,currentFrame) {
+    this.assertOpen();
+    if(this.options.referencePreparation!=='gpu')throw new Error('registerPair requires referencePreparation="gpu"');
+    if(!this.reference)throw new Error('Prepare the static geometry/ROI with setReference first');
+    for (const frame of [referenceFrame, currentFrame]) {
+      const [width, height] = frame instanceof Uint8Array
+        ? [this.reference.width, this.reference.height] : frameSize(frame);
+      if (width !== this.reference.width || height !== this.reference.height
+          || (frame instanceof Uint8Array && frame.length !== width * height)) {
+        throw new Error('Pair images must match the prepared reference dimensions');
+      }
+    }
+    return this.ring.run(async()=>{
+      const started=performance.now();
+      try{
+        const result=await this.host.registerPair(referenceFrame,currentFrame);
+        result.timing.totalWallMs=performance.now()-started;
+        // The current numeric validity mask stays on GPU. Do not expose a
+        // stale cold-reference mask as though it described this new pair.
+        this.reference={...this.reference,referenceValid:null,referenceValidity:'gpu-resident',referenceAdmissible:result.referenceAdmissible};
+        return result;
+      }catch(error){this.reference=null;throw error;}
+    });
+  }
   resetTemporalState() {
     this.assertOpen();
     if (!this.ring.idle) throw new Error('Finish the current sequence before resetting history');
@@ -94,6 +126,10 @@ export class DICEngine {
     this.assertOpen();
     if (!this.ring.idle) throw new Error('Pause and finish current frames before exporting');
     return this.host.exportField();
+  }
+  exportReference(level=0) {
+    this.assertOpen();if(!this.ring.idle)throw new Error('Pause and finish current frames before inspecting a reference');
+    return this.host.exportReference(level);
   }
   get device() { return this.host?.device; }
   get imageTexture() { this.assertOpen(); return this.host.imageTexture; }

@@ -4,6 +4,7 @@ import { createTemporalGraph, validateTemporal } from './temporal.js';
 import { validateMask, planRoi, reduceMask, seedPermissions, hashMask } from './roi.js';
 import { decodePacked, createResultReader, decodeCounters } from './result.js';
 import { loadShader } from './shaders.js';
+import { createGpuReferenceGraph } from './reference-gpu.js';
 /*
  * Raw browser WebGPU adapter for the same portable WGSL used by wgpu-py.
  *
@@ -54,6 +55,7 @@ export function createPyramidHost(options = {}) {
   const OUTLIER_POLICY_CONSTANTS = { flag: 0, replace: 1, disabled: 2, median: 3 };
 
   const configuration = {
+    ...(options.referencePreparation==='gpu'?{referencePreparation:'gpu'}:{}),
     subsetSize: SUBSET_SIZE,
     subsetStride: SUBSET_STRIDE,
     initialization: options.initialization ?? 'zero',
@@ -78,6 +80,7 @@ export function createPyramidHost(options = {}) {
   let roiMask = null;
   let roiPlans = [];
   let temporal = null;
+  let gpuReference = null;
   let slots = [];
   let lastFieldBuffer = null;
   let lastSlot = null;
@@ -133,6 +136,7 @@ export function createPyramidHost(options = {}) {
   };
 
   const destroyRuntimeResources = () => {
+    gpuReference?.destroy();gpuReference=null;
     const contexts = slots.length ? slots : [{ levels, reductionEdges, seedEdges, temporal }];
     const released = new Set();
     const release = (resource) => { if (resource && !released.has(resource)) { resource.destroy(); released.add(resource); } };
@@ -425,12 +429,12 @@ export function createPyramidHost(options = {}) {
         reference: device.createBuffer({
           label: `DIC-RT reference level ${levelIndex}`,
           size: pixelCount * 16,
-          usage: storage | GPUBufferUsage.COPY_DST,
+          usage: storage | GPUBufferUsage.COPY_DST | (hostOptions.referencePreparation==='gpu'?GPUBufferUsage.COPY_SRC:0),
         }),
         metadata: device.createBuffer({
           label: `DIC-RT metadata and inverse Hessians level ${levelIndex}`,
           size: gridCount * (metadataStride + (roiMask ? 4 : 0) + parameterCount * parameterCount) * 4,
-          usage: storage | GPUBufferUsage.COPY_DST,
+          usage: storage | GPUBufferUsage.COPY_DST | (hostOptions.referencePreparation==='gpu'?GPUBufferUsage.COPY_SRC:0),
         }),
         state: device.createBuffer({
           label: `DIC-RT state level ${levelIndex}`,
@@ -731,10 +735,12 @@ export function createPyramidHost(options = {}) {
     );
   };
 
-  const executePipeline = async ({ measureGpu = false, slot = slots[0] } = {}) => {
-    const { levels, reductionEdges, seedEdges, temporal } = slot;
+  const executePipeline = async ({ measureGpu = false, slot = slots[0], pair = false } = {}) => {
+    const { levels, reductionEdges, seedEdges } = slot;
+    const temporal=pair?null:slot.temporal;
     if (roiPlans[0]?.count === 0) return null;
     const encoder = device.createCommandEncoder({ label: 'DIC-RT full-pyramid registration' });
+    if(pair){slot.temporal?.clearForNewReference(encoder);gpuReference.encode(encoder);}
     if (slot.externalActive) slot.external.converter.encode(encoder);
     levels.forEach((level) => {
       encoder.clearBuffer(level.buffers.state);
@@ -742,7 +748,7 @@ export function createPyramidHost(options = {}) {
         encoder.clearBuffer(level.buffers.filteredState);
       }
     });
-    if (temporal) encoder.clearBuffer(temporal.counts);
+    if (slot.temporal) encoder.clearBuffer(slot.temporal.counts);
     const jobs = [];
     reductionEdges.forEach((edge) => {
       jobs.push({
@@ -844,7 +850,8 @@ export function createPyramidHost(options = {}) {
         encoder.copyBufferToBuffer(reader.summary, 0, slot.readback, 0, reader.summaryBytes); offset = reader.summaryBytes;
         if (mode === 'decimated') { encoder.copyBufferToBuffer(reader.samples, 0, slot.readback, offset, reader.sampleBytes); offset += reader.sampleBytes; }
       }
-      if (temporal) encoder.copyBufferToBuffer(temporal.counts, 0, slot.readback, offset, 16);
+      if (slot.temporal) {encoder.copyBufferToBuffer(slot.temporal.counts, 0, slot.readback, offset, 16);offset+=16;}
+      if(gpuReference)gpuReference.copyCount(encoder,slot.readback,offset);
     }
     device.queue.submit([encoder.finish()]);
     if (!timestampReadback) {
@@ -872,6 +879,7 @@ export function createPyramidHost(options = {}) {
         grid: [GRID_WIDTH, GRID_HEIGHT], config: { ...configuration }, timing, accepted: 0, selected: 0,
         excluded: GRID_COUNT, acceptance: null, meanIterations: null, truthRmse: null, maxAbs: [0, 0, 0, 0],
         readback: mode, roiSelected: roiPlans[0].selected };
+      if(gpuReference)result.referenceAdmissible=0;
       if (mode === 'full') {
         const packed = new Float32Array(GRID_COUNT * stride);
         for (let i = 0; i < GRID_COUNT; i++) packed[i * stride + stride - 2] = -3;
@@ -899,6 +907,7 @@ export function createPyramidHost(options = {}) {
     if (forceFull || !slot.resultReader) {
     encoder.copyBufferToBuffer(resultBuffer, 0, readback, 0, size);
     if (temporal) encoder.copyBufferToBuffer(temporal.counts, 0, readback, size, 16);
+    if(gpuReference)gpuReference.copyCount(encoder,readback,size+(temporal?16:0));
     device.queue.submit([encoder.finish()]);
     }
     await readback.mapAsync(GPUMapMode.READ);
@@ -911,6 +920,7 @@ export function createPyramidHost(options = {}) {
       const counters = new Uint32Array(mapped, size, 4);
       result.counters = decodeCounters(counters, configuration);
     }
+    if(gpuReference)result.referenceAdmissible=new Uint32Array(mapped,size+(temporal?16:0),1)[0];
     if (roiPlans[0]) result.roiSelected = roiPlans[0].selected;
     readback.unmap();
     lastFieldBuffer = resultBuffer; lastSlot = slot;
@@ -934,7 +944,9 @@ export function createPyramidHost(options = {}) {
     if (slot.temporal) {
       const counts = new Uint32Array(mapped, offset, 4);
       result.counters = decodeCounters(counts, configuration);
+      offset+=16;
     }
+    if(gpuReference)result.referenceAdmissible=new Uint32Array(mapped,offset,1)[0];
     slot.readback.unmap();
     lastFieldBuffer = configuration.outlierPolicy === 'disabled' ? slot.levels[0].buffers.state : slot.levels[0].buffers.filteredState;
     lastSlot = slot;
@@ -968,6 +980,17 @@ export function createPyramidHost(options = {}) {
     const runtimeBuildWallMs = performance.now() - runtimeStarted;
     const referenceStarted = performance.now();
     try {
+      if(hostOptions.referencePreparation==='gpu'){
+        for(const level of levels)if(level.roi){
+          const neighbours=new Float32Array(level.gridCount*4);
+          for(let i=0;i<level.gridCount;i++)neighbours[i*4]=level.roi.neighbours[i];
+          device.queue.writeBuffer(level.buffers.metadata,level.gridCount*16*4,neighbours);
+        }
+        gpuReference=await createGpuReferenceGraph(device,levels,pipelines.reduceY,reduceYBindGroupLayout,
+          {...configuration,subsetSize:SUBSET_SIZE,subsetStride:SUBSET_STRIDE});
+        const prepared=await gpuReference.prepare(image.gpuSource??image.pixels);
+        levels.forEach((level,i)=>level.referenceValid=prepared.masks[i]);
+      }else{
       const referenceLevels = [{
         values: image.pixels ?? imageToGray(image, FRAME_WIDTH, FRAME_HEIGHT, 1),
         width: FRAME_WIDTH,
@@ -1009,6 +1032,7 @@ export function createPyramidHost(options = {}) {
         device.queue.writeBuffer(level.buffers.metadata, metadata.byteLength, prepared.inverseHessian);
         device.queue.writeBuffer(level.buffers.metadata, 0, metadata);
       });
+      }
     } finally {
       image.close?.();
     }
@@ -1037,7 +1061,7 @@ export function createPyramidHost(options = {}) {
         { ...configuration, subsetSize: SUBSET_SIZE, subsetStride: SUBSET_STRIDE },
         configuration.outlierPolicy === 'disabled' ? slot.levels[0].buffers.state : slot.levels[0].buffers.filteredState);
       const size = Math.max(slot.levels[0].buffers.state.size,
-        slot.resultReader ? slot.resultReader.summaryBytes + slot.resultReader.sampleBytes : 0) + (slot.temporal ? 16 : 0);
+        slot.resultReader ? slot.resultReader.summaryBytes + slot.resultReader.sampleBytes : 0) + (slot.temporal ? 16 : 0)+(gpuReference?4:0);
       slot.readback = device.createBuffer({ size, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
     }
     await device.queue.onSubmittedWorkDone();
@@ -1097,6 +1121,35 @@ export function createPyramidHost(options = {}) {
     slot.external.converter.copy(frame);
     const gpuMs = await executePipeline({ slot });
     return readResult({ gpuMs, wallMs: performance.now() - started }, slot);
+  };
+
+  const registerPair = async (reference,current) => {
+    if(!referenceReady||!gpuReference)throw new Error('Prepare a GPU reference before registering pairs');
+    const slot=slots[0],started=performance.now();
+    if(roiPlans[0]?.count!==0)gpuReference.copy(reference);
+    if(roiPlans[0]?.count!==0) {
+      if(current instanceof Uint8Array){slot.externalActive=false;setTargetBytes(current,FRAME_WIDTH,FRAME_HEIGHT,slot.levels[0].sourceTexture);}
+      else{slot.externalActive=true;slot.external.converter.copy(current);}
+    }
+    await executePipeline({slot,pair:true});
+    const result=await readResult({gpuMs:null,wallMs:performance.now()-started,gpuReferenceIncluded:true},slot);
+    levels.forEach(level=>level.referenceValid=null);
+    return result;
+  };
+
+  const exportReference = async (index=0) => {
+    if(!gpuReference)throw new Error('Reference inspection requires referencePreparation="gpu"');
+    const level=levels[index];if(!Number.isInteger(index)||!level)throw new Error('Reference level index is out of range');
+    const referenceBytes=level.buffers.reference.size,metadataBytes=level.buffers.metadata.size;
+    const readback=device.createBuffer({size:referenceBytes+metadataBytes,usage:GPUBufferUsage.COPY_DST|GPUBufferUsage.MAP_READ});
+    try{
+      const encoder=device.createCommandEncoder();encoder.copyBufferToBuffer(level.buffers.reference,0,readback,0,referenceBytes);
+      encoder.copyBufferToBuffer(level.buffers.metadata,0,readback,referenceBytes,metadataBytes);
+      const valid=await gpuReference.readValidity(encoder);await readback.mapAsync(GPUMapMode.READ);
+      const data=readback.getMappedRange();
+      return {reference:new Float32Array(data,0,referenceBytes/4).slice(),metadata:new Float32Array(data,referenceBytes,level.gridCount*16).slice(),
+        inverseHessian:new Float32Array(data,referenceBytes+level.inverseOffset*16,level.gridCount*36).slice(),referenceValid:valid.masks[index],referenceAdmissible:valid.counts[index]};
+    }finally{if(readback.mapState==='mapped')readback.unmap();readback.destroy();}
   };
 
   const percentile = (values, probability) => {
@@ -1177,7 +1230,7 @@ export function createPyramidHost(options = {}) {
 
   configure(options, true);
   return {
-    info, configure, setReference, register, registerBytes, registerExternal, benchmark, ensureDevice,
+    info, configure, setReference, register, registerBytes, registerExternal, registerPair, exportReference, benchmark, ensureDevice,
     resetTemporalState() { temporal?.reset(); },
     setAnalyticTruth(truth) { slots.forEach((slot) => slot.resultReader?.setTruth(truth)); },
     exportField() { return readResult({ export: true }, lastSlot ?? slots[0], true); },
@@ -1186,7 +1239,7 @@ export function createPyramidHost(options = {}) {
     get fieldBuffer() { return lastFieldBuffer ?? (configuration.outlierPolicy === 'disabled' ? buffers?.state : buffers?.filteredState); },
     get configuration() { return { ...configuration }; },
     memoryResources() { return {levels,reductionEdges,seedEdges,slots,queryResolveBuffer,sourceTexture,buffers,
-      temporal:slots.map(slot=>slot.temporal?.memoryResources()),readers:slots.map(slot=>slot.resultReader?.memoryResources())}; },
+      gpuReference:gpuReference?.memoryResources(),temporal:slots.map(slot=>slot.temporal?.memoryResources()),readers:slots.map(slot=>slot.resultReader?.memoryResources())}; },
     destroy() {
       destroyRuntimeResources();
       if (ownsDevice) device?.destroy();
