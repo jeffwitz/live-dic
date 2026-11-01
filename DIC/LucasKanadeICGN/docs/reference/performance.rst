@@ -1310,3 +1310,53 @@ The raw baseline and diagnostic follow-up are retained in the
 Reproduce with ``tools/diagnose_camera_pipeline.py --site PATH --output REPORT``.
 Use ``--resolution 3840x2160`` for a separate UHD control; do not infer its
 performance from these 1080p values.
+
+
+.. _browser-gpu-reference-preparation:
+
+Changing browser references prepared on GPU
+-------------------------------------------
+
+The experimental ``referencePreparation='gpu'`` mode rebuilds reference
+intensities, gradients and inverse Hessians on GPU for every consecutive pair.
+It reuses cold resources and submits preparation plus solving together. The
+fixed-reference and native-Python defaults are unchanged. See
+:doc:`../explanation/gpu-reference-preparation` for the algorithm and API scope.
+
+These UHD controls measure **resident Uint8Array pair → materialized JavaScript
+field**, excluding PNG decode, Python transport, acquisition, rendering and
+recording. They include reference reconstruction on every call, unlike the
+fixed-reference tables above. Intel Lunar Lake, Linux, Chromium 155; uniform
+16/16, B-spline, two levels, explicit median, unchanged iteration/tolerance
+schedules. Five warmups, alternating CPU/GPU order, 30 affine and 20 translation
+samples:
+
+.. list-table:: New reference for every UHD pair
+   :header-rows: 1
+
+   * - Model / target
+     - CPU preparation + solve median
+     - GPU preparation + solve median / p95
+     - Sustained GPU call rate
+   * - Affine / original tensile frame 40
+     - 1272.10 ms
+     - 75.50 / 82.57 ms
+     - 13.06 fields/s
+   * - Translation / original speckle shifted (+2,−1)
+     - 946.60 ms
+     - 64.60 / 73.73 ms
+     - 15.18 fields/s
+
+Both paths accept the same subsets and have zero status mismatches in these
+controls. The affine GPU field retains 99.981% interior coverage, 0.024202 px
+analytical displacement RMSE and 0.0010642 gradient RMSE per component. The
+CPU/GPU displacement difference RMSE is 0.0000559 px. Translation has 100%
+interior coverage and analytical RMSE 0.00004235 px. These satisfy the existing
+fixture gates. No threshold was changed for GPU preparation.
+
+The raw reports, exact source revisions, input provenance, shader/host hashes,
+cold costs and reproduction commands are in
+``benchmarks/results/browser-gpu-reference-20261101/``. These are short controlled
+distributions, not general thermal or physical-camera qualification. Newly
+prepared consecutive pairs do **not** reach 4K60 on this machine. Do not compare
+them to fixed-reference solve times as though both perform the same work.

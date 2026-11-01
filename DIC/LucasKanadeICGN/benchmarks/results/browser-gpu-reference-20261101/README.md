@@ -7,7 +7,7 @@ fixed-reference IC-GN and its mathematical shaders are unchanged.
 
 ## Native UHD numerical and image-to-field controls
 
-- Linux x86_64, Intel Lunar Lake integrated GPU, Chromium 150.
+- Linux x86_64, Intel Lunar Lake integrated GPU, Chromium 155 (exact user agent in reports).
 - Original 3840 × 2160 tensile PNGs; no resize, tiling or video codec. Input
   hashes/provenance are in each report's fixture metadata. Translation uses
   the original reference rolled by (+2,-1) pixels, evaluated on the interior.
