@@ -30,9 +30,9 @@ class BrowserTimingTests(unittest.TestCase):
         shutil.copytree(PROJECT / "web-app/render", root / "render")
         script = f"""
           import {{DICEngine}} from {json.dumps((root / "web/core/engine.js").as_uri())};
-          import {{FieldRenderer}} from {json.dumps((root / "render/field.js").as_uri())};
+          import {{LiveVectorRenderer as FieldRenderer}} from {json.dumps((root / "render/live-vectors.js").as_uri())};
           import {{createSession}} from {json.dumps((root / "ui/session.js").as_uri())};
-          let clock=0,engineOptions;const timers=new Map();let timer=0;
+          let clock=0,engineOptions,preparations=0,resets=0,solves=0;const timers=new Map();let timer=0;
           globalThis.performance={{now:()=>clock,timeOrigin:1000}};
           globalThis.setTimeout=fn=>{{timers.set(++timer,fn);return timer;}};
           globalThis.clearTimeout=id=>timers.delete(id);
@@ -46,8 +46,8 @@ class BrowserTimingTests(unittest.TestCase):
           const info={{width:64,height:64,referenceValid:new Uint8Array(16).fill(1),grid:[4,4],config:{{motionModel:'affine'}}}};
           const engine={{device:{{lost:new Promise(()=>{{}}),addEventListener(){{}},createShaderModule:()=>({{}}),createRenderPipeline:()=>({{}}),
              createBuffer:()=>({{destroy(){{}}}}),createTexture:()=>({{destroy(){{}}}}),queue:{{copyExternalImageToTexture(){{}}}}}},
-             ring:{{idle:true}},resetTemporalState(){{}},setAnalyticTruth(){{}},destroy(){{}},setReference:async()=>info,
-             register:async()=>({{width:64,height:64,grid:[4,4],config:info.config,timing:{{wallMs:0}},accepted:4,selected:16}}),
+             ring:{{idle:true}},resetTemporalState(){{resets++;}},setAnalyticTruth(){{}},destroy(){{}},setReference:async()=>{{preparations++;return info;}},
+             register:async()=>{{solves++;return {{width:64,height:64,grid:[4,4],config:info.config,timing:{{wallMs:0}},accepted:4,selected:16}};}},
              exportField:async()=>({{width:64,height:64,parameters:new Float32Array(96),status:new Float32Array(16),iterations:new Float32Array(16)}})}};
           DICEngine.create=async options=>{{engineOptions=options;return engine;}};
           const draws=[];FieldRenderer.prototype.draw=function(engine,result,options){{
@@ -60,12 +60,15 @@ class BrowserTimingTests(unittest.TestCase):
           for(let i=1;i<=3;i++){{clock+={10 if preview_enabled else 1000};const target=frame();targets.push(target);await session.handle({{type:'frame',id:i,frame:target,recordRequested:true,comparison:{{mode:'fixed',target:{{ordinal:i}}}}}});}}
           const results=messages.filter(m=>m.type==='result');
           const before={{draws:[...draws],measurements:results.length,timers:timers.size,recordWidths:results.map(m=>m.record.field.width)}};
+          const numericalBefore=[preparations,resets,solves];
+          await session.handle({{type:'presentation',id:8,options:{{previewEnabled:false,displayRate:1,previewMaxWidth:32}}}});
+          const presentationDidNotCalculate=JSON.stringify(numericalBefore)===JSON.stringify([preparations,resets,solves]);
           await session.handle({{type:'flush',id:9}});const flushed=messages.at(-1);
           await session.handle({{type:'show-reference',show:true}});const reference=messages.at(-1);
           clock+=10;const final=frame();targets.push(final);
           await session.handle({{type:'frame',id:4,frame:final,comparison:{{mode:'fixed',target:{{ordinal:4}}}}}});
           await session.handle({{type:'destroy'}});
-          console.log(JSON.stringify({{before,flushed,reference,draws,timers:timers.size,closed:targets.every(t=>t.closed),numericalOptionsUnchanged:!('supervision' in engineOptions)}}));
+          console.log(JSON.stringify({{before,flushed,reference,draws,presentationDidNotCalculate,preparations,timers:timers.size,closed:targets.every(t=>t.closed),numericalOptionsUnchanged:!('supervision' in engineOptions)}}));
         """
         actual = json.loads(
             subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
@@ -82,6 +85,8 @@ class BrowserTimingTests(unittest.TestCase):
         self.assertEqual(actual["timers"], 0)
         self.assertTrue(actual["closed"])
         self.assertTrue(actual["numericalOptionsUnchanged"])
+        self.assertTrue(actual["presentationDidNotCalculate"])
+        self.assertEqual(actual["preparations"], 1)
 
     def test_comparison_switch_clears_old_age_and_fps_windows(self):
         # Reproduce the assembled module layout without copying images/vendor assets.
@@ -93,7 +98,9 @@ class BrowserTimingTests(unittest.TestCase):
             (root / "render").mkdir()
             for name in ("session.js", "plate-truth.js", "supervision.js"):
                 shutil.copyfile(PROJECT / "web-app/ui" / name, root / "ui" / name)
-            shutil.copyfile(PROJECT / "web-app/render/field.js", root / "render/field.js")
+            shutil.copyfile(
+                PROJECT / "web-app/render/live-vectors.js", root / "render/live-vectors.js"
+            )
             script = f"""
               import {{DICEngine}} from {json.dumps((root / "web/core/engine.js").as_uri())};
               import {{createSession}} from {json.dumps((root / "ui/session.js").as_uri())};

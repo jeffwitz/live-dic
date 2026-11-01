@@ -1,5 +1,6 @@
 import { RecordingQueue } from './ui/recording-queue.js';
 import { supervisionOptions } from './ui/supervision.js';
+import { vectorColour } from './render/live-vectors.js';
 import { parameterOrder, parameterUnits } from './ui/postprocess.js';
 import { decodeMaskImage, maskPng } from './ui/mask-image.js';
 import { installWorkbench } from './ui/workbench.js';
@@ -22,6 +23,7 @@ let buildInfo = null;
 let pipelineTimingUpdatedAt = -Infinity;
 const synchronousAdmissions = [];
 let recordingQueue = null, supervision = supervisionOptions(), lastPresentation = null, lastHudAt = -Infinity, pipelineStateUpdatedAt = -Infinity;
+let lastVectorLegend = null;
 const pending = new Map(), video = $('video');
 sourceButtons.forEach(id => $(id).disabled = true);
 const status = globalThis.liveDicStatus = { ready: false, completed: 0, errors: [], results: [] };
@@ -93,13 +95,23 @@ function details() {
   requestedResolution: $('resolution').value }, null, 2); }
 function updateScale(scale) {
   if (!Number.isFinite(scale)) return;
-  const mode = Number($('component').value);
-  document.querySelector('.legend').classList.toggle('magnitude', mode === 2 || mode === 7);
-  document.querySelector('.legend').classList.toggle('status', mode === 6);
-  if (mode === 6) { $('low').textContent = 'Accepted / flagged'; $('high').textContent = 'Unconverged / rejected'; return; }
-  const strain = Number($('component').value) >= 3 && Number($('component').value) <= 5;
-  $('low').textContent = mode === 2 || mode === 7 ? '0' : `−${scale.toPrecision(3)}`;
-  $('high').textContent = mode === 7 ? `${(scale * 1e6).toPrecision(3)} με` : `+${scale.toPrecision(3)}${strain ? ' (gradient)' : ' px'}`;
+  const legend=document.querySelector('.legend');legend.hidden=lastVectorLegend?.imageOnly??Number($('component').value)===8;
+  legend.classList.remove('status');legend.classList.add('magnitude');
+  legend.querySelector('div').style.background=`linear-gradient(90deg,${Array.from({length:11},(_,i)=>`rgb(${vectorColour(i/10).join(',')}) ${i*10}%`).join(',')})`;
+  $('low').textContent='0 px';$('high').textContent=`${scale.toPrecision(3)} px · |u|`;
+  document.querySelector('.gray-key').textContent='Grey crosses: requested but unavailable. ROI holes have no vectors.';
+  updateVectorLengthLegend();
+}
+function updateVectorLengthLegend(){
+  const key=$('live-vector-key'),legend=lastVectorLegend;
+  key.hidden=workbench.reviewing||!legend||legend.imageOnly;
+  if(key.hidden)return;
+  const factor=legend.gain*$('field').getBoundingClientRect().width/legend.imageWidth;
+  if(!(factor>0))return;
+  const value=72/factor,power=10**Math.floor(Math.log10(value)),fraction=value/power;
+  const reference=(fraction<2?1:fraction<5?2:5)*power;
+  $('vector-key-arrow').style.width=`${reference*factor}px`;
+  $('vector-key-label').textContent=`${reference.toPrecision(3)} px displacement · lengths ×${legend.gain.toPrecision(3)}. Tips mark current subset centres.`;
 }
 async function receive({ data }) {
   if (data.bitmap) {
@@ -113,6 +125,8 @@ async function receive({ data }) {
     delete data.bitmap;
   }
   if (data.presentation) { lastPresentation = data.presentation; updatePipelineState(); }
+  if (data.vectorLegend) lastVectorLegend=data.vectorLegend;
+  if (data.supervision) {supervision=supervisionOptions(data.supervision);updatePipelineState(true);}
   if (data.type === 'error') {
     status.errors.push(data.message); message(data.message, true);
     if (pending.has(data.id)) { pending.get(data.id).reject(new Error(data.message)); pending.delete(data.id); }
@@ -168,6 +182,7 @@ async function receive({ data }) {
     }
   }
   if (data.type === 'scale' && !workbench.reviewing) updateScale(data.scale);
+  if ((data.type==='preview'||data.type==='flushed')&&!workbench.reviewing&&data.vectorLegend)updateScale(data.vectorLegend.maximumPx);
   if (data.type === 'dropped') { dropped++; $('drops').textContent = dropped; }
   const request = pending.get(data.id);
   if (request) { pending.delete(data.id); request.resolve(data); }
@@ -253,9 +268,6 @@ async function updateReferenceControls() {
   for(let i=0;i<total;i++)if(!referenceInfo.roiSelected||referenceInfo.roiSelected[i]){selected++;if(referenceInfo.referenceValid?.[i])valid++;}
   $('applied-solver-summary').textContent=`Applied ${cfg.motionModel} · ${cfg.interpolation} · ${cfg.pyramidLevels} level(s)\nWindow ${referenceInfo.subsetSize} px · step ${referenceInfo.subsetStride} px · ${Math.round(100*(1-referenceInfo.subsetStride/referenceInfo.subsetSize))}% overlap\nIteration limits (coarse → fine): ${cfg.iterationsPerLevel.join(' / ')}\nGrid ${referenceInfo.grid.join(' × ')} · ${selected} selected / ${total} positions\n${valid} admissible prepared references; target convergence remains to be measured.\nReference preparation: ${cfg.referencePreparation??'cpu'}.`;
   $('last-reference-summary').textContent='Awaiting a target field.';
-  const translationOnly = referenceInfo.config?.motionModel === 'translation';
-  for (const option of $('component').options) if ([3,4,5,7].includes(Number(option.value))) option.disabled = translationOnly;
-  if (translationOnly && [3,4,5,7].includes(Number($('component').value))) { $('component').value='2'; await send('display',{display:displayOptions()}); }
 }
 async function captureReference(frame = null) {
   let requested;try{requested=options();}catch(error){frame?.close();throw error;}
@@ -482,11 +494,11 @@ async function startPlate() {
   await captureReference(reference);
   roi.reset(3840, 2160, platePreset()); appliedShapes = roi.shapes();
   const mask = roi.mask(), ownedMask = mask?.slice() ?? null; referenceInfo = (await send('roi', { mask, options: options() }, [mask.buffer])).info; workbench.setMask(ownedMask); appliedEditorState=roi.state();
-  $('component').value = referenceInfo.config.motionModel === 'translation' ? '2' : '7'; $('scale').value = referenceInfo.config.motionModel === 'translation' ? '10' : '0.002'; $('arrows').checked = true; $('arrow-gain').value = '50'; $('opacity').value = '1';
+  $('component').value='2';$('scale').value='auto';$('arrow-gain').value='auto';$('opacity').value='1';
   await send('display', { display: displayOptions() });
   await runPlateTarget();
   // Show editable outer rectangle and circular hole on the fixed reference.
-  message('Original UHD plate · equivalent strain and displacement arrows. Edit mask to move/resize the outlined rectangle or hole, or add regions.');
+  message('Original UHD plate · live displacement vectors. Store a field and open Results for equivalent strain. Edit the mask to change the outlined domain or hole.');
 }
 async function runPlateTarget() {
   if (roiEditing) { message('Apply the edited mask before recalculating the plate.'); return; }
@@ -567,8 +579,14 @@ const roi = installRoi($('roi'), $('shape'), (state) => {
   if(state.editing&&!editorWasActive&&matchMedia('(max-width:760px)').matches)requestAnimationFrame(()=>document.querySelector('.viewer').scrollIntoView({block:'start'})); editorWasActive=state.editing;
   $('apply-roi').disabled = !roiEditing; $('mask-toolbar').hidden=!roiEditing; $('apply-mask-top').disabled=!roiEditing;
 });
-$('zoom').onchange = () => { $('scene').style.width = `${Number($('zoom').value)*100}%`; };
+$('zoom').onchange = () => { $('scene').style.width = `${Number($('zoom').value)*100}%`; requestAnimationFrame(updateVectorLengthLegend); };
 $('centre-view').onclick = () => { const view=$('image-viewport'); view.scrollLeft=(view.scrollWidth-view.clientWidth)/2; view.scrollTop=(view.scrollHeight-view.clientHeight)/2; };
+if(typeof ResizeObserver==='function'){
+  let pendingLegendFrame=null;
+  const observer=new ResizeObserver(()=>{if(pendingLegendFrame===null)pendingLegendFrame=requestAnimationFrame(()=>{pendingLegendFrame=null;updateVectorLengthLegend();});});
+  observer.observe($('image-viewport'));
+  window.addEventListener('pagehide',()=>{observer.disconnect();cancelAnimationFrame(pendingLegendFrame);});
+}
 $('regions').onchange = () => roi.select($('regions').value);
 $('delete-roi').onclick = () => roi.remove();
 $('undo-roi').onclick = () => roi.undo();
@@ -669,8 +687,8 @@ $('apply-roi').onclick = () => sourceChange(async () => {
 $('clear-roi').onclick = () => sourceChange(async () => { workbench.returnLive(); pauseSource(); await drain(); workbench.setMask(null); workbench.setReady(false);$('export').disabled=true;clearLiveMetrics(); roiEditing = false; roi.reset(referenceInfo.width, referenceInfo.height); appliedShapes = []; draftMaskSource = appliedMaskSource = null; $('roi-editor').hidden = true;
   referenceInfo = (await send('roi', { mask: null, options: options() })).info; await updateReferenceControls(); appliedEditorState=roi.state(); $('mask-import-summary').textContent='Full image · no imported base mask.'; $('pause').textContent = 'Resume'; details(); if (source === 'plate') await runPlateTarget(); });
 function displayOptions() { return { mode: Number($('component').value), scale: $('scale').value === 'auto' ? null : Number($('scale').value),
-  opacity: Number($('opacity').value), arrows: $('arrows').checked, arrowStep: Number($('arrow-step').value), arrowGain: Number($('arrow-gain').value) }; }
-for (const id of ['component', 'scale', 'opacity', 'arrows', 'arrow-step', 'arrow-gain']) $(id).onchange = () => send('display', { display: displayOptions() });
+  opacity: Number($('opacity').value), arrowStep: Number($('arrow-step').value), arrowGain: $('arrow-gain').value==='auto'?null:Number($('arrow-gain').value) }; }
+for (const id of ['component','scale','opacity','arrow-step','arrow-gain']) $(id).onchange = () => {if(transport&&referenceInfo)send('display',{display:displayOptions()}).catch(e=>message(e.message,true));};
 function download(name, content, type) {
   const url = URL.createObjectURL(new Blob([content], { type })), link = document.createElement('a');
   link.href = url; link.download = name; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -701,9 +719,13 @@ window.addEventListener('pagehide', () => { workbench.destroy(); sourceAbort.abo
 window.addEventListener('error', (event) => { status.errors.push(event.message); message(event.message, true); });
 window.addEventListener('unhandledrejection', (event) => { const text = String(event.reason); status.errors.push(text); message(text, true); });
 if (smoke) { globalThis.liveDicReport = () => send('report'); globalThis.liveDicPipelineReport = () => ({settings:supervision,recording:recordingQueue.report(),synchronousAdmissions:synchronousAdmissions.slice(),presentation:lastPresentation}); globalThis.liveDicWorkbench = workbench; globalThis.liveDicRoi = roi; globalThis.liveDicSourceState = () => ({source,paused,loadingSource,inFlight,index:imageIndex,fileCount:localImages.length,localBusy:!!imageTask,loop:!!imageLoop,settings:sourceSettings,comparison:$('comparison').value,videoTime:video.currentTime,videoPaused:video.paused}); }
-for (const id of ['overlap-pipeline','display-rate','preview-width','gpu-reference-preparation','custom-solver','motion-model','subset-size','subset-stride','interpolation','pyramid-levels','coarse-iterations','fine-iterations','outlier-policy','temporal-start']) $(id).onchange = () => {
+for(const id of ['display-rate','preview-width'])$(id).onchange=()=>{
+  if(!transport||!referenceInfo)return;
+  const options={displayRate:$('display-rate').value==='off'?0:Number($('display-rate').value),previewEnabled:$('display-rate').value!=='off',previewMaxWidth:Number($('preview-width').value)};
+  send('presentation',{options}).catch(e=>message(e.message,true));
+};
+for (const id of ['overlap-pipeline','gpu-reference-preparation','custom-solver','motion-model','subset-size','subset-stride','interpolation','pyramid-levels','coarse-iterations','fine-iterations','outlier-policy','temporal-start']) $(id).onchange = () => {
   $('solver-settings').disabled = !$('custom-solver').checked;
-  $('pipeline-settings').disabled = !$('overlap-pipeline').checked;
   $('subset-stride').max = $('subset-size').value;
   if (Number($('subset-stride').value) > Number($('subset-size').value)) $('subset-stride').value = $('subset-size').value;
   try { const requested = options(); $('solver-summary').textContent = $('custom-solver').checked ? `Pending: ${requested.motionModel} · ${requested.subsetSize}/${requested.subsetStride} · ${requested.pyramidLevels} level(s). Capture reference or Apply mask to apply.` : `Preset with ${requested.referencePreparation??'cpu'} reference preparation selected for the next reference. Current fields keep their original configuration.`; }

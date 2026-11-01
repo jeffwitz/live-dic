@@ -13,6 +13,28 @@ ROOT = Path(__file__).resolve().parents[2]
 
 @unittest.skipUnless(shutil.which("node"), "Node is needed for solver-control contracts")
 class SolverControlTests(unittest.TestCase):
+    def test_preview_controls_are_independent_of_recording_overlap(self):
+        script = f"""
+          import {{solverOptions}} from {json.dumps((ROOT / "web-app/ui/workspace.js").as_uri())};
+          const values={{profile:{{value:'portable'}},'custom-solver':{{checked:false}},
+            'display-rate':{{value:'10'}},'preview-width':{{value:'1920'}},'overlap-pipeline':{{checked:false}}}};
+          globalThis.document={{getElementById:id=>values[id]}};
+          const normal=solverOptions();values['display-rate'].value='off';
+          const suspended=solverOptions();values['overlap-pipeline'].checked=true;
+          console.log(JSON.stringify({{normal,suspended,overlapped:solverOptions()}}));
+        """
+        result = json.loads(
+            subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
+        )
+        self.assertEqual(result["normal"]["profile"], "portable")
+        self.assertEqual(
+            result["normal"]["supervision"],
+            dict(overlapRecording=False, displayRate=10, previewMaxWidth=1920, previewEnabled=True),
+        )
+        self.assertFalse(result["suspended"]["supervision"]["previewEnabled"])
+        self.assertFalse(result["suspended"]["supervision"]["overlapRecording"])
+        self.assertTrue(result["overlapped"]["supervision"]["overlapRecording"])
+
     def test_preset_is_unchanged_and_custom_combinations_reach_the_core(self):
         ui = ROOT / "web-app/ui/workspace.js"
         core = ROOT / "python/src/lucas_kanade_icgn/web/core/engine.js"

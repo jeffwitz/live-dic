@@ -56,7 +56,7 @@ Choose the experiment and inspect its reference
    the edited geometry. The selection accepts only complete nominal windows
    inside white pixels. Numerical failures stay distinct from ROI exclusions.
 
-Define the mask from specimen geometry. The **Status** display makes failed
+Define the mask from specimen geometry. The saved-field **Status** display makes failed
 measurements visible without removing them from the requested ROI. A black/white
 PNG at reference size is another exact mask input; no resizing is performed.
 Threshold conversion of a nonbinary image is an explicit option.
@@ -72,10 +72,12 @@ Threshold conversion of a nonbinary image is an explicit option.
 Understand what is displayed
 ----------------------------
 
-Return to **Results**. In the live appearance controls, choose a displacement
-component, magnitude, equivalent strain or **Status**. Arrows originate at
-reference subset centres and use an explicit magnification. Equivalent strain
-uses the documented ``ezz=0`` convention; it is not stress.
+Return to **Results**. The lightweight live preview shows norm-coloured
+displacement vectors on the current image. Its colourbar is measured pixels;
+a separate key shows length magnification. Tips identify current subset centres.
+Choose a slow preview rate or suspend it while computing/recording continues.
+For scalar maps, equivalent strain and statuses, inspect a saved field in the
+next step. Equivalent strain uses ``ezz=0``; it is not stress.
 
 The accepted/selected counters have different roles. Selection describes the
 geometric ROI. Prepared-reference admissibility describes numerical information

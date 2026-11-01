@@ -1642,3 +1642,64 @@ registration. The complete local native/browser-enabled suite passes 280 tests.
 This establishes functional reference reuse and interchange, not a new live
 60 FPS recording claim. Use :doc:`../tutorials/realtime-sequence` for the native
 first-image loop and :doc:`../how-to/run-in-browser` for the equivalent GUI mode.
+
+Fixed-first-reference requalification (2026-11-01)
+-------------------------------------------------
+
+The `complete protocol and lossless records <https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/fixed-reference-bench-20261101>`_
+compare ``388cc5e`` with ``e781957``. The entire packaged ``python/src`` tree is
+identical; native and browser numerical graphs did not change. Original resident
+UHD reference/frame040 arrays alternate against one persistent first reference.
+Affine 16/16, B-spline, median, two levels, 8/16 GN limits, zero initialization,
+uniform weights and no ROI are held fixed. Twenty warmups precede 300 fields
+per process. Cold preparation is outside steady state. Hardware is Intel Lunar
+Lake, Mesa 25.2.8, performance profile, Chromium 155.
+
+.. list-table:: Resident NumPy image → materialized NumPy field/statistics
+   :header-rows: 1
+
+   * - Path
+     - Baseline median range (ms)
+     - Candidate median range (ms)
+     - Candidate p95 range (ms)
+     - Candidate sustained FPS
+   * - Native, one slot
+     - 11.347–11.676
+     - 11.476–11.652
+     - 13.077–13.533
+     - 86.65–87.84
+   * - Python raw-WebGPU browser adapter
+     - 40.273–40.869
+     - 40.143–41.931
+     - 45.056–49.359
+     - 23.51–24.87
+
+All runs retain at least 99.9806% of 30,916 selected interior centres, displacement
+RMSE below 0.024203 px, p95 below 0.04555 px and median gradient RMSE below
+0.001065 per component. Native falls within the predeclared reference-only
+variability envelope. The primary Python/browser comparison is inconclusive:
+one candidate is slower and one faster. A predeclared A/B/B/A follow-up does
+not reproduce that slowdown (candidate medians 39.289/39.290 ms, reference
+39.170/39.566 ms); it does not erase the primary result.
+
+The same archive includes PWA static simulated UHD-camera controls. With the
+then-current every-field native-size scalar display, baseline recording commits
+11.67–13.04 fields/s. The bounded queue with a 1 Hz/1920 px preview commits
+28.84–29.35 fields/s, or computes 35.26–37.31 fields/s without recording. These
+are identity-image controls, not physical-camera or moving-deformation FPS.
+They **predate the sparse live-vector renderer** and cannot establish its gain.
+Two native two-slot controls reach 90.04–92.94 fields/s but increase median
+result age to 21.49–21.83 ms; throughput is not latency.
+
+Current live presentation boundary
+-----------------------------------
+
+The owner-requested live view now renders the current image plus sparse vectors
+coloured by displacement norm. It does not create a scalar field raster or
+compute/interpolate strain. The GUI explicitly starts at 10 Hz maximum and
+1920 px preview width, independent of recording overlap. Earlier scalar-display
+campaigns above describe their recorded revisions, not this new view.
+Numerical dimensions, solver defaults and full field recording are unchanged.
+Saved-field analysis pauses acquisition and caches component values/statistics
+for palette and range edits. Those processing/presentation costs are outside
+the native image-to-field boundary. See :doc:`../how-to/run-in-browser`.

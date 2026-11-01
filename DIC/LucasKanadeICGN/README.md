@@ -24,9 +24,11 @@ preparation** checkbox in Solve. Apply it with a new reference. See the
 for the tested scope and timing boundary; CPU preparation remains the default.
 
 **Experimental pipeline overlap** in Solve adds a bounded two-field recording
-queue and an independently scheduled, optionally smaller preview. Apply it with
-a new reference; numerical images, ROI and saved fields retain their original
-size. See the [browser guide](docs/how-to/run-in-browser.rst) and the
+queue. Apply it with a new reference. The lightweight live preview independently
+shows norm-coloured displacement vectors on the current image, initially at
+10 Hz maximum and 1920 px width. Its controls apply immediately; numerical
+images, ROI and saved fields retain their original size. Scalar maps and strain
+post-processing run only when reviewing saved fields. See the [browser guide](docs/how-to/run-in-browser.rst) and the
 [recording measurements](docs/reference/performance.rst#browser-recording-overlap).
 
 [Open the published workbench](https://jeffwitz.github.io/live-dic/) without installing a local server.
@@ -134,8 +136,8 @@ related SYCL DIC prototype; that provenance is documented in
 [acknowledgements](docs/explanation/acknowledgements.rst).
 
 The browser companion also includes an editable multi-domain mask (rectangles,
-polygons, ellipses, circles and nested holes/islands), displacement arrows and
-plane-strain von Mises strain display. The original UHD plate-with-hole case
+polygons, ellipses, circles and nested holes/islands), live displacement arrows
+and saved-field plane-strain von Mises analysis. The original UHD plate-with-hole case
 loads its editable rectangle/circle preset and both analytical load states.
 See the [browser guide](docs/how-to/run-in-browser.rst) for the scientific
 conventions and the distinction between static scoring and video timing.

@@ -25,8 +25,10 @@ outside the numerical engine's timing boundary.
 
 A standalone **WebGPU application** now provides browser-local camera, image-folder and video
 supervision, a bounded worker, editable multi-domain/full ROI with holes,
-temporal prediction, GPU field display with displacement arrows/equivalent strain
-and on-demand CSV/JSON export. A results workbench adds bounded opt-in field
+temporal prediction, a lightweight live vector overlay on the current image,
+and on-demand CSV/JSON export. Vector colour represents displacement norm;
+a separate length key documents magnification. Scalar maps and strain analysis
+belong to the saved-results phase. A results workbench adds bounded opt-in field
 recording, point/line/extensometer extraction, reversible displacement smoothing,
 VSG strain, principal/equivalent strain, region statistics, length units and NumPy
 NPZ interchange. Results projects restore shared masks, recipes and measurements.
@@ -48,9 +50,11 @@ default. It improves the tested consecutive path but does not establish a
 4K60 camera pipeline; [scope and activation](DIC/LucasKanadeICGN/docs/explanation/gpu-reference-preparation.rst).
 
 **Experimental pipeline overlap** in Solve can also overlap computing with
-bounded disk recording and use a smaller, independently scheduled preview.
+bounded disk recording. Live preview is independent: 10 Hz maximum and 1920 px
+width initially, with immediate controls to slow or suspend it.
 The numerical input, ROI and saved fields keep their original resolution.
-Both options require a new reference; existing defaults stay unchanged. See the
+GPU preparation and recording overlap require a new reference. Preview controls
+do not rebuild the reference or alter numerical defaults. See the
 [activation guide](DIC/LucasKanadeICGN/docs/how-to/run-in-browser.rst) and
 [1080p/UHD recording measurements](DIC/LucasKanadeICGN/docs/reference/performance.rst#browser-recording-overlap).
 

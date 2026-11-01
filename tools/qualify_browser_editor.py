@@ -239,7 +239,7 @@ def main():
                 "(()=>{const v=document.getElementById('image-viewport');return {width:v.clientWidth,height:v.clientHeight,scrollWidth:v.scrollWidth,scrollHeight:v.scrollHeight,left:v.scrollLeft,top:v.scrollTop,canvas:document.getElementById('field').getBoundingClientRect().toJSON()};})()"
             )
             zoom["centrePixel"] = browser._evaluate(
-                "(async()=>{const b=await createImageBitmap(document.getElementById('field')),c=new OffscreenCanvas(1,1),ctx=c.getContext('2d');ctx.drawImage(b,1920,1080,1,1,0,0,1,1);b.close();return [...ctx.getImageData(0,0,1,1).data];})()"
+                "(async()=>{const canvas=document.getElementById('field'),b=await createImageBitmap(canvas),c=new OffscreenCanvas(1,1),ctx=c.getContext('2d');ctx.drawImage(b,canvas.width/2,canvas.height/2,1,1,0,0,1,1);b.close();return [...ctx.getImageData(0,0,1,1).data];})()"
             )
             data = asyncio.run(
                 protocol(
@@ -248,8 +248,13 @@ def main():
                 )
             )[0]["data"]
             (args.screenshots / "viewport.png").write_bytes(base64.b64decode(data))
-            screenshot("von-mises-arrows.png", full=False)
-            assert all(abs(v - 122) <= 1 for v in zoom["centrePixel"][:3]), zoom
+            screenshot("live-vectors.png", full=False)
+            expected_hole = browser._evaluate("""(async()=>{
+              const bitmap=await createImageBitmap(await fetch('./demo/plate/frame_225.png').then(r=>r.blob()));
+              const canvas=new OffscreenCanvas(1,1),ctx=canvas.getContext('2d');
+              ctx.drawImage(bitmap,1920,1080,1,1,0,0,1,1);bitmap.close();
+              return [...ctx.getImageData(0,0,1,1).data];})()""")
+            assert zoom["centrePixel"] == expected_hole, zoom
             errors = browser._evaluate("liveDicStatus.errors")
             assert not errors, errors
             report = dict(

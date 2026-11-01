@@ -280,6 +280,10 @@ jobs:
         run: >-
           python tools/qualify_browser_editor.py --site _site --software
           --report browser-results/editor.json --screenshots browser-results/editor
+      - name: Verify live vector pixels, current-image anchoring and UHD preview
+        run: >-
+          python tools/qualify_live_vectors.py --site _site --software
+          --report browser-results/live-vectors.json
       - name: Exercise UHD local sources and whole-ROI consecutive failures
         run: >-
           python tools/qualify_local_sources.py --site _site --software

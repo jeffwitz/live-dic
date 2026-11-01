@@ -42,6 +42,27 @@ quantities. No proprietary source, icon set or screen layout is copied. Stereo,
 material identification, stress reconstruction, instrument synchronization and
 commercial metrology certification are outside this application.
 
+Live monitoring and saved-field analysis
+-----------------------------------------
+
+The acquisition session imports a dedicated vector renderer. A background pass
+reads only the associated current image; an instanced pass reads sparse measured
+vectors. Colour encodes their norm, while a separate length key documents gain.
+No scalar raster, interpolation or strain postprocessor runs in this path. The
+GUI initially limits presentation to 10 Hz and 1920 px width. Rate, size and
+suspension are presentation settings, independent of computing and recording.
+A presentation flush shows the latest completed pair; mask editing restores
+the full reference image. Numerical images, fields and archives remain full size.
+
+The result library caches computed fields in bounded RAM and browser disk.
+Selecting a saved field pauses acquisition and runs its explicit processing
+recipe. Component arrays and statistics are cached for that completed analysis;
+palette/range/vector edits reuse them. A changed recipe or field has a new
+analysis and cache. This avoids recomputing derivatives for visual styling;
+it does not eagerly process or retain derived arrays for an entire recording.
+Original camera images are not stored with fields. Saved maps therefore use
+reference coordinates instead of an unrelated live image background.
+
 Numerical analysis module
 -------------------------
 

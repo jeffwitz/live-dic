@@ -168,3 +168,7 @@ dialog li { margin: 14px 0; line-height: 1.7; font-size: 13px; }
 #applied-solver-summary {white-space:pre-line;border-left:2px solid #86b7ab;padding-left:10px;}
 
 #review-field[data-analysis-state=pending],#review-field[data-analysis-state=failed] {opacity:.45;}
+
+/* Independent scale key for sparse live vectors, outside the analysis legend. */
+.live-vector-key {display:flex;align-items:center;gap:.6rem;min-height:1.2rem;margin:0;padding:.6rem .75rem;background:#fff;color:#425766}
+#vector-key-arrow {flex:none;color:#1f848a;overflow:visible}

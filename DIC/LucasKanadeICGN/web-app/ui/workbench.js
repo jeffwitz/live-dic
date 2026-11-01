@@ -1,8 +1,9 @@
-import { DEFAULT_RECIPE, analyzeField, componentValues, statistics, nearestIndex, extensometer, regionSummary, validateField } from './postprocess.js';
+import { DEFAULT_RECIPE, analyzeField, componentValues as deriveComponentValues, statistics, nearestIndex, extensometer, regionSummary, validateField } from './postprocess.js';
 import { fieldArchive, importFieldArchive, projectArchive, importProjectArchive } from './archive.js';
 import { extractHistory, sameAnalysis } from './history.js';
 import { resultFigure } from './figure.js';
 import { FieldStorage, defaultCacheBytes, fieldArrayBytes, MiB } from './field-storage.js';
+import { createViewCache } from './view-cache.js';
 
 const $ = id => document.getElementById(id);
 const number = value => value == null || !Number.isFinite(value) ? 'unavailable' : value.toPrecision(5);
@@ -45,6 +46,9 @@ function setRecipe(recipe) {
 /** A bounded, opt-in results library; the default live path never enters this module's analysis loop. */
 export function installWorkbench({ captureCurrent, pause, error, recordChange, liveChanged, openResults, requestMemory = async()=>null, geometryDefaults = () => ({}), beforeProjectExport = async () => pause(), hasPendingResults = () => false }) {
   const entries = [], canvas = $('review-field'), overlay = $('inspection'), chart = $('profile-chart');
+  const viewCache = createViewCache(deriveComponentValues, statistics);
+  const componentValues = (analysis, component) => viewCache.get(analysis, component);
+  let analysisRuns = 0;
   document.querySelector('.viewer').append($('results-workbench'));
   let nextId = 1, selected = null, analysis = null, currentMask = null, reviewing = false;
   let storage = new FieldStorage(), selectionSerial = 0, selectionBusy = false, libraryTimer = null, liveReady = false, captureBusy = false;
@@ -216,6 +220,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     if(selectionBusy){pendingAnalysis=true;return;}
     if (workerBusy) { pendingAnalysis = true; return; }
     pendingAnalysis = false; workerBusy = true;
+    analysisRuns++;
     const entry = activeEntry(), id = requestId, recipe = computedView
       ? { ...DEFAULT_RECIPE, strainSource: entry.field.config.motionModel === 'translation' ? 'vsg' : 'direct', unit: $('length-unit').value, unitsPerPixel: Number($('length-scale').value) }
       : recipeFromControls();
@@ -240,9 +245,11 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   function render() {
     figureLegend = null;
     if (!analysis) return;
-    const component = $('review-component').value, { values, valid, unit, source } = componentValues(analysis, component);
+    const component = $('review-component').value, { values, valid, unit, source, statistics:stats } = viewCache.get(analysis, component);
+    document.querySelector('.legend').hidden=false;$('live-vector-key').hidden=true;
+    document.querySelector('.gray-key').textContent='Grey: unavailable / rejected';
     $('quantity-source').hidden=!source;$('quantity-source').textContent=source?`Computed coefficient (${unit}). Workbench displacement smoothing and VSG do not change these values. The solver's original spatial policy still applies.`:'';
-    const stats = statistics(values, valid), field = analysis.field, [gw,gh] = field.grid;
+    const field = analysis.field, [gw,gh] = field.grid;
     const nonnegative = ['magnitude','vonMises','iterations'].includes(component);
     const scaleMode=$('review-scale').value,factor=STRAIN_COMPONENTS.has(component)?1e6:1;
     let low=scaleMode==='full'?stats.min:stats.p02,high=scaleMode==='full'?stats.max:stats.p98;
@@ -621,6 +628,6 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     flush:()=>storage.flush(),get storage(){return storage;},
     stopRecording(){ $('record-fields').checked=false;recordChange(false); },
     clearInspection(){stopReplay();clearHistory();points=[];updateInspection();},
-    report(){const values=analysis?componentValues(analysis,$('review-component').value):null;return{count:entries.length,selected,reviewing,replaying,unsavedProject:hasUnsaved(),memoryBytes:memoryBytes(),storage:storage.report(),provenance:activeEntry()?{analysisEpoch:activeEntry().metadata.analysisEpoch,archiveSha256:activeEntry().metadata.archiveSha256,importGeometry:activeEntry().metadata.importGeometry}:null,recipe:analysis?.recipe??null,statistics:values?statistics(values.values,values.valid):null,extraction};},
+    report(){const values=analysis?viewCache.get(analysis,$('review-component').value):null;return{count:entries.length,selected,reviewing,replaying,analysisRuns,viewCache:viewCache.report(),unsavedProject:hasUnsaved(),memoryBytes:memoryBytes(),storage:storage.report(),provenance:activeEntry()?{analysisEpoch:activeEntry().metadata.analysisEpoch,archiveSha256:activeEntry().metadata.archiveSha256,importGeometry:activeEntry().metadata.importGeometry}:null,recipe:analysis?.recipe??null,statistics:values?.statistics??null,extraction};},
     destroy(){stopReplay();historyAbort?.abort();clearTimeout(debounce);clearTimeout(libraryTimer);chartResize?.disconnect();cancelAnimationFrame(chartResizeFrame);worker?.terminate();window.removeEventListener('beforeunload',beforeUnload);} };
 }

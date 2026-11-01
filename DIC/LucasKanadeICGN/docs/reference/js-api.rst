@@ -253,12 +253,17 @@ Vector geometry is a UI representation, not a new IC-GN support model. Export
 ``roiGeometry`` contains the applied shape list and composition version along
 with the binary ``roi`` data. Unapplied edits are not exported as applied data.
 
-The renderer accepts mode 7 for equivalent strain (plane strain, εzz = 0),
-``arrows``, ``arrowStep`` (grid samples) and ``arrowGain`` (pixels per pixel of
-measured displacement). These are display settings, not ``DICEngine``
-constructor options. ``opacity`` controls image blending; it does not affect
-correlation. Display settings are included in the application metadata.
-See :doc:`../how-to/run-in-browser` for the formula and editing workflow.
+``web-app/render/live-vectors.js`` is the live presentation adapter, separate
+from ``DICEngine``. It accepts mode 2 (vectors) or 8 (image only), ``arrowStep``
+(positive integer grid spacing), ``arrowGain`` (positive length magnification
+or null for automatic), ``scale`` (positive norm maximum in image pixels or
+null for automatic), and ``opacity`` (0..1 for glyphs). It reads the existing
+GPU image and field, with no full-field readback or derived strain map.
+``vectorLegend`` describes actual norm maximum, gain, image/preview dimensions
+and current-tip anchoring. The live colourbar and length key use this metadata.
+The legacy ``render/field.js`` scalar renderer is retained as a diagnostic
+oracle; it is not loaded by the acquisition session. Scalar review uses the
+separate saved-results analysis pipeline.
 
 The static plate demo maps its complete field to compare with analytic truth.
 Its selected far-field population is labelled in ``acquisition.analyticScore``;
@@ -415,7 +420,7 @@ For a custom supervisor around the application session:
      },
    }, [referenceFrame]);
 
-``supervision`` is omitted by default. Its defaults are
+For custom session clients omitting ``supervision``, the protocol defaults remain
 ``{overlapRecording:false, displayRate:0, previewMaxWidth:0, previewEnabled:true}``.
 ``overlapRecording`` must be boolean; the recording capacity is fixed at two,
 including reserved computations. ``displayRate`` is finite in 0..240 Hz, with
@@ -426,7 +431,10 @@ transfer while computation and recording continue. It does not change the
 meaning of ``displayRate:0``. Reference capture, explicit display/inspection and
 ``flush`` still present a view; suspension is not a renderer-free engine mode.
 Unknown keys and invalid types throw before reference replacement. The GUI
-exposes a small set of these values. Changes require coherent new preparation.
+sets 10 Hz and 1920 px preview explicitly, with synchronous recording initially.
+The ``presentation`` message accepts only ``displayRate``, ``previewMaxWidth``
+and ``previewEnabled``. It applies these immediately, without reference
+preparation or history reset. Recording-overlap changes still require preparation.
 
 Numerical result dimensions always describe the original image. With an
 explicit supervisor configuration, a bitmap message's ``presentation`` object

@@ -1,0 +1,13 @@
+{
+  "baseline": "e781957 frozen scalar-renderer site",
+  "candidate": "Sparse live-vector renderer; exact clean commit/build recorded in reports",
+  "purpose": "Isolate renderer change at identical presentation settings, not combine its effect with a slower display clock or a different solver",
+  "input": "Unchanged original native UHD tensile reference as a static simulated 60Hz camera; fixed first reference; identity truth. No physical camera or moving-field FPS claim.",
+  "numerical_profile": "common-zero: affine16/16, B-spline, median, two fixed levels 8/16 GN, .005 tolerance, no temporal correction/prediction, CPU reference preparation once",
+  "presentation": {"displayRate":10,"previewMaxWidth":1920,"overlapRecording":true},
+  "protocol": {"order":["baseline","candidate","candidate","baseline"],"warmup_seconds":4,"observation_seconds":20,"recording":[false,true]},
+  "boundaries": "Computed replies, committed stored fields, worker-arrival-to-storage admission p50/p95/p99, actual preview cadence. No GPU-only or exposure-latency interpretation.",
+  "quality": "Identity RMSE <.005px, acceptance >=.95, native-size fields and zero unsaved fields after final drain. Independent original UHD moving-plate and native frame40 tests remain mandatory.",
+  "decision": "Report both candidates against both controls and all raw samples. Reference-only spread defines local repeatability; do not claim a speedup smaller than it. A single slow sample is inconclusive. This short campaign cannot prove sustained thermal behaviour or universal 4K60.",
+  "isolation": "Finish tests/builds first; no other GPU qualification during timing. Same hardware, power profile, runtime and original image hashes. Do not alter numerical settings to reach a cadence."
+}

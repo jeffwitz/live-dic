@@ -341,3 +341,14 @@ The live preview can run at 1/5/10 Hz or be suspended. Explicit inspection and
 pause/export flushes still draw; suppressing live presentation does not remove
 numerical preparation, full-field readback or storage. Its maximum display rate
 must not be used as an acquisition or computed-field FPS claim.
+
+Live preview versus results analysis
+-------------------------------------
+
+The live companion shows sparse norm-coloured vectors over the current image,
+or image only. It does not compute scalar/strain maps in the live renderer.
+Preview decimation and its maximum rate are display choices, not changes to
+full-resolution fields or a guarantee of 4K60 recording. Saved-field analysis
+pauses acquisition; palette and range edits reuse cached component arrays and
+statistics. Changing the recipe recomputes analysis. Camera images are not
+archived by field recording.

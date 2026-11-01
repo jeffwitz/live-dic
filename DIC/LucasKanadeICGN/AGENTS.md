@@ -772,3 +772,17 @@ qualification rather than infer mobile coverage from desktop results.
   translation/affine, no repeated preparation/allocation during registration and
   unchanged prepared data. Preserve the one-time-preparation contract when
   optimizing recording, display or native/browser orchestration.
+
+### Owner-authorized lightweight live presentation — 2026-11-01
+
+- The owner explicitly requested separating cheap live monitoring from saved-field
+  analysis. The PWA now chooses 10 Hz/1920 px preview explicitly; numerical/core
+  defaults and synchronous recording remain unchanged. Preview rate/size/suspension
+  apply immediately without rebuilding the reference or resetting seeds.
+- `render/live-vectors.js` draws the associated current image plus sparse
+  norm-coloured vectors. Tips are current subset centres; length gain has its
+  own zoom-aware key. Do not reintroduce scalar raster/strain analysis into live
+  acquisition. Keep `render/field.js` as an explicit diagnostic oracle only.
+- Results analysis caches component arrays/statistics by completed analysis.
+  Palette/range styling must not rerun the recipe. A new recipe/field gets a new
+  analysis. Recording stores fields, not original camera images.

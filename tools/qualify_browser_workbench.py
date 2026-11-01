@@ -142,6 +142,22 @@ def main():
             assert baseline["count"] == 1 and baseline["reviewing"], baseline
             assert baseline["statistics"]["count"] > 30000, baseline
             assert baseline["unsavedProject"], baseline
+            # Presentation edits reuse the completed analysis and cached component.
+            for key, value in [
+                ("review-palette", "gray"),
+                ("review-scale", "full"),
+                ("review-palette", "auto"),
+                ("review-scale", "robust"),
+            ]:
+                browser._evaluate(
+                    f"document.getElementById({json.dumps(key)}).value={json.dumps(value)};document.getElementById({json.dumps(key)}).onchange();true"
+                )
+            cached_view = browser._evaluate("liveDicWorkbench.report()")
+            assert cached_view["analysisRuns"] == baseline["analysisRuns"]
+            assert cached_view["viewCache"]["computations"] == baseline["viewCache"]["computations"]
+            assert cached_view["viewCache"]["hits"] > baseline["viewCache"]["hits"]
+            assert cached_view["statistics"] == baseline["statistics"]
+            assert browser._evaluate("document.getElementById('live-vector-key').hidden")
             assert not browser._evaluate(
                 "window.dispatchEvent(new Event('beforeunload',{cancelable:true}))"
             )
@@ -485,6 +501,7 @@ def main():
                 software=args.software,
                 user_agent=browser._evaluate("navigator.userAgent"),
                 baseline=baseline,
+                cached_view=cached_view,
                 processed=processed,
                 profile=profile,
                 history=history,

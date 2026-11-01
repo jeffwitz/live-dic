@@ -2,7 +2,9 @@ import { presentationSize } from '../ui/supervision.js';
 /** Plane-strain equivalent strain, matching the archived plate convention. */
 export const equivalentStrain = (exx, eyy, exy) => 2 / 3 * Math.sqrt(Math.max(0, exx * exx - exx * eyy + eyy * eyy + 3 * exy * exy));
 
-/** Direct GPU field rendering. No field values are read into JavaScript here. */
+/** Explicit scalar diagnostic rendering, retained for frozen shader oracles.
+ * The acquisition session imports LiveVectorRenderer instead of this class.
+ */
 export class FieldRenderer {
   constructor(device, canvas) {
     this.device = device; this.canvas = canvas; this.groups = new WeakMap();

@@ -1,7 +1,7 @@
 import { DICEngine, probeCapabilities } from '../web/core/engine.js';
 import { LATENCY_OPTIONS } from '../web/core/device.js';
 import { scorePlate } from './plate-truth.js';
-import { FieldRenderer } from '../render/field.js';
+import { LiveVectorRenderer as FieldRenderer } from '../render/live-vectors.js';
 import { supervisionOptions } from './supervision.js';
 import { gpuMemoryUsage } from '../web/core/gpu-memory.js';
 
@@ -33,7 +33,7 @@ export function createSession(send) {
     if (!last || !renderer) return;
     const started = supervisionConfigured ? performance.now() : 0;
     lastScale = renderer.draw(engine, last, { ...display, previewMaxWidth: showingReference ? 0 : supervision.previewMaxWidth,
-      ...(showingReference ? {opacity:0,imageTexture:referenceTexture} : {}) });
+      ...(showingReference || !lastComparison ? {imageTexture:referenceTexture} : {}) });
     lastDrawnAt = performance.now(); pendingPresentation = false;
     if (supervisionConfigured) {presentationStats.draws++;presentationStats.drawWallMs+=lastDrawnAt-started;}
     lastPresentation = {width:canvas.width,height:canvas.height,resultId:lastResultId,
@@ -47,6 +47,7 @@ export function createSession(send) {
     const dimensions = bitmap ? {width:message.width??engine?.reference?.width??canvas.width,
       height:message.height??engine?.reference?.height??canvas.height} : {};
     send({ ...message, ...dimensions, ...(bitmap ? { bitmap } : {}),
+      ...(includeBitmap ? {vectorLegend:renderer?.legend??null} : {}),
       ...(includeBitmap&&supervisionConfigured ? {presentation:lastPresentation} : {}) }, bitmap ? [bitmap, ...transfer] : transfer);
   }
   function schedulePresentation() {
@@ -194,6 +195,15 @@ export function createSession(send) {
         await Promise.all([...outstanding]);
         cancelPresentation(); if (last) { paintLast(); present({ type: 'scale', id, scale:lastScale }); }
         else send({ type: 'scale', id, scale: null });
+      } else if (type === 'presentation') {
+        const requested=message.options;
+        if(!requested||Object.keys(requested).some(key=>!['displayRate','previewMaxWidth','previewEnabled'].includes(key)))throw new Error('Presentation updates accept only preview settings');
+        const selected=supervisionOptions({...supervision,...requested});
+        await Promise.all([...outstanding]);const wasPending=pendingPresentation;cancelPresentation();
+        supervision=selected;supervisionConfigured=true;
+        if(activeOptions)activeOptions={...activeOptions,supervision:{...supervision}};
+        if(supervision.previewEnabled&&last){paintLast();present({type:'scale',id,scale:lastScale,supervision});}
+        else {pendingPresentation=wasPending;send({type:'scale',id,scale:lastScale,supervision});}
       } else if (type === 'flush') {
         await Promise.all([...outstanding]);
         const paint = pendingPresentation; cancelPresentation();

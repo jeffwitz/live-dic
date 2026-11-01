@@ -33,7 +33,7 @@ export function solverOptions() {
   const get = id => document.getElementById(id);
   const base = { profile: get('profile').value };
   if (get('gpu-reference-preparation')?.checked) base.referencePreparation = 'gpu';
-  if (get('overlap-pipeline')?.checked) base.supervision = {overlapRecording:true,
+  if (get('display-rate') && get('preview-width')) base.supervision = {overlapRecording:!!get('overlap-pipeline')?.checked,
     displayRate:get('display-rate').value==='off'?0:Number(get('display-rate').value),
     previewEnabled:get('display-rate').value!=='off',previewMaxWidth:Number(get('preview-width').value)};
   if (!get('custom-solver').checked) return base;

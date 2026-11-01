@@ -60,7 +60,8 @@ Try the demonstration first
 ---------------------------
 
 Choose **Tensile demo**. The application loads a derived 1920 × 1080 tensile
-replay, captures its reference and displays displacement magnitude. The
+replay, captures its reference and displays norm-coloured displacement vectors over
+the associated current image. The
 reference, image-formation recipe, raw input pixel hashes and encoded-file
 hash are in ``web-app/demo/manifest.json``. The 200-frame stretch history comes
 from the archived native-UHD fixture. Demo images are formed from a BOX-reduced
@@ -76,10 +77,11 @@ drop source frames when a slot is busy; the source does not wait in an
 unbounded queue. A 30 Hz movie cannot establish a completed 60 FPS acquisition
 pipeline, even if the numerical graph finishes in less than 16.67 ms.
 
-Choose the field, use automatic or fixed colour limits, and inspect the device
-and acquisition details. Affine gradients and symmetric shear are direct
-kinematic coefficients, not a calibrated material stress calculation. Grey
-means unavailable or rejected; excluded subsets are not zero measurements.
+Use automatic or fixed norm colour limits and an independent arrow length
+magnification. Inspect device/acquisition details. Store a field and open
+Results to examine affine gradients, symmetric shear or equivalent strain.
+These are kinematic quantities, not material stresses. Grey crosses mark
+unavailable requested subsets; excluded subsets are not zero measurements.
 
 Use a camera
 ------------
@@ -202,7 +204,7 @@ promise of target convergence.
 
 The entire geometric ROI is requested on every pair, including after a failed
 or textureless frame. Numerical invalidity and non-convergence are retained as
-statuses and do not shrink the ROI. Choose **Status · entire ROI** to distinguish
+statuses and do not shrink the ROI. In a saved-field review, choose **Status · entire ROI** to distinguish
 excluded, unavailable, rejected, unconverged, valid and flagged/replaced cells.
 A failed cell is not a valid zero displacement. The mask remains in image
 coordinates when the pair reference changes; it is not advected with material.
@@ -235,11 +237,14 @@ GPU resource report. It does not use disk recording memory as GPU memory. See
 Overlap recording and control the live preview
 ----------------------------------------------
 
-In **Solve**, check **Experimental pipeline overlap**, choose the maximum display
-rate and preview width, then capture a new reference or apply the mask. The
-option is independent of **Experimental GPU reference preparation** and custom
-solver settings. The existing synchronous/native-size behaviour remains the
-default. Pending edits do not affect an active sequence.
+In **Results → Lightweight live preview**, choose display rate and preview
+width. The initial GUI values are 10 Hz maximum and 1920 px width. These
+settings apply immediately without preparing a reference, resetting seeds or
+changing recording. They are independent of recording overlap.
+
+In **Solve**, check **Experimental pipeline overlap**, then capture a new
+reference or apply the mask. Synchronous recording remains the default.
+This option is independent of experimental GPU preparation and custom settings.
 
 With overlap enabled, the supervisor reserves space before every recorded solve.
 At most **two fields**, including a calculation in progress, may be waiting for
@@ -269,8 +274,8 @@ of recording cadence. **Suspend live preview · keep computing/recording**
 suppresses live field drawing and bitmap transfer; progress still updates at
 about 1 Hz. It does not pause acquisition or omit computed fields. Explicit
 inspection, reference/mask views and Pause/export can still draw the latest
-view. Apply a new reference to change this setting, as with the other pipeline
-controls. A low display rate is a maximum, not a target computational rate.
+view. Changes apply immediately. A low display rate is a maximum, not a
+target computational rate.
 
 The pipeline status distinguishes the displayed input, pending recording slots
 and library admissions. Computed FPS may temporarily lead committed FPS by up
@@ -396,15 +401,26 @@ enter IC-GN. Changing the drawn mask changes the scored population.
 Displacement vectors and equivalent strain
 ------------------------------------------
 
-Enable **Displacement arrows**, then choose their subset spacing and length
-magnification. Arrows originate at accepted reference subset centres, read the
-GPU field directly, and use the calculated (u,v), in pixels. The same gain
-applies to both components; magnification is explicit, not normalization to
-unit arrows. Excluded/rejected points have no arrow. A magnified valid arrow
-may extend across a mask boundary; its origin identifies the measurement.
+The live view offers **Norm-coloured displacement vectors** and **Current image
+only**. It copies the associated current image and draws sparse GPU glyphs;
+it does not create a scalar field raster, interpolate displacements or compute
+strain. Adjust subset spacing, vector opacity, norm colour maximum and length
+magnification independently. The colourbar is in measured image pixels.
 
-Select **von Mises strain εVM (εzz = 0)** for nonnegative equivalent strain.
-It uses the same convention as the archived plane-strain plate analysis:
+A vector's tip is at its current subset centre: reference centre plus measured
+``(u,v)``. Its tail is tip minus magnified displacement. At magnification one,
+the segment therefore joins the reference and current centres. The same
+magnification applies to both components, without normalization to unit arrows.
+The length key scales with zoom; it is separate from the norm colourbar. Auto
+magnification fits ordinary arrows within part of a sampled cell, with a
+one-pixel floor to avoid amplifying tiny identity-field noise. Very short arrows
+are dots. Grey crosses mark unavailable requested cells at reference centres;
+ROI-excluded cells have no glyph. A magnified arrow can cross a mask boundary;
+its current tip identifies its measurement, not a new valid sample.
+
+To display equivalent strain, choose **Inspect current field**, then
+**Equivalent strain** in Results. This pauses acquisition and analyses the
+stored field. For direct infinitesimal affine gradients and ``εzz=0``:
 
 .. math::
 
@@ -413,13 +429,13 @@ It uses the same convention as the archived plane-strain plate analysis:
    \varepsilon_{VM}=\tfrac23\sqrt{\varepsilon_{xx}^2-
    \varepsilon_{xx}\varepsilon_{yy}+\varepsilon_{yy}^2+3\varepsilon_{xy}^2}.
 
-These are direct infinitesimal affine strains with an explicit εzz = 0
-assumption, not stress or a general finite-strain invariant. The legend uses
-microstrain; manual scales are dimensionless (0.002 means 2,000 microstrain).
-Automatic VM scale is a conservative bound derived from the existing maximum
-gradient summary, rather than another field readback. **Field opacity** chooses
-an image blend, field only or image only. Invalid cells stay grey. Arrows and
-VM are visualization operations; they do not modify the calculated parameters.
+This is strain, not stress or a general finite-strain invariant. Saved views
+use reference coordinates and their own colour scales. Palette, range and vector
+styling reuse the completed component values and statistics. Changing the
+processing recipe computes a new analysis; it never changes the archived raw
+field. Acquisition recording does not run this analysis on every field. It
+stores full coefficients/statuses on browser disk with the bounded CPU cache;
+it does not archive original camera images. Keep source images separately.
 
 Correlation settings without hidden changes
 --------------------------------------------
