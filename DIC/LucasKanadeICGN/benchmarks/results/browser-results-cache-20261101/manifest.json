@@ -1,0 +1,18 @@
+{
+  "hardware.json": {
+    "sha256": "59422e1b1f7092d7ea0c31f6316de45ee068256aef8b92051d38eb2a8b1e4283",
+    "bytes": 11738
+  },
+  "workbench.json": {
+    "sha256": "7c31630d717dee27742dc1b7500bfad99bb03b9b8d46346d233b0b7195988a7a",
+    "bytes": 24744
+  },
+  "review-no-worker.json": {
+    "sha256": "3446e42c915d876278a18459b812e852732bea622b9021ac90fd25cb75d802ec",
+    "bytes": 3696
+  },
+  "software.json": {
+    "sha256": "178e3f43329505d5614999c8af8d18194746cc259b7ff7a38254d0d3e46f8dc5",
+    "bytes": 11737
+  }
+}
