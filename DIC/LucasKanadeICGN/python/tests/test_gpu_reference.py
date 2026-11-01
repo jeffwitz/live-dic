@@ -205,6 +205,32 @@ class GpuReferenceExecutionTests(unittest.TestCase):
         """)
         self.assertEqual(len(actual), 2)
 
+    def test_all_readback_modes_reset_history_and_external_inputs_stay_owned_by_caller(self):
+        actual = self.evaluate("""
+          const width=128,height=128,bytes=texture(width,height),rgba=new Uint8ClampedArray(bytes.length*4);
+          bytes.forEach((v,i)=>rgba.set([v,v,v,255],4*i));
+          const bitmap=await createImageBitmap(new ImageData(rgba,width,height));
+          try {
+            for(const readback of ['none','decimated','full']) {
+              const engine=await DICEngine.create({width,height,readback,referencePreparation:'gpu',
+                initialization:'temporal',temporalPrediction:'velocity',temporalFineCorrection:true});
+              try {
+                await engine.setReference(bitmap);await engine.register(bitmap);
+                const result=await engine.registerPair(bitmap,bitmap),full=await engine.exportField();
+                check(result.referenceAdmissible===64&&full.referenceAdmissible===64,'readback count offset');
+                check(result.accepted>0&&full.accepted===result.accepted,'readback accepted');
+                check(full.parameters.every(Number.isFinite),'external field finite');
+                check(bitmap.width===width,'caller bitmap was closed');
+                check(result.timing.gpuReferenceIncluded===true,'combined timing missing');
+                check(result.counters.temporallySeededCoarseSubsets===0&&result.counters.velocityPredictedSubsets===0,'cross-reference temporal seeds');
+                // A later fixed-reference solve must also be possible after reset.
+                const fixed=await engine.register(bitmap);check(fixed.accepted>0,'fixed solve after pair');
+              }finally{engine.destroy();}
+            }return true;
+          }finally{bitmap.close();}
+        """)
+        self.assertTrue(actual)
+
     def test_roi_empty_and_holes_remain_static_across_new_pairs(self):
         actual = self.evaluate("""
           const width=128,height=128,image=texture(width,height),mask=new Uint8Array(width*height).fill(1);

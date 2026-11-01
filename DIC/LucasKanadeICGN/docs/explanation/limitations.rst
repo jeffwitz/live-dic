@@ -288,7 +288,8 @@ diagnostics do not prove that a long recording meets a live FPS target.
 
 The camera stage diagnostic is sampled from the latest admitted field at about
 1 Hz; it is not a distribution of exposure-to-display latency. Consecutive
-reference construction currently includes CPU preparation on every pair.
+reference construction includes CPU preparation on every pair by default;
+the experimental GPU option below changes that path explicitly.
 Resetting the timing window on mode changes improves reporting, not its speed.
 
 

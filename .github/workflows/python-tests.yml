@@ -238,6 +238,11 @@ jobs:
           ICGN_RUN_BROWSER_TESTS: "1"
           ICGN_BROWSER_SOFTWARE: "1"
         run: python -m unittest discover -s DIC/LucasKanadeICGN/python/tests -p test_browser_core.py -v
+      - name: Execute opt-in GPU reference preparation against the CPU oracle
+        env:
+          ICGN_RUN_BROWSER_TESTS: "1"
+          ICGN_BROWSER_SOFTWARE: "1"
+        run: python -m unittest discover -s DIC/LucasKanadeICGN/python/tests -p test_gpu_reference.py -v
       - name: Compare sixty ordered frames per model and depth
         run: >-
           python DIC/LucasKanadeICGN/benchmarks/qualify_browser_core.py

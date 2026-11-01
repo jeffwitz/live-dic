@@ -624,7 +624,7 @@ for (const id of ['gpu-reference-preparation','custom-solver','motion-model','su
   $('solver-settings').disabled = !$('custom-solver').checked;
   $('subset-stride').max = $('subset-size').value;
   if (Number($('subset-stride').value) > Number($('subset-size').value)) $('subset-stride').value = $('subset-size').value;
-  try { const requested = options(); $('solver-summary').textContent = $('custom-solver').checked ? `Pending: ${requested.motionModel} · ${requested.subsetSize}/${requested.subsetStride} · ${requested.pyramidLevels} level(s). Capture reference or Apply mask to apply.` : 'Preset selected for the next reference. Current fields keep their original configuration.'; }
+  try { const requested = options(); $('solver-summary').textContent = $('custom-solver').checked ? `Pending: ${requested.motionModel} · ${requested.subsetSize}/${requested.subsetStride} · ${requested.pyramidLevels} level(s). Capture reference or Apply mask to apply.` : `Preset with ${requested.referencePreparation??'cpu'} reference preparation selected for the next reference. Current fields keep their original configuration.`; }
   catch(e) { $('solver-summary').textContent = e.message; }
 };
 init().catch((error) => { status.errors.push(error.message); message(error.message, true); });
