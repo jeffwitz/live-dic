@@ -94,8 +94,11 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     $('review-vectors').checked=view.vectors===true;$('review-contour').checked=view.contour===true;
     if([2,4,8].includes(view.vectorStep))$('review-vector-step').value=view.vectorStep;
     if([1,5,20,50,100].includes(view.vectorGain))$('review-vector-gain').value=view.vectorGain;
+    restoreInspection(view);
+  }
+  function restoreInspection(view) {
     const field=activeEntry()?.field;
-    if(['probe','line','gauge','region'].includes(view.tool)&&Array.isArray(view.points)&&view.points.length<=2&&
+    if(view&&['probe','line','gauge','region'].includes(view.tool)&&Array.isArray(view.points)&&view.points.length<=2&&
       view.points.every(point=>Array.isArray(point)&&point.length===2&&point.every(Number.isFinite)&&
         point[0]>=0&&point[1]>=0&&point[0]<field.width&&point[1]<field.height)) {
       tool=view.tool;points=view.points.map(point=>[...point]);
@@ -177,7 +180,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   async function selectEntry(id,{replay=false,preserveView=reviewing}={}) {
     if(!replay)stopReplay();
     const entry = entries.find(value => value.id === Number(id)); if (!entry) return;
-    const carriedRecipe=preserveView&&reviewing&&activeEntry()&&sameAnalysis(activeEntry(),entry)?recipeFromControls():null;
+    const inspection=entry.metadata.workbench?.view??(preserveView?viewSettings():null);
     rememberView();
     historyAbort?.abort();history=null;$('spatial-view').hidden=true;$('history-state').textContent='';
     pause(); selected = entry.id; analysis = null; reviewing = true; computedView = false; points = []; extraction = [];
@@ -199,8 +202,9 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
       const i=Number(option.dataset.coefficient);option.disabled=i>=(entry.field.config.motionModel==='quadratic'?12:6)||(entry.field.config.motionModel==='translation'&&![0,3].includes(i));
     }
     if($('review-component').selectedOptions[0].disabled)$('review-component').value='magnitude';
-    setRecipe(carriedRecipe ?? entry.recipe ?? { ...DEFAULT_RECIPE, strainSource: entry.field.config.motionModel === 'translation' ? 'vsg' : 'direct' });
+    setRecipe(entry.recipe ?? { ...DEFAULT_RECIPE, strainSource: entry.field.config.motionModel === 'translation' ? 'vsg' : 'direct' });
     if(!preserveView)restoreView(entry.metadata.workbench?.view);
+    else restoreInspection(inspection);
     $('compare-computed').textContent = 'Show computed field';
     liveChanged(true); openResults(); scheduleAnalysis();
   }

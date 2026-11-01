@@ -65,6 +65,12 @@ def main():
             assert browser._evaluate(
                 "document.getElementById('pause').closest('#pane-solve')!==null"
             )
+            browser._evaluate("document.getElementById('draw').onclick().then(()=>true)")
+            assert browser._evaluate("!liveDicSourceState().viewingInput&&!document.getElementById('field').hidden")
+            assert browser._evaluate("liveDicPipelineReport().presentation.referencePreview")
+            assert browser._evaluate("liveDicStatus.completed") == 0
+            browser._evaluate("document.getElementById('cancel-roi').onclick().then(()=>true)")
+            assert browser._evaluate("liveDicSourceState().viewingInput")
             fixtures = ROOT / "DIC/LucasKanadeICGN/assets/uhd_plate_hole"
             files = []
             for index, name in enumerate(

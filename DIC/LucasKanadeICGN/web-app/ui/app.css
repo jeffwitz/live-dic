@@ -175,11 +175,8 @@ dialog li { margin: 14px 0; line-height: 1.7; font-size: 13px; }
 
 /* Saved-field transport is adjacent to the image, separate from correlation. */
 .result-transport {padding:12px;background:#fff;border-block:1px solid var(--line)}
-.result-transport>label:first-child {font-weight:600;margin-top:0}
 .result-transport .buttons {margin:8px 0}
 .result-transport input[type=range] {width:100%;accent-color:var(--accent)}
-.result-transport>label:has(#result-number) {display:inline-block;width:130px;margin-right:16px}
-.result-transport>label:has(#replay-rate) {display:inline-block;width:130px}
 #input-field {background:#101820}
 
 .result-controls {display:flex;gap:12px;align-items:end;flex-wrap:wrap}

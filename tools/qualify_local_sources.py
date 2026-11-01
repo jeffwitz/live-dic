@@ -245,6 +245,9 @@ def main():
             browser._evaluate(
                 "document.getElementById('local-seek').value=.5;document.getElementById('local-seek').onchange().then(()=>true)"
             )
+            browser._evaluate(
+                "document.getElementById('solve-range').value='single';document.getElementById('pause').onclick().then(()=>true)"
+            )
             data = export(browser)
             assert abs(data["metadata"]["comparison"]["target"]["timeSeconds"] - 0.5) < 0.001, data[
                 "metadata"
@@ -257,6 +260,7 @@ def main():
                 browser._evaluate(
                     "document.getElementById('video-rate').value='0.0625';document.getElementById('video-rate').onchange();true"
                 )
+            browser._evaluate("document.getElementById('solve-range').value='remaining';true")
             before = browser._evaluate("liveDicStatus.completed")
             browser._evaluate("document.getElementById('pause').onclick().then(()=>true)")
             wait(browser, f"liveDicStatus.completed>{before + 1}")
