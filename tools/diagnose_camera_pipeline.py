@@ -38,6 +38,9 @@ def main():
     parser.add_argument("--duration", type=float, default=10)
     parser.add_argument("--warmup", type=float, default=3)
     parser.add_argument("--software", action="store_true")
+    parser.add_argument("--overlap-pipeline", action="store_true")
+    parser.add_argument("--display-rate", type=int, default=30)
+    parser.add_argument("--preview-width", type=int, default=1920)
     parser.add_argument("--comparison", choices=["all", "fixed", "consecutive"], default="all")
     parser.add_argument("--recording", choices=["all", "on", "off"], default="all")
     parser.add_argument(
@@ -80,6 +83,9 @@ def main():
         "warmup_seconds": args.warmup,
         "software_requested": args.software,
         "gpu_reference_requested": args.gpu_reference,
+        "overlap_pipeline_requested": args.overlap_pipeline,
+        "display_rate_requested": args.display_rate,
+        "preview_width_requested": args.preview_width,
         "comparison_requested": args.comparison,
         "recording_requested": args.recording,
     }
@@ -110,6 +116,10 @@ def main():
                     browser._evaluate(
                         "document.getElementById('gpu-reference-preparation').checked=true;true"
                     )
+                if args.overlap_pipeline:
+                    browser._evaluate(
+                        f"document.getElementById('overlap-pipeline').checked=true;document.getElementById('display-rate').value={json.dumps(str(args.display_rate))};document.getElementById('preview-width').value={json.dumps(str(args.preview_width))};true"
+                    )
                 browser._evaluate(
                     f"document.getElementById('resolution').value={json.dumps(args.resolution)};document.getElementById('camera').onclick().then(()=>true)"
                 )
@@ -138,7 +148,9 @@ def main():
                     )
                     browser._evaluate("document.getElementById('pause').onclick().then(()=>true)")
                     time.sleep(args.warmup)
-                    start = browser._evaluate("({completed:liveDicStatus.completed})")
+                    start = browser._evaluate(
+                        "({completed:liveDicStatus.completed,diskFields:liveDicWorkbench.report().storage.diskFields,epochMs:performance.timeOrigin+performance.now()})"
+                    )
                     previous = browser._evaluate("liveDicReport()")
                     worker_start = (
                         previous["samples"][-1]["completedMs"] if previous["samples"] else -1
@@ -146,7 +158,7 @@ def main():
                     started = time.monotonic()
                     time.sleep(args.duration)
                     stop = browser._evaluate(
-                        "({completed:liveDicStatus.completed,fps:document.getElementById('fps').textContent,age:document.getElementById('age').textContent,state:liveDicSourceState(),fields:liveDicWorkbench.report().count,pipeline:document.getElementById('pipeline-timing').textContent,errors:liveDicStatus.errors})"
+                        "({completed:liveDicStatus.completed,fps:document.getElementById('fps').textContent,age:document.getElementById('age').textContent,state:liveDicSourceState(),fields:liveDicWorkbench.report().count,diskFields:liveDicWorkbench.report().storage.diskFields,pipeline:document.getElementById('pipeline-timing').textContent,errors:liveDicStatus.errors})"
                     )
                     elapsed = time.monotonic() - started
                     assert not stop["errors"], stop["errors"]
@@ -161,12 +173,16 @@ def main():
                         "recording": recording,
                         "elapsed_seconds": elapsed,
                         "completed_fps": (stop["completed"] - start["completed"]) / elapsed,
+                        "committed_fps": (stop["diskFields"] - start["diskFields"]) / elapsed,
                         "median_preparation_ms": median(rows, "referencePreparationMs"),
                         "median_observable_solver_ms": median(rows, "gpuFieldObservableMs"),
                         "start": start,
                         "stop": stop,
                         "samples": rows,
                     }
+                    case["pipeline"] = browser._evaluate(
+                        "globalThis.liveDicPipelineReport?.()??null"
+                    )
                     report["cases"].append(case)
                     report["capabilities"] = worker["capabilities"]
                     report["user_agent"] = browser._evaluate("navigator.userAgent")

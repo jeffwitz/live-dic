@@ -43,7 +43,7 @@ function setRecipe(recipe) {
 }
 
 /** A bounded, opt-in results library; the default live path never enters this module's analysis loop. */
-export function installWorkbench({ captureCurrent, pause, error, recordChange, liveChanged, openResults, requestMemory = async()=>null, geometryDefaults = () => ({}), beforeProjectExport = async () => pause() }) {
+export function installWorkbench({ captureCurrent, pause, error, recordChange, liveChanged, openResults, requestMemory = async()=>null, geometryDefaults = () => ({}), beforeProjectExport = async () => pause(), hasPendingResults = () => false }) {
   const entries = [], canvas = $('review-field'), overlay = $('inspection'), chart = $('profile-chart');
   document.querySelector('.viewer').append($('results-workbench'));
   let nextId = 1, selected = null, analysis = null, currentMask = null, reviewing = false;
@@ -57,7 +57,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   let projectRevision=0, downloadedRevision=0;
   const hasUnsaved=()=>entries.length>0&&projectRevision!==downloadedRevision;
   const changed=()=>{projectRevision++;};
-  const beforeUnload=event=>{rememberView();if(hasUnsaved()){event.preventDefault();event.returnValue='';}};
+  const beforeUnload=event=>{rememberView();if(hasUnsaved()||hasPendingResults()){event.preventDefault();event.returnValue='';}};
   window.addEventListener('beforeunload',beforeUnload);
   const contours = new WeakMap();
   let worker = typeof Worker === 'function' ? new Worker(new URL('./analysis-worker.js', import.meta.url), { type: 'module' }) : null;
@@ -134,14 +134,14 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     $('result-number').max=Math.max(1,entries.length);$('result-number').value=index>=0?index+1:'';$('result-number').disabled=!entries.length;
     const base=activeEntry()??entries[0];$('replay-results').disabled=!reviewing||!base||entries.filter(entry=>sameAnalysis(base,entry)).length<2;
   }
-  async function add(field, metadata = {}, { select = false, mask = currentMask, recipe = null } = {}) {
+  async function add(field, metadata = {}, { select = false, mask = currentMask, recipe = null, ramOnly = false } = {}) {
     validateField(field);
     // A single-field archive carries its own timing sample. The live timing log remains in direct export.
     metadata = normalizeMetadata(metadata);
     const entry = { id: nextId++, field, metadata, mask, recipe, metadataBytes: encoderBytes(metadata) };
     if (mask && mask.length !== field.width*field.height) throw new Error('Saved field mask dimensions differ');
     entry.label = fieldLabel(metadata, entry.id);
-    const result=await storage.addMany([entry]);entries.push(entry);changed();updateLibrary(select);
+    const result=await storage.addMany([entry], {ramOnly});entries.push(entry);changed();updateLibrary(select);
     if(result.failure){$('record-fields').checked=false;recordChange(false);pause();error(`Results storage stopped: ${result.failure}. The completed field is retained in RAM. Export or retry disk storage before continuing.`);updateLibrary();}
     if (select) await selectEntry(entry.id);
     return entry;
@@ -616,7 +616,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     if(blob)download('live-dic-field.png',blob,'image/png');else error('The browser could not encode the figure; computed values remain available.');
   };
   updateLibrary();
-  return { add, returnLive, setMask(mask){currentMask=mask;}, get reviewing(){return reviewing;}, get recording(){return recording();},
+  return { add, returnLive, get mask(){return currentMask;}, get storageBlocked(){return storageBlocked();}, setMask(mask){currentMask=mask;}, get reviewing(){return reviewing;}, get recording(){return recording();},
     setReady(ready){liveReady=ready;$('freeze-field').disabled=!ready||captureBusy||storage.readOnly||storageBlocked();$('record-fields').disabled=!ready||storage.readOnly||storageBlocked();},
     flush:()=>storage.flush(),get storage(){return storage;},
     stopRecording(){ $('record-fields').checked=false;recordChange(false); },

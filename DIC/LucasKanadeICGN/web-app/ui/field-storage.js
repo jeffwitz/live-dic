@@ -166,7 +166,7 @@ export class FieldStorage {
   serial(operation) {
     const result = this.queue.then(operation); this.queue = result.catch(() => {}); return result;
   }
-  async addMany(entries) {
+  async addMany(entries, { ramOnly = false } = {}) {
     return this.serial(async () => {
       if (this.readOnly) throw new Error('This saved session is read-only; start a new results session before recording');
       const db = await this.database(), now = new Date().toISOString();
@@ -189,8 +189,8 @@ export class FieldStorage {
       const next = {...session, updatedAt: now, count: session.count + entries.length,
         bytes: session.bytes + records.reduce((sum, record) => sum + record.descriptor.bytes, 0) + masks.reduce((sum, mask) => sum + (this.accountedMasks.has(mask.id)?0:mask.data.byteLength), 0),
         nextId: Math.max(session.nextId, ...entries.map(entry => entry.id + 1))};
-      let failure = null;
-      if (db) { try { await db.write(next, records, masks); } catch (error) { failure = error; } }
+      let failure = ramOnly ? new Error('Retained in RAM after an earlier recording failure') : null;
+      if (db && !ramOnly) { try { await db.write(next, records, masks); } catch (error) { failure = error; } }
       this.session = next;
       masks.forEach(mask=>this.accountedMasks.add(mask.id));
       if (db && !failure) masks.forEach(mask => this.knownMasks.add(mask.id));
@@ -199,7 +199,7 @@ export class FieldStorage {
         this.cache.set(entry.id, entry);
       }
       this.evict();
-      if (failure) this.warning = `${failure.name}: ${failure.message}`;
+      if (failure && (!ramOnly || !this.warning)) this.warning = `${failure.name}: ${failure.message}`;
       const unsafe = failure || (!db && this.residentBytes() > this.memoryLimit);
       return {failure: unsafe ? this.warning ?? 'RAM limit reached without disk storage' : null, saved: !!db && !failure};
     });

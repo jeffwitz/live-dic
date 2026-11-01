@@ -2,6 +2,7 @@ import { DICEngine, probeCapabilities } from '../web/core/engine.js';
 import { LATENCY_OPTIONS } from '../web/core/device.js';
 import { scorePlate } from './plate-truth.js';
 import { FieldRenderer } from '../render/field.js';
+import { supervisionOptions } from './supervision.js';
 import { gpuMemoryUsage } from '../web/core/gpu-memory.js';
 
 function encodeMask(mask) {
@@ -23,16 +24,49 @@ export function createSession(send) {
   let bitmapPresentation = false, profile = null;
   const completionTimes = [];
   const outstanding = new Set();
-  function present(message = {}, transfer = []) {
-    const bitmap = bitmapPresentation && canvas ? canvas.transferToImageBitmap() : null;
-    send({ ...message, ...(bitmap ? { bitmap, width: canvas.width, height: canvas.height } : {}) }, bitmap ? [bitmap, ...transfer] : transfer);
+  let supervision = supervisionOptions(), supervisionConfigured = false;
+  let displayTimer = null, lastDrawnAt = -Infinity, pendingPresentation = false;
+  let lastScale, lastPresentation = null, lastResultId = null, lastWorkerArrivalEpochMs = null;
+  function cancelPresentation() { clearTimeout(displayTimer); displayTimer = null; pendingPresentation = false; }
+  function paintLast() {
+    if (!last || !renderer) return;
+    lastScale = renderer.draw(engine, last, { ...display, previewMaxWidth: showingReference ? 0 : supervision.previewMaxWidth,
+      ...(showingReference ? {opacity:0,imageTexture:referenceTexture} : {}) });
+    lastDrawnAt = performance.now(); pendingPresentation = false;
+    lastPresentation = {width:canvas.width,height:canvas.height,resultId:lastResultId,
+      comparison:lastComparison,workerArrivalEpochMs:lastWorkerArrivalEpochMs,
+      renderedEpochMs:performance.timeOrigin+performance.now(),referencePreview:showingReference||!lastComparison};
+  }
+  function present(message = {}, transfer = [], includeBitmap = true) {
+    const bitmap = includeBitmap && bitmapPresentation && canvas ? canvas.transferToImageBitmap() : null;
+    const dimensions = bitmap ? {width:message.width??engine?.reference?.width??canvas.width,
+      height:message.height??engine?.reference?.height??canvas.height} : {};
+    send({ ...message, ...dimensions, ...(bitmap ? { bitmap } : {}),
+      ...(includeBitmap&&supervisionConfigured ? {presentation:lastPresentation} : {}) }, bitmap ? [bitmap, ...transfer] : transfer);
+  }
+  function schedulePresentation() {
+    pendingPresentation = true;
+    if (displayTimer !== null) return;
+    const delay = Math.max(0, 1000 / supervision.displayRate - (performance.now()-lastDrawnAt));
+    displayTimer = setTimeout(async () => {
+      displayTimer = null;
+      try {
+        await Promise.all([...outstanding]);
+        if (!pendingPresentation || !engine) return;
+        paintLast(); present({type:'scale',scale:lastScale});
+      } catch (error) { send({type:'error',message:`Presentation: ${error.message}`}); }
+    }, delay);
   }
   async function referenceFrom(frame, options, roiMask = null) {
+    const selectedSupervision = supervisionOptions(options.supervision);
     const preparationStarted = performance.now();
+    cancelPresentation();
     await Promise.all([...outstanding]);
     renderer?.destroy(); referenceTexture?.destroy(); engine?.destroy();
     const width = frame.displayWidth ?? frame.width, height = frame.displayHeight ?? frame.height;
-    const { profile: profileName, ...engineOptions } = options;
+    const { profile: profileName, supervision: requestedSupervision, ...engineOptions } = options;
+    supervision = selectedSupervision; supervisionConfigured = requestedSupervision !== undefined;
+    lastDrawnAt = -Infinity; lastPresentation = null; lastResultId = null; lastWorkerArrivalEpochMs = null;
     if (!['portable', 'qualified-latency'].includes(profileName)) throw new Error('Unsupported application profile');
     engine = await DICEngine.create({ ...LATENCY_OPTIONS, width, height, ...engineOptions, readback: 'none', pipelineDepth: 1 });
     engine.device.lost.then((info) => { if (info.reason !== 'destroyed') send({ type: 'error', message: `GPU device lost: ${info.message}` }); });
@@ -48,10 +82,10 @@ export function createSession(send) {
       usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT });
     engine.device.queue.copyExternalImageToTexture({ source: frame }, { texture: referenceTexture }, [width, height]);
     showingReference = false;
-    last = await engine.register(frame); renderer?.draw(engine, last, display);
+    last = await engine.register(frame); paintLast();
     present({ type: 'preview' }); engine.resetTemporalState();
     ages.length = 0; sampleLog.length = 0; received = completed = 0; completionTimes.length = 0;
-    return { ...info, controllerPreparationWallMs: performance.now() - preparationStarted };
+    return { ...info, ...(supervisionConfigured?{supervision}:{}), controllerPreparationWallMs: performance.now() - preparationStarted };
   }
   async function handle(message) {
     const { type, id } = message;
@@ -87,6 +121,7 @@ export function createSession(send) {
         received++;
         if (!engine || !engine.ring.idle || outstanding.size) { message.frame.close(); message.referenceFrame?.close(); send({ type: 'dropped', id }); return; }
         const available = performance.now();
+        const recordThisFrame = message.recordRequested ?? recording;
         const operation = (async () => {
           try {
             let preparationMs = 0;
@@ -108,12 +143,17 @@ export function createSession(send) {
             const plateScore = message.plate ? scorePlate(await engine.exportField(), message.plate, engine.reference.roiSelected ?? new Uint8Array(last.grid[0] * last.grid[1]).fill(1)) : null;
             if (plateScore) last.truthRmse = plateScore.displacementRmsePx;
             showingReference = false;
-            const scale = renderer?.draw(engine, last, display);
+            lastResultId = id; lastWorkerArrivalEpochMs = performance.timeOrigin + available;
+            const paint = !supervision.displayRate || performance.now()-lastDrawnAt >= 1000/supervision.displayRate;
+            if (paint) { cancelPresentation(); paintLast(); } else schedulePresentation();
+            const scale = lastScale;
             let record = null;
-            if (recording) {
+            if (recordThisFrame) {
               const started = performance.now(), field = await engine.exportField();
               record = { field, metadata: { analysisEpoch, comparison: lastComparison, configuration: field.config,
                 createdAt: new Date().toISOString(), frameIndex: message.frameIndex,
+                workerArrivalEpochMs:lastWorkerArrivalEpochMs,
+                ...(supervisionConfigured?{supervision}:{}),
                 recordingReadbackWallMs: performance.now()-started,
                 workerArrivalToRecordedFieldMs: performance.now()-available,
                 timingBoundary: 'Recorded fields include an explicit full readback; live age remains worker arrival to observable GPU field' } };
@@ -131,20 +171,26 @@ export function createSession(send) {
               ageP95: sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * .95))],
               accepted: last.accepted, selected: last.selected, meanIterations: last.meanIterations,
               truthRmse: last.truthRmse, scale, counters: last.counters, timing: last.timing,
-              frameIndex: message.frameIndex, plateScore, comparison:lastComparison, record },
-              record ? [record.field.parameters.buffer, record.field.status.buffer, record.field.iterations.buffer] : []);
+              frameIndex: message.frameIndex, plateScore, comparison:lastComparison, record,
+              ...(message.recordTicket!==undefined?{recordTicket:message.recordTicket}:{}) },
+              record ? [record.field.parameters.buffer, record.field.status.buffer, record.field.iterations.buffer] : [], paint);
           } finally { message.frame.close(); message.referenceFrame?.close(); }
         })();
         outstanding.add(operation); try { await operation; } finally { outstanding.delete(operation); }
       } else if (type === 'show-reference') {
         await Promise.all([...outstanding]); showingReference = message.show;
-        if (last) renderer?.draw(engine, last, showingReference ? { ...display, opacity: 0, imageTexture: referenceTexture } : display);
+        cancelPresentation(); if (last) paintLast();
         present({ type: 'preview', id });
       } else if (type === 'display') {
         display = { ...display, ...message.display };
         await Promise.all([...outstanding]);
-        if (last) { const scale = renderer?.draw(engine, last, showingReference ? { ...display, opacity: 0, imageTexture: referenceTexture } : display); present({ type: 'scale', id, scale }); }
+        cancelPresentation(); if (last) { paintLast(); present({ type: 'scale', id, scale:lastScale }); }
         else send({ type: 'scale', id, scale: null });
+      } else if (type === 'flush') {
+        await Promise.all([...outstanding]);
+        const paint = pendingPresentation; cancelPresentation();
+        if (paint) paintLast();
+        present({type:'flushed',id},[],paint);
       } else if (type === 'reset') {
         await Promise.all([...outstanding]); engine?.resetTemporalState(); send({ type: 'reset', id });
       } else if (type === 'export') {

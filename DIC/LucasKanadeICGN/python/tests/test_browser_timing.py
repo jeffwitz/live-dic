@@ -22,7 +22,7 @@ class BrowserTimingTests(unittest.TestCase):
             shutil.copytree(PROJECT / "python/src/lucas_kanade_icgn/web/core", root / "web/core")
             (root / "ui").mkdir()
             (root / "render").mkdir()
-            for name in ("session.js", "plate-truth.js"):
+            for name in ("session.js", "plate-truth.js", "supervision.js"):
                 shutil.copyfile(PROJECT / "web-app/ui" / name, root / "ui" / name)
             shutil.copyfile(PROJECT / "web-app/render/field.js", root / "render/field.js")
             script = f"""

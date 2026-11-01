@@ -35,7 +35,7 @@
           <p class="hint">Correlation uses browser-decoded 8-bit luminance; preserve original images. Files stay on this device. Folder playback processes every image in natural filename order; video uses the browser decoder.</p>
         </div>
         <label>Comparison<select id="comparison"><option value="fixed">Fixed reference</option><option value="consecutive">Consecutive received images · rebuild reference per pair</option></select></label>
-        <p class="hint">Every subset selected by the ROI is requested. Failed estimates retain their status; they do not remove regions from the next pair. Consecutive mode rebuilds the reference on CPU for every pair and can be much slower. Use fixed reference to measure the steady-state solver cadence.</p>
+        <p class="hint">Every subset selected by the ROI is requested. Failed estimates retain their status; they do not remove regions from the next pair. Consecutive mode rebuilds the reference for every pair; CPU preparation is the default and an experimental GPU option is available in Solve. Use fixed reference to measure the steady-state solver cadence.</p>
         <label id="plate-load-label" hidden>Plate load<select id="plate-load"><option value="95">Frame 95 · 250 / 0 MPa</option><option value="225">Frame 225 · 250 / 80 MPa</option></select></label>
         <p class="hint" id="camera-summary" role="status" hidden></p><label>Camera device<select id="camera-device"><option value="">Default / rear camera</option></select></label><button id="refresh-cameras">Refresh camera list</button><label>Requested resolution<select id="resolution"><option value="1280x720">720p · 1280 × 720</option><option value="1920x1080">1080p · 1920 × 1080</option><option value="3840x2160">UHD · 3840 × 2160</option></select></label>
         <label>Profile<select id="profile"><option value="portable">Portable · two levels, one slot</option><option value="qualified-latency">Qualified latency configuration</option><option disabled>Minimal · trajectory gates not qualified</option></select></label>
@@ -55,6 +55,13 @@
         <p class="hint" id="roi-summary">Full image · no mask.</p>
         </div><div class="control-group" id="pane-solve" hidden><h2>Correlation settings</h2><p id="applied-solver-summary" class="hint">No reference prepared.</p><p id="last-reference-summary" class="hint"></p>
           <label class="check"><input id="gpu-reference-preparation" type="checkbox">Experimental GPU reference preparation</label><p class="hint">Opt in before capturing a new reference. Translation/affine, uniform full windows and one slot. Consecutive pairs reuse resources and prepare the reference together with solving on GPU. CPU preparation remains the default.</p>
+          <label class="check"><input id="overlap-pipeline" type="checkbox">Experimental pipeline overlap</label>
+          <fieldset id="pipeline-settings" disabled><legend>Presentation and recording · next reference</legend>
+            <label>Maximum live display rate<select id="display-rate"><option value="0">Every computed field</option><option value="15">15 Hz</option><option value="30" selected>30 Hz</option><option value="60">60 Hz</option></select></label>
+            <label>Maximum preview width<select id="preview-width"><option value="0">Native image size</option><option value="1280">1280 px</option><option value="1920" selected>1920 px</option></select></label>
+          </fieldset>
+          <p class="hint">Opt in before capturing a new reference. Up to two recorded fields, including a calculation in progress, can overlap disk admission. A full queue slows admission; disk failure pauses acquisition and retains completed fields in RAM. Display rate/size affect only the preview, never numerical images, grids or saved fields.</p>
+          <p id="pipeline-state" class="hint" role="status">Synchronous recording and native-size presentation.</p>
           <p class="hint">The preset keeps the existing two-level affine B-spline configuration. Custom settings take effect only when you capture the reference or apply the mask again.</p>
           <label class="check"><input id="custom-solver" type="checkbox">Use custom settings</label>
           <fieldset id="solver-settings" disabled><legend>Next reference preparation</legend>

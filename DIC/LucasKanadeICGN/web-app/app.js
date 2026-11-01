@@ -1,3 +1,5 @@
+import { RecordingQueue } from './ui/recording-queue.js';
+import { supervisionOptions } from './ui/supervision.js';
 import { parameterOrder, parameterUnits } from './ui/postprocess.js';
 import { decodeMaskImage, maskPng } from './ui/mask-image.js';
 import { installWorkbench } from './ui/workbench.js';
@@ -18,6 +20,8 @@ let draftMaskSource = null, appliedMaskSource = null, appliedEditorState = null,
 let generation = 0, previousFrame = -1, referenceInfo, capabilities, sourceSettings = {}, requests = 0;
 let buildInfo = null;
 let pipelineTimingUpdatedAt = -Infinity;
+const synchronousAdmissions = [];
+let recordingQueue = null, supervision = supervisionOptions(), lastPresentation = null, lastHudAt = -Infinity, pipelineStateUpdatedAt = -Infinity;
 const pending = new Map(), video = $('video');
 sourceButtons.forEach(id => $(id).disabled = true);
 const status = globalThis.liveDicStatus = { ready: false, completed: 0, errors: [], results: [] };
@@ -41,14 +45,45 @@ const workspace = installWorkspace({ shortcuts: {
 const workbench = installWorkbench({
   captureCurrent: captureCurrentField,
   beforeProjectExport: async () => { pauseSource(); await drain(); $('pause').textContent='Play'; },
-  requestMemory: () => send('memory'),
+  requestMemory: async () => ({...await send('memory'),pendingRecordedFields:recordingQueue.report()}),
+  hasPendingResults: () => recordingQueue?.pending > 0,
   geometryDefaults: () => referenceInfo ? { width: referenceInfo.width, height: referenceInfo.height, subsetSize: referenceInfo.subsetSize, subsetStride: referenceInfo.subsetStride } : {},
   pause: () => { pauseSource(); $('pause').textContent = 'Play'; },
   error: text => message(text, true),
-  recordChange: enabled => send('recording', { enabled }).catch(e => message(e.message, true)),
+  recordChange: async enabled => {
+    if (enabled && recordingQueue?.failure && !workbench.storageBlocked) {
+      await recordingQueue.drain(); recordingQueue.resume();
+    }
+    return send('recording', { enabled }).catch(e => message(e.message, true));
+  },
   liveChanged: (reviewing,restore) => { if(restore && transport && referenceInfo) send('display',{display:displayOptions()}).catch(e=>message(e.message,true)); $('run-state').textContent = reviewing ? 'Saved field · reference coordinates' : source ? `${source} · ${paused ? 'paused' : 'running'}` : 'No source selected'; },
   openResults: () => workspace.showPane('view'),
 });
+recordingQueue = new RecordingQueue({
+  sampleLimit:smoke?18000:256,
+  write: async (record, queueTiming) => {
+    record.metadata = {...record.metadata,recordingQueue:{...queueTiming,capacity:2}};
+    await workbench.add(record.field,record.metadata,{mask:record.mask});
+    updatePipelineState();
+    return {failure:workbench.storageBlocked ? workbench.storage.report().warning ?? 'Disk/RAM admission failed; the field is retained in the results library' : null};
+  },
+  retain: async record => {
+    await workbench.add(record.field,record.metadata,{mask:record.mask,ramOnly:true});
+    updatePipelineState();
+  },
+  onFailure: error => {pauseSource();workbench.stopRecording();$('pause').textContent='Play';message(`Recording paused: ${error.message}. Completed fields remain in RAM.`,true);},
+});
+function updatePipelineState(force = false) {
+  if (!force && performance.now()-pipelineStateUpdatedAt < 1000) return;
+  pipelineStateUpdatedAt=performance.now();
+  if (!supervision.overlapRecording && !supervision.displayRate && !supervision.previewMaxWidth) {
+    $('pipeline-state').textContent='Synchronous recording and native-size presentation.'; return;
+  }
+  const q=recordingQueue.report(),sample=q.samples.at(-1);
+  const shown=lastPresentation?.comparison?.target;
+  const identity=lastPresentation?.referencePreview?'reference':shown?.ordinal??shown?.index??shown?.timeSeconds??'reference';
+  $('pipeline-state').textContent=`Applied: display ${supervision.displayRate||'every computed field'}${supervision.displayRate?' Hz':''}, preview ≤ ${supervision.previewMaxWidth||'native'} px. Shown input ${identity}. Recording queue ${q.pending}/${q.capacity} (calculation included), ${q.admitted} library admissions, ${q.retainedAfterFailure} retained after failure.${sample?` Latest receive → admission ${sample.receiveToAdmissionMs.toFixed(1)} ms.`:''}${q.blocked?' Admission blocked; export or retry RAM fields.':''}`;
+}
 function details() {
   const settings=sourceSettings.actual; $('camera-summary').hidden=source!=='camera';
   if(source==='camera'&&settings) $('camera-summary').textContent=`Actual ${settings.width} × ${settings.height} · ${settings.frameRate ?? '?'} Hz negotiated (requested ${sourceSettings.requested?.width} × ${sourceSettings.requested?.height} · ${sourceSettings.requested?.frameRate} Hz). ${sourceSettings.frameDelivery ?? 'Preparing capture'} · ${sourceSettings.deliveryState ?? 'preparing'}. Delivered/processed rates may be lower.`;
@@ -71,11 +106,13 @@ async function receive({ data }) {
     // Assigning either size resets the canvas, even if the value is unchanged.
     // Keep the presentation surface between frames of the same sequence.
     const field = $('field');
-    if (field.width !== data.width) field.width = data.width;
-    if (field.height !== data.height) field.height = data.height;
+    const width = data.presentation?.width ?? data.width, height = data.presentation?.height ?? data.height;
+    if (field.width !== width) field.width = width;
+    if (field.height !== height) field.height = height;
     $('field').getContext('bitmaprenderer').transferFromImageBitmap(data.bitmap);
     delete data.bitmap;
   }
+  if (data.presentation) { lastPresentation = data.presentation; updatePipelineState(); }
   if (data.type === 'error') {
     status.errors.push(data.message); message(data.message, true);
     if (pending.has(data.id)) { pending.get(data.id).reject(new Error(data.message)); pending.delete(data.id); }
@@ -85,17 +122,40 @@ async function receive({ data }) {
     if (data.plateScore) { sourceSettings.analyticScore = data.plateScore; details(); }
     $('export').disabled = false; workbench.setReady(true);
     const recordedReadbackMs=data.record?.metadata.recordingReadbackWallMs??0;let storageAdmissionMs=0;
-    if (data.record) { const started=performance.now();try { await workbench.add(data.record.field, { ...data.record.metadata, acquisition: {source:sourceSettings.source}, build: buildInfo, roiGeometry: roiMetadata() }); } catch(e) { pauseSource();message(e.message,true); }storageAdmissionMs=performance.now()-started;delete data.record; }
+    if (data.record) {
+      const started=performance.now();
+      const record={...data.record,mask:workbench.mask,
+        workerArrivalEpochMs:data.record.metadata.workerArrivalEpochMs,
+        metadata:{...data.record.metadata,acquisition:{source:sourceSettings.source},build:buildInfo,roiGeometry:roiMetadata()}};
+      if (data.recordTicket !== undefined) {
+        // submit() takes ownership synchronously; no next reservation exists
+        // until capacity is available. Disk work continues beside the next solve.
+        recordingQueue.submit(data.recordTicket,record).catch(error=>{pauseSource();message(`RAM retention failed: ${error.message}. Keep this page open.`,true);});
+      } else {
+        try { await workbench.add(record.field,record.metadata,{mask:record.mask}); }
+        catch(error) {pauseSource();message(error.message,true);}
+        storageAdmissionMs=performance.now()-started;
+        synchronousAdmissions.push({admittedEpochMs:performance.timeOrigin+performance.now(),
+          admissionMs:storageAdmissionMs,workerToAdmissionMs:Number.isFinite(record.workerArrivalEpochMs)?performance.timeOrigin+performance.now()-record.workerArrivalEpochMs:null});
+        if(synchronousAdmissions.length>(smoke?18000:256))synchronousAdmissions.shift();
+      }
+      delete data.record;
+    }
+
     if(performance.now()-pipelineTimingUpdatedAt>=1000){
+      updatePipelineState();
       pipelineTimingUpdatedAt=performance.now();
       const preparationMs=data.timing?.pairReferencePreparationWallMs??0,solveMs=data.timing?.totalWallMs??data.timing?.wallMs;
       const ms=value=>Number.isFinite(value)?value.toFixed(1)+' ms':'unavailable';
       const gpuPair=data.timing?.gpuReferenceIncluded;
       $('pipeline-timing').textContent=`Latest sampled field (1 Hz): ${gpuPair?`GPU reference + observable solver call ${ms(solveMs)}`:`reference preparation ${ms(preparationMs)} · observable solver call ${ms(solveMs)}`}${recordedReadbackMs||storageAdmissionMs?` · recorded-field readback ${ms(recordedReadbackMs)} · main-thread storage/admission ${ms(storageAdmissionMs)}`:''}. ${data.comparison?.mode==='consecutive'?(gpuPair?'Consecutive mode recomputes the reference on GPU for every pair.':'Consecutive mode rebuilds the reference on CPU for every pair; fixed-reference FPS does not apply.'):'The fixed reference is reused.'}`;
     }
-    if (!workbench.reviewing) $('run-state').textContent = source==='camera'&&sourceSettings.deliveryState==='stopped'?'Camera stopped · last completed field':`${source} · ${data.width} × ${data.height} · ${data.comparison?.mode ?? 'fixed'} · ${paused ? 'paused' : 'running'}`;
+    const updateHud = !supervision.displayRate || performance.now()-lastHudAt>=1000/supervision.displayRate;
+    if (updateHud) lastHudAt=performance.now();
+    if (updateHud && !workbench.reviewing) $('run-state').textContent = source==='camera'&&sourceSettings.deliveryState==='stopped'?'Camera stopped · last completed field':`${source} · ${data.width} × ${data.height} · ${data.comparison?.mode ?? 'fixed'} · ${paused ? 'paused' : 'running'}`;
     if (data.comparison) { sourceSettings.lastComparison = data.comparison; updateLocalPosition(data.comparison.target);$('last-reference-summary').textContent=`Last pair: ${data.comparison.referenceAdmissible} numerically admissible references / ${data.selected} requested ROI windows. Every selected window remains requested.`; }
     status.completed++; status.results.push(data); if (status.results.length > (smoke ? 18000 : 120)) status.results.shift();
+    if (updateHud) {
     $('fps').textContent = source === 'plate' ? 'Static pair' : data.fps.toFixed(1);
     $('age').textContent = `${data.ageMedian.toFixed(1)} / ${data.ageP95.toFixed(1)} ms`;
     $('acceptance').textContent = `${data.accepted} / ${data.selected}`;
@@ -104,6 +164,7 @@ async function receive({ data }) {
     $('error').classList.toggle('metric-warning', data.truthRmse != null && data.truthRmse > .1);
     $('error').title = data.plateScore?.population ?? 'Whole accepted field, including possible wrong-basin estimates near the image boundary';
     if (!workbench.reviewing) updateScale(data.scale);
+    }
   }
   if (data.type === 'scale' && !workbench.reviewing) updateScale(data.scale);
   if (data.type === 'dropped') { dropped++; $('drops').textContent = dropped; }
@@ -144,7 +205,10 @@ async function init() {
 }
 async function drain() {
   while (inFlight) await new Promise((resolve) => setTimeout(resolve, 10));
+  await recordingQueue.drain();
   await workbench.flush();
+  if (supervision.displayRate && transport && referenceInfo) await send('flush');
+  updatePipelineState(true);
   if (imageTask) await imageTask.catch(() => {});
 }
 function clearPreviousCapture() { previousCapture?.frame.close(); previousCapture = null; }
@@ -181,6 +245,7 @@ async function frameFromVideo() {
   return createImageBitmap(video, { resizeWidth: width, resizeHeight: height });
 }
 async function updateReferenceControls() {
+  supervision = supervisionOptions(referenceInfo.supervision); lastPresentation=null; lastHudAt=-Infinity; updatePipelineState(true);
   const cfg=referenceInfo.config,total=referenceInfo.grid[0]*referenceInfo.grid[1];
   let selected=0,valid=0;
   for(let i=0;i<total;i++)if(!referenceInfo.roiSelected||referenceInfo.roiSelected[i]){selected++;if(referenceInfo.referenceValid?.[i])valid++;}
@@ -208,7 +273,7 @@ async function captureReference(frame = null) {
 }
 function clearLiveMetrics() {for(const id of ['fps','age','acceptance','iterations','error'])$(id).textContent='—';pipelineTimingUpdatedAt=-Infinity;$('pipeline-timing').textContent='Awaiting a target field; stage times will appear here.';delete sourceSettings.lastComparison;$('last-reference-summary').textContent='Awaiting a target field.';}
 function countDrop() { dropped++; $('drops').textContent = dropped; }
-async function processFrame(frame, frameIndex = null, { force = false, reset = false, input = null, referenceFrame = null, referenceInput = null } = {}) {
+async function processFrame(frame, frameIndex = null, { force = false, reset = false, input = null, referenceFrame = null, referenceInput = null, playback = false } = {}) {
   const token = generation, mode = source === 'plate' ? 'fixed' : $('comparison').value;
   if (paused && !force) { frame.close(); referenceFrame?.close(); return false; }
   input = { kind:source, ordinal:++receivedOrdinal, timestampUs:frame.timestamp ?? null,
@@ -229,6 +294,15 @@ async function processFrame(frame, frameIndex = null, { force = false, reset = f
     }
   }
   if (inFlight >= 1) { frame.close(); referenceFrame?.close(); countDrop(); return false; }
+  const wantsRecord = supervision.overlapRecording && workbench.recording;
+  let recordTicket = null;
+  if (wantsRecord) {
+    recordTicket = source==='images' ? await recordingQueue.waitReserve() : recordingQueue.reserve();
+    if (recordTicket===null || token!==generation || (paused&&(!force||playback))) {
+      if(recordTicket!==null)recordingQueue.release(recordTicket);
+      frame.close();referenceFrame?.close();countDrop();return false;
+    }
+  }
   inFlight++;
   const historyReset = reset || (frameIndex != null && frameIndex < previousFrame);
   if (frameIndex != null) previousFrame = frameIndex;
@@ -236,10 +310,11 @@ async function processFrame(frame, frameIndex = null, { force = false, reset = f
   const comparison = { mode, reference: mode === 'consecutive' ? referenceInput : sourceSettings.reference ?? { kind: source, role: 'captured reference' }, target: input };
   try {
     const reply = await send('frame', { frame, frameIndex, reset: historyReset, referenceFrame, comparison,
+      ...(supervision.overlapRecording?{recordRequested:wantsRecord,...(recordTicket!==null?{recordTicket}:{})}:{}),
       truth: source === 'demo' && mode === 'fixed' && stretch ? [stretch[0] - 1, stretch[1] - 1] : null }, referenceFrame ? [referenceFrame, frame] : [frame]);
     return reply.type === 'result';
   } catch (error) { pauseSource(); message(error.message, true); return false; }
-  finally { inFlight--; }
+  finally { inFlight--; if(recordTicket!==null)recordingQueue.release(recordTicket); }
 }
 function scheduleVideo(token) {
   let lastPresented = 0, lastMediaTime = -1;
@@ -284,7 +359,7 @@ function localControls(images) {
   $('image-step-controls').hidden = !images; $('image-rate-label').hidden = !images; $('video-rate-label').hidden = images;
   $('resolution').disabled = true;
 }
-async function runImage(index, reset = false) {
+async function runImage(index, reset = false, playback = false) {
   if (!Number.isInteger(index) || index < 0 || index >= localImages.length) return false;
   const token = generation, signal = sourceAbort.signal;
   await imageTask?.catch(() => {});
@@ -301,7 +376,7 @@ async function runImage(index, reset = false) {
       const input = { kind:'images',index,...fileInfo(localImages[index]) };
       const referenceInput = prior ? { kind:'images',index:index-1,...fileInfo(localImages[index-1]) } : null;
       const target = frame, reference = prior; frame = prior = null;
-      const ok = await processFrame(target,index,{force:true,reset,input,referenceFrame:reference,referenceInput});
+      const ok = await processFrame(target,index,{force:true,reset,input,referenceFrame:reference,referenceInput,playback});
       if (ok) { imageIndex = index; updateLocalPosition(input); }
       return ok;
     } finally { frame?.close(); prior?.close(); }
@@ -340,7 +415,7 @@ async function playImages() {
       const index = imageIndex + 1;
       if (index >= localImages.length) break;
       const start = performance.now();
-      if (!await runImage(index, index === 0)) { if (index === 0 && $('comparison').value === 'consecutive') continue; break; }
+      if (!await runImage(index, index === 0, true)) { if (index === 0 && $('comparison').value === 'consecutive') continue; break; }
       const rate = Number($('image-rate').value);
       if (!Number.isFinite(rate) || rate < 0 || rate > 240) throw new Error('Image rate must be between 0 and 240 (0 = uncapped)');
       if (rate) await new Promise(resolve => { imageWake=resolve;imageDelay=setTimeout(()=>{imageWake=null;resolve();},Math.max(0,1000/rate-(performance.now()-start))); });
@@ -546,7 +621,7 @@ $('pause').onclick = async () => {
   workbench.returnLive();
   if (roiEditing) { message('Apply the mask before resuming.'); return; }
   if (source === 'plate') return runPlateTarget().catch(e => message(e.message,true));
-  if (!paused) { pauseSource(); $('pause').textContent = 'Play'; return; }
+  if (!paused) { pauseSource(); $('pause').textContent = 'Play'; if(supervision.overlapRecording||supervision.displayRate)await drain(); return; }
   try {
     await send('show-reference',{show:false});
     if (source === 'images') return playImages();
@@ -623,9 +698,10 @@ $('profile').onchange = () => { if (referenceInfo) message('Profile change takes
 window.addEventListener('pagehide', () => { workbench.destroy(); sourceAbort.abort(); clearPreviousCapture(); if (localVideoUrl) URL.revokeObjectURL(localVideoUrl); stream?.getTracks().forEach((t) => t.stop()); transport?.postMessage({ type: 'destroy' }); });
 window.addEventListener('error', (event) => { status.errors.push(event.message); message(event.message, true); });
 window.addEventListener('unhandledrejection', (event) => { const text = String(event.reason); status.errors.push(text); message(text, true); });
-if (smoke) { globalThis.liveDicReport = () => send('report'); globalThis.liveDicWorkbench = workbench; globalThis.liveDicRoi = roi; globalThis.liveDicSourceState = () => ({source,paused,loadingSource,inFlight,index:imageIndex,fileCount:localImages.length,localBusy:!!imageTask,loop:!!imageLoop,settings:sourceSettings,comparison:$('comparison').value,videoTime:video.currentTime,videoPaused:video.paused}); }
-for (const id of ['gpu-reference-preparation','custom-solver','motion-model','subset-size','subset-stride','interpolation','pyramid-levels','coarse-iterations','fine-iterations','outlier-policy','temporal-start']) $(id).onchange = () => {
+if (smoke) { globalThis.liveDicReport = () => send('report'); globalThis.liveDicPipelineReport = () => ({settings:supervision,recording:recordingQueue.report(),synchronousAdmissions:synchronousAdmissions.slice(),presentation:lastPresentation}); globalThis.liveDicWorkbench = workbench; globalThis.liveDicRoi = roi; globalThis.liveDicSourceState = () => ({source,paused,loadingSource,inFlight,index:imageIndex,fileCount:localImages.length,localBusy:!!imageTask,loop:!!imageLoop,settings:sourceSettings,comparison:$('comparison').value,videoTime:video.currentTime,videoPaused:video.paused}); }
+for (const id of ['overlap-pipeline','display-rate','preview-width','gpu-reference-preparation','custom-solver','motion-model','subset-size','subset-stride','interpolation','pyramid-levels','coarse-iterations','fine-iterations','outlier-policy','temporal-start']) $(id).onchange = () => {
   $('solver-settings').disabled = !$('custom-solver').checked;
+  $('pipeline-settings').disabled = !$('overlap-pipeline').checked;
   $('subset-stride').max = $('subset-size').value;
   if (Number($('subset-stride').value) > Number($('subset-size').value)) $('subset-stride').value = $('subset-size').value;
   try { const requested = options(); $('solver-summary').textContent = $('custom-solver').checked ? `Pending: ${requested.motionModel} · ${requested.subsetSize}/${requested.subsetStride} · ${requested.pyramidLevels} level(s). Capture reference or Apply mask to apply.` : `Preset with ${requested.referencePreparation??'cpu'} reference preparation selected for the next reference. Current fields keep their original configuration.`; }

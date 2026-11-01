@@ -80,6 +80,20 @@ class BrowserStorageTests(unittest.TestCase):
         self.assertEqual(result["count"], 3)
         self.assertEqual(result["held"], result["value"])
 
+    def test_already_computed_next_field_is_retained_without_a_second_disk_attempt(self):
+        result = javascript("""
+          const {disk,store}=setup(16*MiB),a=entry(1),b=entry(2),c=entry(3);
+          await store.addMany([a]);disk.fail=true;await store.addMany([b]);
+          const original=disk.write.bind(disk);let writes=0;disk.write=(...args)=>{writes++;return original(...args);};
+          await store.addMany([c],{ramOnly:true});const before=store.report();disk.fail=false;await store.retry();
+          console.log(JSON.stringify({before,after:store.report(),writes,values:[...disk.rows.values()].map(r=>r.field.parameters[0])}));
+        """)
+        self.assertEqual(result["before"]["unsavedFields"], 2)
+        self.assertIn("QuotaExceeded", result["before"]["warning"])
+        self.assertEqual(result["writes"], 1)  # Recovery only, no write for RAM retention.
+        self.assertEqual(result["after"]["unsavedFields"], 0)
+        self.assertEqual(result["values"], [i + 0.123456789012345 for i in [1, 2, 3]])
+
     def test_no_disk_never_evicts_unsaved_data_and_stops_at_budget(self):
         result = javascript("""
           const store=new FieldStorage({memoryLimit:2048,openDatabase:async()=>{throw new Error('Storage disabled');}}),entries=[entry(1),entry(2),entry(3)];let result;
