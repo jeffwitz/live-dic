@@ -41,6 +41,17 @@ def main():
     parser.add_argument("--overlap-pipeline", action="store_true")
     parser.add_argument("--display-rate", type=int, choices=[0, 1, 5, 10, 15, 30, 60], default=30)
     parser.add_argument("--suspend-preview", action="store_true")
+    parser.add_argument(
+        "--solver-profile",
+        choices=["app", "common-zero"],
+        default="app",
+        help="preserve application settings or explicitly match zero-initialized native/browser benchmarks",
+    )
+    parser.add_argument(
+        "--storage-probe",
+        action="store_true",
+        help="measure identical storage admission boundaries on old/new sites; reference metadata must include workerArrivalEpochMs",
+    )
     parser.add_argument("--preview-width", type=int, choices=[0, 1280, 1920], default=1920)
     parser.add_argument("--comparison", choices=["all", "fixed", "consecutive"], default="all")
     parser.add_argument("--recording", choices=["all", "on", "off"], default="all")
@@ -92,6 +103,8 @@ def main():
         "preview_width_requested": args.preview_width,
         "comparison_requested": args.comparison,
         "recording_requested": args.recording,
+        "solver_profile_requested": args.solver_profile,
+        "storage_probe_requested": args.storage_probe,
     }
     try:
         with tempfile.TemporaryDirectory(
@@ -120,6 +133,22 @@ def main():
                     browser._evaluate(
                         "document.getElementById('gpu-reference-preparation').checked=true;true"
                     )
+                if args.solver_profile == "common-zero":
+                    browser._evaluate("""(()=>{
+                      document.getElementById('custom-solver').checked=true;
+                      for(const [id,value] of Object.entries({'motion-model':'affine','subset-size':'16','subset-stride':'16','interpolation':'bspline','pyramid-levels':'2','coarse-iterations':'8','fine-iterations':'16','outlier-policy':'median'}))document.getElementById(id).value=value;
+                      document.getElementById('temporal-start').checked=false;return true;
+                    })()""")
+                if args.storage_probe:
+                    browser._evaluate("""(async()=>{
+                      const {FieldStorage}=await import('./ui/field-storage.js');
+                      globalThis.benchmarkAdmissions=[];const add=FieldStorage.prototype.addMany;
+                      FieldStorage.prototype.addMany=async function(entries,...args){
+                        const started=performance.now(),result=await add.call(this,entries,...args),finished=performance.now();
+                        for(const entry of entries)benchmarkAdmissions.push({admittedEpochMs:performance.timeOrigin+finished,storageMs:finished-started,ordinal:entry.metadata.comparison?.target?.ordinal,workerToAdmissionMs:performance.timeOrigin+finished-entry.metadata.workerArrivalEpochMs,retained:!!result.failure});
+                        return result;
+                      };return true;
+                    })()""")
                 if args.overlap_pipeline:
                     display_value = "off" if args.suspend_preview else str(args.display_rate)
                     browser._evaluate(
@@ -163,7 +192,7 @@ def main():
                     started = time.monotonic()
                     time.sleep(args.duration)
                     stop = browser._evaluate(
-                        "({completed:liveDicStatus.completed,fps:document.getElementById('fps').textContent,age:document.getElementById('age').textContent,state:liveDicSourceState(),fields:liveDicWorkbench.report().count,diskFields:liveDicWorkbench.report().storage.diskFields,storage:liveDicWorkbench.report().storage,epochMs:performance.timeOrigin+performance.now(),pipeline:document.getElementById('pipeline-timing').textContent,errors:liveDicStatus.errors})"
+                        "({completed:liveDicStatus.completed,fps:document.getElementById('fps').textContent,age:document.getElementById('age').textContent,state:liveDicSourceState(),canvas:[document.getElementById('field').width,document.getElementById('field').height],fields:liveDicWorkbench.report().count,diskFields:liveDicWorkbench.report().storage.diskFields,storage:liveDicWorkbench.report().storage,epochMs:performance.timeOrigin+performance.now(),pipeline:document.getElementById('pipeline-timing').textContent,errors:liveDicStatus.errors})"
                     )
                     host_elapsed = time.monotonic() - started
                     elapsed = (stop["epochMs"] - start["epochMs"]) / 1000
@@ -217,6 +246,8 @@ def main():
                         if pipeline
                         else []
                     )
+                    if args.storage_probe:
+                        samples = browser._evaluate("benchmarkAdmissions")
                     case["admission_samples"] = [
                         sample
                         for sample in samples
@@ -229,6 +260,9 @@ def main():
                       while(liveDicSourceState().inFlight)await new Promise(resolve=>setTimeout(resolve,10));
                       await liveDicWorkbench.flush();return true;
                     })()""")
+                    case["final_state"] = browser._evaluate(
+                        "({source:liveDicSourceState(),storage:liveDicWorkbench.report().storage,pipeline:globalThis.liveDicPipelineReport?.()??null})"
+                    )
                     if recording:
                         case["quality"] = browser._evaluate("""(async()=>{
                           const store=liveDicWorkbench.storage;if(!store.backend||!store.session)return null;

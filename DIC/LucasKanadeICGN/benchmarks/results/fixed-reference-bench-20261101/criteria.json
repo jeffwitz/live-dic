@@ -1,0 +1,17 @@
+{
+  "baseline": "388cc5e",
+  "candidate_basis": "65edba6 plus benchmark instrumentation only; final candidate commit recorded in reports",
+  "production_scope": "Audit the entire python/src tree. No shared kernel/native/core source change is expected; remeasure all maintained fixed-reference paths regardless.",
+  "images": "Unchanged original UHD tensile reference.png and frame_040.png. Native/Python-browser runs alternate these actual arrays. PWA acquisition is the original reference as static fake 60Hz camera, with identity truth; never a physical-camera or changing-motion claim.",
+  "configuration": "3840x2160, affine16/16, B-spline, two fixed levels, median, uniform, zero initialization, no temporal prediction/fine correction/divergence, existing 8/16 iterations and 0.005 tolerances, no ROI",
+  "reference": "First image prepared once, immutable throughout each sequence. Cold setup measured separately.",
+  "python_boundaries": "Resident uint8 NumPy image to complete NumPy field/statistics; native hardware explicitly selected; Python browser includes binary loopback transport. No PNG or acquisition in this boundary.",
+  "python_protocol": {"frames": 300, "warmups": 20, "campaigns_per_process": 1, "depth": 1, "order_per_backend": ["baseline", "baseline", "candidate", "baseline", "candidate", "baseline"], "supplemental_native_depth_2_candidate_repeats": 2},
+  "pwa_boundaries": "Separate computed replies from committed IndexedDB fields and Worker-arrival-to-storage-cache-admission latency. Both versions receive the same lightweight storage probe and a Worker epoch metadata field; no GPU fence or shader instrumentation.",
+  "pwa_protocol": {"warmup_seconds": 4, "duration_seconds": 20, "recording": [false,true], "comparison": "fixed", "order": ["baseline", "baseline", "candidate-default", "candidate-preview", "baseline", "candidate-preview", "candidate-default", "baseline"], "candidate_preview": {"overlap":true,"maximum_hz":1,"maximum_width":1920}},
+  "quality_gates": {"finite":true,"shape":[135,240,6],"frame40_interior_margin_px":32,"frame40_coverage_min":0.90,"frame40_rmse_max_px":0.05,"frame40_p95_max_px":0.10,"median_gradient_rmse_max_per_component":0.002,"identity_rmse_max_px":0.005,"identity_coverage_min":0.95},
+  "ownership_gates": "No unsaved field or storage failure; final drain empty; candidate queue at most two CPU slots. Full numerical dimensions regardless of preview.",
+  "nonregression_rule": "For each backend/boundary/recording case, derive each metric tolerance from the full observed range of its four baseline repeats only, before judging the candidate. Candidate default is checked against baseline median plus/minus that range; FPS also allows 2/20 field-count boundaries for PWA. Report both candidate repeats. One exceedance is inconclusive; two worse exceedances flag reproducible regression. Do not use candidate measurements to widen tolerances. Short runs establish no thermal statistics or hard deadline guarantee.",
+  "60fps_rule": "Report sustained throughput and p95/p99 latency separately. Throughput >=60 is not sufficient for a 16.67ms latency claim. No weaker numerical settings or reduced input may be used to reach the rate.",
+  "isolation": "No tests/builds during timing. Linux Intel Lunar Lake, actual driver/browser/software versions and performance power profile recorded; no all-OS/all-GPU claim. Retain all samples and failures."
+}

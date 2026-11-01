@@ -220,11 +220,17 @@ def _numeric_timing_medians(results: list[Any]) -> dict[str, float]:
     return medians
 
 
-def _support_quality(results: list[Any], truths: list[Any]) -> dict:
+def _support_quality(results: list[Any], truths: list[Any], *, interior_margin: int = 0) -> dict:
     """Evaluate geometry populations after timing, never in the live solver."""
     first = results[0]
     roi = getattr(first, "roi", None)
     selected = np.ones(first.status.shape, bool) if roi is None else roi.selected
+    if interior_margin:
+        y, x = np.indices(first.status.shape)
+        x = x * first.subset_stride + (first.subset_size - 1) / 2
+        y = y * first.subset_stride + (first.subset_size - 1) / 2
+        selected = selected & (x >= interior_margin) & (x < first.width - interior_margin)
+        selected &= (y >= interior_margin) & (y < first.height - interior_margin)
     partial = np.zeros(first.status.shape, bool)
     indices = None if roi is None else getattr(roi, "partial_indices", None)
     if indices is not None:
@@ -353,6 +359,10 @@ def _measure(
         "populations": getattr(results[0], "populations", None),
         "config": dict(results[0].config),
         "support_quality": _support_quality(results, truths),
+        "interior_quality": {
+            "margin_px": 32,
+            "populations": _support_quality(results, truths, interior_margin=32),
+        },
         "iterations_histogram": {
             str(int(key)): int(count)
             for key, count in zip(
