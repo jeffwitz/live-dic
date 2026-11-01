@@ -292,6 +292,10 @@ jobs:
         run: >-
           python tools/qualify_browser_workbench.py --site _site --software
           --output browser-results/workbench
+      - name: Exercise explicit UHD calculation and quantity playback without new correlations
+        run: >-
+          python tools/qualify_browser_workflow.py --site _site --software
+          --output browser-results/workflow
       - name: Review an actual UHD field without WebGPU or OffscreenCanvas
         run: |
           python tools/qualify_browser_review.py --site _site --software --field browser-results/workbench/processed-field.npz --output browser-results/review-only

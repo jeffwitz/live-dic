@@ -82,12 +82,12 @@ def main():
                     asyncio.run(choose_files(browser, "#image-files", inputs))
                     wait(
                         browser,
-                        "liveDicSourceState().source==='images'&&!liveDicSourceState().loadingSource&&liveDicStatus.completed>=2",
+                        "liveDicSourceState().source==='images'&&!liveDicSourceState().loadingSource",
                         timeout=180,
                     )
-                    # Move the current target to zero before recording file indices 1..6.
+                    # Preview target one before explicitly calculating file indices 1..6.
                     browser._evaluate(
-                        "document.getElementById('local-seek').value='0';document.getElementById('local-seek').onchange().then(()=>true)"
+                        "document.getElementById('local-seek').value='1';document.getElementById('local-seek').onchange().then(()=>true)"
                     )
                     wait(browser, "!liveDicSourceState().localBusy")
                     report["initial"] = browser._evaluate(

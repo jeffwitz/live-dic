@@ -172,3 +172,20 @@ dialog li { margin: 14px 0; line-height: 1.7; font-size: 13px; }
 /* Independent scale key for sparse live vectors, outside the analysis legend. */
 .live-vector-key {display:flex;align-items:center;gap:.6rem;min-height:1.2rem;margin:0;padding:.6rem .75rem;background:#fff;color:#425766}
 #vector-key-arrow {flex:none;color:#1f848a;overflow:visible}
+
+/* Saved-field transport is adjacent to the image, separate from correlation. */
+.result-transport {padding:12px;background:#fff;border-block:1px solid var(--line)}
+.result-transport>label:first-child {font-weight:600;margin-top:0}
+.result-transport .buttons {margin:8px 0}
+.result-transport input[type=range] {width:100%;accent-color:var(--accent)}
+.result-transport>label:has(#result-number) {display:inline-block;width:130px;margin-right:16px}
+.result-transport>label:has(#replay-rate) {display:inline-block;width:130px}
+#input-field {background:#101820}
+
+.result-controls {display:flex;gap:12px;align-items:end;flex-wrap:wrap}
+.result-controls>label:first-child {flex:1;min-width:180px;max-width:400px}
+.result-controls>label:last-child {width:100px}
+.result-controls .buttons {margin:0;flex-wrap:nowrap}
+.result-controls label {margin:0}
+.result-timeline {display:grid;grid-template-columns:auto minmax(80px,1fr) auto;align-items:center;gap:10px;margin-top:8px}
+.result-transport p {margin:6px 0 0}

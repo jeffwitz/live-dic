@@ -87,6 +87,7 @@ def main():
             assert not browser._evaluate("document.getElementById('roi-editor').hidden")
             assert mask_hash() == digest(mask)
             browser._evaluate("document.getElementById('apply-roi').onclick().then(()=>true)")
+            browser._evaluate("document.getElementById('pause').onclick().then(()=>true)")
             initial = export(browser)
             assert initial["metadata"]["configuration"]["roi"]["selected"] == 32220
             assert initial["metadata"]["roiGeometry"]["baseImage"]["threshold"] is None
@@ -101,6 +102,7 @@ def main():
             choose(gray)
             assert mask_hash() == digest(mask)
             browser._evaluate("document.getElementById('apply-roi').onclick().then(()=>true)")
+            browser._evaluate("document.getElementById('pause').onclick().then(()=>true)")
             threshold = export(browser)
             assert threshold["metadata"]["roiGeometry"]["baseImage"]["threshold"] == 128
             np.testing.assert_array_equal(initial["status"], threshold["status"])
@@ -159,6 +161,7 @@ def main():
                 decoded, np.repeat((expected * 255)[..., None], 3, axis=2)
             )
             browser._evaluate("document.getElementById('apply-roi').onclick().then(()=>true)")
+            browser._evaluate("document.getElementById('pause').onclick().then(()=>true)")
             result = export(browser)
             selected = expected.reshape(135, 16, 240, 16).all(axis=(1, 3))
             np.testing.assert_array_equal(result["status"].reshape(135, 240) != -3, selected)

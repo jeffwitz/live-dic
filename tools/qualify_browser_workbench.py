@@ -382,6 +382,7 @@ def main():
             browser._evaluate(
                 "document.getElementById('plate-load').value='225';document.getElementById('plate-load').onchange().then(()=>true)"
             )
+            browser._evaluate("document.getElementById('pause').onclick().then(()=>true)")
             wait(browser, "liveDicWorkbench.report().count===2")
             browser._evaluate(
                 "document.getElementById('record-fields').checked=false;document.getElementById('record-fields').onchange();true"

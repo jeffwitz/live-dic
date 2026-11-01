@@ -157,6 +157,7 @@ def main():
                 browser._evaluate(
                     f"document.getElementById('resolution').value={json.dumps(args.resolution)};document.getElementById('camera').onclick().then(()=>true)"
                 )
+                browser._evaluate("document.getElementById('pause').onclick().then(()=>true)")
                 wait(
                     browser,
                     "liveDicSourceState().source==='camera'&&!liveDicSourceState().loadingSource&&liveDicStatus.completed>=5",

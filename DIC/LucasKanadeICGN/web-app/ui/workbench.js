@@ -51,13 +51,22 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   let analysisRuns = 0;
   document.querySelector('.viewer').append($('results-workbench'));
   let nextId = 1, selected = null, analysis = null, currentMask = null, reviewing = false;
-  let storage = new FieldStorage(), selectionSerial = 0, selectionBusy = false, libraryTimer = null, liveReady = false, captureBusy = false;
+  let storage = new FieldStorage(), selectionSerial = 0, selectionBusy = false, libraryTimer = null, liveReady = false, prepared = false, captureBusy = false;
   let tool = 'probe', points = [], extraction = [], computedView = false, figureLegend = null;
   let requestId = 0, workerBusy = false, pendingAnalysis = false, workerFieldId = null, debounce = null;
   let pendingImport = null, importSerial = 0;
   let history = null, historyAbort = null, lastChartRows=[], lastChartOptions={};
   let replaying=false,replayTimer=null,replayIds=[];
-  function stopReplay(){replaying=false;clearTimeout(replayTimer);replayTimer=null;$('replay-results').textContent='Replay matching results · 2 Hz';}
+  let pendingSeek = null, seeking = false;
+  function stopReplay(){replaying=false;clearTimeout(replayTimer);replayTimer=null;$('replay-results').textContent='Play results';}
+  // Dragging a long recording keeps one disk load and only the newest request.
+  async function seekResult(id) {
+    stopReplay();pendingSeek=id;
+    if(seeking)return;
+    seeking=true;
+    try {while(pendingSeek!==null){const next=pendingSeek;pendingSeek=null;await selectEntry(next,{preserveView:true});}}
+    finally {seeking=false;}
+  }
   let projectRevision=0, downloadedRevision=0;
   const hasUnsaved=()=>entries.length>0&&projectRevision!==downloadedRevision;
   const changed=()=>{projectRevision++;};
@@ -128,7 +137,9 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     $('library-summary').textContent = `${entries.length} field(s) · ${(memoryBytes()/MiB).toFixed(1)} MiB resident / ${(info.memoryLimitBytes/MiB).toFixed(0)} MiB cache target · ${info.diskFields} saved on browser disk. ${!entries.length?'No stored results.':hasUnsaved()?'Export for an independent backup; settings have unsaved changes.':'Project download requested or session settings saved; verify your backup.'} Images are not recorded.`;
     $('storage-summary').textContent=info.warning?`${info.warning}. ${info.unsavedFields} field(s) only in RAM; do not close before exporting/retrying.`:info.diskAvailable?'Disk-backed storage. Old cached fields are reloaded on demand. Browser storage is not an independent backup.':'Opening browser storage on first saved field; RAM remains bounded if disk is unavailable.';
     $('retry-storage').hidden=!info.unsavedFields&&!info.warning;$('save-session').disabled=!entries.length||!info.diskAvailable;
-    $('freeze-field').disabled=!liveReady||captureBusy||storage.readOnly||storageBlocked();$('record-fields').disabled=!liveReady||storage.readOnly||storageBlocked();
+    $('freeze-field').disabled=!liveReady||captureBusy||storage.readOnly||storageBlocked();$('record-fields').disabled=!prepared||storage.readOnly||storageBlocked();
+    $('solve-results').disabled=!entries.length;$('results-empty').hidden=!!entries.length;
+    $('review-component').disabled=!entries.length;
     $('delete-field').title=storage.readOnly?'Saved sessions are read-only; close the session to start a new recording.':'';
     $('clear-fields').disabled = !entries.length; $('delete-field').disabled = !entries.length||storage.readOnly;
     $('save-project').disabled=!entries.length;
@@ -136,7 +147,9 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     $('result-seek').max=Math.max(0,entries.length-1);$('result-seek').value=Math.max(0,index);$('result-seek').disabled=!entries.length;
     $('result-order').textContent=index>=0?`${index+1} / ${entries.length} · saved order`:`${entries.length} saved fields`;
     $('result-number').max=Math.max(1,entries.length);$('result-number').value=index>=0?index+1:'';$('result-number').disabled=!entries.length;
-    const base=activeEntry()??entries[0];$('replay-results').disabled=!reviewing||!base||entries.filter(entry=>sameAnalysis(base,entry)).length<2;
+    const base=activeEntry()??entries[0],matching=base?entries.filter(entry=>sameAnalysis(base,entry)).length:0;
+    $('replay-results').disabled=matching<2;
+    $('result-playback-state').textContent=!entries.length?'No calculated fields. Start calculation in Solve, or import saved results.':`${matching} compatible field(s) for playback · saved order, independent of acquisition time. Playback never runs correlation.`;
   }
   async function add(field, metadata = {}, { select = false, mask = currentMask, recipe = null, ramOnly = false } = {}) {
     validateField(field);
@@ -147,7 +160,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     entry.label = fieldLabel(metadata, entry.id);
     const result=await storage.addMany([entry], {ramOnly});entries.push(entry);changed();updateLibrary(select);
     if(result.failure){$('record-fields').checked=false;recordChange(false);pause();error(`Results storage stopped: ${result.failure}. The completed field is retained in RAM. Export or retry disk storage before continuing.`);updateLibrary();}
-    if (select) await selectEntry(entry.id);
+    if (select) await selectEntry(entry.id,{preserveView:false});
     return entry;
   }
   function returnLive(restore = false) {
@@ -161,9 +174,10 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     document.querySelector('.legend div').style.background='';
     liveChanged(false, restore);updateLibrary();
   }
-  async function selectEntry(id,{replay=false}={}) {
+  async function selectEntry(id,{replay=false,preserveView=reviewing}={}) {
     if(!replay)stopReplay();
     const entry = entries.find(value => value.id === Number(id)); if (!entry) return;
+    const carriedRecipe=preserveView&&reviewing&&activeEntry()&&sameAnalysis(activeEntry(),entry)?recipeFromControls():null;
     rememberView();
     historyAbort?.abort();history=null;$('spatial-view').hidden=true;$('history-state').textContent='';
     pause(); selected = entry.id; analysis = null; reviewing = true; computedView = false; points = []; extraction = [];
@@ -185,8 +199,8 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
       const i=Number(option.dataset.coefficient);option.disabled=i>=(entry.field.config.motionModel==='quadratic'?12:6)||(entry.field.config.motionModel==='translation'&&![0,3].includes(i));
     }
     if($('review-component').selectedOptions[0].disabled)$('review-component').value='magnitude';
-    setRecipe(entry.recipe ?? { ...DEFAULT_RECIPE, strainSource: entry.field.config.motionModel === 'translation' ? 'vsg' : 'direct' });
-    restoreView(entry.metadata.workbench?.view);
+    setRecipe(carriedRecipe ?? entry.recipe ?? { ...DEFAULT_RECIPE, strainSource: entry.field.config.motionModel === 'translation' ? 'vsg' : 'direct' });
+    if(!preserveView)restoreView(entry.metadata.workbench?.view);
     $('compare-computed').textContent = 'Show computed field';
     liveChanged(true); openResults(); scheduleAnalysis();
   }
@@ -447,25 +461,25 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   $('cancel-history').onclick=()=>historyAbort?.abort();
   $('spatial-view').onclick=()=>{history=null;$('spatial-view').hidden=true;updateInspection();};
   $('freeze-field').onclick=async()=>{if(captureBusy||storage.readOnly||storageBlocked())return;captureBusy=true;$('freeze-field').disabled=true;try{const {field,metadata}=await captureCurrent();let mask=currentMask;if(metadata.roi&&!mask)mask=maskFromMetadata(metadata);await add(field,metadata,{select:true,mask});}catch(e){error(e.message);}finally{captureBusy=false;$('freeze-field').disabled=!liveReady||storage.readOnly||storageBlocked();}};
-  $('return-live').onclick=()=>returnLive(true);
+  $('return-live').onclick=()=>{returnLive(true);document.querySelector('[data-pane=solve]').click();};
   $('record-fields').onchange=async()=>{if(recording()&&(storage.readOnly||storageBlocked())){$('record-fields').checked=false;await recordChange(false);updateLibrary();return;}const changedMode=recordChange(recording());if(recording()){await storage.database();const persistent=await storage.persistence();$('storage-quota').textContent=persistent?'Browser persistence granted; independent exports are still required for a backup.':'Persistence not granted or unavailable: browser disk data may be evicted. Export important sequences.';}await changedMode;updateLibrary();};
-  $('saved-fields').onchange=()=>selectEntry($('saved-fields').value);
-  $('result-seek').oninput=()=>{const entry=entries[Number($('result-seek').value)];if(entry)selectEntry(entry.id);};
-  $('result-number').onchange=()=>{const number=Number($('result-number').value);if(Number.isInteger(number)&&number>=1&&number<=entries.length)selectEntry(entries[number-1].id);};
+  $('saved-fields').onchange=()=>seekResult(Number($('saved-fields').value));
+  $('result-seek').oninput=()=>{const entry=entries[Number($('result-seek').value)];if(entry)return seekResult(entry.id);};
+  $('result-number').onchange=()=>{const number=Number($('result-number').value);if(Number.isInteger(number)&&number>=1&&number<=entries.length)return seekResult(entries[number-1].id);};
   $('replay-results').onclick=()=>{
     if(replaying){stopReplay();return;}
     const base=activeEntry()??entries[0];if(!base)return;
     replayIds=entries.filter(entry=>sameAnalysis(base,entry)).map(entry=>entry.id);if(replayIds.length<2)return;
-    if(!reviewing||selected===replayIds.at(-1))selectEntry(replayIds[0]);
-    replaying=true;$('replay-results').textContent='Pause result replay';
+    if(!reviewing||selected===replayIds.at(-1))selectEntry(replayIds[0],{preserveView:true});
+    replaying=true;$('replay-results').textContent='Pause results';
     const next=()=>{
       if(!replaying)return;
-      if(workerBusy||pendingAnalysis||selectionBusy){replayTimer=setTimeout(next,100);return;}
+      if(workerBusy||pendingAnalysis||selectionBusy){replayTimer=setTimeout(next,25);return;}
       if(!analysis){stopReplay();return;}
       const index=replayIds.indexOf(selected),id=replayIds[index+1];
       if(!id){stopReplay();return;}
-      selectEntry(id,{replay:true});replayTimer=setTimeout(next,500);
-    };replayTimer=setTimeout(next,500);
+      selectEntry(id,{replay:true,preserveView:true});replayTimer=setTimeout(next,1000/Number($('replay-rate').value));
+    };replayTimer=setTimeout(next,1000/Number($('replay-rate').value));
   };
   $('apply-recipe-analysis').onclick=()=>{
     stopReplay();if(!analysis||computedView)return;
@@ -473,7 +487,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     for(const entry of candidates)entry.recipe={...analysis.recipe};
     changed();updateLibrary();$('processing-batch-state').textContent=`Applied recipe to ${candidates.length} matching field(s); ${entries.length-candidates.length} unrelated field(s) unchanged. Computed arrays are preserved.`;
   };
-  for(const [id,delta] of [['previous-result',-1],['next-result',1]])$(id).onclick=()=>{const index=entries.findIndex(e=>e.id===selected);if(entries[index+delta])selectEntry(entries[index+delta].id);};
+  for(const [id,delta] of [['previous-result',-1],['next-result',1]])$(id).onclick=()=>{const index=entries.findIndex(e=>e.id===selected);if(entries[index+delta])return seekResult(entries[index+delta].id);};
   $('delete-field').onclick=async()=>{stopReplay();const index=entries.findIndex(e=>e.id===Number($('saved-fields').value));if(index<0)return;const entry=entries[index];if(entry.storage?.saved&&!confirm('Permanently delete this computed field from browser disk? Export it first if needed.'))return;try{await storage.remove(entry);const active=entry.id===selected;entries.splice(index,1);changed();if(active){returnLive(true);selected=null;}updateLibrary();}catch(e){error(e.message);}};
   async function closeLibrary(){await beforeProjectExport();await storage.flush();if(entries.length&&!confirm('Close this view? Committed disk fields remain in Saved sessions. RAM-only fields and unsaved analysis changes need an export before closing.'))return false;returnLive(true);await storage.close();entries.length=0;selected=null;nextId=1;storage=new FieldStorage({memoryLimit:storage.memoryLimit});updateLibrary();return true;}
   $('clear-fields').onclick=()=>closeLibrary().catch(e=>error(e.message));
@@ -491,7 +505,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     try{await beforeProjectExport();await recordChange(false);$('record-fields').checked=false;const candidate=new FieldStorage({memoryLimit:storage.memoryLimit});const saved=await candidate.openSession(id);
       if(entries.length&&!confirm('Replace this view with the saved session? Current committed fields stay on disk; export RAM-only data and unsaved settings first.')){await candidate.close();return;}
       returnLive(true);await storage.close();storage=candidate;entries.length=0;for(const entry of saved.entries)entries.push(entry);nextId=entries.reduce((max,entry)=>Math.max(max,entry.id+1),1);selected=null;changed();updateLibrary();
-      const first=entries.find(entry=>entry.id===saved.selectedId)??entries[0];if(first)await selectEntry(first.id);$('project-state').textContent=`Opened ${entries.length} disk-backed fields. This session is read-only for acquisition; close this view to start a new recording.`;
+      const first=entries.find(entry=>entry.id===saved.selectedId)??entries[0];if(first)await selectEntry(first.id,{preserveView:false});$('project-state').textContent=`Opened ${entries.length} disk-backed fields. This session is read-only for acquisition; close this view to start a new recording.`;
     }catch(e){error(e.message);}
   };
   $('delete-session').onclick=async()=>{const id=$('stored-sessions').value;if(!id||!confirm('Permanently delete this entire session from browser disk? Other tabs using it will stop. Export a backup first.'))return;try{await storage.deleteSession(id);await refreshSessions();}catch(e){error(e.message);}};
@@ -552,7 +566,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
       await storage.database();if(!storage.backend&&memoryBytes(drafts)>storage.memoryLimit)throw new Error('Disk is unavailable and this project exceeds the RAM cache budget. This part was not imported.');
       const added=[];for(const record of project.records){const entry=await add(record.field,record.metadata,{mask:record.mask,recipe:record.recipe});added.push(entry);if(storage.backend&&!entry.storage.saved)throw new Error('Disk saving stopped during import. Already admitted fields, including the last RAM-only field, remain available; keep the source part before retrying.');}
       const previous=project.records.findIndex(record=>record.originalId===project.settings.selectedId);
-      importedCount+=added.length;if(added.length)await selectEntry(added[Math.max(0,previous)].id);
+      importedCount+=added.length;if(added.length)await selectEntry(added[Math.max(0,previous)].id,{preserveView:false});
       $('project-state').textContent=`Opened ${importedCount} fields; latest part ${file.name}. Current acquisition settings and source were not replaced.`;
       }
     }catch(e){error(`${e.message}${importedCount?` ${importedCount} previously imported fields remain available.`:''}`);}
@@ -602,8 +616,8 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   };
   $('reset-processing').onclick=()=>{stopReplay();setRecipe({...DEFAULT_RECIPE,strainSource:activeEntry()?.field.config.motionModel==='translation'?'vsg':'direct'});computedView=false;scheduleAnalysis();};
   $('compare-computed').onclick=()=>{stopReplay();computedView=!computedView;$('compare-computed').textContent=computedView?'Restore processing recipe':'Show computed field';scheduleAnalysis();};
-  $('review-component').onchange=()=>{stopReplay();clearHistory();$('review-scale').value='robust';$('manual-limits').hidden=true;render();};
-  for(const id of ['review-scale','review-min','review-max','review-palette','review-vectors','review-vector-step','review-vector-gain','review-contour'])$(id).onchange=()=>{stopReplay();$('manual-limits').hidden=$('review-scale').value!=='manual';render();};
+  $('review-component').onchange=()=>{clearHistory();$('review-scale').value='robust';$('manual-limits').hidden=true;if(!reviewing&&entries.length)return selectEntry(entries[0].id,{preserveView:true});render();};
+  for(const id of ['review-scale','review-min','review-max','review-palette','review-vectors','review-vector-step','review-vector-gain','review-contour'])$(id).onchange=()=>{$('manual-limits').hidden=$('review-scale').value!=='manual';render();};
   $('save-npz').onclick=()=>{if(!analysis)return;const entry=activeEntry();download(`live-dic-${entry.id}.npz`,fieldArchive(entry.field,{...entry.metadata,workbench:{view:viewSettings()},analysis:{recipe:analysis.recipe,processingWallMs:analysis.processingWallMs}},analysis,entry.mask),'application/octet-stream');};
   $('save-processed-csv').onclick=()=>{if(!analysis)return;const {values,valid,unit}=componentValues(analysis,$('review-component').value),lines=[`x_px,y_px,${$('review-component').value}_${unit},valid,solver_status`];for(let i=0;i<values.length;i++)lines.push([...pointPosition(i),valid[i]?values[i]:'',valid[i],analysis.field.status[i]].join(','));download('live-dic-displayed-field.csv',lines.join('\n'),'text/csv');};
   $('save-profile').onclick=()=>{if(!extraction.length)return;const columns=Object.keys(extraction[0]);download('live-dic-extraction.csv',[columns.join(','),...extraction.map(row=>columns.map(k=>row[k]??'').join(','))].join('\n'),'text/csv');download('live-dic-extraction.json',JSON.stringify({recipe:analysis.recipe,view:viewSettings(),valueUnit:(history?.tool??tool)==='gauge'?'strain':componentValues(analysis,$('review-component').value).unit,coordinateUnit:'px',distanceUnit:analysis.recipe.unit,comparison:activeEntry().metadata.comparison},null,2),'application/json');};
@@ -624,10 +638,13 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   };
   updateLibrary();
   return { add, returnLive, get mask(){return currentMask;}, get storageBlocked(){return storageBlocked();}, setMask(mask){currentMask=mask;}, get reviewing(){return reviewing;}, get recording(){return recording();},
-    setReady(ready){liveReady=ready;$('freeze-field').disabled=!ready||captureBusy||storage.readOnly||storageBlocked();$('record-fields').disabled=!ready||storage.readOnly||storageBlocked();},
+    setReady(ready){liveReady=ready;$('freeze-field').disabled=!ready||captureBusy||storage.readOnly||storageBlocked();},
+    setPrepared(ready){prepared=ready;updateLibrary();},
+    async startRecording(){await $('record-fields').onchange();},
+    async openFirst({index=0}={}){if(entries.length&&!reviewing)await selectEntry((entries[index]??entries[0]).id,{preserveView:true});},
     flush:()=>storage.flush(),get storage(){return storage;},
-    stopRecording(){ $('record-fields').checked=false;recordChange(false); },
+    stopRecording({preserveSelection=false}={}){const selected=$('record-fields').checked;$('record-fields').checked=false;const changed=recordChange(false);if(preserveSelection)$('record-fields').checked=selected;return changed;},
     clearInspection(){stopReplay();clearHistory();points=[];updateInspection();},
-    report(){const values=analysis?viewCache.get(analysis,$('review-component').value):null;return{count:entries.length,selected,reviewing,replaying,analysisRuns,viewCache:viewCache.report(),unsavedProject:hasUnsaved(),memoryBytes:memoryBytes(),storage:storage.report(),provenance:activeEntry()?{analysisEpoch:activeEntry().metadata.analysisEpoch,archiveSha256:activeEntry().metadata.archiveSha256,importGeometry:activeEntry().metadata.importGeometry}:null,recipe:analysis?.recipe??null,statistics:values?.statistics??null,extraction};},
+    report(){const values=analysis?viewCache.get(analysis,$('review-component').value):null;return{count:entries.length,selected,reviewing,replaying,quantity:$('review-component').value,analysisRuns,viewCache:viewCache.report(),unsavedProject:hasUnsaved(),memoryBytes:memoryBytes(),storage:storage.report(),provenance:activeEntry()?{analysisEpoch:activeEntry().metadata.analysisEpoch,archiveSha256:activeEntry().metadata.archiveSha256,importGeometry:activeEntry().metadata.importGeometry}:null,recipe:analysis?.recipe??null,statistics:values?.statistics??null,extraction};},
     destroy(){stopReplay();historyAbort?.abort();clearTimeout(debounce);clearTimeout(libraryTimer);chartResize?.disconnect();cancelAnimationFrame(chartResizeFrame);worker?.terminate();window.removeEventListener('beforeunload',beforeUnload);} };
 }

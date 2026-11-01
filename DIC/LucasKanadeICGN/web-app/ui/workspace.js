@@ -1,13 +1,16 @@
 /** Keep navigation and pending solver edits explicit; no numerical defaults live here. */
-export function installWorkspace({ shortcuts }) {
+export function installWorkspace({ shortcuts, onPane = () => {} }) {
+  let pane = 'source';
   const buttons = [...document.querySelectorAll('[data-pane]')];
   function showPane(name) {
+    pane = name;
     for (const button of buttons) {
       const active = button.dataset.pane === name;
       button.toggleAttribute('aria-current', active);
       if (active) button.setAttribute('aria-current', 'step');
       document.getElementById(`pane-${button.dataset.pane}`).hidden = !active;
     }
+    onPane(name);
   }
   buttons.forEach((button, i) => {
     button.onclick = () => showPane(button.dataset.pane);
@@ -26,7 +29,7 @@ export function installWorkspace({ shortcuts }) {
     if (event.key.toLowerCase() === 'r') shortcuts.reference();
     if (event.key === 'Escape') shortcuts.clear();
   });
-  return { showPane };
+  return { showPane, get pane() { return pane; } };
 }
 
 export function solverOptions() {

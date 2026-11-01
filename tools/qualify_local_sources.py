@@ -151,6 +151,9 @@ def main():
             def snapshot(
                 label, reference_index, target_index, reference_path=None, target_path=None
             ):
+                browser._evaluate(
+                    "document.getElementById('solve-range').value='single';document.getElementById('pause').onclick().then(()=>true)"
+                )
                 data = export(browser)
                 metadata = data["metadata"]
                 comparison = metadata["comparison"]

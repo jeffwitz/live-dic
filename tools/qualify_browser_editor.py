@@ -224,11 +224,13 @@ def main():
 
             screenshot("editor.png")
             browser._evaluate("document.getElementById('apply-roi').onclick().then(()=>true)")
+            browser._evaluate("document.getElementById('pause').onclick().then(()=>true)")
             edited = browser._evaluate("liveDicStatus.results.at(-1).plateScore")
             assert edited["coverage"] >= 0.90 and edited["displacementRmsePx"] < 0.05, edited
             browser._evaluate(
                 "(async()=>{const c=document.getElementById('plate-load');c.value='225';await c.onchange();return true;})()"
             )
+            browser._evaluate("document.getElementById('pause').onclick().then(()=>true)")
             second = browser._evaluate("liveDicStatus.results.at(-1).plateScore")
             assert second["coverage"] >= 0.90 and second["displacementRmsePx"] < 0.05, second
             browser._evaluate(
