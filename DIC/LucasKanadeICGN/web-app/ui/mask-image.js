@@ -1,4 +1,5 @@
 /** Mask images are cold reference geometry, never target-image preprocessing. */
+import { decodeImage } from './local-media.js';
 export function maskFromPixels(rgba, width, height, { threshold = null } = {}) {
   if (!(rgba instanceof Uint8Array || rgba instanceof Uint8ClampedArray) || rgba.length !== width*height*4) throw new Error('Expected full-size 8-bit RGBA mask pixels');
   if (threshold !== null && (!Number.isInteger(threshold) || threshold < 0 || threshold > 255)) throw new Error('Mask threshold must be an integer from 0 to 255');
@@ -22,7 +23,7 @@ export function intersectMasks(base, shapes) {
 
 export async function decodeMaskImage(file, width, height, options = {}) {
   if(options.signal?.aborted)throw new DOMException('Mask import cancelled','AbortError');
-  const bitmap=await createImageBitmap(file);
+  const bitmap=await decodeImage(file,null,options.signal);
   try {
     if(options.signal?.aborted)throw new DOMException('Mask import cancelled','AbortError');
     if(bitmap.width!==width||bitmap.height!==height)throw new Error(`Mask is ${bitmap.width}×${bitmap.height}; reference is ${width}×${height}. Masks are never resized.`);

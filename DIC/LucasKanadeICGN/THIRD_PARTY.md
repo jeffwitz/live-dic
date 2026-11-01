@@ -40,3 +40,17 @@ The native runtime still contains Rust internally because that is how the
 upstream wgpu-py wheel implements WebGPU. It is an ordinary prebuilt Python
 dependency; live-dic neither builds nor downloads that implementation at
 runtime. GPU drivers remain a platform prerequisite.
+
+## Standalone browser TIFF input
+
+The PWA vendors [UTIF.js](https://github.com/photopea/UTIF.js) 3.1.0 and
+[pako](https://github.com/nodeca/pako) 1.0.11 (inflate-only browser build) under
+`web-app/vendor/`. Both are plain JavaScript from their official npm tarballs;
+no project binary, compiler or CDN is required. These PWA files are not added
+to the Python wheel. The matching licence files and npm integrity values are
+kept beside the original, unmodified sources in `tiff-provenance.json`.
+
+| Component | Local file | SHA-256 |
+| --- | --- | --- |
+| UTIF.js 3.1.0 | `web-app/vendor/UTIF-3.1.0.js` | `e3e76115f49571e39624c3316a76b3c4c5b2c5ca518dfec4b66a9f7af8c6d059` |
+| pako 1.0.11 inflate | `web-app/vendor/pako-inflate-1.0.11.min.js` | `2ca27e9a8dae569cdeac42752ed1aed1afeff7f19282d3cc12c0aaa54a08bc04` |

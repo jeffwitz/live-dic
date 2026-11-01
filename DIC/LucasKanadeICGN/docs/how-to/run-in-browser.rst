@@ -162,9 +162,30 @@ image-formation pipeline to qualify.
 
 Choose **Open image folder** or **Select images**. Images are decoded lazily,
 one pair at a time, in natural relative-filename order (``frame_2`` before
-``frame_10``). PNG, JPEG, WebP, BMP, AVIF and GIF are admitted when the browser
-can decode them; animated image formats are treated as still images. Unsupported
-files are listed as ignored. TIFF is not admitted. No images are uploaded.
+``frame_10``). TIFF (``.tif`` / ``.tiff``) has a bundled, offline decoder. PNG,
+JPEG, WebP, BMP, AVIF and GIF use the browser decoder; animated formats are
+still images. Unsupported extensions are listed as ignored. No images are uploaded.
+
+TIFF images and imported TIFF masks can use uncompressed, LZW, Deflate or
+PackBits storage. Supported pixels are unsigned 1/8/16-bit grayscale, 8/16-bit
+interleaved RGB(A), and 8-bit palette colour. TIFF orientation is honoured;
+ICC profiles are not applied. Images are never resized. Choose a folder of
+single-page TIFFs; stacks/multipage TIFF and BigTIFF are explicitly refused.
+Signed/float samples, planar channels, reversed bit fill order, unsupported
+compression and predicted tiles produce an error with the filename. Files
+are limited to 256 MiB, dimensions to 16384 per side and 64 × 1024² pixels before pixel allocation. Decoding runs in a cancellable Worker;
+there is no compiler, CDN fetch or PNG re-encoding.
+
+The numerical engine still receives **8-bit** intensities. For a 16-bit TIFF,
+the fixed mapping is ``floor(sample / 256)`` for every image, including the
+reference. White-is-zero grayscale is inverted consistently. There is no
+per-frame min/max or histogram adjustment. A 12-bit camera stored in a 16-bit
+container uses only 16 output levels under this mapping: convert such inputs
+with an explicit, common sensor range before import when precision matters.
+Keep originals; TIFF support does not add a 16-bit correlation solver.
+Decoded depth, compression, orientation and conversion accompany reference
+and target file provenance in exports. Binary TIFF masks use the same
+conversion and the existing strict black/white or explicit threshold rule.
 
 Select a **Reference image**, then **Set selected reference**. The timeline,
 **Previous image** and **Next image** select the target. **Start calculation** in Solve processes the selected range sequentially

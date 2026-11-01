@@ -348,3 +348,23 @@ short display-removal controls in
 ``benchmarks/results/browser-display-headroom-20261101/`` do not qualify a new
 FPS limit. The new overlap path has its own correctness/performance controls;
 computed, presented and committed rates/ages are distinct quantities.
+
+TIFF input decoding
+-------------------
+
+TIFF admission is separate from the numerical engine. ``ui/tiff-codec.js``
+reads a bounded classic-TIFF directory and validates its layout before the
+unchanged UTIF decoder decompresses the selected image. It deliberately skips
+unrelated EXIF directories and refuses multipage stacks rather than treating
+a first page as a whole sequence. ``ui/tiff-worker.js`` loads pinned local
+UTIF/pako scripts; the application service worker caches those scripts with the
+other assets. Each decode owns a short-lived Worker and transfers one
+ImageBitmap. Abort, timeout and failures terminate that Worker; dimensions are
+checked before pixel decoding. This keeps source changes bounded and avoids
+blocking the UI on UHD decompression. It is input decoding, not a new GPU solver.
+
+Unsigned 16-bit samples use their high byte, consistently across reference
+and targets. This fixed reduction preserves PNG pixels embedded as ``value *
+257`` in TIFF, but discards low sensor bits. Reference and target provenance
+records the conversion. Existing PNG/browser-decoder semantics are unchanged.
+See :doc:`../how-to/run-in-browser` for admitted formats and explicit limits.

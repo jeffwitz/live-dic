@@ -288,6 +288,10 @@ jobs:
         run: >-
           python tools/qualify_local_sources.py --site _site --software
           --output browser-results/local-sources
+      - name: Exercise UHD TIFF images and masks, PNG parity and offline decoding
+        run: >-
+          python tools/qualify_browser_tiff.py --site _site --software
+          --output browser-results/tiff
       - name: Exercise UHD results analysis, measurements and NPZ interchange
         run: >-
           python tools/qualify_browser_workbench.py --site _site --software

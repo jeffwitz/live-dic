@@ -68,7 +68,7 @@ class LocalMediaTests(unittest.TestCase):
     def test_empty_admission_and_decoder_failure_are_explicit(self):
         result = javascript(f"""
           import {{imageFiles,decodeImage}} from {json.dumps(MODULE.as_uri())};
-          let empty;try{{imageFiles([{{name:'frame.tiff'}}]);}}catch(e){{empty=e.message;}}
+          let empty;try{{imageFiles([{{name:'notes.txt'}}]);}}catch(e){{empty=e.message;}}
           const failed=await decodeImage({{name:'broken.png'}},null,null,async()=>{{throw new Error('invalid pixels');}}).catch(e=>e.message);
           console.log(JSON.stringify({{empty,failed}}));
         """)

@@ -822,3 +822,17 @@ qualification rather than infer mobile coverage from desktop results.
 - The workflow qualifier holds actual UHD disk loads and Worker submissions,
   checks unchanged visible raster hashes, cached revisits, enlarged region
   summaries and preserved raw arrays. Keep these guards when changing playback.
+
+### Local TIFF images and masks — 2026-11-01
+
+- The PWA decodes classic single-page TIFFs in a cancellable, short-lived
+  Worker, with pinned UTIF/pako sources under `web-app/vendor/`. Preserve their
+  bytes, licence files and SHA-256/npm provenance. No CDN or binary is needed.
+- `tiff-codec.js` validates image tags/layouts before decompression. Unsigned
+  16-bit samples always use `floor(value/256)`; never introduce image-wise
+  scaling or claim native 16-bit correlation. Refuse stacks, float/signed
+  samples and unqualified layouts explicitly. Keep conversion in provenance.
+- `tools/qualify_browser_tiff.py` uses transient TIFF encodings of original
+  UHD fixtures, checks exact pixels/fields against PNG and exercises a new
+  decoder Worker after stopping the origin server. The software CI step is
+  configured; only local execution can be claimed until remotely observed.

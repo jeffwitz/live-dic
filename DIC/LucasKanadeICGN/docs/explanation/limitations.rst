@@ -369,3 +369,16 @@ it is not a promise to cache a whole recording or sustain the selected rate.
 Inspection and derived exports remain unavailable until the new analysis is
 ready. Raw images are not recorded
 with fields, so saved scalar maps use reference coordinates.
+
+TIFF inputs
+------------
+
+Browser TIFF support remains an 8-bit input path. Unsigned 16-bit samples are
+mapped with ``floor(value / 256)`` independently of image content; low bits are
+lost, and low-dynamic-range data require an explicit common-range conversion
+before import. TIFF ICC profiles are ignored. Multipage/BigTIFF, signed or
+floating-point samples, planar channels, reversed bit order and unqualified
+compressions/layouts are refused rather than partially decoded. TIFF import
+requires a Worker, including when correlation is unavailable. File/dimension
+limits and the 30-second decode timeout bound resource use; they do not promise
+real-time TIFF decompression. See :doc:`../how-to/run-in-browser`.

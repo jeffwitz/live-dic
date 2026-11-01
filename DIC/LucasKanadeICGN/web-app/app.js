@@ -429,7 +429,7 @@ async function startImages(files) {
   $('local-seek').min=0; $('local-seek').max=localImages.length-1; $('local-seek').step=1;
   localControls(true); imageIndex = localImages.length>1 ? 1 : 0;
   await setImageReference(0);
-  message(`Loaded ${localImages.length} local image(s). ${choice.ignored.length ? 'Ignored files are listed in the details. ' : ''}Choose a reference and mask, then open Solve to calculate and save the sequence.`);
+  message(`Loaded ${localImages.length} local image(s). ${localImages.some(file=>/\.tiff?$/i.test(file.name))?'TIFF: unsigned 16-bit values use their high byte (fixed 0–65535 → 0–255); no automatic contrast adjustment. ':''}${choice.ignored.length ? 'Ignored files are listed in the details. ' : ''}Choose a reference and mask, then open Solve to calculate and save the sequence.`);
 }
 async function playImages(includeCurrent = false) {
   if (imageLoop) { await imageLoop; if (imageLoop) return; }

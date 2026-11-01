@@ -24,7 +24,7 @@ outside the numerical engine's timing boundary.
 ## Browser acquisition and results workbench
 
 A standalone **WebGPU application** now provides browser-local camera, image-folder and video
-supervision, a bounded worker, editable multi-domain/full ROI with holes,
+supervision (including offline TIFF image/mask import), a bounded worker, editable multi-domain/full ROI with holes,
 temporal prediction, a lightweight live vector overlay on the current image,
 and on-demand CSV/JSON export. Vector colour represents displacement norm;
 a separate length key documents magnification. Scalar maps and strain analysis
