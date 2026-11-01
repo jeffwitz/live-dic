@@ -38,12 +38,13 @@ Python raw-WebGPU adapter. It has no Three.js/CDN dependency and can run offline
 after its first installation. The original UHD plate-with-hole case loads
 with an editable rectangle/circle preset and both analytical load states.
 
+[Open the browser workbench](https://jeffwitz.github.io/live-dic/) directly,
+with no local server to install. Images and processing stay on your device.
 From a checkout, run `python3 tools/run_browser_app.py` to build, serve and open
 the workbench in your usual browser. It uses the browser’s existing GPU settings.
 
 [Follow the visual UHD tutorial](DIC/LucasKanadeICGN/docs/tutorials/browser-experiment.rst),
-or [run the browser application locally or prepare Pages](DIC/LucasKanadeICGN/docs/how-to/run-in-browser.rst).
-The Pages workflow is ready; repository-owner activation/deployment is separate.
+or [read the browser application guide](DIC/LucasKanadeICGN/docs/how-to/run-in-browser.rst).
 Phone capture is a demonstration and field-screening tool, **not qualified for
 metrology**. Native NumPy-to-NumPy timings and browser worker/display timings
 have different boundaries; consult the performance reference.

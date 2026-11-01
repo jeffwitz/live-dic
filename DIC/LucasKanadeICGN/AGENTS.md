@@ -608,3 +608,17 @@ qualification rather than infer mobile coverage from desktop results.
   FPS campaigns. FFmpeg is an optional test-input construction tool, never a
   new application/runtime dependency. Do not commit another derived movie as
   a substitute for the provenance-bearing original fixtures.
+
+### Owner-authorized Pages publication — 2026-11-01
+
+- The owner explicitly requested publication. Pages is configured for GitHub
+  Actions at `https://jeffwitz.github.io/live-dic/`, with HTTPS enforced. The
+  earlier phase's restriction on automatic activation does not prohibit this
+  requested publication. The workflow still never changes Pages settings itself.
+- GitHub's Pages artifact omits hidden files. Keep `.nojekyll` and
+  `.live-dic-site` as build/launcher markers, but never precache their URLs:
+  a single 404 aborts the service worker's complete `cache.addAll()` operation.
+- The cache regression and local server-stopped UHD reload pass, together with
+  248 local tests with GPU/browser flags. Public-origin verification must also
+  check actual service-worker activation and an offline reload; HTTP 200 on
+  the landing page alone is insufficient. Retain the original fixture hashes.

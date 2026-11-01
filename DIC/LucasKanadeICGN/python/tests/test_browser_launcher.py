@@ -16,6 +16,33 @@ LAUNCHER = Path(__file__).resolve().parents[4] / "tools/run_browser_app.py"
 
 
 class BrowserLauncherTests(unittest.TestCase):
+    def test_offline_cache_uses_only_public_runtime_files(self):
+        # Pages omits dotfiles from its artifact; caching one aborts the whole install.
+        with tempfile.TemporaryDirectory() as temp:
+            site = Path(temp) / "site"
+            subprocess.run(
+                [sys.executable, str(LAUNCHER.with_name("build_pages.py")), "--output", str(site)],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                check=True,
+            )
+            worker = (site / "sw.js").read_text(encoding="utf-8")
+            assets = json.loads(re.search(r"^const ASSETS = (.+);$", worker, re.MULTILINE)[1])
+            self.assertTrue((site / ".live-dic-site").is_file())
+            self.assertTrue((site / ".nojekyll").is_file())
+            self.assertIn("./", assets)
+            self.assertIn("./app.js", assets)
+            self.assertIn("./shaders/icgn.wgsl", assets)
+            self.assertIn("./demo/plate/reference.png", assets)
+            for asset in assets:
+                self.assertFalse(
+                    any(part.startswith(".") for part in Path(asset).parts),
+                    f"Offline installation requests a private build marker: {asset}",
+                )
+                if asset != "./":
+                    self.assertTrue((site / asset).is_file(), asset)
+
     def test_launcher_refuses_to_replace_an_unrelated_directory(self):
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp)

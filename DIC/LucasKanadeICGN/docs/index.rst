@@ -34,6 +34,7 @@ Start here
   The default full-window policy rejects any subset touching a forbidden pixel.
   :doc:`how-to/use-partial-roi` covers explicit boundary supports.
 * :doc:`reference/api` for exact defaults and public interfaces.
+* `Open the browser workbench <https://jeffwitz.github.io/live-dic/>`_ directly.
 * :doc:`tutorials/browser-experiment` for a guided visual UHD experiment,
   saved-field analysis and NumPy interchange.
 

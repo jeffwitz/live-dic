@@ -75,7 +75,8 @@ def assemble(output: Path) -> dict:
     assets = ["./"] + [
         "./" + p.relative_to(output).as_posix()
         for p in sorted(output.rglob("*"))
-        if p.is_file() and p.name != "sw.js"
+        # Pages omits hidden build markers; one 404 would abort cache.addAll().
+        if p.is_file() and p.name not in {"sw.js", ".nojekyll", ".live-dic-site"}
     ]
     service_worker = (
         (output / "sw.js")

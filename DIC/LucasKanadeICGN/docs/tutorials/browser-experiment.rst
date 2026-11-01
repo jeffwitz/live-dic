@@ -15,7 +15,8 @@ hole is a physical boundary; the editable outer rectangle limits observation.
 Open the workbench
 ------------------
 
-From the checkout root, run:
+Open the `published workbench <https://jeffwitz.github.io/live-dic/>`_ directly.
+For a local checkout, run from its root:
 
 .. code-block:: bash
 
@@ -34,7 +35,7 @@ and profiles remain yours. If necessary, choose an installed browser explicitly:
 Use a browser with WebGPU enabled. If WebGPU is unavailable, the application
 still lets you open a saved NPZ field or results project for CPU analysis; it
 cannot perform new correlations. See :doc:`../how-to/run-in-browser` for device
-requirements and the separate GitHub Pages activation procedure.
+requirements, local serving and repository deployment details.
 
 Choose the experiment and inspect its reference
 -----------------------------------------------

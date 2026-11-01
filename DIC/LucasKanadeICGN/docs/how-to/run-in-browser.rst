@@ -12,11 +12,17 @@ complete NumPy result fields.
 Open or serve it
 ----------------
 
-The Pages workflow is prepared, but enabling or publishing the site is a
-repository-owner action. In GitHub, select **Settings → Pages → Source → GitHub
-Actions**. After a successful deployment, open the URL displayed by the Pages
-job. Builds retain an artifact and skip deployment while Pages is not configured;
-the workflow never enables Pages. A prepared workflow alone does not prove that a public site exists.
+Open the published `live-dic workbench <https://jeffwitz.github.io/live-dic/>`_.
+The HTTPS site runs the calculation on your device; local images, video and
+camera frames are not uploaded. New correlations require a supported WebGPU
+browser. Saved-field review remains available without WebGPU.
+
+The repository's Pages source is **GitHub Actions**. The existing workflow
+publishes application changes on ``main`` and can be run manually. For a new
+fork, an owner must first select **Settings → Pages → Source → GitHub Actions**.
+The workflow retains an artifact and skips deployment if Pages is not configured;
+it never changes that repository setting itself. Internal dotfile build markers
+are excluded from the offline cache because GitHub Pages does not publish them.
 
 From the repository root, build, serve and open it in one command:
 

@@ -17,8 +17,9 @@ The [browser companion](docs/how-to/run-in-browser.rst) runs a local camera, vid
 analytic demo through the shared WebGPU core, with worker backpressure, full
 ROI, temporal history, GPU display and offline assets. Its results lab preserves
 computed fields while adding explicit smoothing, strain fitting, point/line/gauge
-measurements and NPZ export/import. Recording is optional and adds full readback. Pages deployment is
-prepared but requires the repository owner's setup. Hand-held camera use is
+measurements and NPZ export/import. Recording is optional and adds full readback.
+[Open the published workbench](https://jeffwitz.github.io/live-dic/) without installing a local server.
+Hand-held camera use is
 not qualified for metrology. Python remains the primary NumPy supervisor.
 
 For a guided visual workflow, use the [first browser experiment](docs/tutorials/browser-experiment.rst).
