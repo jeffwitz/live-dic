@@ -1,0 +1,258 @@
+{
+  "boundary": "Resident Uint8Array pair -> materialized JS field; CPU includes setReference per pair; GPU reuses resources. No Python transport/capture/recording.",
+  "browser": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+  "adapter": {
+    "width": 3840,
+    "height": 2160,
+    "grid": [
+      240,
+      135
+    ],
+    "subsetSize": 16,
+    "subsetStride": 16,
+    "device": "Raw WebGPU shared WGSL (intel xe-2lpg)",
+    "timerQuery": false,
+    "backend": "raw-webgpu-wgsl",
+    "threeRevision": null,
+    "timestampQueries": false,
+    "vendor": "intel",
+    "architecture": "xe-2lpg",
+    "adapterDevice": null,
+    "description": null,
+    "subgroups": false,
+    "subgroupWidth": 0,
+    "pyramidLevels": 2,
+    "interpolation": "bspline",
+    "motionModel": "affine",
+    "outlierPolicy": "median",
+    "iterationsPerLevel": [
+      8,
+      16
+    ],
+    "tolerancePerLevel": [
+      0.005,
+      0.005
+    ],
+    "solver": "portable-workgroup-full-pyramid"
+  },
+  "engineOptions": {
+    "width": 3840,
+    "height": 2160,
+    "pyramidLevels": 2,
+    "motionModel": "affine",
+    "subsetSize": 16,
+    "subsetStride": 16,
+    "interpolation": "bspline",
+    "outlierPolicy": "median",
+    "readback": "full"
+  },
+  "request": {
+    "warmup": 5,
+    "repetitions": 30,
+    "resolution": "3840x2160"
+  },
+  "coldPreparationMs": {
+    "cpu": 1757.5,
+    "gpu": 216.80000001192093
+  },
+  "timings": {
+    "cpu": {
+      "samplesMs": [
+        1291.699999988079,
+        1274.5,
+        1269,
+        1237.9000000059605,
+        1228.3999999761581,
+        1264,
+        1228.699999988079,
+        1295.0999999940395,
+        1259.4000000059605,
+        1240.5,
+        1238.300000011921,
+        1240.5,
+        1210.699999988079,
+        1243,
+        1267.4000000059605,
+        1306.5,
+        1262.0999999940395,
+        1288.2000000178814,
+        1267.8999999761581,
+        1275.0999999940395,
+        1286.4000000059605,
+        1278.5,
+        1269.7000000178814,
+        1326.2999999821186,
+        1319.6000000238419,
+        1394.5999999940395,
+        1309.7999999821186,
+        1304.300000011921,
+        1423.199999988079,
+        1352
+      ],
+      "medianMs": 1272.1000000089407,
+      "p95Ms": 1375.4299999967216,
+      "p99Ms": 1414.9059999898077,
+      "throughputFps": 0.780167111796314
+    },
+    "gpu": {
+      "samplesMs": [
+        75.30000001192093,
+        75.59999999403954,
+        73.09999999403954,
+        74.80000001192093,
+        81.09999999403954,
+        78.59999999403954,
+        74.10000002384186,
+        74.09999999403954,
+        74.59999999403954,
+        73.09999999403954,
+        76.40000000596046,
+        79.5,
+        70.19999998807907,
+        74.30000001192093,
+        73.7999999821186,
+        72.2000000178814,
+        82.80000001192093,
+        82.2999999821186,
+        75.10000002384186,
+        70.2999999821186,
+        75.40000000596046,
+        74.59999999403954,
+        80.09999999403954,
+        76.90000000596046,
+        83.2999999821186,
+        81.2000000178814,
+        81.60000002384186,
+        76.2999999821186,
+        78.7000000178814,
+        77.2999999821186
+      ],
+      "medianMs": 75.5,
+      "p95Ms": 82.57499999850988,
+      "p99Ms": 83.15499999076128,
+      "throughputFps": 13.062219706433766
+    }
+  },
+  "quality": {
+    "finite": true,
+    "cpuAccepted": 31648,
+    "gpuAccepted": 31648,
+    "commonAccepted": 31648,
+    "statusMismatch": 0,
+    "displacementDifferenceRmse": 5.5920876958263663e-05,
+    "gradientDifferenceRmse": 3.1670523624999844e-06,
+    "maxParameterDifference": 0.0053983330726623535
+  },
+  "analytical": {
+    "cpu": {
+      "population": 30916,
+      "accepted": 30910,
+      "coverage": 0.9998059257342476,
+      "displacementRmse": 0.024201424043536868,
+      "displacementP95": 0.0455418431810426,
+      "gradientRmse": 0.0010642226954118497
+    },
+    "gpu": {
+      "population": 30916,
+      "accepted": 30910,
+      "coverage": 0.9998059257342476,
+      "displacementRmse": 0.024201569860210357,
+      "displacementP95": 0.045533920715116846,
+      "gradientRmse": 0.0010642029274801265
+    }
+  },
+  "gpuMemory": {
+    "bufferCount": 31,
+    "bufferBytes": 387102884,
+    "mappedBufferBytes": 1198572,
+    "textureCount": 8,
+    "texturePayloadBytes": 174182400,
+    "unknownTextureFormats": [],
+    "physicalVramBytes": null,
+    "freeVramBytes": null,
+    "memoryArchitecture": "not exposed by WebGPU",
+    "knownResourceBytes": 561285284,
+    "scope": "Live engine/input resources. Buffer sizes are requested GPU API bytes; texture payload excludes driver padding, pipelines and canvas/swapchain resources. Mapped buffers may use host memory. Unified GPUs share host RAM; these numbers must not be interpreted as independent free RAM/VRAM."
+  },
+  "fixtureMetadata": {
+    "schema_version": 1,
+    "description": "Original native-UHD virtual tensile-test PNGs, copied byte for byte; no tiling, resizing, or codec decoding.",
+    "width": 3840,
+    "height": 2160,
+    "mode": "L",
+    "source_repository": "/home/jeff/CNRS/Code/DIC_CODEC/DIC_FROM_H264",
+    "source_revision_at_import": "77267f92920ea8984533371cc6a62fef149ff6e2",
+    "source_directory": "experiments/tensile_extensometer_4k",
+    "seed": 20261012,
+    "coordinate_convention": "Zero-based pixel centres at integer coordinates; generator stretch centre is (1920, 1080).",
+    "forward_map": "x_target = 1920 + stretch_x * (x_reference - 1920); y_target = 1080 + stretch_y * (y_reference - 1080)",
+    "rendering": "OpenCV INTER_LINEAR inverse remapping of the archived speckle image with BORDER_REFLECT_101; uint8 PNGs saved before encoding. No additional sensor noise in this dataset.",
+    "truth_file": "machine_truth.csv",
+    "images": [
+      {
+        "file": "reference.png",
+        "source_file": "inputs/anchor_preview.png",
+        "frame": 0,
+        "sha256": "7cadf6032d7c5ac2de74ae542573a3b38069dc8c1c075ef9576641601996aeec"
+      },
+      {
+        "file": "frame_040.png",
+        "source_file": "inputs/frame_040_preview.png",
+        "frame": 40,
+        "sha256": "7477178b00acb669b34aeb2084b895076cf74475f472bc25f3af2696b2719e30"
+      },
+      {
+        "file": "frame_100.png",
+        "source_file": "inputs/frame_100_preview.png",
+        "frame": 100,
+        "sha256": "ad09928a04c3a8cff6d0085f5166cda5cd8f3aabc347b521db7ec4d064d1e712"
+      },
+      {
+        "file": "frame_199.png",
+        "source_file": "inputs/frame_199_preview.png",
+        "frame": 199,
+        "sha256": "8a3c61b6575b8a3b1808c2fb961edd03823f1c23f0f571d14949a3e58aa3e3ad"
+      }
+    ],
+    "provenance_files": {
+      "machine_truth.csv": "42975895cb8f6eea7200b2c2fd94c84c893e6029befd505f1fb461559cede814",
+      "provenance/source_manifest.json": "cda184dd675955701f12a43d4600627efb040fb68cb6574348a39ec7fc9800a2",
+      "provenance/generate.py": "f5558da9fd711bb0a640418c305a0d2b922f559f8bb975d7046cecd1a1f04073"
+    },
+    "regression_limits": {
+      "interior_margin_px": 32,
+      "identity_minimum_accepted_fraction": 0.95,
+      "identity_displacement_rmse_px": 0.005,
+      "affine_frame_040_minimum_accepted_fraction": 0.9,
+      "affine_frame_040_displacement_rmse_px": 0.05,
+      "affine_frame_040_displacement_p95_px": 0.1,
+      "affine_frame_040_median_gradient_rmse_per_component": 0.002
+    }
+  },
+  "source": {
+    "commit": "eae271baeb00f256a29ff336af7696bc6052a8c8",
+    "dirty": false,
+    "hashes": {
+      "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/device.js": "249ff3690fe6b04e03d3fd3b85b4f34df4ef5e69863a92556ae937b8f6827e8f",
+      "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/engine.js": "ae444b2c5ec6a123cb3b7b85f1dd3d07ec0cef2fd4c22008e549bedc8ae51589",
+      "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/gpu-memory.js": "46a7c53ea0e07dd411ec309afedf6a90b6d0faf0a4f7e5e2d1550dc8f173f2c3",
+      "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/input.js": "3975ddceaa68d153602c61c666fa6be19cc3dfc148eaff44838c423ca32aa13a",
+      "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/pyramid.js": "4af6698b049b9f23e6bf1fd4da47b937faf99824b6983c7f8659364d32ad2b39",
+      "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/reference-gpu.js": "088d6fb5e6a9907004155533c575e9c6dadd91309d40f55eeaeb54ae9518d0a5",
+      "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/reference.js": "9e7ee740e6f3b589df844fbcef9fe56ce56a51098dc8192accfd5168282a7a89",
+      "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/result.js": "938c07b80ee807ad102ef2a28884ad3288027fa00aa178b7100353ccc4ebb885",
+      "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/ring.js": "52e28bbd0acd385d222f604becb658f9080da93891335b24fad402fca845ca2d",
+      "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/roi.js": "34498b19d39989cce51a99520e66c1b43c0578e234ce5e25ade2396066eed510",
+      "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/shaders.js": "deb98c3c573f3c22d97f63707113453cec59c4f4b323a82f8c46c107dc531b7f",
+      "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/temporal.js": "d179f2e34f1acc8db5489a2beac360bfca563bdd48abdfc46e76d0ae7d3cf14f",
+      "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/shaders/full_pyramid.wgsl": "d00ef999c5dbc23013928e95ea6ca498a52fbb63850056c05bdbd3c963dc0401",
+      "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/shaders/icgn.wgsl": "a60231689fbc3d29953fd98eb8d04649ec93cbec0f5a89a65446df716152299b",
+      "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/shaders/icgn_subgroup.wgsl": "d68225b1b6b6b21071e59ea6109bbd24dc0fd8b6734b6ebc4f7d59356799a034",
+      "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/shaders/input.wgsl": "d269f8bf203e3363a6e753476c49de27188329409fa5a848358ea031bb554f7e",
+      "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/shaders/reference.wgsl": "0d86eefde8fb6ac25a7cfd46b23c71b7bc6e827696602cd13229c4cab29102c2",
+      "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/shaders/result.wgsl": "a587a3112670a702578df6c13f75addd4136e43fa6c7efba7959aa472d0e3267",
+      "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/shaders/subgroup_probe.wgsl": "6e4d149ed7f17969ede557a3062742d8da6c62cb6dd745d5510112c1489fed61"
+    }
+  },
+  "softwareRequested": false
+}
