@@ -1,0 +1,110 @@
+{
+  "hardware_commit": "3bd4f4d89d885eba126ac9cefdf572995a378188",
+  "software_commit": "3bd4f4d89d885eba126ac9cefdf572995a378188",
+  "video_fields": 1070,
+  "video_storage": {
+    "sessionId": "d6daca83-3c67-41f6-9466-ce905cf672d5",
+    "diskAvailable": true,
+    "readOnly": false,
+    "memoryLimitBytes": 1073741824,
+    "residentBytes": 1073697905,
+    "residentFields": 1033,
+    "diskFields": 1070,
+    "storedPayloadBytes": 1109376000,
+    "unsavedFields": 0,
+    "warning": null
+  },
+  "hardware_snapshot_storage": {
+    "sessionId": "136cc8a9-7d80-4aa1-a019-098d6a284eed",
+    "diskAvailable": true,
+    "readOnly": false,
+    "memoryLimitBytes": 134217728,
+    "residentBytes": 134074748,
+    "residentFields": 117,
+    "diskFields": 200,
+    "storedPayloadBytes": 222134400,
+    "unsavedFields": 0,
+    "warning": null
+  },
+  "software_snapshot_storage": {
+    "sessionId": "967a7c56-10f0-4134-9fa6-cff12fdad934",
+    "diskAvailable": true,
+    "readOnly": false,
+    "memoryLimitBytes": 134217728,
+    "residentBytes": 134060123,
+    "residentFields": 117,
+    "diskFields": 200,
+    "storedPayloadBytes": 222134400,
+    "unsavedFields": 0,
+    "warning": null
+  },
+  "history": {
+    "count": 200,
+    "first": {
+      "order": 1,
+      "fieldId": 1,
+      "sourceIndex": null,
+      "mediaTimeSeconds": null,
+      "value": 0.4421636462211609,
+      "status": 1,
+      "validRegionSamples": null,
+      "regionGridPositions": null
+    },
+    "last": {
+      "order": 200,
+      "fieldId": 200,
+      "sourceIndex": 199,
+      "mediaTimeSeconds": null,
+      "value": 0.4421636462211609,
+      "status": 1,
+      "validRegionSamples": null,
+      "regionGridPositions": null
+    },
+    "exact": true,
+    "peakFinal": 15819722
+  },
+  "gpu": {
+    "type": "memory",
+    "id": 1092,
+    "engine": {
+      "bufferCount": 37,
+      "bufferBytes": 266184184,
+      "mappedBufferBytes": 1036816,
+      "textureCount": 5,
+      "texturePayloadBytes": 99532800,
+      "unknownTextureFormats": [],
+      "physicalVramBytes": null,
+      "freeVramBytes": null,
+      "memoryArchitecture": "not exposed by WebGPU",
+      "knownResourceBytes": 365716984,
+      "scope": "Live engine/input resources. Buffer sizes are requested GPU API bytes; texture payload excludes driver padding, pipelines and canvas/swapchain resources. Mapped buffers may use host memory. Unified GPUs share host RAM; these numbers must not be interpreted as independent free RAM/VRAM."
+    },
+    "supervisor": {
+      "bufferCount": 1,
+      "bufferBytes": 64,
+      "mappedBufferBytes": 0,
+      "textureCount": 1,
+      "texturePayloadBytes": 33177600,
+      "unknownTextureFormats": [],
+      "physicalVramBytes": null,
+      "freeVramBytes": null,
+      "memoryArchitecture": "not exposed by WebGPU",
+      "knownResourceBytes": 33177664,
+      "scope": "Live engine/input resources. Buffer sizes are requested GPU API bytes; texture payload excludes driver padding, pipelines and canvas/swapchain resources. Mapped buffers may use host memory. Unified GPUs share host RAM; these numbers must not be interpreted as independent free RAM/VRAM."
+    },
+    "limits": {
+      "maxStorageBuffersPerShaderStage": 16,
+      "maxBindGroups": 4,
+      "maxStorageBufferBindingSize": 4294967292,
+      "maxBufferSize": 4294967292,
+      "maxComputeWorkgroupStorageSize": 65536,
+      "maxComputeInvocationsPerWorkgroup": 1024,
+      "maxTextureDimension2D": 16384
+    },
+    "physicalVramBytes": null,
+    "freeVramBytes": null,
+    "note": "GPU API allocations are distinct from the CPU results cache. Physical residency/free VRAM and unified/discrete placement are not exposed. Canvas swapchains and driver allocations are not counted."
+  },
+  "scope": "Storage correctness with real UHD geometry. Snapshot replay is explicitly separate from actual video solves. No FPS claim or physical/free VRAM measurement.",
+  "new_remote_ci_run_observed": false
+}

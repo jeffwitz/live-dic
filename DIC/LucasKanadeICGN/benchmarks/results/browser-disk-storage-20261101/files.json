@@ -1,0 +1,34 @@
+{
+  "hardware.json": {
+    "sha256": "a6e8a947185fc5c8d2a72676c4fef0542d68e174180c36bc44d155c7e91bb0d5",
+    "bytes": 2744874
+  },
+  "software.json": {
+    "sha256": "dbf85d7ed042aafc5e487896c20cbe487941fe7dfa12f163f5c8123c0165986f",
+    "bytes": 2693086
+  },
+  "negative-control.json": {
+    "sha256": "92fe271fcb86a392122b4c5993f1bffaf22507776c530f609f749ccac861d313",
+    "bytes": 2740829
+  },
+  "workbench.json": {
+    "sha256": "4ea5d00744d6f70ff2b3102c61a2ad86056bee6efda0913ff939a717e78691a9",
+    "bytes": 22158
+  },
+  "installed-wheel.json": {
+    "sha256": "052b5c34784975f4d93d5f97f8800b901e6fe1a3cb96a9c3df5e6b7b88e4079e",
+    "bytes": 1491
+  },
+  "suite.log": {
+    "sha256": "2dea8ddee9af2e2ea74f2eb7a809a4e1a696fff0d6aa62c879cf7721e35fa7d4",
+    "bytes": 42312
+  },
+  "cache-tests.log": {
+    "sha256": "1ffce4a59db11cdaea33b2f013446b9edb8f68c22754791b16aac718aa850c27",
+    "bytes": 2675
+  },
+  "sphinx.log": {
+    "sha256": "09148f75d14cd7fb49c8c4ba98ef1df555b068b31aa17c5b93420fd6556e9fa8",
+    "bytes": 3708
+  }
+}

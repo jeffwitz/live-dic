@@ -629,3 +629,25 @@ qualification rather than infer mobile coverage from desktop results.
   WGSL hashes and three original PNG hashes checked. Network emulation must
   include the service-worker target and reject an uncached network probe;
   page-only offline emulation can leave service-worker fetches online.
+
+### Disk-backed result recordings — 2026-11-01
+
+- `ui/field-storage.js` writes full typed fields to IndexedDB before allowing
+  cache eviction. The CPU cache is configurable up to 1 GiB; unknown/coarse
+  device memory must not be treated as free RAM or VRAM. Count auxiliary arrays
+  such as `roiSelected`, shared image masks and encoded metadata correctly.
+- The supervisor awaits each recorded-field commit. Preserve this admission
+  barrier, lazy session/history loading and bounded multipart exports. A disk
+  error retains unsaved fields and immediately blocks further recording;
+  recovery batches preserve partial progress without duplicates.
+- Reopened sessions are read-only for acquisition. Settings revisions and
+  session existence are checked transactionally. Clearing a view never silently
+  deletes its disk data. Browser persistence is not an independent backup.
+- `engine.memoryUsage()` reports tracked API resources, never physical/free
+  VRAM. Recording history remains on the CPU/disk, outside the GPU slot ring.
+- `tools/qualify_browser_storage.py` checks real IndexedDB with UHD fields and
+  optional actual UHD video. Reports are in `browser-disk-storage-20261101/`:
+  clean hardware/SwiftShader runs, 1,070 actual video fields over 1 GiB, quota
+  failures/recovery, exact reloads and multipart interchange. This is functional
+  evidence, not recording-FPS or all-OS/discrete-hardware qualification. The
+  new software-browser CI job is configured but was not observed remotely here.

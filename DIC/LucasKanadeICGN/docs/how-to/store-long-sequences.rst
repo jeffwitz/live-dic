@@ -4,6 +4,11 @@ Store long browser sequences
 This guide concerns the standalone browser workbench. Native Python streaming
 continues to return NumPy fields to its caller; it does not use this database.
 
+When upgrading an already open version that used the old 128 MiB in-tab library,
+export its results project before reloading. That version's RAM-only fields
+cannot be recovered after its tab is closed. Import the project into the new
+version to place those fields in its browser database.
+
 Record and reopen
 -----------------
 
