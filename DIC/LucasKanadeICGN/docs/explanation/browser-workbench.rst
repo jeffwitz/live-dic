@@ -169,19 +169,34 @@ shared by a recording is written once. Processed arrays can be regenerated from
 the stored recipe; individual NPZ export also includes those arrays explicitly.
 No input image, camera permission or File handle is serialized.
 
-Import validates all fields before changing the library and checks capacity for
-the complete batch. It adds fields without replacing the active acquisition
-source or settings. Current library storage is 128 MiB, total uncompressed
-archive input is capped at 256 MiB, and the versioned format accepts at most
-512 fields / 4096 ZIP entries. CRC protects entries; ROI hashes are checked
-against their canonical binary mask. Export/import does not execute code.
+Import validates every field in one part before adding that part. Multiple parts
+are processed in filename order; a later failure does not remove earlier imports.
+The versioned format retains its 256 MiB uncompressed, 512-field and 4096-entry
+limits per archive. Long exports split into bounded parts, with a shared mask
+once per part. CRC protects entries and ROI hashes are checked. No archive
+executes code or changes acquisition settings.
 
-Changes since the last project download request trigger a browser unload warning
-when supported. This is an accidental-loss guard, not automatic persistence or
-proof that a download succeeded. Computed data, recipes and view edits affect
-that state. The acquisition worker's live path does not inspect or serialize
-this library state. Saved presentation includes the measurement tool and its
-reference coordinates; importing/selecting that field restores the geometry.
+The in-tab array cache is now backed by IndexedDB, not a fixed-capacity library.
+Each field is committed first, then eligible for LRU eviction from CPU RAM.
+The cache budget is configurable up to 1 GiB; unknown device memory defaults to
+128 MiB. Disk persistence is requested but may be denied. A quota/write failure
+keeps the completed field in RAM and stops acquisition; retry never duplicates
+it. No pending field is silently evicted. See
+:doc:`../how-to/store-long-sequences` for the full lifecycle and limits.
+
+Geometry/configuration are interned in the catalog, static masks are shared per
+session, and browser-session reopening reads a lightweight index before loading
+one selected field. Reopened sessions are read-only for acquisition; view and
+recipe settings can be saved separately with revision-conflict detection.
+Computed raw arrays remain immutable. Histories and exports load fields in
+bounded order. The worker's live numerical graph does not gain a field-history
+buffer on the GPU. The supervisor awaits the disk commit before admitting the
+next recorded field; this intentional backpressure can affect throughput.
+
+Changes since the last project download request or explicit browser settings
+save trigger an unload warning when supported. This is an accidental-loss guard,
+not proof of independent backup. The browser database contains fields and masks,
+not input images. Clearing site data/profile storage can remove entire sessions.
 
 Mask image editing
 ------------------

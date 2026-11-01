@@ -117,6 +117,7 @@ when exporting a measurement with :doc:`how-to/export-results`.
 
    how-to/install
    how-to/run-in-browser
+   how-to/store-long-sequences
    how-to/migrate-from-gpuio
    how-to/process-live-frames
    how-to/benchmark

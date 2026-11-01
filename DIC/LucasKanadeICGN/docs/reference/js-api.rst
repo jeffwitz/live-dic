@@ -322,3 +322,20 @@ reciprocal pixels independently of display calibration. CSV keeps its existing
 declared order that conflicts with the public model contract. Older live-dic
 archives without an order use that established contract. Results manifests carry
 the same optional, checked order.
+
+Application memory accounting
+-----------------------------
+
+``engine.memoryUsage()`` returns tracked buffer/texture counts, requested buffer
+bytes, mapped-buffer bytes, known texture payloads and unknown texture formats.
+It walks live resources only when called, outside the registration hot path.
+``knownResourceBytes`` excludes driver padding, pipelines, canvas swapchains and
+other browser allocations. ``physicalVramBytes`` and ``freeVramBytes`` are
+``null``; WebGPU does not expose these. Mapped buffers may be host-backed, and
+unified GPUs share host RAM. This is an allocation diagnostic, not a free-memory
+or FPS guarantee.
+
+The standalone workbench's ``ui/field-storage.js`` is a separate supervisor
+module, not a ``DICEngine`` option. It stores full fields/masks in IndexedDB,
+keeps a configurable CPU array cache, and loads archived fields lazily. It does
+not retain GPU resources. See :doc:`../how-to/store-long-sequences`.

@@ -433,19 +433,25 @@ Images are not included in saved fields; retain your original sequence separatel
 Save a results project
 -----------------------
 
-**Save results project** pauses acquisition and packages all saved computed
-fields, their shared ROI masks, provenance and applied processing recipes in one
-``.dicproject`` ZIP. Keep original images separately. Importing a project adds
-its fields to the current library after validating the entire batch and checking
-capacity; it does not silently replace the active source or solver settings.
-A browser close/reload warning protects changes not included in the last
-requested project download, where the browser permits such warnings. A download
-request cannot confirm that the file reached disk: check your downloads. NPZ
-exports of individual fields do not mark the complete results project as saved.
-Use **Clear results** first if you want a separate library. An oversized or
-invalid project leaves the library unchanged. The current stored-data limit is
-128 MiB; archive input is limited to 256 MiB uncompressed. Single-field NPZ is
-still the simplest direct NumPy interchange format.
+**Save results project** pauses acquisition and exports computed fields, shared
+ROI masks, provenance and applied recipes. Small libraries use one
+``.dicproject`` ZIP. Long libraries open a parts dialog: download each numbered
+part and then its index. Where supported, **Write all parts to a chosen folder**
+creates a new experiment subfolder. Folder access is optional; ordinary downloads
+work without that browser API. Keep original images separately.
+
+Import accepts multiple parts in filename order. Each part is validated before
+its fields are added; successful earlier parts remain available if a later part
+is invalid. It does not replace the acquisition source or solver settings. Parts
+target at most 64 MiB (less with a small cache) and 128 fields. Each part remains
+independently readable; shared masks are repeated once per part. Import retains
+its 256 MiB uncompressed / 512-field safety limits per archive.
+
+A download request cannot prove that a file reached disk: check your downloads.
+NPZ exports of individual fields do not mark the whole project as saved. Use
+**Close results view** to begin a separate recording; committed fields remain
+in **Saved sessions**. See :doc:`store-long-sequences` for reopening browser
+sessions, failure recovery, memory accounting and independent backups.
 
 Browse and reuse processing
 ---------------------------
@@ -494,13 +500,20 @@ time and worker-arrival-to-recorded-field age. These are not camera-to-Python
 timings. Video/camera can still drop and count work under backpressure; folders
 continue to await every image.
 
-The library is bounded to 128 MiB of stored arrays, distinct masks and metadata
-in the current tab. Analysis scratch, browser decoder/GPU memory and export
-buffers are additional. At the limit recording and acquisition stop with an
-explicit message; existing fields are not discarded. Export or delete results
-before continuing. There is no automatic disk persistence: save NPZ before
-closing the tab. Switching sources preserves saved fields but disables recording
-until you explicitly enable it again. No image stream or result is uploaded.
+Computed fields are committed to browser-local IndexedDB before the next
+recorded field is admitted. A configurable CPU cache retains up to 1 GiB;
+automatic mode uses coarse host-memory information when available and a
+conservative 128 MiB otherwise. Old committed fields leave the cache and are
+reloaded on demand. Their values are not discarded or reduced in precision.
+The cache target excludes analysis scratch, metadata objects, GPU/decoder
+resources and export buffers; it is not a total process-memory limit.
+
+Disk/quota failures stop recording and acquisition explicitly, preserving the
+completed field in RAM. Export it or use **Retry saving RAM-only fields** before
+closing. Browser disk quotas, privacy settings and storage eviction still apply:
+export project parts for an independent backup. No images or results are
+uploaded. Switching sources preserves the library but disables recording until
+you explicitly enable it again.
 
 Review without WebGPU
 ---------------------

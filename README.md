@@ -30,6 +30,9 @@ and on-demand CSV/JSON export. A results workbench adds bounded opt-in field
 recording, point/line/extensometer extraction, reversible displacement smoothing,
 VSG strain, principal/equivalent strain, region statistics, length units and NumPy
 NPZ interchange. Results projects restore shared masks, recipes and measurements.
+Long recordings use [browser-local disk storage](DIC/LucasKanadeICGN/docs/how-to/store-long-sequences.rst) with a CPU cache
+configurable up to 1 GiB, lazy session reopening and portable multipart exports.
+Quota failures retain the completed field in RAM and pause acquisition.
 Stored native quadratic fields expose their computed second derivatives; saved
 field analysis also works without WebGPU.
 Fixed-reference and real consecutive-pair comparisons are distinct options; the

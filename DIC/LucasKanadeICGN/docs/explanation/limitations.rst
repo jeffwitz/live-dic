@@ -230,9 +230,12 @@ Results workbench
 -----------------
 
 Results recording is opt-in, adds full-field readback and has no live 60 Hz
-qualification. The in-tab 128 MiB stored-data limit excludes analysis scratch,
-GPU/decoder memory and export buffers. Save NPZ before closing; there is no
-implicit persistent field store or raw-image recording. Analysis is a reversible
+qualification. Fields are written to browser-local IndexedDB with a configurable
+CPU array cache up to 1 GiB (128 MiB on unknown memory). This excludes analysis
+scratch, catalog/object overhead, GPU/decoder memory and export buffers. Browser
+quotas, private browsing and eviction can limit or remove that storage; export
+project parts for an independent backup. Disk errors retain the completed field
+in RAM and pause recording. Raw images are not recorded. Analysis is a reversible
 post-processing view, not a new convergence test. Smoothing reduces spatial
 resolution. VSG can lose valid strain support near gaps and narrow regions;
 invalid values are not filled. Unit scaling is isotropic and does not correct
@@ -244,8 +247,7 @@ legacy layouts are not guessed. A history uses saved order and matching analysis
 provenance; it does not supply an acquisition clock or material trajectory.
 
 Results projects preserve computed fields and recipes but exclude input images
-and live source permissions. Project import adds a validated batch within the
-in-tab capacity; it does not resume an acquisition automatically. Smoothing and
+and live source permissions. Project import adds validated parts to the disk-backed library; it does not resume an acquisition automatically. Smoothing and
 VSG compose their support sizes: two 5-point operations on a 16/16 grid have a
 nominal 144 px strain span, not an 80 px span. Smaller windows can preserve more
 spatial detail; numerical operator tests are not a material-specific choice of
@@ -276,3 +278,10 @@ configured spatial policy. Workbench smoothing/VSG do not alter those coefficien
 Native quadratic imports can display displacement second derivatives; browser
 acquisition remains translation/affine. Their noise and estimator bias are not
 removed by switching display or length units.
+
+GPU memory diagnostics count application-owned buffer sizes and known texture
+payloads, excluding driver padding, pipelines and canvas swapchains. WebGPU does
+not expose physical/free VRAM or reliable unified/discrete placement. Mapped
+buffers may be host-backed. A unified GPU shares the physical RAM pool; do not
+add CPU and GPU figures as if they were separate free-memory budgets. These
+diagnostics do not prove that a long recording meets a live FPS target.

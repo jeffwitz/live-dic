@@ -109,6 +109,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
       entry.metadata={...entry.metadata,workbench:{view}};entry.metadataBytes=encoderBytes(entry.metadata);changed();updateLibrary();
     }
   }
+  function storageBlocked(){const info=storage.report();return info.unsavedFields>0&&(info.diskAvailable||info.residentBytes>info.memoryLimitBytes);}
   function updateLibrary(immediate = true) {
     if(!immediate&&!reviewing){if(!libraryTimer)libraryTimer=setTimeout(()=>{libraryTimer=null;updateLibrary();},250);return;}
     clearTimeout(libraryTimer);libraryTimer=null;
@@ -123,7 +124,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     $('library-summary').textContent = `${entries.length} field(s) · ${(memoryBytes()/MiB).toFixed(1)} MiB resident / ${(info.memoryLimitBytes/MiB).toFixed(0)} MiB cache target · ${info.diskFields} saved on browser disk. ${!entries.length?'No stored results.':hasUnsaved()?'Export for an independent backup; settings have unsaved changes.':'Project download requested or session settings saved; verify your backup.'} Images are not recorded.`;
     $('storage-summary').textContent=info.warning?`${info.warning}. ${info.unsavedFields} field(s) only in RAM; do not close before exporting/retrying.`:info.diskAvailable?'Disk-backed storage. Old cached fields are reloaded on demand. Browser storage is not an independent backup.':'Opening browser storage on first saved field; RAM remains bounded if disk is unavailable.';
     $('retry-storage').hidden=!info.unsavedFields&&!info.warning;$('save-session').disabled=!entries.length||!info.diskAvailable;
-    $('freeze-field').disabled=!liveReady||captureBusy||storage.readOnly;$('record-fields').disabled=!liveReady||storage.readOnly;
+    $('freeze-field').disabled=!liveReady||captureBusy||storage.readOnly||storageBlocked();$('record-fields').disabled=!liveReady||storage.readOnly||storageBlocked();
     $('delete-field').title=storage.readOnly?'Saved sessions are read-only; close the session to start a new recording.':'';
     $('clear-fields').disabled = !entries.length; $('delete-field').disabled = !entries.length||storage.readOnly;
     $('save-project').disabled=!entries.length;
@@ -438,7 +439,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   };
   $('cancel-history').onclick=()=>historyAbort?.abort();
   $('spatial-view').onclick=()=>{history=null;$('spatial-view').hidden=true;updateInspection();};
-  $('freeze-field').onclick=async()=>{if(captureBusy||storage.readOnly)return;captureBusy=true;$('freeze-field').disabled=true;try{const {field,metadata}=await captureCurrent();let mask=currentMask;if(metadata.roi&&!mask)mask=maskFromMetadata(metadata);await add(field,metadata,{select:true,mask});}catch(e){error(e.message);}finally{captureBusy=false;$('freeze-field').disabled=!liveReady||storage.readOnly;}};
+  $('freeze-field').onclick=async()=>{if(captureBusy||storage.readOnly||storageBlocked())return;captureBusy=true;$('freeze-field').disabled=true;try{const {field,metadata}=await captureCurrent();let mask=currentMask;if(metadata.roi&&!mask)mask=maskFromMetadata(metadata);await add(field,metadata,{select:true,mask});}catch(e){error(e.message);}finally{captureBusy=false;$('freeze-field').disabled=!liveReady||storage.readOnly||storageBlocked();}};
   $('return-live').onclick=()=>returnLive(true);
   $('record-fields').onchange=async()=>{const changedMode=recordChange(recording());if(recording()){await storage.database();const persistent=await storage.persistence();$('storage-quota').textContent=persistent?'Browser persistence granted; independent exports are still required for a backup.':'Persistence not granted or unavailable: browser disk data may be evicted. Export important sequences.';}await changedMode;updateLibrary();};
   $('saved-fields').onchange=()=>selectEntry($('saved-fields').value);
@@ -542,7 +543,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
       const project=await importProjectArchive(await file.arrayBuffer());
       const drafts=project.records.map(record=>({...record,metadataBytes:encoderBytes(normalizeMetadata(record.metadata))}));
       await storage.database();if(!storage.backend&&memoryBytes(drafts)>storage.memoryLimit)throw new Error('Disk is unavailable and this project exceeds the RAM cache budget. This part was not imported.');
-      const added=[];for(const record of project.records)added.push(await add(record.field,record.metadata,{mask:record.mask,recipe:record.recipe}));
+      const added=[];for(const record of project.records){const entry=await add(record.field,record.metadata,{mask:record.mask,recipe:record.recipe});added.push(entry);if(storage.backend&&!entry.storage.saved)throw new Error('Disk saving stopped during import. Already admitted fields, including the last RAM-only field, remain available; keep the source part before retrying.');}
       const previous=project.records.findIndex(record=>record.originalId===project.settings.selectedId);
       importedCount+=added.length;if(added.length)await selectEntry(added[Math.max(0,previous)].id);
       $('project-state').textContent=`Opened ${importedCount} fields; latest part ${file.name}. Current acquisition settings and source were not replaced.`;
@@ -616,7 +617,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   };
   updateLibrary();
   return { add, returnLive, setMask(mask){currentMask=mask;}, get reviewing(){return reviewing;}, get recording(){return recording();},
-    setReady(ready){liveReady=ready;$('freeze-field').disabled=!ready||captureBusy||storage.readOnly;$('record-fields').disabled=!ready||storage.readOnly;},
+    setReady(ready){liveReady=ready;$('freeze-field').disabled=!ready||captureBusy||storage.readOnly||storageBlocked();$('record-fields').disabled=!ready||storage.readOnly||storageBlocked();},
     flush:()=>storage.flush(),get storage(){return storage;},
     stopRecording(){ $('record-fields').checked=false;recordChange(false); },
     clearInspection(){stopReplay();clearHistory();points=[];updateInspection();},

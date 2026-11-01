@@ -476,9 +476,10 @@ qualification rather than infer mobile coverage from desktop results.
 - Saved computed fields include the solver's configured spatial policy. Never
   call median solver output raw/unfiltered. Postprocessing is explicit,
   reversible, separately masked and executed outside the acquisition worker.
-- Results recording is opt-in and adds full readback. The bounded in-tab library
-  stops recording/acquisition at capacity; it must not evict scientific results
-  silently. Save NPZ before tab close; raw images are not recorded.
+- Results recording is opt-in and adds full readback. The disk-backed library
+  evicts only committed CPU cache arrays, never unsaved scientific data. A disk
+  failure retains the completed field in RAM and pauses recording/acquisition.
+  Export project parts for independent backup; raw images are not recorded.
 - Keep computed parameters/status/iterations separate from processed arrays and
   validity masks. Preserve strict no-pickle NPZ, explicit dimensions/ROI/recipe,
   and conservative visibility across image/grid exclusions.

@@ -214,10 +214,12 @@ Gaussian/VSG displacement processing. Changing units scales their presentation;
 it does not rewrite raw coefficients. Browser acquisition remains affine or
 translation.
 
-The library holds at most 128 MiB of stored arrays, distinct masks and metadata.
-At capacity, recording and acquisition pause without discarding saved fields.
-Analysis scratch and GPU/decoder memory are additional. There is no automatic
-disk persistence. Check your downloaded project before closing; a browser unload
+Fields are saved in this browser profile, with a CPU cache configurable up to
+1 GiB and lazy reload of older fields. Open **Saved sessions** after a reload.
+Use **Save analysis in browser** for recipe/view edits and export project parts
+for an independent backup. Disk errors pause acquisition and retain the completed
+field in RAM. Analysis scratch and GPU/decoder memory are additional. See
+:doc:`../how-to/store-long-sequences`. Check your downloaded project before closing; a browser unload
 warning is only an accidental-loss guard. Camera restart captures a new reference
 and requires reapplying its mask. Physical cameras, mobile browsers and calibrated
 experimental metrology need their own qualification.
