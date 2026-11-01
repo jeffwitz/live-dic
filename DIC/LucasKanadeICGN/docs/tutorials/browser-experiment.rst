@@ -53,7 +53,7 @@ Choose the experiment and inspect its reference
    creates a hole; a domain inside a hole restores an island. Outer domains can
    be separate. Rectangle, ellipse, circle and polygon are available.
 5. Use **Cancel edits** to restore the applied mask, or **Apply mask** to prepare
-   the edited geometry. The selection accepts only complete nominal windows
+   the edited geometry. Start calculation again in Solve to use it. The selection accepts only complete nominal windows
    inside white pixels. Numerical failures stay distinct from ROI exclusions.
 
 Define the mask from specimen geometry. The saved-field **Status** display makes failed
@@ -72,7 +72,7 @@ Threshold conversion of a nonbinary image is an explicit option.
 Understand what is displayed
 ----------------------------
 
-Return to **Results**. The lightweight live preview shows norm-coloured
+In **Solve → Live monitor**, the lightweight preview shows norm-coloured
 displacement vectors on the current image. Its colourbar is measured pixels;
 a separate key shows length magnification. Tips identify current subset centres.
 Choose a slow preview rate or suspend it while computing/recording continues.
@@ -95,8 +95,15 @@ For this static pair, **Start calculation** in Solve calculates and saves the se
 plate load to inspect a different target against the same reference. This is
 not a live frame-rate benchmark.
 
-Freeze a field and choose a strain calculation
+Choose a quantity and replay calculated fields
 ----------------------------------------------
+
+.. figure:: ../../benchmarks/results/browser-workflow-20261101/results.png
+   :width: 900px
+   :alt: Saved UHD strain field with quantity, Play results, replay rate, timeline and colourbar directly above the image.
+
+   Saved-field playback is independent of calculation. The selected quantity
+   remains active while replaying or dragging the timeline.
 
 1. Open **Results** after calculating. The complete field is already retained
    in the results library. The saved view uses reference coordinates;
@@ -164,7 +171,8 @@ and missing entries, while JSON records units, geometry and processing.
 Record and compare multiple fields
 -----------------------------------
 
-Return to live view and enable **Keep computed fields for review**. Change the
+Choose **Back to Solve**, keep **Save calculated fields for replay** selected,
+and press **Start calculation** after choosing the other load. Change the
 plate load to obtain another stored field. For your own sequence, use
 **Open image folder**, **Select images**, **Open video** or **Camera** instead.
 Folder images are processed in natural filename order; video uses its browser

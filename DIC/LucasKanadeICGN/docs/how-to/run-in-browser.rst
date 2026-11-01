@@ -407,8 +407,8 @@ Original UHD plate with a hole
 Choose **Plate with hole · UHD**. This loads the original archived reference
 and frame 95 at **3840 × 2160**, without resampling, tiling or video encoding.
 The outlined outer rectangle and circular hole are already present and editable.
-Choose **Edit mask** to adjust them or add more regions. Applying the mask
-recalculates the selected image pair. **Plate load** selects frame 95
+Choose **Edit mask** to adjust them or add more regions. Applying the mask prepares a new reference/ROI. Press **Start calculation**
+in Solve to calculate the selected pair. **Plate load** selects frame 95
 (250/0 MPa) or frame 225 (250/80 MPa). **Capture reference** restores the
 original reference and preset for this case.
 

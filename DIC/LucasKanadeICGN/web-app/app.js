@@ -45,7 +45,7 @@ const workspace = installWorkspace({ onPane: name => {
   else if(name!=='view'&&workbench.reviewing)workbench.returnLive(true);
 }, shortcuts: {
   play: () => { if (workspace.pane === 'view' && !$('replay-results').disabled) $('replay-results').click(); },
-  reference: () => { if (!$('reference').disabled && !loadingSource) $('reference').click(); },
+  reference: () => { if (workspace.pane !== 'view' && !$('reference').disabled && !loadingSource) $('reference').click(); },
   clear: () => workbench.clearInspection(),
 } });
 const workbench = installWorkbench({

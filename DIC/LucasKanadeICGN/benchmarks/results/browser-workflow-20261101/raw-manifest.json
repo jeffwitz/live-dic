@@ -1,0 +1,42 @@
+{
+  "hardware.json.gz": {
+    "bytes_uncompressed": 9480,
+    "sha256_uncompressed": "6b4029c594b1894d6181dd6374447fc776682a7a48cdbc68ec8034fc08b9f3d3"
+  },
+  "workbench.json.gz": {
+    "bytes_uncompressed": 23816,
+    "sha256_uncompressed": "3a49c449476b4bd2a89ccd2514dad08caf2bf3edf944641f9af5173846f79bbf"
+  },
+  "pipeline.json.gz": {
+    "bytes_uncompressed": 37846,
+    "sha256_uncompressed": "5a662f290e02b2677906bbff409adb526f6ecfebd843fcd45a31f967deee127b"
+  },
+  "editor.json.gz": {
+    "bytes_uncompressed": 10593,
+    "sha256_uncompressed": "5e73ee8f684f972317e56542d1b3bd58106beda1ed12667029e940074d4bbd62"
+  },
+  "local-sources.json.gz": {
+    "bytes_uncompressed": 8796,
+    "sha256_uncompressed": "8217253f9436f795d84d360a697cc8509a83201c2144fdf0cec1a14b5a0fcea5"
+  },
+  "review-no-webgpu.json.gz": {
+    "bytes_uncompressed": 3464,
+    "sha256_uncompressed": "46328d131b0ddc60d6b7bb598b970c380871fd6c8e0fc21346de0f73252d3a79"
+  },
+  "camera-functional.json.gz": {
+    "bytes_uncompressed": 66032,
+    "sha256_uncompressed": "53c774302bdfd87f65f601cec13510d53c4fdd2fa32a3602068b279d3aee77f7"
+  },
+  "software.json.gz": {
+    "bytes_uncompressed": 9477,
+    "sha256_uncompressed": "b6a61a3dd286b61eb5592e33c453432a43dbbf7afb722259dba8cc00345f1118"
+  },
+  "keyboard-hardware.json.gz": {
+    "bytes_uncompressed": 9498,
+    "sha256_uncompressed": "00e8c2c54e3dd53fbce5a543b608739ea392a3e145818095d424aa5e198c0f57"
+  },
+  "keyboard-software.json.gz": {
+    "bytes_uncompressed": 9495,
+    "sha256_uncompressed": "d1179a4020aa27648bb822fdf484d95adfed60b7fd05cb7e31c73186fe01e9dd"
+  }
+}

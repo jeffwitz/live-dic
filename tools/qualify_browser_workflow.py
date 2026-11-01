@@ -111,6 +111,12 @@ def main():
             assert solved["completed"] == 3 and solved["source"]["paused"]
             assert solved["source"]["pane"] == "view" and solved["library"]["reviewing"]
             assert browser._evaluate("!document.getElementById('result-transport').hidden")
+            browser._evaluate(
+                "document.body.dispatchEvent(new KeyboardEvent('keydown',{key:'r',bubbles:true}));true"
+            )
+            assert browser._evaluate(
+                "!liveDicSourceState().loadingSource&&liveDicWorkbench.report().reviewing"
+            )
             # Stored numerical arrays must survive every display/navigation action.
             digest = """(async()=>{const s=liveDicWorkbench.storage,hash=async a=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',a.buffer)),v=>v.toString(16).padStart(2,'0')).join('');
               const fields=[];for(let i=1;i<s.session.nextId;i++){const {field}=await s.backend.read(s.session.id,i);fields.push({size:[field.width,field.height],parameters:await hash(field.parameters),status:await hash(field.status),iterations:await hash(field.iterations)});}return fields;})()"""
@@ -169,6 +175,25 @@ def main():
             assert browser._evaluate("liveDicStatus.completed") == 3
             assert browser._evaluate("seekLoads") == [1, 2]
             browser._evaluate("liveDicWorkbench.storage.load=originalLoad;true")
+            # A seek during an in-progress playback load must wait for it too.
+            browser._evaluate("""(()=>{
+              globalThis.playbackLoads=[];let first=true;
+              liveDicWorkbench.storage.load=async entry=>{playbackLoads.push(entry.id);if(first){first=false;await new Promise(resolve=>globalThis.releasePlaybackLoad=resolve);}return originalLoad(entry);};
+              document.getElementById('replay-rate').value=30;document.getElementById('replay-results').onclick();return true;
+            })()""")
+            wait(browser, "playbackLoads.length===1")
+            browser._evaluate(
+                "for(const index of [0,1]){document.getElementById('result-seek').value=index;document.getElementById('result-seek').oninput();}true"
+            )
+            assert browser._evaluate("playbackLoads") == [3]
+            browser._evaluate("releasePlaybackLoad();true")
+            wait(
+                browser,
+                "liveDicWorkbench.report().selected===2&&liveDicWorkbench.report().recipe!==null",
+            )
+            assert browser._evaluate("playbackLoads") == [3, 2]
+            browser._evaluate("liveDicWorkbench.storage.load=originalLoad;true")
+            assert browser._evaluate("liveDicStatus.completed") == 3
             raw_after = browser._evaluate(digest)
             assert raw_before == raw_after and all(row["size"] == [3840, 2160] for row in raw_after)
             pixels = asyncio.run(
@@ -188,6 +213,7 @@ def main():
                 raw_fields=raw_after,
                 correlations=browser._evaluate("liveDicStatus.completed"),
                 coalesced_loads=browser._evaluate("seekLoads"),
+                playback_loads=browser._evaluate("playbackLoads"),
                 errors=browser._evaluate("liveDicStatus.errors"),
             )
             assert not report["errors"], report["errors"]

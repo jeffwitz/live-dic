@@ -1,0 +1,14 @@
+{
+  "starting_commit": "06f646ae198b3fbb0fc8d9a53b2a661b85406b92",
+  "numerical_src_tree": "c691f0be12a0a0e4d93720628d486321c4f0bfb0",
+  "source_sha256": {
+    "DIC/LucasKanadeICGN/web-app/app.js": "ed3eb78a903a8b2057febe0aa70214b8f00e8b785978ed6fc8aaca78dcd147dc",
+    "DIC/LucasKanadeICGN/web-app/index.html": "24879077126ace29fdfd7fa9b52db2e3626c2ef349cceceb43c6d3d8f84cec0a",
+    "DIC/LucasKanadeICGN/web-app/ui/workbench.js": "7af6e16df472a7e6bf5d129239926f51cb2554a24acf4b7c2fefe8b27e0e8ffa",
+    "DIC/LucasKanadeICGN/web-app/ui/workspace.js": "2e39013be0697ea42a827622b801bc1c4c52d2745350cb8a86f0589d2947b749",
+    "tools/qualify_browser_workflow.py": "5bdded816d94e39b49ee15513769d113bafdf06875cd48b318d6e86e9045dee6"
+  },
+  "unit_command": "ICGN_RUN_GPU_TESTS=1 ICGN_RUN_BROWSER_TESTS=1 DIC/LucasKanadeICGN/python/.venv/bin/python -m unittest discover -s DIC/LucasKanadeICGN/python/tests",
+  "unit_result": "283 passed, zero skipped",
+  "timing_claim": "None. GUI correctness checks; two-second camera sample is not performance qualification."
+}

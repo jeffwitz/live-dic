@@ -13,12 +13,13 @@ Record and reopen
 -----------------
 
 1. Load the image folder, video or camera and prepare its reference/ROI.
-2. In Results, choose **CPU results cache**. **Automatic** allows up to 1 GiB
+2. In Results, open **Import, export and browser storage**, then choose **CPU results cache**. **Automatic** allows up to 1 GiB
    on sufficiently large hosts. Choose **1 GiB** explicitly if appropriate.
    Automatic mode uses the browser's coarse ``deviceMemory`` value, at most
    one eighth of that estimate, capped at 1 GiB and floored at 128 MiB. Unknown
    memory uses 128 MiB. No RAM is reserved by choosing a limit.
-3. Enable **Save calculated fields for replay**, then start playback/acquisition.
+3. In Solve, keep **Save calculated fields for replay** selected and press
+   **Start calculation**.
    Fields are committed to IndexedDB from the first saved field, not only when
    RAM is full. This prevents a large first-spill pause and makes eviction safe.
 4. Older committed fields leave the RAM cache when required. Use Previous/Next,
