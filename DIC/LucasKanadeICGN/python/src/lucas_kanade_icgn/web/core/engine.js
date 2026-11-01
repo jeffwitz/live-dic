@@ -2,6 +2,7 @@ import { validateMask } from './roi.js';
 import { createInputConverter, frameSize } from './input.js';
 import { createPyramidHost } from './pyramid.js';
 import { SlotRing } from './ring.js';
+import { gpuMemoryUsage } from './gpu-memory.js';
 export { probeCapabilities } from './device.js';
 
 /** Dependency-free controller. Every instance owns its reference and queue. */
@@ -97,5 +98,6 @@ export class DICEngine {
   get device() { return this.host?.device; }
   get imageTexture() { this.assertOpen(); return this.host.imageTexture; }
   get fieldBuffer() { this.assertOpen(); return this.host.fieldBuffer; }
+  memoryUsage() { return gpuMemoryUsage(this.closed?null:{host:this.host.memoryResources(),inputs:this.inputs}); }
   destroy() { if (this.closed) return; this.closed = true; this.host.destroy(); this.inputs.forEach((input) => input.destroy()); this.inputs = []; this.host = null; this.options = null; }
 }

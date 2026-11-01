@@ -1185,6 +1185,8 @@ export function createPyramidHost(options = {}) {
     get imageTexture() { return lastSlot?.externalActive ? lastSlot.external.converter.source : (lastSlot?.levels[0].sourceTexture ?? sourceTexture); },
     get fieldBuffer() { return lastFieldBuffer ?? (configuration.outlierPolicy === 'disabled' ? buffers?.state : buffers?.filteredState); },
     get configuration() { return { ...configuration }; },
+    memoryResources() { return {levels,reductionEdges,seedEdges,slots,queryResolveBuffer,sourceTexture,buffers,
+      temporal:slots.map(slot=>slot.temporal?.memoryResources()),readers:slots.map(slot=>slot.resultReader?.memoryResources())}; },
     destroy() {
       destroyRuntimeResources();
       if (ownsDevice) device?.destroy();

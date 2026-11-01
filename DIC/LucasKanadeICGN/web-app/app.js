@@ -40,6 +40,7 @@ const workspace = installWorkspace({ shortcuts: {
 const workbench = installWorkbench({
   captureCurrent: captureCurrentField,
   beforeProjectExport: async () => { pauseSource(); await drain(); $('pause').textContent='Play'; },
+  requestMemory: () => send('memory'),
   geometryDefaults: () => referenceInfo ? { width: referenceInfo.width, height: referenceInfo.height, subsetSize: referenceInfo.subsetSize, subsetStride: referenceInfo.subsetStride } : {},
   pause: () => { pauseSource(); $('pause').textContent = 'Play'; },
   error: text => message(text, true),
@@ -64,7 +65,7 @@ function updateScale(scale) {
   $('low').textContent = mode === 2 || mode === 7 ? '0' : `−${scale.toPrecision(3)}`;
   $('high').textContent = mode === 7 ? `${(scale * 1e6).toPrecision(3)} με` : `+${scale.toPrecision(3)}${strain ? ' (gradient)' : ' px'}`;
 }
-function receive({ data }) {
+async function receive({ data }) {
   if (data.bitmap) {
     $('field').width = data.width; $('field').height = data.height;
     $('field').getContext('bitmaprenderer').transferFromImageBitmap(data.bitmap);
@@ -78,7 +79,7 @@ function receive({ data }) {
   if (data.type === 'result') {
     if (data.plateScore) { sourceSettings.analyticScore = data.plateScore; details(); }
     $('export').disabled = false; workbench.setReady(true);
-    if (data.record) { try { workbench.add(data.record.field, { ...data.record.metadata, acquisition: {source:sourceSettings.source}, build: buildInfo, roiGeometry: roiMetadata() }); } catch(e) { message(e.message,true); } delete data.record; }
+    if (data.record) { try { await workbench.add(data.record.field, { ...data.record.metadata, acquisition: {source:sourceSettings.source}, build: buildInfo, roiGeometry: roiMetadata() }); } catch(e) { pauseSource();message(e.message,true); } delete data.record; }
     if (!workbench.reviewing) $('run-state').textContent = source==='camera'&&sourceSettings.deliveryState==='stopped'?'Camera stopped · last completed field':`${source} · ${data.width} × ${data.height} · ${data.comparison?.mode ?? 'fixed'} · ${paused ? 'paused' : 'running'}`;
     if (data.comparison) { sourceSettings.lastComparison = data.comparison; updateLocalPosition(data.comparison.target);$('last-reference-summary').textContent=`Last pair: ${data.comparison.referenceAdmissible} numerically admissible references / ${data.selected} requested ROI windows. Every selected window remains requested.`; }
     status.completed++; status.results.push(data); if (status.results.length > (smoke ? 18000 : 120)) status.results.shift();
@@ -130,6 +131,7 @@ async function init() {
 }
 async function drain() {
   while (inFlight) await new Promise((resolve) => setTimeout(resolve, 10));
+  await workbench.flush();
   if (imageTask) await imageTask.catch(() => {});
 }
 function clearPreviousCapture() { previousCapture?.frame.close(); previousCapture = null; }

@@ -107,6 +107,6 @@ export async function createTemporalGraph(device, shader, levels, seedEdges, opt
   }
   if (!shared) reset();
   return { shared: { current, coarseHistory, previous, prediction, links, seedConfig, cache }, counts, before: [predict, projection].filter(Boolean), refine,
-    after: [save, mergeFine, mergeCoarse].filter(Boolean), reset,
+    after: [save, mergeFine, mergeCoarse].filter(Boolean), reset, memoryResources: () => owned,
     destroy() { owned.forEach((b) => b.destroy()); } };
 }

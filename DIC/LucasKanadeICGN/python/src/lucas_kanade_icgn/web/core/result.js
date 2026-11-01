@@ -74,7 +74,7 @@ export async function createResultReader(device, module, level, options, field) 
     device.queue.writeBuffer(config, 0, bytes);
   }
   return { summary, samples, summaryBytes, sampleBytes: samples.size, step, sampleCount,
-    truthEnabled: () => floats[10] !== 0, setTruth,
+    truthEnabled: () => floats[10] !== 0, setTruth, memoryResources: () => ({summary,samples,config}),
     encode(encoder, mode) {
       const pass = encoder.beginComputePass();
       pass.setPipeline(statistics); pass.setBindGroup(0, statsGroup); pass.dispatchWorkgroups(groups);

@@ -2,6 +2,7 @@ import { DICEngine, probeCapabilities } from '../web/core/engine.js';
 import { LATENCY_OPTIONS } from '../web/core/device.js';
 import { scorePlate } from './plate-truth.js';
 import { FieldRenderer } from '../render/field.js';
+import { gpuMemoryUsage } from '../web/core/gpu-memory.js';
 
 function encodeMask(mask) {
   const chunks = [];
@@ -153,6 +154,12 @@ export function createSession(send) {
           roi: mask ? { width: field.width, height: field.height, encoding: 'base64-uint8-boolean',
             data: encodeMask(mask) } : null };
         send({ type: 'export', id, field, metadata });
+      } else if (type === 'memory') {
+        await Promise.all([...outstanding]);
+        send({type:'memory',id,engine:engine?.memoryUsage()??null,
+          supervisor:gpuMemoryUsage({referenceTexture,rendererConfig:renderer?.config}),
+          limits:capabilities?.limits??null,physicalVramBytes:null,freeVramBytes:null,
+          note:'GPU API allocations are distinct from the CPU results cache. Physical residency/free VRAM and unified/discrete placement are not exposed. Canvas swapchains and driver allocations are not counted.'});
       } else if (type === 'report') send({ type: 'report', id, samples: sampleLog, capabilities });
       else if (type === 'destroy') {
         await Promise.all([...outstanding]); renderer?.destroy(); referenceTexture?.destroy(); engine?.destroy(); reference?.close();

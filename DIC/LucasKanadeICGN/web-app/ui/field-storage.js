@@ -40,9 +40,10 @@ export class IndexedFieldDatabase {
     };
     const db = await new Promise((resolve, reject) => {
       let blocked = false;
-      request.onblocked = () => { blocked = true; reject(new Error('Another tab blocks results storage; close that tab and retry')); };
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => { if (blocked) request.result.close(); else resolve(request.result); };
+      const timer=setTimeout(()=>{blocked=true;reject(new Error('Browser disk storage did not open; RAM-only mode is active until retry'));},10000);
+      request.onblocked = () => { clearTimeout(timer);blocked = true; reject(new Error('Another tab blocks results storage; close that tab and retry')); };
+      request.onerror = () => {clearTimeout(timer);reject(request.error);};
+      request.onsuccess = () => { clearTimeout(timer);if (blocked) request.result.close(); else resolve(request.result); };
     });
     db.onversionchange = () => db.close();
     return new IndexedFieldDatabase(db);
@@ -90,8 +91,14 @@ export class IndexedFieldDatabase {
   }
   async remove(session, descriptor, summary) {
     const tx = this.db.transaction(['fields', 'catalog', 'sessions'], 'readwrite'), done = transactionDone(tx);
-    for (const name of ['fields', 'catalog']) tx.objectStore(name).delete([session, descriptor.id]);
-    tx.objectStore('sessions').put(summary); await done;
+    let conflict=false;
+    const request=tx.objectStore('sessions').get(session);
+    request.onsuccess=()=>{
+      if(request.result?.count!==summary.count+1){conflict=true;tx.abort();return;}
+      for (const name of ['fields', 'catalog']) tx.objectStore(name).delete([session, descriptor.id]);
+      tx.objectStore('sessions').put(summary);
+    };
+    try{await done;}catch(error){if(conflict)throw new Error('Stored session changed in another tab; no field was deleted');throw error;}
   }
   async deleteSession(id) {
     const tx = this.db.transaction(STORES, 'readwrite'), done = transactionDone(tx);
@@ -121,7 +128,7 @@ export class FieldStorage {
   constructor({memoryLimit = defaultCacheBytes(), openDatabase = () => IndexedFieldDatabase.open()} = {}) {
     this.memoryLimit = memoryLimit; this.openDatabase = openDatabase;
     this.backend = null; this.opening = null; this.warning = null; this.cache = new Map();
-    this.maskKeys = new WeakMap(); this.knownMasks = new Set(); this.geometries = new Map();
+    this.maskKeys = new WeakMap(); this.knownMasks = new Set(); this.accountedMasks = new Set(); this.geometries = new Map();
     this.pinned = null; this.session = null; this.readOnly = false; this.queue = Promise.resolve(); this.settingsRevision = 0;
   }
   async database() {
@@ -169,11 +176,12 @@ export class FieldStorage {
         if (maskId && !this.knownMasks.has(maskId) && !masks.some(mask => mask.id === maskId)) masks.push({id: maskId, data: entry.mask});
       }
       const next = {...session, updatedAt: now, count: session.count + entries.length,
-        bytes: session.bytes + records.reduce((sum, record) => sum + record.descriptor.bytes, 0) + masks.reduce((sum, mask) => sum + mask.data.byteLength, 0),
+        bytes: session.bytes + records.reduce((sum, record) => sum + record.descriptor.bytes, 0) + masks.reduce((sum, mask) => sum + (this.accountedMasks.has(mask.id)?0:mask.data.byteLength), 0),
         nextId: Math.max(session.nextId, ...entries.map(entry => entry.id + 1))};
       let failure = null;
       if (db) { try { await db.write(next, records, masks); } catch (error) { failure = error; } }
       this.session = next;
+      masks.forEach(mask=>this.accountedMasks.add(mask.id));
       if (db && !failure) masks.forEach(mask => this.knownMasks.add(mask.id));
       for (let i = 0; i < entries.length; i++) {
         const entry = entries[i]; entry.storage = {saved: !!db && !failure, maskId: records[i].maskId, descriptor: records[i].descriptor};
@@ -226,6 +234,11 @@ export class FieldStorage {
     this.memoryLimit = bytes; this.evict();
   }
   async flush() { await this.queue; }
+  async close() {
+    await this.queue;
+    const backend=await this.opening;
+    backend?.db?.close();
+  }
   async saveSettings(entries, selectedId) {
     await this.queue; const db = await this.database();
     if (!db || !this.session) return false;
@@ -245,7 +258,7 @@ export class FieldStorage {
       return {...value, field: this.geometries.get(key)};
     }), saved = await db.settings(id), settings = saved.value;
     if (catalog.length !== session.count) throw new Error('Incomplete session catalog; stored fields were not modified');
-    this.cache.clear(); this.knownMasks.clear(); this.session = session; this.readOnly = true;
+    this.cache.clear(); this.knownMasks.clear(); this.accountedMasks=new Set(catalog.map(value=>value.maskId).filter(Boolean)); this.session = session; this.readOnly = true;
     this.settingsRevision = saved.revision;
     const overrides = new Map((settings.overrides ?? []).map(value => [value.id, value]));
     const entries = catalog.sort((a, b) => a.id - b.id).map(value => {
@@ -264,6 +277,7 @@ export class FieldStorage {
       await this.backend.remove(this.session.id, entry.storage.descriptor, next);
     } else if(entry.mask&&entry.storage.maskId&&!this.knownMasks.has(entry.storage.maskId)&&![...this.cache.values()].some(value=>value.id!==entry.id&&value.storage?.maskId===entry.storage.maskId)) {
       next.bytes-=entry.mask.byteLength;
+      this.accountedMasks.delete(entry.storage.maskId);
     }
     this.session=next;this.cache.delete(entry.id);
   }

@@ -2,11 +2,12 @@ import { DEFAULT_RECIPE, analyzeField, componentValues, statistics, nearestIndex
 import { fieldArchive, importFieldArchive, projectArchive, importProjectArchive } from './archive.js';
 import { extractHistory, sameAnalysis } from './history.js';
 import { resultFigure } from './figure.js';
+import { FieldStorage, defaultCacheBytes, MiB } from './field-storage.js';
 
 const $ = id => document.getElementById(id);
 const number = value => value == null || !Number.isFinite(value) ? 'unavailable' : value.toPrecision(5);
 const STRAIN_COMPONENTS = new Set(['exx','eyy','exy','vonMises','principal1','principal2']);
-const LIMIT_BYTES = 128 * 1024 * 1024;
+const ARCHIVE_IMPORT_BYTES = 256 * MiB;
 const encoderBytes = value => new TextEncoder().encode(JSON.stringify(value)).byteLength;
 const STATUS = { '-3': 'Excluded by ROI', '-2': 'Rejected correlation', '-1': 'Unavailable reference / bounds',
   0: 'Not converged', 1: 'Accepted', 2: 'Flagged / replaced by solver policy' };
@@ -42,10 +43,11 @@ function setRecipe(recipe) {
 }
 
 /** A bounded, opt-in results library; the default live path never enters this module's analysis loop. */
-export function installWorkbench({ captureCurrent, pause, error, recordChange, liveChanged, openResults, geometryDefaults = () => ({}), beforeProjectExport = async () => pause() }) {
+export function installWorkbench({ captureCurrent, pause, error, recordChange, liveChanged, openResults, requestMemory = async()=>null, geometryDefaults = () => ({}), beforeProjectExport = async () => pause() }) {
   const entries = [], canvas = $('review-field'), overlay = $('inspection'), chart = $('profile-chart');
   document.querySelector('.viewer').append($('results-workbench'));
   let nextId = 1, selected = null, analysis = null, currentMask = null, reviewing = false;
+  let storage = new FieldStorage(), selectionSerial = 0, selectionBusy = false, libraryTimer = null, liveReady = false, captureBusy = false;
   let tool = 'probe', points = [], extraction = [], computedView = false, figureLegend = null;
   let requestId = 0, workerBusy = false, pendingAnalysis = false, workerFieldId = null, debounce = null;
   let pendingImport = null, importSerial = 0;
@@ -91,7 +93,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   function memoryBytes(extra = []) {
     const masks = new Set(); let bytes = 0;
     for (const entry of [...entries, ...extra]) {
-      bytes += entry.field.parameters.byteLength + entry.field.status.byteLength + entry.field.iterations.byteLength + entry.metadataBytes;
+      bytes += (entry.field.parameters?.byteLength ?? 0) + (entry.field.status?.byteLength ?? 0) + (entry.field.iterations?.byteLength ?? 0) + entry.metadataBytes;
       if (entry.mask && !masks.has(entry.mask)) { masks.add(entry.mask); bytes += entry.mask.byteLength; }
     }
     return bytes;
@@ -107,39 +109,46 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
       entry.metadata={...entry.metadata,workbench:{view}};entry.metadataBytes=encoderBytes(entry.metadata);changed();updateLibrary();
     }
   }
-  function updateLibrary() {
+  function updateLibrary(immediate = true) {
+    if(!immediate&&!reviewing){if(!libraryTimer)libraryTimer=setTimeout(()=>{libraryTimer=null;updateLibrary();},250);return;}
+    clearTimeout(libraryTimer);libraryTimer=null;
     const select = $('saved-fields'); select.replaceChildren();
     if (!entries.length) select.add(new Option('No saved fields', ''));
     else if(!reviewing)select.add(new Option('Choose a field to inspect…',''));
-    for (const entry of entries) select.add(new Option(entry.label, entry.id));
-    select.value = reviewing?selected??'':'';
-    $('library-summary').textContent = `${entries.length} field(s) · ${(memoryBytes()/1048576).toFixed(1)} / 128 MiB in this tab. ${!entries.length?'No stored results.':hasUnsaved()?'Project has changes not included in the last requested project download.':'Project download requested; check that the file was saved.'} Images are not recorded.`;
-    $('clear-fields').disabled = !entries.length; $('delete-field').disabled = !entries.length;
-    $('save-project').disabled=!entries.length;
     const index=reviewing?entries.findIndex(entry=>entry.id===selected):-1;
+    const start=Math.max(0,Math.min(entries.length-101,(index<0?entries.length-1:index)-50));
+    for (const entry of entries.slice(start,start+101)) select.add(new Option(entry.label, entry.id));
+    select.value = reviewing?selected??'':'';
+    const info=storage.report();
+    $('library-summary').textContent = `${entries.length} field(s) · ${(memoryBytes()/MiB).toFixed(1)} MiB resident / ${(info.memoryLimitBytes/MiB).toFixed(0)} MiB cache target · ${info.diskFields} saved on browser disk. ${!entries.length?'No stored results.':hasUnsaved()?'Export for an independent backup; settings have unsaved changes.':'Project download requested or session settings saved; verify your backup.'} Images are not recorded.`;
+    $('storage-summary').textContent=info.warning?`${info.warning}. ${info.unsavedFields} field(s) only in RAM; do not close before exporting/retrying.`:info.diskAvailable?'Disk-backed storage. Old cached fields are reloaded on demand. Browser storage is not an independent backup.':'Opening browser storage on first saved field; RAM remains bounded if disk is unavailable.';
+    $('retry-storage').hidden=!info.unsavedFields&&!info.warning;$('save-session').disabled=!entries.length||!info.diskAvailable;
+    $('freeze-field').disabled=!liveReady||captureBusy||storage.readOnly;$('record-fields').disabled=!liveReady||storage.readOnly;
+    $('delete-field').title=storage.readOnly?'Saved sessions are read-only; close the session to start a new recording.':'';
+    $('clear-fields').disabled = !entries.length; $('delete-field').disabled = !entries.length||storage.readOnly;
+    $('save-project').disabled=!entries.length;
     $('previous-result').disabled=index<=0;$('next-result').disabled=index<0||index>=entries.length-1;
     $('result-seek').max=Math.max(0,entries.length-1);$('result-seek').value=Math.max(0,index);$('result-seek').disabled=!entries.length;
     $('result-order').textContent=index>=0?`${index+1} / ${entries.length} · saved order`:`${entries.length} saved fields`;
+    $('result-number').max=Math.max(1,entries.length);$('result-number').value=index>=0?index+1:'';$('result-number').disabled=!entries.length;
     const base=activeEntry()??entries[0];$('replay-results').disabled=!reviewing||!base||entries.filter(entry=>sameAnalysis(base,entry)).length<2;
   }
-  function add(field, metadata = {}, { select = false, mask = currentMask, recipe = null } = {}) {
+  async function add(field, metadata = {}, { select = false, mask = currentMask, recipe = null } = {}) {
     validateField(field);
     // A single-field archive carries its own timing sample. The live timing log remains in direct export.
     metadata = normalizeMetadata(metadata);
     const entry = { id: nextId++, field, metadata, mask, recipe, metadataBytes: encoderBytes(metadata) };
     if (mask && mask.length !== field.width*field.height) throw new Error('Saved field mask dimensions differ');
-    if (memoryBytes([entry]) > LIMIT_BYTES) {
-      $('record-fields').checked = false; recordChange(false); pause();
-      throw new Error('Results storage reached 128 MiB. Acquisition is paused. Export or delete fields before continuing; no stored result was discarded.');
-    }
-    entry.label = fieldLabel(metadata, entry.id); entries.push(entry); changed(); updateLibrary();
-    if (select) selectEntry(entry.id);
+    entry.label = fieldLabel(metadata, entry.id);
+    const result=await storage.addMany([entry]);entries.push(entry);changed();updateLibrary(select);
+    if(result.failure){$('record-fields').checked=false;recordChange(false);pause();error(`Results storage stopped: ${result.failure}. The completed field is retained in RAM. Export or retry disk storage before continuing.`);}
+    if (select) await selectEntry(entry.id);
     return entry;
   }
   function returnLive(restore = false) {
     stopReplay();rememberView();
     historyAbort?.abort();history=null;
-    reviewing = false; requestId++; pendingAnalysis = false; clearTimeout(debounce);
+    reviewing = false; selectionSerial++;selectionBusy=false;storage.pin(null);storage.evict();requestId++; pendingAnalysis = false; clearTimeout(debounce);
     analysis=null;workerFieldId=null;lastChartRows=[];lastChartOptions={};canvas.dataset.analysisState='idle';canvas.setAttribute('aria-busy','false');worker?.postMessage({clear:true});
     $('results-workbench').hidden = true; canvas.hidden = true; overlay.hidden = true;
     $('field').hidden = false; $('return-live').hidden = true;
@@ -147,12 +156,17 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     document.querySelector('.legend div').style.background='';
     liveChanged(false, restore);updateLibrary();
   }
-  function selectEntry(id,{replay=false}={}) {
+  async function selectEntry(id,{replay=false}={}) {
     if(!replay)stopReplay();
     const entry = entries.find(value => value.id === Number(id)); if (!entry) return;
     rememberView();
     historyAbort?.abort();history=null;$('spatial-view').hidden=true;$('history-state').textContent='';
     pause(); selected = entry.id; analysis = null; reviewing = true; computedView = false; points = []; extraction = [];
+    const token=++selectionSerial;selectionBusy=true;storage.pin(entry.id);requestId++;pendingAnalysis=false;clearTimeout(debounce);
+    canvas.dataset.analysisState='pending';canvas.setAttribute('aria-busy','true');$('analysis-state').textContent='Loading saved field…';$('review-controls').inert=true;
+    for(const key of ['save-npz','save-processed-csv','save-figure','measurement-inputs','apply-recipe-analysis'])$(key).disabled=true;
+    try {await storage.load(entry);} catch(e){if(token===selectionSerial){selectionBusy=false;$('review-controls').inert=false;canvas.dataset.analysisState='failed';canvas.setAttribute('aria-busy','false');error(e.message);}return;}
+    if(token!==selectionSerial)return;selectionBusy=false;$('review-controls').inert=false;
     $('saved-fields').value = entry.id; $('results-workbench').hidden = false;
     $('return-live').hidden = false; canvas.hidden = false; overlay.hidden = false; $('field').hidden = true;
     canvas.width = overlay.width = entry.field.width; canvas.height = overlay.height = entry.field.height;
@@ -198,6 +212,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   }
   function runAnalysis() {
     if (!reviewing || !activeEntry()) return;
+    if(selectionBusy){pendingAnalysis=true;return;}
     if (workerBusy) { pendingAnalysis = true; return; }
     pendingAnalysis = false; workerBusy = true;
     const entry = activeEntry(), id = requestId, recipe = computedView
@@ -413,7 +428,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     const recipe=analysis.recipe,component=$('review-component').value,selection=points.map(point=>[...point]),selectedTool=tool;
     $('extract-history').disabled=true;$('cancel-history').hidden=false;
     try{
-      const rows=await extractHistory(candidates,{recipe,component,points:selection,tool:selectedTool,signal:controller.signal,
+      const rows=await extractHistory(candidates,{recipe,component,points:selection,tool:selectedTool,signal:controller.signal,loadEntry:entry=>storage.load(entry),
         progress:(done,total)=>{$('history-state').textContent=`Analysing saved field ${done} / ${total}…`;}});
       if(controller.signal.aborted)return;history={rows,recipe,component,tool:selectedTool};$('spatial-view').hidden=false;
       $('history-state').textContent=`${rows.length} fields from the same analysis epoch · ${entries.length-rows.length} unrelated fields excluded. Missing measurements stay gaps. ${entry.metadata.comparison?.mode==='consecutive'?'Pair increments at fixed image coordinates; not cumulative material tracking.':entry.metadata.comparison?.mode==='fixed'?'Same fixed reference.':'Reference convention not recorded; no accumulated trajectory inferred.'}`;
@@ -423,11 +438,12 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   };
   $('cancel-history').onclick=()=>historyAbort?.abort();
   $('spatial-view').onclick=()=>{history=null;$('spatial-view').hidden=true;updateInspection();};
-  $('freeze-field').onclick=async()=>{try{const {field,metadata}=await captureCurrent();let mask=currentMask;if(metadata.roi&&!mask)mask=maskFromMetadata(metadata);add(field,metadata,{select:true,mask});}catch(e){error(e.message);}};
+  $('freeze-field').onclick=async()=>{if(captureBusy||storage.readOnly)return;captureBusy=true;$('freeze-field').disabled=true;try{const {field,metadata}=await captureCurrent();let mask=currentMask;if(metadata.roi&&!mask)mask=maskFromMetadata(metadata);await add(field,metadata,{select:true,mask});}catch(e){error(e.message);}finally{captureBusy=false;$('freeze-field').disabled=!liveReady||storage.readOnly;}};
   $('return-live').onclick=()=>returnLive(true);
-  $('record-fields').onchange=()=>recordChange(recording());
+  $('record-fields').onchange=async()=>{const changedMode=recordChange(recording());if(recording()){await storage.database();const persistent=await storage.persistence();$('storage-quota').textContent=persistent?'Browser persistence granted; independent exports are still required for a backup.':'Persistence not granted or unavailable: browser disk data may be evicted. Export important sequences.';}await changedMode;updateLibrary();};
   $('saved-fields').onchange=()=>selectEntry($('saved-fields').value);
   $('result-seek').oninput=()=>{const entry=entries[Number($('result-seek').value)];if(entry)selectEntry(entry.id);};
+  $('result-number').onchange=()=>{const number=Number($('result-number').value);if(Number.isInteger(number)&&number>=1&&number<=entries.length)selectEntry(entries[number-1].id);};
   $('replay-results').onclick=()=>{
     if(replaying){stopReplay();return;}
     const base=activeEntry()??entries[0];if(!base)return;
@@ -436,7 +452,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     replaying=true;$('replay-results').textContent='Pause result replay';
     const next=()=>{
       if(!replaying)return;
-      if(workerBusy||pendingAnalysis){replayTimer=setTimeout(next,100);return;}
+      if(workerBusy||pendingAnalysis||selectionBusy){replayTimer=setTimeout(next,100);return;}
       if(!analysis){stopReplay();return;}
       const index=replayIds.indexOf(selected),id=replayIds[index+1];
       if(!id){stopReplay();return;}
@@ -450,17 +466,66 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     changed();updateLibrary();$('processing-batch-state').textContent=`Applied recipe to ${candidates.length} matching field(s); ${entries.length-candidates.length} unrelated field(s) unchanged. Computed arrays are preserved.`;
   };
   for(const [id,delta] of [['previous-result',-1],['next-result',1]])$(id).onclick=()=>{const index=entries.findIndex(e=>e.id===selected);if(entries[index+delta])selectEntry(entries[index+delta].id);};
-  $('delete-field').onclick=()=>{stopReplay();const index=entries.findIndex(e=>e.id===Number($('saved-fields').value));if(index<0)return;const active=entries[index].id===selected;entries.splice(index,1);changed();if(active){returnLive(true);selected=null;}updateLibrary();};
-  $('clear-fields').onclick=()=>{stopReplay();if(!entries.length||confirm('Delete saved fields from this tab? Export NPZ first if needed.')){returnLive(true);entries.length=0;selected=null;updateLibrary();}};
+  $('delete-field').onclick=async()=>{stopReplay();const index=entries.findIndex(e=>e.id===Number($('saved-fields').value));if(index<0)return;const entry=entries[index];if(entry.storage?.saved&&!confirm('Permanently delete this computed field from browser disk? Export it first if needed.'))return;try{await storage.remove(entry);const active=entry.id===selected;entries.splice(index,1);changed();if(active){returnLive(true);selected=null;}updateLibrary();}catch(e){error(e.message);}};
+  async function closeLibrary(){await beforeProjectExport();await storage.flush();if(entries.length&&!confirm('Close this view? Committed disk fields remain in Saved sessions. RAM-only fields and unsaved analysis changes need an export before closing.'))return false;returnLive(true);await storage.close();entries.length=0;selected=null;nextId=1;storage=new FieldStorage({memoryLimit:storage.memoryLimit});updateLibrary();return true;}
+  $('clear-fields').onclick=()=>closeLibrary().catch(e=>error(e.message));
+  $('results-memory-limit').onchange=()=>{storage.setLimit($('results-memory-limit').value==='auto'?defaultCacheBytes():Number($('results-memory-limit').value)*MiB);const report=storage.report();if(report.unsavedFields&&report.residentBytes>report.memoryLimitBytes){$('record-fields').checked=false;recordChange(false);pause();error('Cache budget is below unsaved RAM data; export or retry disk storage before continuing.');}updateLibrary();};
+  $('retry-storage').onclick=async()=>{try{await beforeProjectExport();await storage.retry();updateLibrary();await refreshSessions();}catch(e){error(`Disk save failed; RAM-only fields are retained. ${e.message}`);}};
+  async function refreshSessions(){
+    try{const sessions=await storage.sessions();$('stored-sessions').replaceChildren();for(const session of sessions.sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)))$('stored-sessions').add(new Option(`${new Date(session.createdAt).toLocaleString()} · ${session.count} fields · ${(session.bytes/MiB).toFixed(1)} MiB`,session.id));if(!sessions.length)$('stored-sessions').add(new Option('No disk sessions',''));
+      const quota=await storage.quota();$('storage-quota').textContent=`Origin storage estimate: ${quota.usage==null?'unknown':(quota.usage/MiB).toFixed(0)+' MiB used'} / ${quota.quota==null?'unknown':(quota.quota/MiB).toFixed(0)+' MiB quota'}. Persistence ${quota.persistent?'granted':'not granted; eviction is possible'}. This is not free system disk space.`;
+    }catch(e){error(e.message);}
+  }
+  $('refresh-sessions').onclick=refreshSessions;
+  $('save-session').onclick=async()=>{try{await beforeProjectExport();while(selectionBusy||workerBusy||pendingAnalysis)await new Promise(resolve=>setTimeout(resolve,20));rememberView();if(await storage.saveSettings(entries,selected)){downloadedRevision=projectRevision;$('project-state').textContent='Fields and analysis settings saved in this browser profile. Export parts for an independent backup.';}updateLibrary();await refreshSessions();}catch(e){error(e.message);}};
+  $('open-session').onclick=async()=>{
+    const id=$('stored-sessions').value;if(!id)return;
+    try{await beforeProjectExport();await recordChange(false);$('record-fields').checked=false;const candidate=new FieldStorage({memoryLimit:storage.memoryLimit});const saved=await candidate.openSession(id);
+      if(entries.length&&!confirm('Replace this view with the saved session? Current committed fields stay on disk; export RAM-only data and unsaved settings first.')){await candidate.close();return;}
+      returnLive(true);await storage.close();storage=candidate;entries.length=0;for(const entry of saved.entries)entries.push(entry);nextId=entries.reduce((max,entry)=>Math.max(max,entry.id+1),1);selected=null;changed();updateLibrary();
+      const first=entries.find(entry=>entry.id===saved.selectedId)??entries[0];if(first)await selectEntry(first.id);$('project-state').textContent=`Opened ${entries.length} disk-backed fields. This session is read-only for acquisition; close this view to start a new recording.`;
+    }catch(e){error(e.message);}
+  };
+  $('delete-session').onclick=async()=>{const id=$('stored-sessions').value;if(!id||!confirm('Permanently delete this entire session from browser disk? Other tabs using it will stop. Export a backup first.'))return;try{await storage.deleteSession(id);await refreshSessions();}catch(e){error(e.message);}};
+  $('inspect-memory').onclick=async()=>{try{$('memory-report').textContent='Inspecting application allocations…';const gpu=await requestMemory();$('memory-report').textContent=JSON.stringify({cpuResults:storage.report(),cpuLibraryBytes:memoryBytes(),originStorage:await storage.quota(),gpu,
+      note:'CPU cache target is not total process RAM. Analysis workers, decoded images, metadata objects and export scratch add memory. GPU values are tracked API sizes, not free VRAM. On unified GPUs the physical RAM pool is shared.'},null,2);}catch(e){error(e.message);}};
   $('import-result').onclick=()=>$('result-file').click();
+  function archiveEstimate(list){const masks=new Set();let bytes=0;for(const entry of list){bytes+=entry.storage?.descriptor.bytes??0;const key=entry.storage?.maskId;if(key&&!masks.has(key)){masks.add(key);bytes+=entry.field.width*entry.field.height;}bytes+=entry.metadataBytes+4096;}return bytes;}
+  async function materialize(list){const result=[];for(const entry of list){await storage.load(entry);result.push({...entry,field:entry.field,metadata:entry.metadata,mask:entry.mask});}return result;}
+  let partExport=null,exportBusy=false;
+  async function preparePart(){
+    const selected=[];let end=partExport.offset;
+    const target=Math.min(64*MiB,storage.memoryLimit/4);
+    while(end<partExport.entries.length&&selected.length<128){const next=partExport.entries[end];if(selected.length&&archiveEstimate([...selected,next])>target)break;selected.push(next);end++;}
+    if(archiveEstimate(selected)>200*MiB)throw new Error('One field exceeds the portable archive part size; export it separately before continuing');
+    const snapshots=await materialize(selected),bytes=projectArchive(snapshots,{selectedId:snapshots[0]?.id});
+    const name=`live-dic-results-part-${String(partExport.files.length+1).padStart(5,'0')}.dicproject`;
+    return {bytes,name,end,fields:selected.length};
+  }
+  async function writePart(directory=null){
+    if(exportBusy||!partExport||partExport.offset>=partExport.entries.length)return;exportBusy=true;$('download-next-part').disabled=true;$('export-parts-folder').disabled=true;
+    try{const part=await preparePart();if(directory){const handle=await directory.getFileHandle(part.name,{create:true}),writer=await handle.createWritable();try{await writer.write(part.bytes);await writer.close();}catch(e){await writer.abort().catch(()=>{});throw e;}}else download(part.name,part.bytes,'application/zip');
+      const hash=await crypto.subtle.digest('SHA-256',part.bytes);partExport.files.push({name:part.name,fields:part.fields,bytes:part.bytes.byteLength,sha256:Array.from(new Uint8Array(hash),value=>value.toString(16).padStart(2,'0')).join('')});partExport.offset=part.end;
+      const done=partExport.offset===partExport.entries.length;$('export-parts-state').textContent=`${partExport.offset} / ${partExport.entries.length} fields exported in ${partExport.files.length} part(s). ${done?'Complete; keep every part and the index.':'Continue with the next part.'}`;
+      if(done){if(directory){const handle=await directory.getFileHandle('live-dic-results-index.json',{create:true}),writer=await handle.createWritable();await writer.write(JSON.stringify(partsIndex(),null,2));await writer.close();}else $('download-parts-index').hidden=false;downloadedRevision=partExport.revision;updateLibrary();}
+    }finally{exportBusy=false;$('download-next-part').disabled=!!partExport&&partExport.offset>=partExport.entries.length;$('export-parts-folder').disabled=typeof showDirectoryPicker!=='function';}
+  }
+  $('download-next-part').onclick=()=>writePart().catch(e=>error(e.message));
+  const partsIndex=()=>({format:'live-dic-project-parts',version:1,fields:partExport.entries.length,files:partExport.files});
+  $('download-parts-index').onclick=()=>{if(partExport?.files.length)download('live-dic-results-index.json',JSON.stringify(partsIndex(),null,2),'application/json');};
+  $('export-parts-folder').disabled=typeof showDirectoryPicker!=='function';
+  $('export-parts-folder').onclick=async()=>{if(exportBusy)return;try{const parent=await showDirectoryPicker({mode:'readwrite'}),directory=await parent.getDirectoryHandle(`live-dic-${new Date().toISOString().replace(/[:.]/g,'-')}-${crypto.randomUUID().slice(0,8)}`,{create:true});partExport.offset=0;partExport.files=[];partExport.cancelled=false;while(partExport&&partExport.offset<partExport.entries.length&&$('export-parts').open&&!partExport.cancelled)await writePart(directory);}catch(e){if(e.name!=='AbortError')error(e.message);}};
+  $('close-export-parts').onclick=()=>{if(exportBusy){partExport.cancelled=true;$('export-parts-state').textContent='Stopping after the current part; computed fields remain on browser disk.';}else $('export-parts').close();};
+  $('export-parts').oncancel=event=>{if(exportBusy){event.preventDefault();partExport.cancelled=true;$('export-parts-state').textContent='Stopping after the current part.';}};
   $('save-project').onclick=async()=>{
-    stopReplay();try{
+    if(exportBusy)return;stopReplay();try{
       await beforeProjectExport();
       // Snapshot the applied recipe after the last requested analysis, never its previous value.
-      while(reviewing&&(workerBusy||pendingAnalysis))await new Promise(resolve=>setTimeout(resolve,20));
+      while(reviewing&&(workerBusy||pendingAnalysis||selectionBusy))await new Promise(resolve=>setTimeout(resolve,20));
       rememberView();
       const snapshot=[...entries];
-      const bytes=projectArchive(snapshot,{selectedId:selected});
+      if(archiveEstimate(snapshot)>Math.min(128*MiB,storage.memoryLimit/2)||snapshot.length>512){partExport={entries:snapshot,offset:0,files:[],revision:projectRevision};$('export-parts-state').textContent=`${snapshot.length} fields. Export parts up to ${(Math.min(64*MiB,storage.memoryLimit/4)/MiB).toFixed(0)} MiB without loading the entire sequence.`;$('download-next-part').disabled=false;$('download-parts-index').hidden=true;$('export-parts').showModal();return;}
+      const bytes=projectArchive(await materialize(snapshot),{selectedId:selected});
       download('live-dic-results.dicproject',bytes,'application/zip');
       downloadedRevision=projectRevision;updateLibrary();
       $('project-state').textContent=`Download requested: ${snapshot.length} computed fields, shared ROI masks and applied recipes. Check the downloaded file; input images are separate.`;
@@ -468,30 +533,34 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   };
   $('open-project').onclick=()=>$('project-file').click();
   $('project-file').onchange=async()=>{
-    const file=$('project-file').files[0];$('project-file').value='';if(!file)return;
+    const files=[...$('project-file').files].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));$('project-file').value='';if(!files.length)return;
+    let importedCount=0;
     try{
-      if(file.size>256*1048576)throw new Error('Project exceeds the 256 MiB import limit');
+      await beforeProjectExport();
+      for(const file of files){
+      if(file.size>ARCHIVE_IMPORT_BYTES)throw new Error('Project part exceeds the 256 MiB import limit');
       const project=await importProjectArchive(await file.arrayBuffer());
       const drafts=project.records.map(record=>({...record,metadataBytes:encoderBytes(normalizeMetadata(record.metadata))}));
-      if(memoryBytes(drafts)>LIMIT_BYTES)throw new Error('Project plus saved results exceeds 128 MiB. Export/clear existing results first. Nothing was imported.');
-      const added=project.records.map(record=>add(record.field,record.metadata,{mask:record.mask,recipe:record.recipe}));
+      await storage.database();if(!storage.backend&&memoryBytes(drafts)>storage.memoryLimit)throw new Error('Disk is unavailable and this project exceeds the RAM cache budget. This part was not imported.');
+      const added=[];for(const record of project.records)added.push(await add(record.field,record.metadata,{mask:record.mask,recipe:record.recipe}));
       const previous=project.records.findIndex(record=>record.originalId===project.settings.selectedId);
-      selectEntry(added[Math.max(0,previous)].id);
-      $('project-state').textContent=`Opened ${added.length} fields from ${file.name}. Current acquisition settings and source were not replaced.`;
-    }catch(e){error(e.message);}
+      importedCount+=added.length;if(added.length)await selectEntry(added[Math.max(0,previous)].id);
+      $('project-state').textContent=`Opened ${importedCount} fields; latest part ${file.name}. Current acquisition settings and source were not replaced.`;
+      }
+    }catch(e){error(`${e.message}${importedCount?` ${importedCount} previously imported fields remain available.`:''}`);}
   };
-  function addImported(imported, file) {
+  async function addImported(imported, file) {
     const selection=imported.metadata.importGeometry;
-    add(imported.field,{...imported.metadata,name:imported.metadata.name??`${file.name}${selection?.frameCount>1?` · field ${selection.frameIndex+1}/${selection.frameCount}`:''}`},
+    await add(imported.field,{...imported.metadata,name:imported.metadata.name??`${file.name}${selection?.frameCount>1?` · field ${selection.frameIndex+1}/${selection.frameCount}`:''}`},
       {mask:imported.roiMask,select:true,recipe:imported.recipe});
   }
   $('result-file').onchange=async()=>{
     const file=$('result-file').files[0];$('result-file').value='';if(!file)return;
     const serial=++importSerial;
     try{
-      if(file.size>LIMIT_BYTES*2)throw new Error('NPZ exceeds the 256 MiB import limit');
+      await beforeProjectExport();if(file.size>ARCHIVE_IMPORT_BYTES)throw new Error('NPZ exceeds the 256 MiB import limit');
       const bytes=await file.arrayBuffer();if(serial!==importSerial)return;
-      try {const imported=await importFieldArchive(bytes);if(serial!==importSerial)return;addImported(imported,file);}
+      try {const imported=await importFieldArchive(bytes);if(serial!==importSerial)return;await addImported(imported,file);}
       catch(e){
         if(e.code!=='FIELD_GEOMETRY_REQUIRED')throw e;
         pause();pendingImport={bytes,file,serial};const defaults=geometryDefaults(),geometry=e.geometry;
@@ -512,7 +581,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     try{
       const geometry={width:Number($('import-width').value),height:Number($('import-height').value),subsetSize:Number($('import-subset').value),subsetStride:Number($('import-stride').value),frameIndex:Number($('import-frame').value)-1};
       const imported=await importFieldArchive(pending.bytes,geometry);
-      if(pending.serial!==importSerial)return;addImported(imported,pending.file);$('import-geometry').close();
+      if(pending.serial!==importSerial)return;await addImported(imported,pending.file);$('import-geometry').close();
     }catch(e){$('import-geometry-error').textContent=e.message;}
     finally{$('confirm-import').disabled=false;}
   };
@@ -547,9 +616,10 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   };
   updateLibrary();
   return { add, returnLive, setMask(mask){currentMask=mask;}, get reviewing(){return reviewing;}, get recording(){return recording();},
-    setReady(ready){$('freeze-field').disabled=!ready;$('record-fields').disabled=!ready;},
+    setReady(ready){liveReady=ready;$('freeze-field').disabled=!ready||captureBusy||storage.readOnly;$('record-fields').disabled=!ready||storage.readOnly;},
+    flush:()=>storage.flush(),get storage(){return storage;},
     stopRecording(){ $('record-fields').checked=false;recordChange(false); },
     clearInspection(){stopReplay();clearHistory();points=[];updateInspection();},
-    report(){const values=analysis?componentValues(analysis,$('review-component').value):null;return{count:entries.length,selected,reviewing,replaying,unsavedProject:hasUnsaved(),memoryBytes:memoryBytes(),provenance:activeEntry()?{analysisEpoch:activeEntry().metadata.analysisEpoch,archiveSha256:activeEntry().metadata.archiveSha256,importGeometry:activeEntry().metadata.importGeometry}:null,recipe:analysis?.recipe??null,statistics:values?statistics(values.values,values.valid):null,extraction};},
-    destroy(){stopReplay();historyAbort?.abort();clearTimeout(debounce);chartResize?.disconnect();cancelAnimationFrame(chartResizeFrame);worker?.terminate();window.removeEventListener('beforeunload',beforeUnload);} };
+    report(){const values=analysis?componentValues(analysis,$('review-component').value):null;return{count:entries.length,selected,reviewing,replaying,unsavedProject:hasUnsaved(),memoryBytes:memoryBytes(),storage:storage.report(),provenance:activeEntry()?{analysisEpoch:activeEntry().metadata.analysisEpoch,archiveSha256:activeEntry().metadata.archiveSha256,importGeometry:activeEntry().metadata.importGeometry}:null,recipe:analysis?.recipe??null,statistics:values?statistics(values.values,values.valid):null,extraction};},
+    destroy(){stopReplay();historyAbort?.abort();clearTimeout(debounce);clearTimeout(libraryTimer);chartResize?.disconnect();cancelAnimationFrame(chartResizeFrame);worker?.terminate();window.removeEventListener('beforeunload',beforeUnload);} };
 }

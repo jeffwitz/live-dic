@@ -10,7 +10,7 @@ export function sameAnalysis(reference, candidate) {
 }
 
 /** Bounded chronological analysis: clone one field at a time; never queue an entire experiment. */
-export async function extractHistory(entries, { recipe, component, points, tool, signal, progress=()=>{} }) {
+export async function extractHistory(entries, { recipe, component, points, tool, signal, progress=()=>{}, loadEntry=async entry=>entry }) {
   if (!['probe','gauge','region'].includes(tool) || points.length<(tool==='probe'?1:2)) throw new Error('Place a point, two gauge endpoints or two region corners before extracting history');
   if(tool==='region'&&component==='status')throw new Error('Choose a scalar field quantity for a region-mean history; status codes are categories');
   if(!entries.length||entries.slice(1).some(entry=>!sameAnalysis(entries[0],entry)))throw new Error('History requires one analysis epoch, ROI and grid');
@@ -21,7 +21,7 @@ export async function extractHistory(entries, { recipe, component, points, tool,
   signal?.addEventListener('abort',cancel,{once:true});
   try {
     for(let index=0;index<entries.length;index++) {
-      aborted();const entry=entries[index];let result;
+      aborted();const entry=await loadEntry(entries[index]);aborted();let result;
       if(worker) result=await new Promise((resolve,reject)=>{
         pendingReject=reject;
         worker.onmessage=({data})=>{pendingReject=null;if(data.error)reject(new Error(data.error));else resolve(data);};

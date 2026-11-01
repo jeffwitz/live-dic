@@ -90,6 +90,18 @@ class BrowserStorageTests(unittest.TestCase):
         self.assertEqual(result["report"]["unsavedFields"], 3)
         self.assertEqual(len(result["values"]), 3)
 
+    def test_pending_shared_mask_is_accounted_once_before_disk_recovery(self):
+        result = javascript("""
+          const {disk,store}=setup(16*MiB),mask=new Uint8Array(64*64).fill(1);disk.fail=true;
+          const entries=[entry(1,64,64,mask),entry(2,64,64,mask),entry(3,64,64,mask)];
+          for(const e of entries)await store.addMany([e]);
+          const bytes=store.session.bytes;disk.fail=false;await store.retry();
+          console.log(JSON.stringify({bytes,after:store.session.bytes,masks:disk.staticMasks.size}));
+        """)
+        self.assertEqual(result["bytes"], 4096 + 3 * 16 * (6 * 8 + 4 + 4))
+        self.assertEqual(result["after"], result["bytes"])
+        self.assertEqual(result["masks"], 1)
+
     def test_reopen_is_lazy_and_restores_analysis_without_loading_all_fields(self):
         result = javascript("""
           const {disk,store}=setup(),entries=[entry(1),entry(2),entry(3)];for(const e of entries)await store.addMany([e]);
@@ -129,3 +141,36 @@ class BrowserStorageTests(unittest.TestCase):
           console.log(JSON.stringify({conflict}));
         """)
         self.assertIn("Concurrent", result["conflict"])
+
+    def test_history_reads_evicted_fields_lazily_in_saved_order(self):
+        result = javascript(
+            f"import {{extractHistory}} from {json.dumps((UI / 'history.js').as_uri())};"
+            + """
+          const {store}=setup(1024),entries=[entry(1),entry(2),entry(3),entry(4)];for(const e of entries)await store.addMany([e]);
+          const order=[],rows=await extractHistory(entries,{recipe:{},component:'u',points:[[7.5,7.5]],tool:'probe',loadEntry:async e=>{order.push(e.id);return store.load(e);}});
+          console.log(JSON.stringify({order,values:rows.map(row=>row.value),ids:rows.map(row=>row.fieldId)}));
+        """
+        )
+        self.assertEqual(result["order"], [1, 2, 3, 4])
+        self.assertEqual(result["ids"], [1, 2, 3, 4])
+        np_values = [value + 0.123456789012345 for value in range(1, 5)]
+        self.assertEqual(result["values"], np_values)
+
+    def test_gpu_api_resource_accounting_deduplicates_handles_and_keeps_vram_unknown(self):
+        module = UI.parents[1] / "python/src/lucas_kanade_icgn/web/core/gpu-memory.js"
+        result = javascript(
+            f"import {{gpuMemoryUsage}} from {json.dumps(module.as_uri())};"
+            + """
+          const buffer={[Symbol.toStringTag]:'GPUBuffer',size:4096,usage:1};
+          const texture={[Symbol.toStringTag]:'GPUTexture',width:3840,height:2160,depthOrArrayLayers:1,mipLevelCount:1,sampleCount:1,format:'rgba8unorm'};
+          const graph={a:buffer,slots:[buffer,texture],map:new Map([['same',texture]]),hostData:new Float64Array(100)};graph.cycle=graph;
+          console.log(JSON.stringify({filled:gpuMemoryUsage(graph),empty:gpuMemoryUsage(null)}));
+        """
+        )
+        self.assertEqual(result["filled"]["bufferCount"], 1)
+        self.assertEqual(result["filled"]["mappedBufferBytes"], 4096)
+        self.assertEqual(result["filled"]["textureCount"], 1)
+        self.assertEqual(result["filled"]["knownResourceBytes"], 4096 + 3840 * 2160 * 4)
+        self.assertIsNone(result["filled"]["freeVramBytes"])
+        self.assertIsNone(result["filled"]["physicalVramBytes"])
+        self.assertEqual(result["empty"]["knownResourceBytes"], 0)
