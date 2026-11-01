@@ -47,6 +47,13 @@ on GPU for each pair while reusing allocations. CPU preparation stays the
 default. It improves the tested consecutive path but does not establish a
 4K60 camera pipeline; [scope and activation](DIC/LucasKanadeICGN/docs/explanation/gpu-reference-preparation.rst).
 
+**Experimental pipeline overlap** in Solve can also overlap computing with
+bounded disk recording and use a smaller, independently scheduled preview.
+The numerical input, ROI and saved fields keep their original resolution.
+Both options require a new reference; existing defaults stay unchanged. See the
+[activation guide](DIC/LucasKanadeICGN/docs/how-to/run-in-browser.rst) and
+[1080p/UHD recording measurements](DIC/LucasKanadeICGN/docs/reference/performance.rst#browser-recording-overlap).
+
 [Open the browser workbench](https://jeffwitz.github.io/live-dic/) directly,
 with no local server to install. Images and processing stay on your device.
 From a checkout, run `python3 tools/run_browser_app.py` to build, serve and open

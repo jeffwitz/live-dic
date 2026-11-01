@@ -1392,3 +1392,131 @@ subsequent recording admission. The application observations do not equal the
 resident-array controls above, and neither establishes physical-camera or
 all-hardware performance. These results justify keeping the GPU option explicit
 and experimental while further reducing consecutive-mode costs.
+
+
+.. _browser-recording-overlap:
+
+Bounded browser recording and independent preview
+-------------------------------------------------
+
+The opt-in PWA supervisor overlaps a single GPU calculation with asynchronous
+IndexedDB admission through a two-slot CPU queue. A separate preview width/rate
+does not resize numerical images or change solver settings. The existing
+synchronous recording and native-size display remain the defaults. Activation
+is described in :doc:`../how-to/run-in-browser`.
+
+These controls use a **static simulated 60 Hz camera**, consecutive received
+pairs, GPU reference preparation, affine 16/16, B-spline, two fixed levels,
+explicit median and the same iteration/tolerance schedules. Input is the
+original UHD tensile reference or an unresized 1920 x 1080 crop. Every recorded
+field is read back and committed to IndexedDB. Intel Lunar Lake ``8086:64a0``,
+Linux/Vulkan, Mesa 25.2.8, Chromium 155, performance power profile. No physical
+camera was opened. No tests or builds ran during the timing windows.
+
+For each size the order was synchronous, queue, preview, preview, queue,
+synchronous. Every fresh run used four seconds warmup and twenty seconds
+observation. The preview variant limits display to 30 Hz and 1920 px width;
+the queue-only variant preserves every-field native-size presentation. The
+numbers below are **ranges of two repeats**, not confidence intervals.
+
+.. list-table:: Application throughput with recording enabled
+   :header-rows: 1
+
+   * - Input
+     - Supervisor
+     - Computed fields/s
+     - Committed fields/s
+   * - 1080p
+     - Synchronous
+     - 16.78–16.82
+     - 16.78–16.82
+   * - 1080p
+     - Queue only
+     - 19.33–19.43
+     - 19.33–19.43
+   * - 1080p
+     - Queue + preview
+     - 19.73–20.02
+     - 19.78–20.02
+   * - UHD
+     - Synchronous
+     - 4.48–4.54
+     - 4.48–4.54
+   * - UHD
+     - Queue only
+     - 5.65–5.84
+     - 5.65–5.84
+   * - UHD
+     - Queue + preview
+     - 6.592–6.595
+     - 6.642–6.645
+
+Counts use two main-thread monotonic snapshots. A commit can finish inside a
+window although its computed reply preceded it; a one-field boundary difference
+is expected. Pending work is drained after the window, outside these rates.
+The predeclared short-control criterion requires both candidate rates to exceed
+the faster baseline by more than two fields per observation window. Both
+candidates pass at both sizes. This establishes a repeated advantage in this
+control, not a statistical/thermal qualification or a general camera FPS claim.
+
+Age starts at **Worker arrival** and ends at results-library/disk admission.
+It includes reference reconstruction, solve, readback, scheduling and recording;
+it excludes sensor exposure and delivery before Worker arrival. Quantiles below
+are computed separately for each repeat from admissions inside the window,
+then reported as their range. They are not GPU timestamps or displayed-field
+age, and are not interchangeable with the previous section's engine-call times.
+
+.. list-table:: Worker-to-admission latency, milliseconds
+   :header-rows: 1
+
+   * - Input / supervisor
+     - Median
+     - p95
+     - p99
+   * - 1080p / synchronous
+     - 50.0–52.0
+     - 59.4–60.1
+     - 62.7–63.1
+   * - 1080p / queue
+     - 54.2–55.7
+     - 64.7
+     - 67.9–69.3
+   * - 1080p / queue + preview
+     - 53.3–56.1
+     - 65.5–66.0
+     - 69.6–71.3
+   * - UHD / synchronous
+     - 213.9–218.8
+     - 244.5–253.9
+     - 259.4–269.5
+   * - UHD / queue
+     - 228.7–230.7
+     - 268.6–275.9
+     - 299.7–371.3
+   * - UHD / queue + preview
+     - 194.3–195.7
+     - 228.3–232.1
+     - 249.1–251.7
+
+Queue-only throughput gains come with increased admission age. Reducing the UHD
+preview also reduces bitmap/presentation cost and lowers admission age here.
+The 30 Hz setting is a maximum; these slow UHD solves do not actually produce
+30 displays/s. The application remains far below 4K60 for changing references.
+Use the combined setting when its measured trade-off fits the application,
+without interpreting asynchronous buffering alone as lower latency.
+
+All twelve last-committed fields are finite, preserve the original image/grid
+dimensions, and pass the predeclared identity-motion gates. Accepted counts are
+7,788/8,040 at 1080p and 31,654/32,400 at UHD; displacement RMSE is below
+``8e-7`` px on this static scene. This checks transport/association, not accuracy
+under a general moving-camera scene. Queue occupancy never exceeds two; no
+storage failure or unsaved field occurs in the timing runs. Separate real UHD
+file-input controls hold disk writes, inject quota failures, preserve both
+completed fields in RAM, recover without duplicates, drain source changes, and
+round-trip six fields with exact parameters/status/iterations. A deliberately
+late decode reproduces the old pause bug only in the retained negative control.
+
+The raw records, criteria, source hashes, commands and reconstruction script
+are in ``benchmarks/results/browser-pipeline-overlap-20261101/``. The local
+native/browser-enabled suite passes 278 tests without skips. The separate CI
+job is prepared; no new remote CI result or Pages deployment is asserted.

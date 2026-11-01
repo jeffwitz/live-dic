@@ -262,6 +262,10 @@ and worker-arrival-to-admission latency alongside computed throughput. These
 are not sensor-exposure timestamps. A 30 Hz preview does not promise 30 or 60
 computed measurements per second.
 
+The :ref:`browser-recording-overlap` controls compare committed recording rates
+and worker-to-admission latency at 1080p and native UHD. They use a simulated
+camera; they do not qualify a physical camera or a 60 FPS application.
+
 Build and edit a mask with domains and holes
 --------------------------------------------
 

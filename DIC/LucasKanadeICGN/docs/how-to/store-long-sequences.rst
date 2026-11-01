@@ -35,10 +35,17 @@ The cache retains full typed arrays, including Float64 imported parameters.
 No JPEG/PNG encoding, precision reduction or GPU history buffer is introduced.
 The reference mask is saved once per session and shared by resident fields.
 Histories, post-processing and exports reload data as required. Recording adds
-full readback and an awaited disk transaction, so its sustained throughput needs
+full readback and, by default, an awaited disk transaction, so its sustained throughput needs
 separate measurement from GPU-only display. Busy camera/video frames can still
 be dropped according to the existing admission policy; this is not a lossless
 video recorder. The original images/video must be kept separately.
+
+The opt-in **Experimental pipeline overlap** setting in Solve reserves at most
+two recording slots, including a calculation in progress. It can compute the
+next field while the previous write completes; it never creates an unbounded
+backlog. Pause, source/reference changes and project export drain this queue.
+See :doc:`run-in-browser` for activation and preview controls and
+:ref:`browser-recording-overlap` for committed throughput and result age.
 
 Make an independent backup
 --------------------------
@@ -85,6 +92,9 @@ duplicating them. No unsaved field is removed to make room. If IndexedDB is
 unavailable, recording can use RAM until its budget is reached; the last completed
 field is preserved, so this emergency state may exceed the target by one field.
 An individual oversized or pinned field may also exceed a very small target.
+With experimental overlap enabled, up to two already admitted calculations can
+complete; both fields remain in RAM on failure. No subsequent recorded solve is
+admitted until recovery. Explicitly re-enable recording after retrying the retained writes.
 
 Concurrent tabs cannot append into the same reopened session. Conflicting
 settings saves are rejected explicitly. Another tab deleting a session causes

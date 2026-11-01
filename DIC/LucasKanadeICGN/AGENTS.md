@@ -636,7 +636,7 @@ qualification rather than infer mobile coverage from desktop results.
   cache eviction. The CPU cache is configurable up to 1 GiB; unknown/coarse
   device memory must not be treated as free RAM or VRAM. Count auxiliary arrays
   such as `roiSelected`, shared image masks and encoded metadata correctly.
-- The supervisor awaits each recorded-field commit. Preserve this admission
+- By default, the supervisor awaits each recorded-field commit. Preserve this admission
   barrier, lazy session/history loading and bounded multipart exports. A disk
   error retains unsaved fields and immediately blocks further recording;
   recovery batches preserve partial progress without duplicates.
@@ -710,3 +710,31 @@ qualification rather than infer mobile coverage from desktop results.
   controls deliberately remove rendering only in temporary sites. They do not
   qualify a repeatable speedup, replace earlier FPS tables, or implement an
   asynchronous recording queue. Preserve their protocol/limitations and patches.
+
+### Bounded recording overlap and independent preview — 2026-11-01
+
+- `options.supervision` belongs to the standalone PWA session protocol, not the
+  public numerical `DICEngine` constructor. It is stripped before engine creation.
+  Omitted options preserve synchronous recording and every-field native-size
+  display. Solve edits apply with a new reference/ROI only.
+- The opt-in recording queue reserves before solving and holds at most two CPU
+  slots, including computing work. Keep one GPU owner/solve; this capacity is not
+  a GPU ring depth or pyramid level count. A transferred completed record remains
+  owned until library admission or explicit RAM retention. Never evict unsaved
+  fields, duplicate a failed first write or retry doomed writes for later fields.
+- Pause, source/reference/ROI/session changes and exports drain queue ownership.
+  A local playback decode completing after Pause must not bypass it through
+  forced/manual admission. The late-decode negative control advances the cursor
+  without recording; the fixed path preserves file order and every saved field.
+- Presentation has a separate maximum rate and preview raster. Numerical image,
+  mask, grid, coefficients and archives remain full-size. Flush the latest field
+  on pause/export, cancel timers on reference/destroy, and restore full reference
+  presentation for mask editing. Do not move rendering to a second GPU device.
+- `browser-pipeline-overlap-20261101/` holds twelve alternating 1080p/UHD static
+  simulated-camera controls, both CPU-queue and preview variants, raw samples,
+  predeclared criteria and the late-decode negative control. Measure committed
+  fields separately from computed replies and worker-to-admission latency; this
+  is not sensor-exposure latency, a physical-camera test or 4K60 qualification.
+- The local complete native/browser suite passed 278 tests without skips. Actual
+  UHD pause/failure/recovery/source/export checks retain exact typed arrays. The
+  separate software-browser CI job is configured; no new remote result is claimed.

@@ -23,6 +23,12 @@ preparation** checkbox in Solve. Apply it with a new reference. See the
 [GPU preparation explanation](docs/explanation/gpu-reference-preparation.rst)
 for the tested scope and timing boundary; CPU preparation remains the default.
 
+**Experimental pipeline overlap** in Solve adds a bounded two-field recording
+queue and an independently scheduled, optionally smaller preview. Apply it with
+a new reference; numerical images, ROI and saved fields retain their original
+size. See the [browser guide](docs/how-to/run-in-browser.rst) and the
+[recording measurements](docs/reference/performance.rst#browser-recording-overlap).
+
 [Open the published workbench](https://jeffwitz.github.io/live-dic/) without installing a local server.
 Hand-held camera use is
 not qualified for metrology. Python remains the primary NumPy supervisor.
