@@ -11,6 +11,7 @@ import argparse
 import hashlib
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 from qualify_local_sources import wait
@@ -33,6 +34,11 @@ def main():
     args = parser.parse_args()
     if args.warmup < 0 or args.repetitions < 3:
         parser.error("nonnegative warmup and at least three repetitions required")
+    fixture = PROJECT / "assets/uhd_tensile"
+    manifest = json.loads((fixture / "manifest.json").read_text())
+    for record in manifest["images"]:
+        if hashlib.sha256((fixture / record["file"]).read_bytes()).hexdigest() != record["sha256"]:
+            raise ValueError(f"Original fixture hash mismatch: {record['file']}")
     flags = (
         (
             "--use-angle=swiftshader",
@@ -144,6 +150,8 @@ def main():
             if p.is_file()
         },
     )
+    report["command"] = [sys.executable, *sys.argv]
+    report["scriptSha256"] = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
     report["softwareRequested"] = args.software
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
