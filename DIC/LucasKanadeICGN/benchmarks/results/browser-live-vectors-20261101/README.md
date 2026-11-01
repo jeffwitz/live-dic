@@ -56,6 +56,43 @@ The later readability refinement changes only automatic glyph spacing/weight:
 it needs its own source revision and timing record. The initial results above
 must not be relabelled as measurements of that refinement.
 
+## Final automatic overview (`0275a01`)
+
+The readability refinement is qualified separately under
+`overview-criteria.json`, with the same A/B/B/A numerical and timing settings.
+The final renderer uses roughly 20 columns by 12 rows, selecting near block
+centres, thicker shafts and manual-spacing overrides. It still reads actual
+measured vectors, never interpolated field values. `overview-vectors.png` shows
+the actual final view. Hardware and SwiftShader pixel oracles pass again, including an actual
+centred-block sampling check; all
+283 native/browser-enabled tests pass again (`overview-tests.log`).
+
+| Renderer | Calculated fields/s, no recording | Committed fields/s, recording |
+|---|---:|---:|
+| Scalar controls (2) | 30.953–34.907 | 23.683–24.164 |
+| Final overview (2) | 30.536–30.558 | 22.526–24.354 |
+
+This matrix is globally slower than the first, including its unchanged control.
+Do not compare the best value of one matrix with the worst of the other or
+attribute the global drift to the final renderer. The cause was not isolated.
+Calculation lies inside the wider reference spread. Recording remains
+**inconclusive**: one candidate is slower than the reference-only envelope and
+one is faster. Candidate admission p50/p95/p99 spans 52.90–53.90 /
+71.86–87.45 / 80.32–172.75 ms; retain the isolated long tail. Controls span
+53.30–54.20 / 74.10–74.17 / 80.82–86.52 ms. Neither matrix qualifies 4K60
+or proves a renderer speedup/nonregression for recording.
+
+The final stored identity fields are finite and retain the same 31,654/32,400
+acceptance and 5.8743e-7 px RMSE. Every timed sample uses the persistent prepared
+reference (zero per-pair preparation), and all runs drain with zero unsaved
+fields. This validates ownership and the first-reference contract; the long
+storage/admission tail still matters to real-time integration.
+
+`overview-*.json.gz` and `run_overview_campaign.py` preserve all final raw data
+and commands. Run `python3 summarize.py` to verify gzip hashes, numerical and
+ownership gates, and recompute `summary.json` for both matrices. Presentation
+sampling never changes full-resolution computed/saved field geometry.
+
 ## Files
 
 Raw reports are losslessly gzipped. `raw-manifest.json` records their original
@@ -64,3 +101,8 @@ from the clean timing site. `live-vectors.png` and `zoomed-vectors.png` show
 actual initial-renderer output, not the later overview refinement. No source
 image or canonical shader was regenerated. The packaged numerical source tree
 is unchanged. Remote CI is configured but was not run/observed for this work.
+
+The final device reports explicitly identify Intel xe-2lpg and Google
+SwiftShader. Review without WebGPU and without a Worker also passes on a
+31,474-value UHD import with zero correlations. `verification.json` retains
+source hashes and commands for these post-timing checks.

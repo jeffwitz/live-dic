@@ -46,5 +46,49 @@
   "workbench-software.json.gz": {
     "bytes_uncompressed": 23697,
     "sha256_uncompressed": "afd2dbc441309f39c95158220cf5b46f0400cd1c8d7cb5486c813ff073401672"
+  },
+  "overview-1-baseline.json.gz": {
+    "bytes_uncompressed": 1932996,
+    "sha256_uncompressed": "4cc49093be3e73c1355a10b574c0639bd0c2ed60fe63e3e7935899434ff1d4fa"
+  },
+  "overview-2-candidate.json.gz": {
+    "bytes_uncompressed": 1785588,
+    "sha256_uncompressed": "d7cca893507af0616d92e0084028bf3c24f9da21493850ae63a8a80c309a11bd"
+  },
+  "overview-3-candidate.json.gz": {
+    "bytes_uncompressed": 1858728,
+    "sha256_uncompressed": "15e2cc8995faeead3cf590903c85bc787915640a920b9809b059614f62be7fcb"
+  },
+  "overview-4-baseline.json.gz": {
+    "bytes_uncompressed": 1858435,
+    "sha256_uncompressed": "1d2de7077c68eb22b912c98b164250dc248672e7e5055c2472457a7b5311ded3"
+  },
+  "overview-commands.json.gz": {
+    "bytes_uncompressed": 2799,
+    "sha256_uncompressed": "86cf15d69b211d2eb281caf4daec6494d044d1694bb4220f681bd90a508e758e"
+  },
+  "overview-renderer-hardware.json.gz": {
+    "bytes_uncompressed": 3463,
+    "sha256_uncompressed": "15d01753bff3f5fffda77b1e841d97b6d9402f87ee680f8a5291f01ac85767f7"
+  },
+  "overview-renderer-software.json.gz": {
+    "bytes_uncompressed": 3445,
+    "sha256_uncompressed": "8ad274d0be56fa8f89fb29b4a9486368f00a0fb8e71a75c25252588a1edc8334"
+  },
+  "overview-smoke.json.gz": {
+    "bytes_uncompressed": 13541,
+    "sha256_uncompressed": "78c54255260fb59c8928e560d49094458b94bf200153931abb94beaed3c4ce08"
+  },
+  "final-device-oracle-hardware.json.gz": {
+    "bytes_uncompressed": 3712,
+    "sha256_uncompressed": "cc631556e1a417b4c753e5097cb4319ef29647875b0df50aacb753c162eddb10"
+  },
+  "final-device-oracle-software.json.gz": {
+    "bytes_uncompressed": 3717,
+    "sha256_uncompressed": "490ef5cd5af34b06e98776c5c7d56d5f6224ae9c98409725698d42ccf1815747"
+  },
+  "final-review-no-webgpu-main-thread.json.gz": {
+    "bytes_uncompressed": 3418,
+    "sha256_uncompressed": "d911866cecdb9d4b54eec615c8252526d49351a429897500654facc2562da433"
   }
 }

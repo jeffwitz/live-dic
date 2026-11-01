@@ -1,0 +1,678 @@
+{
+  "rows": [
+    {
+      "run": "1-baseline",
+      "matrix": "initial",
+      "candidate": false,
+      "recording": false,
+      "commit": "e781957c1044630f2c6d39403cebce6fbce7841d",
+      "computed_fps": 44.360740852648,
+      "committed_fps": 0.0,
+      "display_fps": 9.441266828183931,
+      "admission_ms": {
+        "50": null,
+        "95": null,
+        "99": null
+      },
+      "quality": null
+    },
+    {
+      "run": "1-baseline",
+      "matrix": "initial",
+      "candidate": false,
+      "recording": true,
+      "commit": "e781957c1044630f2c6d39403cebce6fbce7841d",
+      "computed_fps": 29.855366373050444,
+      "committed_fps": 29.855366373050444,
+      "display_fps": 9.686971071208887,
+      "admission_ms": {
+        "50": 38.5,
+        "95": 53.3150634765625,
+        "99": 62.0030029296875
+      },
+      "quality": {
+        "width": 3840,
+        "height": 2160,
+        "grid": [
+          240,
+          135
+        ],
+        "config": {
+          "subsetSize": 16,
+          "subsetStride": 16,
+          "initialization": "zero",
+          "temporalPrediction": "none",
+          "temporalFineCorrection": false,
+          "temporalMaxAge": null,
+          "divergencePatience": null,
+          "divergenceMinIterations": 4,
+          "pyramidPolicy": "fixed",
+          "spatialWeighting": "uniform",
+          "solverWorkgroupSize": 16,
+          "pipelineDepth": 1,
+          "iterations": 16,
+          "tolerance": 0.005,
+          "znccMin": 0.8,
+          "pyramidLevels": 2,
+          "iterationsPerLevel": [
+            8,
+            16
+          ],
+          "tolerancePerLevel": [
+            0.005,
+            0.005
+          ],
+          "interpolation": "bspline",
+          "motionModel": "affine",
+          "outlierPolicy": "median"
+        },
+        "finite": true,
+        "accepted": 31654,
+        "total": 32400,
+        "displacementRmse": 5.874302411949064e-07,
+        "maxDisplacementError": 2.7438806772761895e-05,
+        "parameterType": "Float32Array",
+        "truth": "Identical static fake-camera frames; displacement (0,0)"
+      }
+    },
+    {
+      "run": "2-candidate",
+      "matrix": "initial",
+      "candidate": true,
+      "recording": false,
+      "commit": "b68e488db820768f8a1560eef8120130b71cf947",
+      "computed_fps": 43.6140184347913,
+      "committed_fps": 0.0,
+      "display_fps": 9.389718304305019,
+      "admission_ms": {
+        "50": null,
+        "95": null,
+        "99": null
+      },
+      "quality": null
+    },
+    {
+      "run": "2-candidate",
+      "matrix": "initial",
+      "candidate": true,
+      "recording": true,
+      "commit": "b68e488db820768f8a1560eef8120130b71cf947",
+      "computed_fps": 29.423077811968366,
+      "committed_fps": 29.423077811968366,
+      "display_fps": 9.641756368922904,
+      "admission_ms": {
+        "50": 38.80029296875,
+        "95": 53.7001953125,
+        "99": 59.708115234375
+      },
+      "quality": {
+        "width": 3840,
+        "height": 2160,
+        "grid": [
+          240,
+          135
+        ],
+        "config": {
+          "subsetSize": 16,
+          "subsetStride": 16,
+          "initialization": "zero",
+          "temporalPrediction": "none",
+          "temporalFineCorrection": false,
+          "temporalMaxAge": null,
+          "divergencePatience": null,
+          "divergenceMinIterations": 4,
+          "pyramidPolicy": "fixed",
+          "spatialWeighting": "uniform",
+          "solverWorkgroupSize": 16,
+          "pipelineDepth": 1,
+          "iterations": 16,
+          "tolerance": 0.005,
+          "znccMin": 0.8,
+          "pyramidLevels": 2,
+          "iterationsPerLevel": [
+            8,
+            16
+          ],
+          "tolerancePerLevel": [
+            0.005,
+            0.005
+          ],
+          "interpolation": "bspline",
+          "motionModel": "affine",
+          "outlierPolicy": "median"
+        },
+        "finite": true,
+        "accepted": 31654,
+        "total": 32400,
+        "displacementRmse": 5.874302411949064e-07,
+        "maxDisplacementError": 2.7438806772761895e-05,
+        "parameterType": "Float32Array",
+        "truth": "Identical static fake-camera frames; displacement (0,0)"
+      }
+    },
+    {
+      "run": "3-candidate",
+      "matrix": "initial",
+      "candidate": true,
+      "recording": false,
+      "commit": "b68e488db820768f8a1560eef8120130b71cf947",
+      "computed_fps": 43.645443196005,
+      "committed_fps": 0.0,
+      "display_fps": 9.537648675109908,
+      "admission_ms": {
+        "50": null,
+        "95": null,
+        "99": null
+      },
+      "quality": null
+    },
+    {
+      "run": "3-candidate",
+      "matrix": "initial",
+      "candidate": true,
+      "recording": true,
+      "commit": "b68e488db820768f8a1560eef8120130b71cf947",
+      "computed_fps": 29.52578863706427,
+      "committed_fps": 29.575747670291115,
+      "display_fps": 9.791334692701586,
+      "admission_ms": {
+        "50": 39.1998291015625,
+        "95": 55.14478759765624,
+        "99": 60.69884033203129
+      },
+      "quality": {
+        "width": 3840,
+        "height": 2160,
+        "grid": [
+          240,
+          135
+        ],
+        "config": {
+          "subsetSize": 16,
+          "subsetStride": 16,
+          "initialization": "zero",
+          "temporalPrediction": "none",
+          "temporalFineCorrection": false,
+          "temporalMaxAge": null,
+          "divergencePatience": null,
+          "divergenceMinIterations": 4,
+          "pyramidPolicy": "fixed",
+          "spatialWeighting": "uniform",
+          "solverWorkgroupSize": 16,
+          "pipelineDepth": 1,
+          "iterations": 16,
+          "tolerance": 0.005,
+          "znccMin": 0.8,
+          "pyramidLevels": 2,
+          "iterationsPerLevel": [
+            8,
+            16
+          ],
+          "tolerancePerLevel": [
+            0.005,
+            0.005
+          ],
+          "interpolation": "bspline",
+          "motionModel": "affine",
+          "outlierPolicy": "median"
+        },
+        "finite": true,
+        "accepted": 31654,
+        "total": 32400,
+        "displacementRmse": 5.874302411949064e-07,
+        "maxDisplacementError": 2.7438806772761895e-05,
+        "parameterType": "Float32Array",
+        "truth": "Identical static fake-camera frames; displacement (0,0)"
+      }
+    },
+    {
+      "run": "4-baseline",
+      "matrix": "initial",
+      "candidate": false,
+      "recording": false,
+      "commit": "e781957c1044630f2c6d39403cebce6fbce7841d",
+      "computed_fps": 43.250045985704645,
+      "committed_fps": 0.0,
+      "display_fps": 9.540650232649812,
+      "admission_ms": {
+        "50": null,
+        "95": null,
+        "99": null
+      },
+      "quality": null
+    },
+    {
+      "run": "4-baseline",
+      "matrix": "initial",
+      "candidate": false,
+      "recording": true,
+      "commit": "e781957c1044630f2c6d39403cebce6fbce7841d",
+      "computed_fps": 29.616829295802127,
+      "committed_fps": 29.666773358695554,
+      "display_fps": 9.787227620166485,
+      "admission_ms": {
+        "50": 38.099853515625,
+        "95": 52.434851074218756,
+        "99": 59.520759277343764
+      },
+      "quality": {
+        "width": 3840,
+        "height": 2160,
+        "grid": [
+          240,
+          135
+        ],
+        "config": {
+          "subsetSize": 16,
+          "subsetStride": 16,
+          "initialization": "zero",
+          "temporalPrediction": "none",
+          "temporalFineCorrection": false,
+          "temporalMaxAge": null,
+          "divergencePatience": null,
+          "divergenceMinIterations": 4,
+          "pyramidPolicy": "fixed",
+          "spatialWeighting": "uniform",
+          "solverWorkgroupSize": 16,
+          "pipelineDepth": 1,
+          "iterations": 16,
+          "tolerance": 0.005,
+          "znccMin": 0.8,
+          "pyramidLevels": 2,
+          "iterationsPerLevel": [
+            8,
+            16
+          ],
+          "tolerancePerLevel": [
+            0.005,
+            0.005
+          ],
+          "interpolation": "bspline",
+          "motionModel": "affine",
+          "outlierPolicy": "median"
+        },
+        "finite": true,
+        "accepted": 31654,
+        "total": 32400,
+        "displacementRmse": 5.874302411949064e-07,
+        "maxDisplacementError": 2.7438806772761895e-05,
+        "parameterType": "Float32Array",
+        "truth": "Identical static fake-camera frames; displacement (0,0)"
+      }
+    },
+    {
+      "run": "overview-1-baseline",
+      "matrix": "overview",
+      "candidate": false,
+      "recording": false,
+      "commit": "e781957c1044630f2c6d39403cebce6fbce7841d",
+      "computed_fps": 34.90689007597807,
+      "committed_fps": 0.0,
+      "display_fps": 9.486292353868448,
+      "admission_ms": {
+        "50": null,
+        "95": null,
+        "99": null
+      },
+      "quality": null
+    },
+    {
+      "run": "overview-1-baseline",
+      "matrix": "overview",
+      "candidate": false,
+      "recording": true,
+      "commit": "e781957c1044630f2c6d39403cebce6fbce7841d",
+      "computed_fps": 23.682977059282692,
+      "committed_fps": 23.682977059282692,
+      "display_fps": 9.479476909348007,
+      "admission_ms": {
+        "50": 54.199951171875,
+        "95": 74.0999267578125,
+        "99": 86.51605957031248
+      },
+      "quality": {
+        "width": 3840,
+        "height": 2160,
+        "grid": [
+          240,
+          135
+        ],
+        "config": {
+          "subsetSize": 16,
+          "subsetStride": 16,
+          "initialization": "zero",
+          "temporalPrediction": "none",
+          "temporalFineCorrection": false,
+          "temporalMaxAge": null,
+          "divergencePatience": null,
+          "divergenceMinIterations": 4,
+          "pyramidPolicy": "fixed",
+          "spatialWeighting": "uniform",
+          "solverWorkgroupSize": 16,
+          "pipelineDepth": 1,
+          "iterations": 16,
+          "tolerance": 0.005,
+          "znccMin": 0.8,
+          "pyramidLevels": 2,
+          "iterationsPerLevel": [
+            8,
+            16
+          ],
+          "tolerancePerLevel": [
+            0.005,
+            0.005
+          ],
+          "interpolation": "bspline",
+          "motionModel": "affine",
+          "outlierPolicy": "median"
+        },
+        "finite": true,
+        "accepted": 31654,
+        "total": 32400,
+        "displacementRmse": 5.874302411949064e-07,
+        "maxDisplacementError": 2.7438806772761895e-05,
+        "parameterType": "Float32Array",
+        "truth": "Identical static fake-camera frames; displacement (0,0)"
+      }
+    },
+    {
+      "run": "overview-2-candidate",
+      "matrix": "overview",
+      "candidate": true,
+      "recording": false,
+      "commit": "0275a01b701521769f82ecb8a612c78541b26e77",
+      "computed_fps": 30.55813550356976,
+      "committed_fps": 0.0,
+      "display_fps": 9.536648691831436,
+      "admission_ms": {
+        "50": null,
+        "95": null,
+        "99": null
+      },
+      "quality": null
+    },
+    {
+      "run": "overview-2-candidate",
+      "matrix": "overview",
+      "candidate": true,
+      "recording": true,
+      "commit": "0275a01b701521769f82ecb8a612c78541b26e77",
+      "computed_fps": 22.575388506333653,
+      "committed_fps": 22.525553211617684,
+      "display_fps": 9.272460723736971,
+      "admission_ms": {
+        "50": 53.900146484375,
+        "95": 87.44508056640625,
+        "99": 172.745244140625
+      },
+      "quality": {
+        "width": 3840,
+        "height": 2160,
+        "grid": [
+          240,
+          135
+        ],
+        "config": {
+          "subsetSize": 16,
+          "subsetStride": 16,
+          "initialization": "zero",
+          "temporalPrediction": "none",
+          "temporalFineCorrection": false,
+          "temporalMaxAge": null,
+          "divergencePatience": null,
+          "divergenceMinIterations": 4,
+          "pyramidPolicy": "fixed",
+          "spatialWeighting": "uniform",
+          "solverWorkgroupSize": 16,
+          "pipelineDepth": 1,
+          "iterations": 16,
+          "tolerance": 0.005,
+          "znccMin": 0.8,
+          "pyramidLevels": 2,
+          "iterationsPerLevel": [
+            8,
+            16
+          ],
+          "tolerancePerLevel": [
+            0.005,
+            0.005
+          ],
+          "interpolation": "bspline",
+          "motionModel": "affine",
+          "outlierPolicy": "median"
+        },
+        "finite": true,
+        "accepted": 31654,
+        "total": 32400,
+        "displacementRmse": 5.874302411949064e-07,
+        "maxDisplacementError": 2.7438806772761895e-05,
+        "parameterType": "Float32Array",
+        "truth": "Identical static fake-camera frames; displacement (0,0)"
+      }
+    },
+    {
+      "run": "overview-3-candidate",
+      "matrix": "overview",
+      "candidate": true,
+      "recording": false,
+      "commit": "0275a01b701521769f82ecb8a612c78541b26e77",
+      "computed_fps": 30.536331450718887,
+      "committed_fps": 0.0,
+      "display_fps": 9.529654211524154,
+      "admission_ms": {
+        "50": null,
+        "95": null,
+        "99": null
+      },
+      "quality": null
+    },
+    {
+      "run": "overview-3-candidate",
+      "matrix": "overview",
+      "candidate": true,
+      "recording": true,
+      "commit": "0275a01b701521769f82ecb8a612c78541b26e77",
+      "computed_fps": 24.303944144517743,
+      "committed_fps": 24.353849573972603,
+      "display_fps": 9.433067689557145,
+      "admission_ms": {
+        "50": 52.89990234375,
+        "95": 71.85986328124999,
+        "99": 80.3169384765625
+      },
+      "quality": {
+        "width": 3840,
+        "height": 2160,
+        "grid": [
+          240,
+          135
+        ],
+        "config": {
+          "subsetSize": 16,
+          "subsetStride": 16,
+          "initialization": "zero",
+          "temporalPrediction": "none",
+          "temporalFineCorrection": false,
+          "temporalMaxAge": null,
+          "divergencePatience": null,
+          "divergenceMinIterations": 4,
+          "pyramidPolicy": "fixed",
+          "spatialWeighting": "uniform",
+          "solverWorkgroupSize": 16,
+          "pipelineDepth": 1,
+          "iterations": 16,
+          "tolerance": 0.005,
+          "znccMin": 0.8,
+          "pyramidLevels": 2,
+          "iterationsPerLevel": [
+            8,
+            16
+          ],
+          "tolerancePerLevel": [
+            0.005,
+            0.005
+          ],
+          "interpolation": "bspline",
+          "motionModel": "affine",
+          "outlierPolicy": "median"
+        },
+        "finite": true,
+        "accepted": 31654,
+        "total": 32400,
+        "displacementRmse": 5.874302411949064e-07,
+        "maxDisplacementError": 2.7438806772761895e-05,
+        "parameterType": "Float32Array",
+        "truth": "Identical static fake-camera frames; displacement (0,0)"
+      }
+    },
+    {
+      "run": "overview-4-baseline",
+      "matrix": "overview",
+      "candidate": false,
+      "recording": false,
+      "commit": "e781957c1044630f2c6d39403cebce6fbce7841d",
+      "computed_fps": 30.952796984598486,
+      "committed_fps": 0.0,
+      "display_fps": 9.485581846119421,
+      "admission_ms": {
+        "50": null,
+        "95": null,
+        "99": null
+      },
+      "quality": null
+    },
+    {
+      "run": "overview-4-baseline",
+      "matrix": "overview",
+      "candidate": false,
+      "recording": true,
+      "commit": "e781957c1044630f2c6d39403cebce6fbce7841d",
+      "computed_fps": 24.114551432773574,
+      "committed_fps": 24.164478040294846,
+      "display_fps": 9.33632226508789,
+      "admission_ms": {
+        "50": 53.2999267578125,
+        "95": 74.1697509765625,
+        "99": 80.82086181640626
+      },
+      "quality": {
+        "width": 3840,
+        "height": 2160,
+        "grid": [
+          240,
+          135
+        ],
+        "config": {
+          "subsetSize": 16,
+          "subsetStride": 16,
+          "initialization": "zero",
+          "temporalPrediction": "none",
+          "temporalFineCorrection": false,
+          "temporalMaxAge": null,
+          "divergencePatience": null,
+          "divergenceMinIterations": 4,
+          "pyramidPolicy": "fixed",
+          "spatialWeighting": "uniform",
+          "solverWorkgroupSize": 16,
+          "pipelineDepth": 1,
+          "iterations": 16,
+          "tolerance": 0.005,
+          "znccMin": 0.8,
+          "pyramidLevels": 2,
+          "iterationsPerLevel": [
+            8,
+            16
+          ],
+          "tolerancePerLevel": [
+            0.005,
+            0.005
+          ],
+          "interpolation": "bspline",
+          "motionModel": "affine",
+          "outlierPolicy": "median"
+        },
+        "finite": true,
+        "accepted": 31654,
+        "total": 32400,
+        "displacementRmse": 5.874302411949064e-07,
+        "maxDisplacementError": 2.7438806772761895e-05,
+        "parameterType": "Float32Array",
+        "truth": "Identical static fake-camera frames; displacement (0,0)"
+      }
+    }
+  ],
+  "decisions": [
+    {
+      "matrix": "initial",
+      "recording": false,
+      "metric": "computed_fps",
+      "reference_median": 43.805393419176326,
+      "reference_spread": 1.110694866943355,
+      "candidates": [
+        43.6140184347913,
+        43.645443196005
+      ],
+      "result": "within observed reference spread"
+    },
+    {
+      "matrix": "initial",
+      "recording": true,
+      "metric": "computed_fps",
+      "reference_median": 29.736097834426285,
+      "reference_spread": 0.23853707724831708,
+      "candidates": [
+        29.423077811968366,
+        29.52578863706427
+      ],
+      "result": "inconclusive"
+    },
+    {
+      "matrix": "initial",
+      "recording": true,
+      "metric": "committed_fps",
+      "reference_median": 29.761069865872997,
+      "reference_spread": 0.18859301435488973,
+      "candidates": [
+        29.423077811968366,
+        29.575747670291115
+      ],
+      "result": "inconclusive"
+    },
+    {
+      "matrix": "overview",
+      "recording": false,
+      "metric": "computed_fps",
+      "reference_median": 32.92984353028828,
+      "reference_spread": 3.9540930913795833,
+      "candidates": [
+        30.55813550356976,
+        30.536331450718887
+      ],
+      "result": "within observed reference spread"
+    },
+    {
+      "matrix": "overview",
+      "recording": true,
+      "metric": "computed_fps",
+      "reference_median": 23.898764246028133,
+      "reference_spread": 0.4315743734908821,
+      "candidates": [
+        22.575388506333653,
+        24.303944144517743
+      ],
+      "result": "inconclusive"
+    },
+    {
+      "matrix": "overview",
+      "recording": true,
+      "metric": "committed_fps",
+      "reference_median": 23.92372754978877,
+      "reference_spread": 0.4815009810121538,
+      "candidates": [
+        22.525553211617684,
+        24.353849573972603
+      ],
+      "result": "inconclusive"
+    }
+  ]
+}

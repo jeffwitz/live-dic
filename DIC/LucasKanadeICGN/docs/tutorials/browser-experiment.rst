@@ -79,6 +79,13 @@ Choose a slow preview rate or suspend it while computing/recording continues.
 For scalar maps, equivalent strain and statuses, inspect a saved field in the
 next step. Equivalent strain uses ``ezz=0``; it is not stress.
 
+.. figure:: ../../benchmarks/results/browser-live-vectors-20261101/overview-vectors.png
+   :width: 550px
+   :alt: Current UHD plate image with sparse norm-coloured vectors, colourbar and independent displacement-length key.
+
+   Live monitoring uses the current image and measured vectors. Full scalar
+   maps and strain processing are available after inspecting a saved field.
+
 The accepted/selected counters have different roles. Selection describes the
 geometric ROI. Prepared-reference admissibility describes numerical information
 in the reference. Acceptance describes the current solve. Every selected ROI

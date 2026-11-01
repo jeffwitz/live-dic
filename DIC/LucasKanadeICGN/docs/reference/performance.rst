@@ -1704,3 +1704,53 @@ Numerical dimensions, solver defaults and full field recording are unchanged.
 Saved-field analysis pauses acquisition and caches component values/statistics
 for palette and range edits. Those processing/presentation costs are outside
 the native image-to-field boundary. See :doc:`../how-to/run-in-browser`.
+
+
+Sparse-vector presentation qualification
+----------------------------------------
+
+The `live-vector campaign <https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/browser-live-vectors-20261101>`_
+retains both an initial renderer and a later readability refinement. Each uses
+A/B/B/A against a frozen scalar-renderer control, identical 10 Hz/1920 px
+presentation, bounded recording overlap, common-zero numerical settings and
+original UHD static simulated-camera input. Four seconds warmup precede each
+20-second recording-off/on observation. No tests/builds run during timing.
+
+.. list-table:: Final automatic overview, commit 0275a01
+   :header-rows: 1
+
+   * - Renderer
+     - Calculated fields/s, recording off
+     - Committed fields/s, recording on
+     - Admission p95 (ms)
+     - Admission p99 (ms)
+   * - Scalar controls, two runs
+     - 30.953–34.907
+     - 23.683–24.164
+     - 74.10–74.17
+     - 80.82–86.52
+   * - Sparse vectors, two runs
+     - 30.536–30.558
+     - 22.526–24.354
+     - 71.86–87.45
+     - 80.32–172.75
+
+Admission starts at Worker input and ends after cache/IndexedDB admission;
+it is not a pure GPU duration or exposure latency. The initial renderer's
+separate matrix reaches 43–44 calculated fields/s and about 29–30 committed
+fields/s. Its unchanged controls also run faster than in the final matrix:
+the global variation is unresolved. No renderer speedup is established.
+Calculation stays within observed reference variability; recording is
+inconclusive, with one slower candidate and one faster/within range in each
+matrix. The isolated 172.75 ms p99 must not be hidden. This is not 4K60
+qualification or a passed recording nonregression gate.
+
+Every final stored identity field remains finite, with 31,654/32,400 accepted
+subsets, displacement RMSE 5.8743e-7 px and maximum 2.7439e-5 px. All sequences
+reuse one first reference and drain without unsaved fields. Separate original
+UHD moving-plate tests retain 100% far-field coverage and about 0.00907 px RMSE.
+Actual GPU pixels validate palette, current-tip anchoring, unchanged image/field
+buffers and ROI exclusions on hardware and SwiftShader. Results palette/range
+edits reuse cached arrays/statistics without running the analysis again.
+The final complete local suite passes 283 tests with GPU/browser enabled;
+this is not a newly observed remote-CI result.

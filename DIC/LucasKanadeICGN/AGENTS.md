@@ -786,3 +786,10 @@ qualification rather than infer mobile coverage from desktop results.
 - Results analysis caches component arrays/statistics by completed analysis.
   Palette/range styling must not rerun the recipe. A new recipe/field gets a new
   analysis. Recording stores fields, not original camera images.
+
+- `browser-live-vectors-20261101/` keeps hardware/SwiftShader pixel oracles,
+  283-test local results and two A/B/B/A UHD timing matrices. Final auto spacing
+  samples about 20 by 12 glyphs at block centres, with manual overrides. Source
+  `python/src` remains identical to the fixed-reference baseline. No renderer
+  speedup or recording nonregression is established: controls drift and one
+  candidate has a long admission tail. Preserve those limits and raw samples.

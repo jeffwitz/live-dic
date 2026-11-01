@@ -1,0 +1,16 @@
+{
+  "app_commit": "0275a01b701521769f82ecb8a612c78541b26e77",
+  "packaged_src_tree": "c691f0be12a0a0e4d93720628d486321c4f0bfb0",
+  "sha256": {
+    "DIC/LucasKanadeICGN/web-app/render/live-vectors.js": "a2d50cc5a6d5286209701e8935c21fea38d29a654b0bc81a3e6f3040c80e4bef",
+    "DIC/LucasKanadeICGN/web-app/ui/session.js": "52f82fe7e100ef1cd67c6111c8da2dc0b211ac04d75421359577810faf2cbaa6",
+    "DIC/LucasKanadeICGN/web-app/ui/workbench.js": "cf53773740194a7d36e05aa717c837916f6f38e3b14f267b1532d302f66f0b08",
+    "DIC/LucasKanadeICGN/web-app/ui/view-cache.js": "3ceb50b65540777c68e5193bbbb7c0c64f6874d4e10f9f3794822fd9f626b963",
+    "tools/qualify_live_vectors.py": "43c959fbdc4f300df4f27ed70a650e0efffb5a0a51809aac121cef5f52b3251d"
+  },
+  "suite_command": "ICGN_RUN_GPU_TESTS=1 ICGN_RUN_BROWSER_TESTS=1 DIC/LucasKanadeICGN/python/.venv/bin/python -m unittest discover -s DIC/LucasKanadeICGN/python/tests",
+  "suite_result": "283 passed, zero skipped",
+  "pixel_oracle_command": "DIC/LucasKanadeICGN/python/.venv/bin/python tools/qualify_live_vectors.py --site /tmp/live-dic-live-vectors-overview-final-site [--software] --report <file>",
+  "review_command": "DIC/LucasKanadeICGN/python/.venv/bin/python tools/qualify_browser_review.py --site /tmp/live-dic-live-vectors-overview-final-site --software --no-worker --field /tmp/live-vectors-workbench-hardware/processed-field.npz --output /tmp/live-vectors-final-review",
+  "review_input_sha256": "88b85b0e1747af28a7e17b19f65df75daa18944c383d5a2c0cf08b69497f5398"
+}

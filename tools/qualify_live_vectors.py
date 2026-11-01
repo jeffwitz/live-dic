@@ -46,12 +46,18 @@ def qualify_renderer(browser):
       const read=device.createBuffer({size:values.byteLength,usage:GPUBufferUsage.COPY_DST|GPUBufferUsage.MAP_READ});
       const encoder=device.createCommandEncoder();encoder.copyBufferToBuffer(buffer,0,read,0,values.byteLength);device.queue.submit([encoder.finish()]);
       await read.mapAsync(GPUMapMode.READ);const unchanged=new Float32Array(read.getMappedRange()).every((v,i)=>v===values[i]);read.unmap();
+      // Step two samples the centre of its block (bottom-right subset here),
+      // not the unavailable upper-left subset. Check actual raster coordinates.
+      values[6]=-3;values[30]=1;device.queue.writeBuffer(buffer,0,values);
+      const blockCentre=bounds(await draw({arrowStep:2}));values[30]=-3;
       values[6]=-3;device.queue.writeBuffer(buffer,0,values);const excluded=await draw();
       values[6]=0;device.queue.writeBuffer(buffer,0,values);const unavailable=bounds(await draw());
       values[6]=1;values[0]=0;device.queue.writeBuffer(buffer,0,values);const zero=bounds(await draw());
       const referenceView=await draw({imageTexture:reference}),referenceOnly=renderer.legend.imageOnly;
       await draw({mode:8,previewMaxWidth:64});const preview=[canvas.width,canvas.height];
-      const report={adapter:adapter.info,errors,normal:a,amplified:b,sentinel,unchanged,
+      const report={adapter:{vendor:adapter.info.vendor,architecture:adapter.info.architecture,
+          device:adapter.info.device,description:adapter.info.description},
+        errors,normal:a,amplified:b,blockCentre,sentinel,unchanged,
         backgroundExact:background.every((v,i)=>v===pixels[i]),roiExcludedExact:excluded.every((v,i)=>v===background[i]),
         unavailable,zero,referenceOnly,referenceExact:referenceView.every((v,i)=>v===referencePixels[i]),preview,grid:field.grid};
       renderer.destroy();read.destroy();buffer.destroy();texture.destroy();reference.destroy();device.destroy();return report;
@@ -64,6 +70,8 @@ def qualify_renderer(browser):
     assert a["x1"] in [38, 39] and a["y0"] >= 29 and a["y1"] <= 33, result
     assert a["colours"] == b["colours"] == ["31,132,138"], result
     assert result["unchanged"] and result["roiExcludedExact"], result
+    assert result["blockCentre"]["x0"] == 95 and result["blockCentre"]["x1"] == 102, result
+    assert 93 <= result["blockCentre"]["y0"] <= result["blockCentre"]["y1"] <= 98, result
     assert result["unavailable"]["count"] > 0, result
     assert result["zero"]["colours"] == ["21,57,99"], result
     assert result["referenceOnly"] and result["referenceExact"], result
