@@ -138,6 +138,31 @@ is large enough and the expected displacement has meaningful curvature within
 one subset. A 32 by 32 subset is a safer starting point than 8 by 8 for twelve
 unknowns, but conditioning remains image dependent.
 
+Initialization and local motion model
+-------------------------------------
+
+The local motion model and the initializer answer different questions. The
+local model selects the degrees of freedom estimated independently inside
+each subset. An initializer supplies a starting displacement field before
+those local solves begin; it does not select or upgrade the local model.
+
+For example, the experimental global-affine initializer fits one transform to
+the image pair, then evaluates its displacement at each subset centre. With a
+local translation model, those centre displacements seed the two-parameter
+translation solve. The local solver still estimates only ``u`` and ``v``; its
+four affine-gradient coefficients remain zero. Use the local affine model
+when subset deformation itself must be estimated. A good global fit is only a
+seed: it does not guarantee that every local subset has valid texture or
+remains inside the target image.
+
+In the browser workbench, enable **Use custom settings** and choose **Motion
+model: Translation** to request translation-only local solves. Then enable
+**Global affine initialization** in Solve. The initializer checkbox leaves
+the selected local model unchanged and the model selector available. Its
+**Global affine fit scales** control is separate from the local pyramid-level
+control. See :doc:`../how-to/register-large-shifts` for the complete image-pair
+workflow and its input and latency limits.
+
 Quadratic mode has passed synthetic GPU regression tests that contain known
 non-zero first and second displacement derivatives. Those tests qualify the
 implementation, not its UHD throughput. Current published 4K performance

@@ -72,15 +72,24 @@ one transform initializes every subset; the normal
 local IC-GN solve then estimates the final field. The local pyramid depth
 remains independently configurable.
 
-In the workbench, check **Global affine initialization** in Solve, then choose
-the number of **Global affine fit scales** (5–8; default: 5). Six scales can
-extend the coarse capture range on large images; seven and eight are
-experimental. This setting is independent of the local optical-flow pyramid
-depth and the local motion model. With the translation model, the affine fit
-is evaluated at every subset centre and supplies a translation seed; each
-local solve still estimates only the two displacement components. With the
-affine model, each local solve also estimates its six affine parameters. A
-loaded image or video file is required.
+In the workbench, configure the local solve and initializer separately:
+
+1. Load a reference and target from an image, image sequence, or video file,
+   then open **Solve**. This initializer is not available for a live camera.
+2. Enable **Use custom settings** and choose **Motion model: Translation** for
+   translation-only local solves. Choose **Affine** only when local subset
+   deformation should also be estimated.
+3. Enable **Global affine initialization**, choose **Global affine fit scales**
+   (5–8; default: 5), and press **Start calculation**.
+
+Enabling global affine initialization does not change the selected local model
+or disable its selector. The global fit is evaluated at each subset centre and
+supplies the starting displacement. Translation mode still solves only the
+two displacement components; affine mode estimates its six local parameters.
+The global-fit scale count is independent of the local optical-flow pyramid
+depth. Six global-fit scales can extend the coarse capture range on large
+images; seven and eight are experimental. A loaded image or video file is
+required.
 The workbench carries the input kind through its worker so decoded local files
 can use this initializer even though their frames reach WebGPU as external
 textures. Live camera streams remain unsupported for this cold CPU fit.
