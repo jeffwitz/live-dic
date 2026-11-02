@@ -25,6 +25,7 @@ import numpy as np
 from PIL import Image
 
 from lucas_kanade_icgn import ICGNWebGL, ICGNWGPUFullPyramid
+from lucas_kanade_icgn.subset import MAX_SUBSET_SIZE, MIN_SUBSET_SIZE
 
 DEFAULT_BACKENDS = ("native-pyramid", "webgpu-wgsl", "three-tsl")
 TARGET_FIXTURES = (
@@ -33,6 +34,18 @@ TARGET_FIXTURES = (
     ("frame_010.png", (2.0, -1.0)),
     ("frame_020.png", (4.0, -2.0)),
 )
+
+
+def _subset_size_argument(value: str) -> int:
+    try:
+        subset_size = int(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("subset size must be an integer") from error
+    if not MIN_SUBSET_SIZE <= subset_size <= MAX_SUBSET_SIZE:
+        raise argparse.ArgumentTypeError(
+            f"subset size must be between {MIN_SUBSET_SIZE} and {MAX_SUBSET_SIZE}"
+        )
+    return subset_size
 
 
 def _arguments() -> argparse.Namespace:
@@ -84,9 +97,13 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--pyramid-levels", type=int, choices=(1, 2, 3, 4), default=2)
     parser.add_argument(
         "--subset-size",
-        type=int,
-        choices=(8, 15, 16, 17, 31, 32, 33),
+        type=_subset_size_argument,
+        metavar="PIXELS",
         default=16,
+        help=(
+            f"square width in pixels ({MIN_SUBSET_SIZE} to {MAX_SUBSET_SIZE}); "
+            "custom widths require native-pyramid or webgpu-wgsl"
+        ),
     )
     parser.add_argument(
         "--subset-stride",
@@ -131,6 +148,12 @@ def _arguments() -> argparse.Namespace:
     if args.pipeline_depth < 1:
         parser.error("--pipeline-depth must be positive")
     args.backends = tuple(args.backends or DEFAULT_BACKENDS)
+    if args.subset_size not in (8, 16, 32) and any(
+        backend not in {"native-pyramid", "webgpu-wgsl"} for backend in args.backends
+    ):
+        parser.error(
+            "custom subset widths require --backend native-pyramid or --backend webgpu-wgsl"
+        )
     if args.roi_mask is not None and any(backend != "native-pyramid" for backend in args.backends):
         parser.error("ROI requires --backend native-pyramid")
     if args.roi_truncation != "none" and (args.roi_mask is None or args.roi_policy != "partial"):

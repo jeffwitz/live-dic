@@ -54,8 +54,8 @@ Geometry and input
 * GPU-IO dimensions must be exact multiples of the selected subset size because its texture grid is
   allocated when the private headless page starts. A dimension change rebuilds
   that page automatically.
-* Native and raw browser shared-WGSL support subset widths 8, 15, 16, 17, 31,
-  32, and 33. ``subset_stride`` defaults to the selected size and can be
+* Native and raw browser shared-WGSL support subset widths from 4 through 64.
+  ``subset_stride`` defaults to the selected size and can be
   reduced to create overlapping subsets. Three.js/TSL, WebGL2, and GPU-IO
   support widths 8, 16, and 32 and still require stride equal to size.
 * Centred Gaussian subset integration is currently exposed by the native

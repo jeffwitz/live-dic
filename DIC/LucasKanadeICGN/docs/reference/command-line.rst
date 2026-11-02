@@ -60,8 +60,10 @@ Solver options
    ``median`` bypasses UOD and applies a centred 3 by 3 component median to
    every valid subset. Default: ``replace``.
 
-``--subset-size {8,15,16,17,31,32,33}``
-   Select the square numerical subset width. Default: ``16``.
+``--subset-size PIXELS``
+   Select a square numerical subset width from 4 through 64. Default: ``16``.
+   Arbitrary widths require ``--backend webgpu-wgsl``; Three.js and GPU-IO
+   accept only 8, 16, or 32.
 
 ``--subset-stride PIXELS``
    Select the distance between adjacent subset centres. It must be an integer

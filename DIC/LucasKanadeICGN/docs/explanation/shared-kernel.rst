@@ -95,7 +95,7 @@ Numerical contract
 Geometry
 ~~~~~~~~
 
-* shared-WGSL subset width ``S``: 8, 15, 16, 17, 31, 32, or 33 pixels,
+* shared-WGSL subset width ``S``: any integer from 4 through 64 pixels,
   default 16;
 * shared-WGSL subset stride ``D``: integer from 1 through ``S``, default ``S``;
 * grid dimensions: ``1 + floor((width - S) / D)`` by

@@ -25,7 +25,9 @@ from lucas_kanade_icgn.full_pyramid_backend import (
 )
 from lucas_kanade_icgn.outlier import normalize_outlier_policy
 from lucas_kanade_icgn.subset import (
-    SUPPORTED_SUBSET_SIZES,
+    MAX_SUBSET_SIZE,
+    MIN_SUBSET_SIZE,
+    normalize_subset_size,
     normalize_subset_stride,
     subset_grid_shape,
 )
@@ -347,8 +349,11 @@ class NativeReferenceTests(unittest.TestCase):
         self.assertEqual(default, 1)
 
     def test_subset_size_is_validated_before_gpu_creation(self) -> None:
+        for value in range(MIN_SUBSET_SIZE, MAX_SUBSET_SIZE + 1):
+            with self.subTest(value=value):
+                self.assertEqual(normalize_subset_size(value), value)
         for engine_type in (ICGNWGPU, ICGNWGPUFullPyramid):
-            for value in (7, 12, 64, True, 16.0):
+            for value in (MIN_SUBSET_SIZE - 1, MAX_SUBSET_SIZE + 1, True, 16.0, "16"):
                 with (
                     self.subTest(engine=engine_type.__name__, value=value),
                     self.assertRaisesRegex(ValueError, "subset_size"),
@@ -389,7 +394,7 @@ class NativeReferenceTests(unittest.TestCase):
 
     def test_reference_layout_supports_all_subset_sizes(self) -> None:
         image = np.arange(64 * 96, dtype=np.uint8).reshape(64, 96)
-        for subset_size in SUPPORTED_SUBSET_SIZES:
+        for subset_size in range(MIN_SUBSET_SIZE, MAX_SUBSET_SIZE + 1):
             with self.subTest(subset_size=subset_size):
                 reference, inverse, metadata = _reference_arrays(
                     image,

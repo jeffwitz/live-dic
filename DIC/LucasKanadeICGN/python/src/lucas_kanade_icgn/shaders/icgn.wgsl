@@ -71,8 +71,9 @@ override MOTION_MODEL: u32 = 0u;
 // complete active motion state; 2: host-side disabled policy, which skips this
 // entry point; 3: apply a centred 3x3 component median to every valid subset.
 override OUTLIER_POLICY: u32 = 1u;
-// Square subset width. Repository hosts expose the validated 8, 16, and 32
-// specializations while preserving 16 as the default pipeline constant.
+// Square subset width. The portable hosts specialize any integer width from
+// 4 to 64 while preserving 16 as the default pipeline constant. Pixel work is
+// distributed over SOLVER_WORKGROUP_SIZE lanes.
 override SUBSET_SIZE: i32 = 16;
 // Distance in pixels between adjacent subset centres. It equals SUBSET_SIZE
 // in the historical non-overlapping configuration.

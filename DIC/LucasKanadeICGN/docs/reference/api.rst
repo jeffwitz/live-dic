@@ -77,10 +77,12 @@ component median to every valid state and preserves its solver status. See
 :doc:`../explanation/displacement-outliers` for the equations, validation
 contracts, and limits.
 
-Native shared-WGSL engines accept ``subset_size`` values 8, 15, 16, 17, 31,
-32, and 33. The odd widths have an exact centre pixel. They also accept
-``spatial_weighting="gaussian"`` and an optional ``gaussian_sigma`` in pixels;
-uniform integration remains the default. See
+Native shared-WGSL engines accept every integer ``subset_size`` from 4 through
+64. Odd widths have an exact centre pixel; even widths have a half-pixel
+geometric centre. Non-default widths use the portable WGSL solver, while the
+specialized native subgroup solver remains limited to size and stride 16. They
+also accept ``spatial_weighting="gaussian"`` and an optional
+``gaussian_sigma`` in pixels; uniform integration remains the default. See
 :doc:`../explanation/subset-size` for the complete geometry and weighting
 contract.
 

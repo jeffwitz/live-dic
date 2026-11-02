@@ -21,8 +21,8 @@ class RoiGeometryTests(unittest.TestCase):
         mask = np.ones((83, 97), bool)
         mask[9, 11] = False  # all four corners of its square remain true
         mask[30:46, 30:56] = False
-        for size in (8, 15, 16, 17, 31, 32, 33):
-            for stride in (4, size, size + 3):
+        for size in range(4, 65):
+            for stride in (1, max(1, size // 2), size):
                 with self.subTest(size=size, stride=stride):
                     plan = prepare_roi(mask, size, stride)
                     expected = [

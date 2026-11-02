@@ -1,24 +1,33 @@
 Subset size and stride
 ======================
 
-``subset_size`` selects a square of 8, 15, 16, 17, 31, 32, or 33 pixels.
-The odd widths provide an exact centre pixel; the established even widths
-remain valid with a half-pixel geometric centre. ``subset_stride``
-independently selects the distance, in pixels, between adjacent subset
-centres. It defaults to ``None``, which means ``subset_stride=subset_size``
-and preserves the historical non-overlapping geometry and fast path.
+The native wgpu-py solver and the raw ``webgpu-wgsl`` browser core accept any
+integer ``subset_size`` from 4 through 64 pixels. The portable WGSL solver
+specializes its pipelines for the requested size and distributes its flattened
+pixel loop over the configured workgroup lanes. This removes the old allowlist
+of a few hand-selected widths. The default remains 16. Four is the lower bound
+because the largest supported local model has twelve parameters and a 4 x 4
+support supplies at least twelve pixel samples. Sixty-four is the API bound for
+small windows; work and reference storage grow with the square of the width.
+Sizes outside this bounded range are rejected before GPU work begins.
+
+Odd widths provide an exact centre pixel; even widths have a half-pixel
+geometric centre. ``subset_stride`` independently selects the distance, in
+pixels, between adjacent subset centres. It defaults to ``None``, which means
+``subset_stride=subset_size`` and preserves the historical non-overlapping
+geometry and fast path.
 
 .. code-block:: python
 
    from lucas_kanade_icgn import ICGNWGPUFullPyramid
 
-   with ICGNWGPUFullPyramid(subset_size=32, subset_stride=16) as engine:
+   with ICGNWGPUFullPyramid(subset_size=24, subset_stride=12) as engine:
        info = engine.set_reference(reference)
        result = engine.register(target)
 
-   assert info.subset_size == 32
-   assert info.subset_stride == 16
-   assert result.subset_stride == 16
+   assert info.subset_size == 24
+   assert info.subset_stride == 12
+   assert result.subset_stride == 12
 
 Geometry contract
 -----------------
@@ -154,10 +163,13 @@ quadratic motion models. Three.js/TSL, its WebGL2 fallback, and deprecated
 GPU-IO currently require ``subset_stride == subset_size`` and reject a
 non-default stride instead of silently changing its geometry.
 
-Odd subset widths are available in native wgpu and the raw browser
-``webgpu-wgsl`` path. Centred Gaussian integration is currently exposed by the
-native engines; browser engines retain uniform integration. Three.js/TSL,
-WebGL2, and GPU-IO remain limited to widths 8, 16, and 32.
+Every integer width from 4 through 64 is available in native wgpu and the raw
+browser ``webgpu-wgsl`` path. The specialized native subgroup solver remains
+restricted to affine B-spline, uniform integration, and size/stride 16; all
+other combinations use the portable workgroup solver. Centred Gaussian
+integration is currently exposed by the native engines; browser engines retain
+uniform integration. Three.js/TSL, WebGL2, and GPU-IO remain limited to widths
+8, 16, and 32.
 
 The specialized native WGSL subgroup solver requires both size and
 stride to be 16. Other configurations select the portable shared-WGSL solver.
@@ -171,8 +183,21 @@ approximately four times as many subsets, so solver and result-transfer costs
 can approach four times the default. It does not make one subset cheaper.
 
 ``subset_size=16, subset_stride=16``
-   Qualified historical default and the geometry used by the published UHD
-   performance tables.
+   Historical default and the geometry used by the published UHD performance
+   tables. It retains eligibility for the specialized native subgroup solver
+   when the remaining solver settings and hardware also qualify.
+
+``subset_size=24, subset_stride=12``
+   Example arbitrary even width with overlap. It uses the portable solver and
+   produces a denser field than stride 24 while retaining 24 x 24 pixels of
+   local support.
+
+Any integer from 4 to 64
+   Is accepted by the portable shared-WGSL engines. This is functional
+   generality, not a claim that every width has been performance-qualified.
+   Measure accuracy, acceptance and end-to-end latency for the intended
+   material, texture, motion model and stride before choosing a production
+   setting.
 
 ``subset_size=32, subset_stride=16``
    Keeps the conditioning and larger support of a 32-pixel window while

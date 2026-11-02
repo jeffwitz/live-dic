@@ -5,24 +5,29 @@ from __future__ import annotations
 import operator
 
 DEFAULT_SUBSET_SIZE = 16
-SUPPORTED_SUBSET_SIZES = (8, 15, 16, 17, 31, 32, 33)
-_SUPPORTED_SUBSET_SIZES_TEXT = ", ".join(str(value) for value in SUPPORTED_SUBSET_SIZES)
+# A 4 x 4 support provides at least twelve samples for the quadratic model.
+MIN_SUBSET_SIZE = 4
+# Bound the per-subset pixel loop and reference storage for this small-window API.
+MAX_SUBSET_SIZE = 64
 
 
 def normalize_subset_size(value: int) -> int:
-    """Return a supported square subset width.
+    """Return a valid square subset width for the portable WGSL solver.
 
-    The portable solver distributes the selected number of pixels over its
-    configurable 16- or 32-lane workgroup. Odd widths expose an exact centre
-    pixel, while the established power-of-two widths remain available.
+    The flattened pixel loop distributes any 4-to-64-pixel square over the
+    configured workgroup. The workgroup width and subset width are independent.
     """
 
     try:
         subset_size = operator.index(value)
     except TypeError as error:
-        raise ValueError(f"subset_size must be one of {_SUPPORTED_SUBSET_SIZES_TEXT}") from error
-    if isinstance(value, bool) or subset_size not in SUPPORTED_SUBSET_SIZES:
-        raise ValueError(f"subset_size must be one of {_SUPPORTED_SUBSET_SIZES_TEXT}")
+        raise ValueError(
+            f"subset_size must be an integer from {MIN_SUBSET_SIZE} to {MAX_SUBSET_SIZE}"
+        ) from error
+    if isinstance(value, bool) or not MIN_SUBSET_SIZE <= subset_size <= MAX_SUBSET_SIZE:
+        raise ValueError(
+            f"subset_size must be an integer from {MIN_SUBSET_SIZE} to {MAX_SUBSET_SIZE}"
+        )
     return subset_size
 
 

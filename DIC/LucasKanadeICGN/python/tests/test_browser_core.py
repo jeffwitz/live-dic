@@ -127,13 +127,14 @@ class BrowserGeometryTests(unittest.TestCase):
     def test_constructor_rejects_unported_or_invalid_options_without_a_gpu(self):
         script = f"""
           import {{DICEngine}} from {json.dumps((CORE / "engine.js").as_uri())};
-          const cases=[{{subsetSize:'16'}},{{pyramidLevels:true}},{{initialization:'temporal',pyramidLevels:3,temporalFineCorrection:true}},
+          const cases=[{{subsetSize:'16'}},{{subsetSize:3}},{{subsetSize:65}},{{pyramidLevels:true}},{{initialization:'temporal',pyramidLevels:3,temporalFineCorrection:true}},
             {{spatialWeighting:'gaussian'}},{{roiPolicy:'partial'}},{{solverWorkgroupSize:32}},{{unknownOption:1}},{{roiPolicy:0}},{{readback:null}},{{spatialWeighting:null}},{{initialization:null}},{{pipelineDepth:null}}];
           const rejected=cases.map(options=>{{try{{new DICEngine(options);return false;}}catch{{return true;}}}});
           let acceptsSix=false;try{{new DICEngine({{initialization:'global-affine',globalAffineLevels:6}});acceptsSix=true;}}catch{{}}
           const invalidScales=[4,9,5.5].map(value=>{{try{{new DICEngine({{initialization:'global-affine',globalAffineLevels:value}});return false;}}catch{{return true;}}}});
           let rejectsWithoutInitializer=false;try{{new DICEngine({{globalAffineLevels:6}});}}catch{{rejectsWithoutInitializer=true;}}
-          console.log(JSON.stringify({{rejected,acceptsSix,invalidScales,rejectsWithoutInitializer}}));
+          const acceptsSubsetSizes=[4,7,24,64].map(subsetSize=>{{try{{new DICEngine({{subsetSize}});return true;}}catch{{return false;}}}});
+          console.log(JSON.stringify({{rejected,acceptsSix,invalidScales,rejectsWithoutInitializer,acceptsSubsetSizes}}));
         """
         results = json.loads(
             subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
@@ -142,6 +143,7 @@ class BrowserGeometryTests(unittest.TestCase):
         self.assertTrue(results["acceptsSix"])
         self.assertTrue(all(results["invalidScales"]))
         self.assertTrue(results["rejectsWithoutInitializer"])
+        self.assertTrue(all(results["acceptsSubsetSizes"]))
 
 
 @unittest.skipUnless(

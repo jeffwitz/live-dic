@@ -56,7 +56,9 @@ The core estimates translation, affine or quadratic motion using normalized
 inverse-compositional Gauss-Newton updates. Interpolation, subset geometry,
 spatial weighting and result policies are explicit choices:
 
-- native subset widths: 8, 15, 16, 17, 31, 32, 33; independent stride;
+- native wgpu-py and raw shared-WGSL subset widths: any integer from 4 through
+  64, with independent stride; Three.js, WebGL2 and GPU-IO remain limited to
+  8, 16 and 32;
 - B-spline, bilinear and Keys cubic target interpolation;
 - uniform or centered Gaussian integration;
 - reference ROI for translation and affine: complete windows by default,

@@ -886,9 +886,9 @@ class ICGNWebGL:
 
     ``interpolation`` selects ``"bspline"`` (historical default), direct
     ``"linear"``, or direct Keys ``"cubic"`` reconstruction. The deprecated
-    GPU-IO backend supports only ``"bspline"``. ``subset_size`` selects an 8,
-    16, or 32 pixel square. ``subset_stride`` independently selects the field
-    spacing and defaults to ``subset_size``.
+    GPU-IO backend supports only ``"bspline"``. The shared-WGSL backend accepts
+    every integer subset width from 4 to 64; Three.js and GPU-IO remain limited
+    to 8, 16, or 32. ``subset_stride`` independently selects field spacing.
     """
 
     def __init__(
@@ -953,7 +953,7 @@ class ICGNWebGL:
         )
         if self.subset_size not in {8, 16, 32} and backend != "webgpu-wgsl":
             raise ValueError(
-                "Odd subset sizes currently require backend='webgpu-wgsl'; "
+                "Subset sizes other than 8, 16, or 32 require backend='webgpu-wgsl'; "
                 "Three.js and GPU-IO support subset_size=8, 16, or 32"
             )
         if backend == "gpuio" and self.interpolation != "bspline":

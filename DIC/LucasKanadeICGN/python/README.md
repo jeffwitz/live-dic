@@ -141,9 +141,10 @@ means detection, not necessarily replacement. `result.flagged` and
 
 - `motion_model`: `affine` (default), `translation`, `quadratic`.
 - `interpolation`: `bspline` (default), `linear`, `cubic`.
-- Native `subset_size`: 8, 15, 16 (default), 17, 31, 32, 33; independent
-  `subset_stride` defaults to size. Spatial integration is uniform by default,
-  with optional Gaussian weighting.
+- Native `subset_size`: any integer from 4 through 64 (default: 16), with an
+  independent `subset_stride` that defaults to size. Raw browser shared-WGSL
+  supports the same range; Three.js and GPU-IO remain limited to 8, 16 and 32.
+  Spatial integration is uniform by default, with optional Gaussian weighting.
 - `device_type`: `auto` (default), `gpu`, `cpu`. CPU requires an installed
   software WebGPU adapter; no driver is downloaded at runtime.
 - `solver_workgroup_size`: 16 (default), 32, experimental 128. Non-default

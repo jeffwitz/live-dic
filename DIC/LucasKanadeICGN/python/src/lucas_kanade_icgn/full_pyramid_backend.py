@@ -162,9 +162,9 @@ class ICGNWGPUFullPyramid:
     prefilters, solves, seed transfers, and optional UOD passes stay on one WebGPU
     device and are encoded into one command buffer. ``linear`` and ``cubic``
     interpolation omit the per-level prefilters; ``bspline`` remains the
-    compatibility default. ``subset_size`` supports the established 8, 16,
-    and 32 pixel widths plus centred 15, 17, 31, and 33 pixel widths;
-    ``subset_stride`` independently selects the field spacing.
+    compatibility default. ``subset_size`` accepts every integer width from
+    4 to 64; odd widths have an exact pixel centre and even widths have a
+    half-pixel centre. ``subset_stride`` independently selects field spacing.
     ``spatial_weighting="gaussian"`` enables a centred weighted least-squares
     window with a configurable ``gaussian_sigma`` in pixels. Uniform
     integration remains the compatibility default.

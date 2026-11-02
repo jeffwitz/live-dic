@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import errno
 import inspect
+import io
 import tempfile
 import threading
 import unittest
@@ -14,6 +16,7 @@ from unittest import mock
 import numpy as np
 from PIL import Image
 
+from lucas_kanade_icgn.cli import _parser
 from lucas_kanade_icgn.engine import (
     PARAMETER_ORDER,
     BenchmarkResult,
@@ -267,8 +270,22 @@ class NotebookLoopTests(unittest.TestCase):
 
 
 class RuntimeAssetTests(unittest.TestCase):
+    def test_cli_accepts_arbitrary_portable_subset_widths(self) -> None:
+        arguments = _parser().parse_args(
+            ["reference.png", "target.png", "--backend", "webgpu-wgsl", "--subset-size", "23"]
+        )
+        self.assertEqual(arguments.subset_size, 23)
+
+        for value in ("3", "65", "16.5"):
+            with (
+                self.subTest(value=value),
+                contextlib.redirect_stderr(io.StringIO()),
+                self.assertRaises(SystemExit),
+            ):
+                _parser().parse_args(["reference.png", "target.png", "--subset-size", value])
+
     def test_browser_subset_size_is_validated_without_starting_chromium(self) -> None:
-        for subset_size in (7, 12, 64, True, 16.0):
+        for subset_size in (3, 65, True, 16.0, "16"):
             with (
                 self.subTest(subset_size=subset_size),
                 self.assertRaisesRegex(ValueError, "subset_size"),
@@ -277,9 +294,12 @@ class RuntimeAssetTests(unittest.TestCase):
 
         engine = ICGNWebGL(subset_size=32)
         self.assertEqual(engine.subset_size, 32)
+        generic = ICGNWebGL(backend="webgpu-wgsl", subset_size=24, subset_stride=12)
+        self.assertEqual(generic.subset_size, 24)
+        self.assertEqual(generic.subset_stride, 12)
         odd = ICGNWebGL(backend="webgpu-wgsl", subset_size=31, subset_stride=16)
         self.assertEqual(odd.subset_size, 31)
-        with self.assertRaisesRegex(ValueError, "Odd subset sizes"):
+        with self.assertRaisesRegex(ValueError, "require backend='webgpu-wgsl'"):
             ICGNWebGL(backend="three-tsl", subset_size=31)
 
     def test_browser_subset_stride_is_validated_and_scoped(self) -> None:

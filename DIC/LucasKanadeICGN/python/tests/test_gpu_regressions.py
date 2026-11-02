@@ -519,24 +519,85 @@ class GPURegressionTests(unittest.TestCase):
     def test_configurable_subset_sizes_run_the_full_pyramid(self) -> None:
         truth = (0.5, -0.375)
         reference, target = _fractional_pair(256, 256, truth)
-        for subset_size in (8, 32):
-            with self.subTest(subset_size=subset_size):
+        cases = tuple(
+            (size, "translation" if size < 8 else "affine", 128 if size == 4 else 16)
+            for size in range(4, 65)
+        )
+        for subset_size, motion_model, workgroup_size in cases:
+            with self.subTest(
+                subset_size=subset_size,
+                motion_model=motion_model,
+                workgroup_size=workgroup_size,
+            ):
                 engine = ICGNWGPUFullPyramid(
                     pyramid_levels=2,
                     subset_size=subset_size,
                     interpolation="linear",
+                    motion_model=motion_model,
+                    solver_workgroup_size=workgroup_size,
                 )
                 try:
                     info = engine.set_reference(reference)
                     result = engine.register(target)
-                    expected_grid = (256 // subset_size, 256 // subset_size)
+                    expected_grid_width = 1 + (256 - subset_size) // subset_size
+                    expected_grid = (expected_grid_width, expected_grid_width)
                     self.assertEqual(info.subset_size, subset_size)
+                    self.assertEqual(info.config["solverWorkgroupSize"], workgroup_size)
                     self.assertEqual(result.subset_size, subset_size)
                     self.assertEqual(result.parameters.shape[:2], expected_grid[::-1])
                     self.assertGreater(result.accepted, 0)
-                    self.assertLess(result.rmse(truth), 0.08)
+                    self.assertTrue(np.isfinite(result.parameters).all())
+                    if subset_size >= 7:
+                        self.assertLess(result.rmse(truth), 0.08)
                 finally:
                     engine.close()
+
+    def test_custom_subset_size_runs_native_single_scale_engine(self) -> None:
+        truth = (0.3, -0.2)
+        reference, target = _fractional_pair(192, 192, truth)
+        engine = ICGNWGPU(
+            subset_size=23,
+            subset_stride=11,
+            motion_model="translation",
+            interpolation="linear",
+            outlier_policy="disabled",
+        )
+        try:
+            info = engine.set_reference(reference)
+            self.assertEqual(engine.solver, "portable-workgroup")
+            result = engine.register(target)
+            self.assertEqual(info.subset_size, 23)
+            self.assertEqual(info.subset_stride, 11)
+            self.assertEqual(result.parameters.shape[:2], (16, 16))
+            self.assertGreater(result.accepted, 0)
+            self.assertLess(result.rmse(truth), 0.08)
+        finally:
+            engine.close()
+
+    def test_custom_subset_size_runs_quadratic_solver(self) -> None:
+        truth = (0.5, -0.375)
+        reference, target = _fractional_pair(256, 256, truth)
+        engine = ICGNWGPUFullPyramid(
+            pyramid_levels=2,
+            subset_size=24,
+            subset_stride=12,
+            interpolation="linear",
+            motion_model="quadratic",
+            spatial_weighting="gaussian",
+            gaussian_sigma=6.0,
+            outlier_policy="disabled",
+        )
+        try:
+            info = engine.set_reference(reference)
+            result = engine.register(target)
+            self.assertEqual(info.subset_size, 24)
+            self.assertEqual(info.subset_stride, 12)
+            self.assertEqual(result.parameters.shape[-1], 12)
+            self.assertGreater(result.accepted, 0)
+            self.assertTrue(np.isfinite(result.parameters).all())
+            self.assertLess(result.rmse(truth), 0.08)
+        finally:
+            engine.close()
 
     def test_overlapping_subset_stride_runs_the_full_pyramid(self) -> None:
         truth = (0.5, -0.375)

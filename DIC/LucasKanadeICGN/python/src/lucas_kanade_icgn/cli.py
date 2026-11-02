@@ -20,6 +20,21 @@ from .engine import (
     ReferenceInfo,
     RegistrationResult,
 )
+from .subset import MAX_SUBSET_SIZE, MIN_SUBSET_SIZE
+
+
+def _subset_size_argument(value: str) -> int:
+    """Parse a portable-WGSL subset width from the command line."""
+
+    try:
+        subset_size = int(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("subset size must be an integer") from error
+    if not MIN_SUBSET_SIZE <= subset_size <= MAX_SUBSET_SIZE:
+        raise argparse.ArgumentTypeError(
+            f"subset size must be between {MIN_SUBSET_SIZE} and {MAX_SUBSET_SIZE}"
+        )
+    return subset_size
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -88,10 +103,13 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--subset-size",
-        type=int,
-        choices=(8, 15, 16, 17, 31, 32, 33),
+        type=_subset_size_argument,
         default=16,
-        help="square subset width in pixels",
+        metavar="PIXELS",
+        help=(
+            f"square width in pixels ({MIN_SUBSET_SIZE} to {MAX_SUBSET_SIZE}); "
+            "custom widths require --backend webgpu-wgsl"
+        ),
     )
     parser.add_argument(
         "--subset-stride",

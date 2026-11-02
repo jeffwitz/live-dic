@@ -26,8 +26,8 @@ export function createPyramidHost(options = {}) {
   const hostOptions = options;
   validateTemporal(options);
   const SUBSET_SIZE = Number(options.subsetSize ?? 16);
-  if (![8, 15, 16, 17, 31, 32, 33].includes(SUBSET_SIZE)) {
-    throw new Error('Unsupported subsetSize');
+  if (!Number.isInteger(SUBSET_SIZE) || SUBSET_SIZE < 4 || SUBSET_SIZE > 64) {
+    throw new Error('subsetSize must be an integer from 4 to 64');
   }
   const SUBSET_STRIDE = Number(options.subsetStride ?? SUBSET_SIZE);
   if (!Number.isInteger(SUBSET_STRIDE) || SUBSET_STRIDE < 1 || SUBSET_STRIDE > SUBSET_SIZE) {

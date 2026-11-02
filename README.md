@@ -127,8 +127,10 @@ remain usable.
 - **Motion:** translation, six-parameter affine (default), or twelve-parameter
   quadratic. Quadratic adds the displacement's second derivatives.
 - **Sampling:** B-spline (default), bilinear or Keys cubic interpolation.
-- **Geometry:** native square widths 8, 15, 16, 17, 31, 32 and 33; independent
-  subset stride; uniform or Gaussian spatial integration.
+- **Geometry:** native wgpu-py and raw shared-WGSL accept any square width from
+  4 through 64, with independent stride and uniform or Gaussian integration.
+  The Three.js, WebGL2 and GPU-IO compatibility paths remain limited to 8, 16
+  and 32. The default width remains 16.
 - **ROI:** native translation and affine accept a reference-sized boolean
   mask. `True` means retain. Default `roi_policy="full"` selects only complete
   nominal windows; explicit `"partial"` uses qualified connected boundary

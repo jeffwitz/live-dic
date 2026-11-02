@@ -82,7 +82,8 @@ class GpuReferenceExecutionTests(unittest.TestCase):
         actual = self.evaluate("""
           let cases=0,maxReferenceError=0,maxInverseError=0;
           for(const motionModel of ['translation','affine'])for(const interpolation of ['bspline','linear','cubic']) {
-            for(const [subsetSize,subsetStride,pyramidLevels] of [[8,8,3],[15,15,1],[16,16,2],[17,8,1],[31,16,1],[32,16,1],[33,33,1]]) {
+            for(const [subsetSize,subsetStride,pyramidLevels] of [[4,4,1],[7,7,1],[8,8,3],[10,5,1],[15,15,1],[16,16,2],[17,8,1],[24,12,1],[31,16,1],[32,16,1],[33,33,1],[48,24,1],[64,64,1]]) {
+              if(subsetSize<8&&motionModel==='affine')continue;
               const width=99,height=97,pixels=texture(width,height), options={width,height,motionModel,interpolation,subsetSize,subsetStride,pyramidLevels};
               const engine=await DICEngine.create({...options,referencePreparation:'gpu'});
               try {
@@ -113,8 +114,41 @@ class GpuReferenceExecutionTests(unittest.TestCase):
           }
           return {cases,maxReferenceError,maxInverseError};
         """)
-        self.assertEqual(actual["cases"], 42)
+        self.assertEqual(actual["cases"], 72)
         self.assertLess(actual["maxReferenceError"], 0.001)
+
+    def test_custom_subset_size_runs_shared_browser_solver(self):
+        actual = self.evaluate("""
+          const width=192,height=192,dx=.3,dy=-.2;
+          const image=(shiftX,shiftY)=>{
+            const values=new Uint8Array(width*height);
+            for(let y=0;y<height;y++)for(let x=0;x<width;x++) {
+              const sx=x-shiftX,sy=y-shiftY;
+              const value=127+34*Math.sin(.173*sx+.071*sy)+29*Math.cos(.043*sx-.191*sy)
+                +23*Math.sin(.311*sx-.137*sy+.4)+17*Math.cos(.229*sx+.257*sy-.8);
+              values[y*width+x]=Math.max(0,Math.min(255,Math.round(value)));
+            }
+            return values;
+          };
+          const engine=await DICEngine.create({width,height,subsetSize:23,subsetStride:11,
+            pyramidLevels:2,motionModel:'affine',interpolation:'linear',outlierPolicy:'disabled'});
+          try {
+            await engine.setReference(image(0,0));
+            const result=await engine.register(image(dx,dy));
+            let squaredError=0,count=0;
+            for(let i=0;i<result.status.length;i++)if(result.status[i]>=.5) {
+              const ex=result.parameters[6*i]-dx,ey=result.parameters[6*i+3]-dy;
+              squaredError+=ex*ex+ey*ey;count++;
+            }
+            return {accepted:result.accepted,grid:result.grid,count,
+              rmse:Math.sqrt(squaredError/(2*count)),finite:result.parameters.every(Number.isFinite)};
+          } finally {engine.destroy();}
+        """)
+        self.assertEqual(actual["grid"], [16, 16])
+        self.assertEqual(actual["count"], actual["accepted"])
+        self.assertGreater(actual["accepted"], 0)
+        self.assertTrue(actual["finite"])
+        self.assertLess(actual["rmse"], 0.08)
 
     def test_flat_references_are_invalid_and_finite_including_odd_subsets(self):
         actual = self.evaluate("""

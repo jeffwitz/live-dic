@@ -27,6 +27,7 @@ Start here
 ----------
 
 * :doc:`how-to/install` to install native dependencies and optional browser support.
+* :doc:`how-to/use-custom-subset-size` to choose any portable WGSL window width.
 * :doc:`tutorials/first-registration` for the first native Python registration.
 * :doc:`tutorials/realtime-sequence` and :doc:`how-to/process-live-frames` for
   persistent NumPy streams.
@@ -72,8 +73,8 @@ Current numerical scope
 -----------------------
 
 Native engines estimate translation, six-parameter affine motion (default),
-or twelve-parameter quadratic motion. Native subset widths are 8, 15, 16,
-17, 31, 32 and 33, with independently configurable stride and uniform or
+or twelve-parameter quadratic motion. Native subset widths are any integer
+from 4 through 64, with independently configurable stride and uniform or
 Gaussian integration. B-spline is the default interpolator; bilinear and
 Keys cubic are explicit alternatives. ROI supports translation and affine.
 
@@ -130,6 +131,7 @@ when exporting a measurement with :doc:`how-to/export-results`.
    how-to/use-temporal-initialization
    how-to/register-large-shifts
    how-to/compare-plate-hole-masks
+   how-to/use-custom-subset-size
 
 .. toctree::
    :hidden:
