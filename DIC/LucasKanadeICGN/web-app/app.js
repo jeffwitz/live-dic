@@ -4,7 +4,7 @@ import { vectorColour } from './render/live-vectors.js';
 import { parameterOrder, parameterUnits } from './ui/postprocess.js';
 import { decodeMaskImage, maskPng } from './ui/mask-image.js';
 import { installWorkbench } from './ui/workbench.js';
-import { installWorkspace, solverOptions } from './ui/workspace.js';
+import { installWorkspace, solverOptions, solverPreparationKey } from './ui/workspace.js';
 import { installRoi } from './ui/roi.js';
 import { bounds, platePreset } from './ui/roi-geometry.js';
 import { imageFiles, fileInfo, decodeImage, waitForMedia, seekVideo } from './ui/local-media.js';
@@ -19,7 +19,7 @@ let previousCapture = null, captureBusy = false, receivedOrdinal = 0;
 let roiEditing = false, appliedShapes = [], plateManifest = null;
 let draftMaskSource = null, appliedMaskSource = null, appliedEditorState = null, editorWasActive = false;
 let generation = 0, previousFrame = -1, referenceInfo, capabilities, sourceSettings = {}, requests = 0;
-let buildInfo = null;
+let buildInfo = null, appliedSolverKey = null;
 let pipelineTimingUpdatedAt = -Infinity;
 const synchronousAdmissions = [];
 let recordingQueue = null, supervision = supervisionOptions(), lastPresentation = null, lastHudAt = -Infinity, pipelineStateUpdatedAt = -Infinity;
@@ -242,13 +242,13 @@ async function drain() {
 }
 function clearPreviousCapture() { previousCapture?.frame.close(); previousCapture = null; }
 function pauseSource() { paused = true; clearTimeout(imageDelay); imageWake?.(); imageWake=null; if (source === 'video-file') video.pause(); clearPreviousCapture(); }
-async function sourceChange(operation) {
+async function sourceChange(operation, {propagate = false} = {}) {
   if (loadingSource) return;
   loadingSource = true; document.querySelector('.workspace').inert=true; sourceButtons.forEach(id => $(id).disabled = true);
   const busyText = 'Preparing input / reference…'; message(busyText);
   try { seekSerial++; pauseSource(); await drain(); await operation(); if($('message').textContent===busyText)message('Ready. Preparation finished.'); }
-  catch (error) { if (error.name !== 'AbortError') message(error.message, true); }
-  finally { loadingSource = false; document.querySelector('.workspace').inert=false; sourceButtons.forEach(id => $(id).disabled = !capabilities?.supported); }
+  catch (error) { if (error.name !== 'AbortError') message(error.message, true); if(propagate)throw error; }
+  finally { loadingSource = false; document.querySelector('.workspace').inert=false; sourceButtons.forEach(id => $(id).disabled = !capabilities?.supported); updateSolverSettingsStatus(); }
 }
 async function stop() {
   workbench.returnLive(); workbench.stopRecording({preserveSelection:true});
@@ -262,7 +262,7 @@ async function stop() {
   localImages = []; imageIndex = 0; receivedOrdinal = 0;sourceSettings={};
   dropped=0;$('drops').textContent='0';clearLiveMetrics();
   $('run-state').textContent='No source selected';$('applied-solver-summary').textContent='No reference prepared.';$('last-reference-summary').textContent='';$('placeholder').hidden=false;$('camera-summary').hidden=true;
-  referenceInfo = null; workbench.setPrepared(false);viewingInput=false;$('input-field').hidden=true;$('input-field').width=$('input-field').height=1; ['reference','pause','reset','draw','clear-roi','export','import-mask','save-mask'].forEach(id => $(id).disabled = true);
+  referenceInfo = null; appliedSolverKey = null; updateSolverSettingsStatus(); workbench.setPrepared(false);viewingInput=false;$('input-field').hidden=true;$('input-field').width=$('input-field').height=1; ['reference','pause','reset','draw','clear-roi','export','import-mask','save-mask'].forEach(id => $(id).disabled = true);
   $('comparison').disabled=false; source = null; roiEditing = false; $('roi-editor').hidden = true; $('plate-load-label').hidden = true; $('local-controls').hidden = true;$('solve-range-label').hidden=true;
 }
 async function frameFromVideo() {
@@ -273,6 +273,33 @@ async function frameFromVideo() {
   }
   return createImageBitmap(video, { resizeWidth: width, resizeHeight: height });
 }
+function updateSolverSettingsStatus() {
+  try {
+    const requested=options(), pending=!!referenceInfo&&solverPreparationKey(requested)!==appliedSolverKey;
+    $('apply-solver-settings').disabled=!pending||roiEditing;
+    $('solver-summary').textContent=pending
+      ? 'Settings changed. Start calculation applies them to the retained reference before solving; Apply settings prepares them now. Saved fields keep their original settings.'
+      : referenceInfo?'Settings applied. Saved fields retain the settings used to calculate them.':'Choose a source and prepare its reference.';
+    $('solver-summary').dataset.pending=String(pending);
+  }catch(error){$('apply-solver-settings').disabled=true;$('solver-summary').textContent=error.message;}
+}
+async function prepareSolverSettings(requested) {
+  if(!referenceInfo)throw new Error('Prepare a reference first');
+  if(roiEditing)throw new Error('Apply or cancel mask edits before changing solver settings');
+  // Reuse the retained reference, never the currently previewed target image.
+  // This is a cold operation before a calculation; unchanged starts skip it.
+  workbench.returnLive();workbench.setReady(false);$('export').disabled=true;
+  clearLiveMetrics();$('solve-progress').textContent='Applying settings to the retained reference…';
+  const mask=appliedShapes.length||appliedMaskSource?roi.mask():null;
+  try{
+    referenceInfo=(await send('roi',{mask,options:requested},mask?[mask.buffer]:[])).info;
+    appliedSolverKey=solverPreparationKey(requested);previousFrame=-1;
+    await updateReferenceControls();workbench.setPrepared(true);details();
+    if(source==='images')await localSeek(imageIndex);
+    else if(source==='plate')await previewPlateTarget();
+    $('solve-progress').textContent='Settings applied. Start calculation to create new fields; earlier saved fields are unchanged.';
+  }catch(error){referenceInfo=null;appliedSolverKey=null;workbench.setPrepared(false);$('pause').disabled=true;updateSolverSettingsStatus();throw error;}
+}
 async function updateReferenceControls() {
   supervision = supervisionOptions(referenceInfo.supervision); lastPresentation=null; lastHudAt=-Infinity; updatePipelineState(true);
   const cfg=referenceInfo.config,total=referenceInfo.grid[0]*referenceInfo.grid[1];
@@ -280,6 +307,7 @@ async function updateReferenceControls() {
   for(let i=0;i<total;i++)if(!referenceInfo.roiSelected||referenceInfo.roiSelected[i]){selected++;if(referenceInfo.referenceValid?.[i])valid++;}
   $('applied-solver-summary').textContent=`Applied ${cfg.motionModel} · ${cfg.interpolation} · ${cfg.pyramidLevels} level(s)\nWindow ${referenceInfo.subsetSize} px · step ${referenceInfo.subsetStride} px · ${Math.round(100*(1-referenceInfo.subsetStride/referenceInfo.subsetSize))}% overlap\nIteration limits (coarse → fine): ${cfg.iterationsPerLevel.join(' / ')}\nGrid ${referenceInfo.grid.join(' × ')} · ${selected} selected / ${total} positions\n${valid} admissible prepared references; target convergence remains to be measured.\nReference preparation: ${cfg.referencePreparation??'cpu'}. Initialization: ${cfg.initialization}.`;
   $('last-reference-summary').textContent='Awaiting a target field.';
+  updateSolverSettingsStatus();
 }
 async function captureReference(frame = null) {
   let requested;try{requested=options();}catch(error){frame?.close();throw error;}
@@ -289,7 +317,7 @@ async function captureReference(frame = null) {
   frame ??= await frameFromVideo();
   if (source === 'camera') { sourceSettings.actual = stream?.getVideoTracks()[0]?.getSettings(); sourceSettings.outputSize = [video.videoWidth, video.videoHeight]; }
   if(source==='camera')sourceSettings.reference={kind:'camera',timestampUs:frame.timestamp??null,capturedAt: new Date().toISOString(),coordinateFrame:'captured reference image',timestampClock:'HTMLVideoElement media timeline'};
-  try {referenceInfo = (await send('reference', { frame, options: requested }, [frame])).info;}catch(error){frame.close();throw error;} appliedShapes = []; draftMaskSource = appliedMaskSource = null; $('mask-import-summary').textContent='White pixels are kept; black pixels are excluded. Imported images must match the reference dimensions.';
+  try {referenceInfo = (await send('reference', { frame, options: requested }, [frame])).info;appliedSolverKey=solverPreparationKey(requested);}catch(error){frame.close();throw error;} appliedShapes = []; draftMaskSource = appliedMaskSource = null; $('mask-import-summary').textContent='White pixels are kept; black pixels are excluded. Imported images must match the reference dimensions.';
   $('placeholder').hidden = true; $('image-viewport').style.aspectRatio = `${referenceInfo.width}/${referenceInfo.height}`;
   roi.reset(referenceInfo.width, referenceInfo.height); appliedEditorState=roi.state(); $('apply-roi').disabled = true;
   for (const id of ['reference', 'pause', 'reset', 'draw', 'clear-roi', 'export', 'import-mask', 'save-mask']) $(id).disabled = false;
@@ -418,6 +446,7 @@ async function setImageReference(index) {
   await captureReference(bitmap);
   sourceSettings.reference = { kind:'images',index,...fileInfo(localImages[index]) };
   $('image-reference').value = index; $('pause').textContent = 'Start calculation';
+  if($('comparison').value==='fixed'&&localImages.length>1&&imageIndex===index)imageIndex=index+1<localImages.length?index+1:index-1;
   await localSeek(imageIndex); details();
 }
 async function startImages(files) {
@@ -526,7 +555,7 @@ async function startPlate() {
   $('resolution').value = '3840x2160';
   await captureReference(reference);
   roi.reset(3840, 2160, platePreset()); appliedShapes = roi.shapes();
-  const mask = roi.mask(), ownedMask = mask?.slice() ?? null; referenceInfo = (await send('roi', { mask, options: options() }, [mask.buffer])).info; workbench.setMask(ownedMask); appliedEditorState=roi.state();
+  const requested=options(), mask = roi.mask(), ownedMask = mask?.slice() ?? null; referenceInfo = (await send('roi', { mask, options: requested }, [mask.buffer])).info;appliedSolverKey=solverPreparationKey(requested); workbench.setMask(ownedMask); appliedEditorState=roi.state();
   $('component').value='2';$('scale').value='auto';$('arrow-gain').value='auto';$('opacity').value='1';
   await send('display', { display: displayOptions() });
   await previewPlateTarget();
@@ -683,7 +712,7 @@ async function finishCalculation() {
   try{await operation;}finally{if(finishingCalculation===operation)finishingCalculation=null;}
 }
 async function startCalculation() {
-  if(!referenceInfo||startingCalculation)return;
+  if(!referenceInfo||startingCalculation||loadingSource)return;
   if(finishingCalculation){await finishingCalculation;if(!referenceInfo)return;}
   if(workbench.storage.report().readOnly){message('Close the saved session before starting a new calculation.',true);return;}
   if(workbench.storageBlocked){message('Export or retry saving the retained fields before starting another calculation.',true);return;}
@@ -692,6 +721,11 @@ async function startCalculation() {
   startingCalculation=true;
   const token=generation;
   try {
+    const requested=options();
+    if(solverPreparationKey(requested)!==appliedSolverKey){
+      await sourceChange(()=>prepareSolverSettings(requested),{propagate:true});
+      if(token!==generation||!referenceInfo)return;
+    }
     const includeCurrent=viewingInput;
     calculationStartIndex=workbench.report().count;
     workbench.returnLive();workspace.showPane('solve');
@@ -748,7 +782,7 @@ $('save-mask').onclick=async()=>{
 };
 $('draw').onclick = () => sourceChange(async () => { returnToInputAfterMask=viewingInput;workspace.showPane('mask'); workbench.returnLive(); pauseSource(); await drain(); roiEditing = true; $('pause').textContent = 'Start calculation'; await send('show-reference', { show: true }); $('roi-editor').hidden = false; $('shape').value = 'select'; roi.start(); });
 $('apply-roi').onclick = () => sourceChange(async () => {
-  try { workbench.setReady(false);$('export').disabled=true;clearLiveMetrics(); const mask = roi.mask(), ownedMask = mask?.slice() ?? null,nextShapes=roi.shapes(); referenceInfo = (await send('roi', { mask, options: options() }, mask ? [mask.buffer] : [])).info;appliedShapes=nextShapes; workbench.setMask(ownedMask); appliedMaskSource = draftMaskSource; appliedEditorState=roi.state(); await updateReferenceControls();
+  try { workbench.setReady(false);$('export').disabled=true;clearLiveMetrics(); const requested=options(), mask = roi.mask(), ownedMask = mask?.slice() ?? null,nextShapes=roi.shapes(); referenceInfo = (await send('roi', { mask, options: requested }, mask ? [mask.buffer] : [])).info;appliedSolverKey=solverPreparationKey(requested);appliedShapes=nextShapes; workbench.setMask(ownedMask); appliedMaskSource = draftMaskSource; appliedEditorState=roi.state(); await updateReferenceControls();
     roiEditing = false; roi.stop(); $('roi-editor').hidden = true; $('apply-roi').disabled = true;
     message('Mask applied. Its geometry stays editable; all complete selected subsets are used.'); details();
     if (source === 'plate') await previewPlateTarget();
@@ -757,7 +791,7 @@ $('apply-roi').onclick = () => sourceChange(async () => {
   } catch (error) { message(error.message, true); }
 });
 $('clear-roi').onclick = () => sourceChange(async () => { workbench.returnLive(); pauseSource(); await drain(); workbench.setMask(null); workbench.setReady(false);$('export').disabled=true;clearLiveMetrics(); roiEditing = false; roi.reset(referenceInfo.width, referenceInfo.height); appliedShapes = []; draftMaskSource = appliedMaskSource = null; $('roi-editor').hidden = true;
-  referenceInfo = (await send('roi', { mask: null, options: options() })).info; await updateReferenceControls(); appliedEditorState=roi.state(); $('mask-import-summary').textContent='Full image · no imported base mask.'; $('pause').textContent = 'Start calculation'; details(); if (source === 'plate') await previewPlateTarget(); });
+  const requested=options();referenceInfo = (await send('roi', { mask: null, options: requested })).info;appliedSolverKey=solverPreparationKey(requested); await updateReferenceControls(); appliedEditorState=roi.state(); $('mask-import-summary').textContent='Full image · no imported base mask.'; $('pause').textContent = 'Start calculation'; details(); if (source === 'plate') await previewPlateTarget(); });
 function displayOptions() { return { mode: Number($('component').value), scale: $('scale').value === 'auto' ? null : Number($('scale').value),
   opacity: Number($('opacity').value), arrowStep: $('arrow-step').value==='auto'?null:Number($('arrow-step').value), arrowGain: $('arrow-gain').value==='auto'?null:Number($('arrow-gain').value) }; }
 for (const id of ['component','scale','opacity','arrow-step','arrow-gain']) $(id).onchange = () => {if(transport&&referenceInfo)send('display',{display:displayOptions()}).catch(e=>message(e.message,true));};
@@ -786,7 +820,7 @@ $('export').onclick = async () => {
   download('live-dic-metadata.json', JSON.stringify(metadata, null, 2), 'application/json');
 };
 $('resolution').onchange = () => { if (source === 'camera') sourceChange(startCamera); };
-$('profile').onchange = () => { if (referenceInfo) message('Profile change takes effect when the reference is captured again.'); };
+$('profile').onchange = () => {updateSolverSettingsStatus();};
 window.addEventListener('pagehide', () => { workbench.destroy(); sourceAbort.abort(); clearPreviousCapture(); if (localVideoUrl) URL.revokeObjectURL(localVideoUrl); stream?.getTracks().forEach((t) => t.stop()); transport?.postMessage({ type: 'destroy' }); });
 window.addEventListener('error', (event) => { status.errors.push(event.message); message(event.message, true); });
 window.addEventListener('unhandledrejection', (event) => { const text = String(event.reason); status.errors.push(text); message(text, true); });
@@ -796,6 +830,7 @@ for(const id of ['display-rate','preview-width'])$(id).onchange=()=>{
   const options={displayRate:$('display-rate').value==='off'?0:Number($('display-rate').value),previewEnabled:$('display-rate').value!=='off',previewMaxWidth:Number($('preview-width').value)};
   send('presentation',{options}).catch(e=>message(e.message,true));
 };
+$('apply-solver-settings').onclick=()=>sourceChange(()=>prepareSolverSettings(options()));
 $('large-shift-preset').onclick = () => {
   $('custom-solver').checked=true;$('pyramid-levels').value='4';
   $('coarse-iterations').value='20';$('fine-iterations').value='16';
@@ -807,8 +842,7 @@ for (const id of ['fourier-start','overlap-pipeline','gpu-reference-preparation'
   $('temporal-start').disabled = $('fourier-start').checked;
   $('subset-stride').max = $('subset-size').value;
   if (Number($('subset-stride').value) > Number($('subset-size').value)) $('subset-stride').value = $('subset-size').value;
-  try { const requested = options(); $('solver-summary').textContent = $('custom-solver').checked ? `Pending: ${requested.motionModel} · ${requested.subsetSize}/${requested.subsetStride} · ${requested.pyramidLevels} level(s). Capture reference or Apply mask to apply.` : `Preset with ${requested.referencePreparation??'cpu'} reference preparation${requested.initialization==='fourier'?' and Fourier initialization':''} selected for the next reference. Current fields keep their original configuration.`; }
-  catch(e) { $('solver-summary').textContent = e.message; }
+  updateSolverSettingsStatus();
 };
 init().catch((error) => { status.errors.push(error.message); message(error.message, true); });
 if ('serviceWorker' in navigator && (!smoke || query.has('offline'))) navigator.serviceWorker.register(new URL('./sw.js', import.meta.url)).catch((error) => message(`Offline installation unavailable: ${error.message}`, true));

@@ -19,7 +19,8 @@ What is prepared and when
 Cold ``setReference`` computes geometry, full-ROI selections, conservative
 neighbour/seed permissions and buffer offsets. It creates every pipeline,
 texture, uniform and scratch buffer. These static objects persist across pairs.
-Only an explicit reference or ROI reconfiguration rebuilds them.
+An explicit reference/ROI reconfiguration or applying changed Solve settings
+rebuilds them. Starting with unchanged settings reuses them.
 
 A hot pair uses this ordered graph in one command encoder/submission::
 

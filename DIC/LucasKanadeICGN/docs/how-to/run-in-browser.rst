@@ -135,7 +135,7 @@ Use a camera
    A disconnected/ended camera changes the calculation action into **Restart camera**, preserving
    the last completed field for export. Restart captures a new reference; reapply
    the mask. This recovery does not manufacture missing measurements.
-   A profile change takes effect at the next reference capture. After reference,
+   A profile change is applied before the next calculation, or with **Apply settings to current reference**. After reference,
    mask or comparison changes, target exports/review remain disabled until a new
    target field arrives; old metrics are cleared. Drop counts restart on source
    replacement.
@@ -513,8 +513,11 @@ operate while editing an input, modal or mask.
 
 In **Solve**, enable **Use custom settings** to choose translation/affine,
 window width, grid step, interpolator, pyramid levels, coarse/fine iteration
-limits and solver spatial policy. Edits remain pending until a new reference
-capture or Apply mask. Exported configuration describes the applied settings,
+limits and solver spatial policy. **Start calculation** applies pending settings
+to the retained reference and mask before solving. **Apply settings to current
+reference** prepares them without creating a measured field. Unchanged settings
+reuse their preparation; immediate display controls do not rebuild it. Exported
+configuration describes the applied settings,
 not the pending form. Three-level custom runs use four middle-level iterations;
 one level uses the fine limit. These custom combinations do not inherit a
 qualified preset's precision/FPS claim. Translation has no direct strain field;
@@ -777,3 +780,19 @@ In Solve, enable **Fourier initialization · up to 1024 × 1024**, then prepare
 the reference again. It supplies a global translation seed for each target;
 the regular pyramid still refines the field. It adds CPU/readback latency and
 refuses ambiguous matches. See :doc:`register-large-shifts`.
+
+Troubleshoot sparse rejected results
+------------------------------------
+
+The top of Results identifies the saved field's solver initialization, window
+size/step, input pair and accepted count. A field calculated with temporal
+initialization keeps that provenance after Fourier is selected in Solve.
+Post-processing, replay and smoothing never rerun correlation or recover
+rejected subsets. Calculate a new field after changing settings.
+
+For large independent-pair translations, enable Fourier and then start the
+calculation. The applied summary must show ``Initialization: fourier``. A
+first temporal estimate has no prior motion to predict. Larger windows (for
+example 32/16) may help noisy/fine textures, at the cost of spatial resolution
+and processing time; acceptance alone does not establish metrological accuracy.
+See :doc:`register-large-shifts`.

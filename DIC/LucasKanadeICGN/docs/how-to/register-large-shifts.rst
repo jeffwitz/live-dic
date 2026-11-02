@@ -37,8 +37,9 @@ Browser workbench
 
 1. Load the images and open **Solve**.
 2. Check **Fourier initialization · up to 1024 × 1024**.
-3. Capture/select the reference again, or apply the mask, to prepare the option.
-4. Start calculation in **Solve**. The last-pair summary shows the seed and
+3. Press **Start calculation**. Pending settings are applied to the retained
+   reference before solving; no reference recapture is needed.
+4. The last-pair summary shows the seed and
    its correlation. Results playback remains separate from calculation.
 
 The checkbox works with the normal two-level preset and custom settings.
@@ -82,3 +83,12 @@ default iteration limits ``(12, 8, 8, 16)`` and tolerances
 ``(0.01, 0.01, 0.005, 0.005)`` from coarse to fine. Four levels need an image
 large enough to contain a subset at 1/8 resolution. Existing one-, two- and
 three-level defaults remain unchanged.
+
+A checkbox edit does not alter a field already saved in Results. The saved
+field summary shows its actual initialization and accepted subset count. Return
+to Solve and calculate a new field after changing settings. **Apply settings to
+current reference** prepares the edited settings without calculating a target.
+For a named pair such as ``Ref.tiff`` / ``Def.tiff``, select the reference
+explicitly: natural filename ordering places ``Def.tiff`` first. Choosing the
+currently previewed image as reference suggests another target when available;
+you can still seek back deliberately for an identity check.

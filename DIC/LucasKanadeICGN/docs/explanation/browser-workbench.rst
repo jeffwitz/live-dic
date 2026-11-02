@@ -368,3 +368,25 @@ and targets. This fixed reduction preserves PNG pixels embedded as ``value *
 257`` in TIFF, but discards low sensor bits. Reference and target provenance
 records the conversion. Existing PNG/browser-decoder semantics are unchanged.
 See :doc:`../how-to/run-in-browser` for admitted formats and explicit limits.
+
+Applying solver edits
+---------------------
+
+Solve keeps a fingerprint of the last successfully prepared request. Before
+starting calculation, a changed request rebuilds the engine against the retained
+reference bitmap and applied ROI; it never captures the currently previewed
+target as a new reference. The explicit Apply settings action does the same
+cold work without producing a target result. Invalid edits stop calculation.
+A failed rebuild invalidates preparation rather than falling back silently.
+
+The fingerprint excludes display cadence/size/enabled state because these
+controls apply independently. It includes recording overlap, which belongs to
+cold session setup. An unchanged start retains its preparation/analysis epoch.
+All such checks happen before a calculation, outside the per-frame loop.
+
+Saved fields retain their original arrays and configuration. Results reports
+initialization, input names and solver acceptance from the displayed field,
+not from the pending form or a newer reference. Low acceptance is explicitly
+identified; neither recipe changes nor smoothing manufacture rejected results.
+ROI exclusions are not counted as requested failures. The UHD workflow qualifier
+checks these contracts with saved failed/successful fields and an applied mask.

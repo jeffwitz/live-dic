@@ -54,3 +54,9 @@ export function solverOptions() {
     initialization: fourier ? 'fourier' : temporal ? 'temporal' : 'zero', temporalPrediction: temporal ? 'velocity' : 'none',
     temporalFineCorrection: temporal && levels === 2, divergencePatience: temporal ? 3 : null };
 }
+
+/** Cold preparation excludes presentation controls, which apply immediately. */
+export function solverPreparationKey(requested) {
+  const {supervision, ...solver} = requested;
+  return JSON.stringify({...solver, overlapRecording: supervision?.overlapRecording ?? false});
+}

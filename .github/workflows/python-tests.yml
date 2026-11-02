@@ -300,6 +300,10 @@ jobs:
         run: >-
           python tools/qualify_browser_workflow.py --site _site --software
           --output browser-results/workflow
+      - name: Apply edited solver settings and retain original saved-field provenance on UHD
+        run: >-
+          python tools/qualify_solver_settings.py --site _site --software
+          --output browser-results/solver-settings
       - name: Review an actual UHD field without WebGPU or OffscreenCanvas
         run: |
           python tools/qualify_browser_review.py --site _site --software --field browser-results/workbench/processed-field.npz --output browser-results/review-only

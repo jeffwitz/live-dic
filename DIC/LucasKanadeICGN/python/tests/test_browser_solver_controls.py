@@ -35,6 +35,21 @@ class SolverControlTests(unittest.TestCase):
         self.assertFalse(result["suspended"]["supervision"]["overlapRecording"])
         self.assertTrue(result["overlapped"]["supervision"]["overlapRecording"])
 
+    def test_only_cold_configuration_changes_require_preparation(self):
+        module = ROOT / "web-app/ui/workspace.js"
+        script = f"""
+          import {{solverPreparationKey}} from {json.dumps(module.as_uri())};
+          const original={{profile:'portable',initialization:'zero',supervision:{{displayRate:10,previewMaxWidth:1920,previewEnabled:true,overlapRecording:false}}}};
+          const display={{...original,supervision:{{...original.supervision,displayRate:1,previewMaxWidth:1280,previewEnabled:false}}}};
+          const changed={{...original,initialization:'fourier'}};
+          const overlap={{...original,supervision:{{...original.supervision,overlapRecording:true}}}};
+          console.log(JSON.stringify([solverPreparationKey(original)===solverPreparationKey(display),solverPreparationKey(original)!==solverPreparationKey(changed),solverPreparationKey(original)!==solverPreparationKey(overlap)]));
+        """
+        actual = json.loads(
+            subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
+        )
+        self.assertEqual(actual, [True, True, True])
+
     def test_preset_is_unchanged_and_custom_combinations_reach_the_core(self):
         ui = ROOT / "web-app/ui/workspace.js"
         core = ROOT / "python/src/lucas_kanade_icgn/web/core/engine.js"

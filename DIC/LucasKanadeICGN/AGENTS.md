@@ -865,3 +865,23 @@ qualification rather than infer mobile coverage from desktop results.
 - Four local levels are also opt-in; existing 1–3-level schedules stay exact.
   The four-level trial alone fails some larger-shift controls. Keep this
   negative result visible rather than implying an unlimited capture range.
+
+### Applying edited solver settings — 2026-11-02
+
+- Standalone Solve now applies pending cold settings before Start, against the
+  retained reference and applied ROI. The explicit Apply settings button prepares
+  without calculating. Unchanged starts and immediate preview edits retain the
+  preparation epoch; never rebuild in the per-frame loop. Python/core numerical
+  defaults and kernels are unchanged.
+- Results identifies the displayed saved field's initialization, pair and solver
+  acceptance. Editing Solve or a recipe never rewrites old fields or fills rejected
+  subsets. ROI exclusions do not count as requested failures. Preserve the last
+  raster/provenance together during pending result loads.
+- A different target is suggested when the user selects the previewed image as
+  the fixed reference and other files exist; an explicit later seek still permits
+  identity checks. Keep natural filename ordering; never infer Ref/Def semantics.
+- `tools/qualify_solver_settings.py` checks full native-UHD file input, automatic
+  and explicit application, mask/reference retention, unchanged-start reuse,
+  saved failed-field hashes/provenance, replay and invalid settings. Optional
+  private TIFF paths are for local diagnosis; never add those images to fixtures
+  or publish their derived fields without authorization.

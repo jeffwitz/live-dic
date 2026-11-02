@@ -364,6 +364,10 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     displayed={id:selected,component};canvas.dataset.displayedField=String(selected);
     $('result-render-state').textContent=`Showing field ${selected} · ${$('review-component').selectedOptions[0].textContent}`;
     const entry=activeEntry();$('result-title').textContent=entry.label;
+    const requested=field.roiSelected?field.roiSelected.reduce((n,v)=>n+ +!!v,0):field.status.reduce((n,v)=>n+ +(v!==-3),0);
+    const accepted=field.status.reduce((n,v)=>n+ +(v>=.5),0), fraction=requested?accepted/requested:null;
+    const pair=entry.metadata.comparison,referenceName=pair?.reference?.name?.split('/').at(-1),targetName=pair?.target?.name?.split('/').at(-1);
+    $('saved-solver-summary').textContent=`Saved field ${selected}${referenceName&&targetName?` · ${referenceName} → ${targetName}`:''}: ${field.config.motionModel} · ${field.subsetSize}/${field.subsetStride} · initialization: ${field.config.initialization??'unspecified'} · ${accepted} / ${requested} selected subsets accepted${fraction===null?'':` (${(fraction*100).toFixed(1)}%)`}. ${fraction!==null&&fraction<.1?'Most subsets were rejected by the solver. Post-processing does not recover them. Recalculate in Solve with suitable initialization.':'Changes in Solve affect new calculations only.'}`;
     $('result-provenance').textContent=`${field.width} × ${field.height} · ${field.config.motionModel} · ${field.subsetSize}/${field.subsetStride} · solver spatial policy: ${field.config.outlierPolicy ?? 'unspecified'} · ${entry.metadata.comparison?.mode ?? 'imported'} reference. No image is stored behind this field.`;
     updateInspection();rememberView();
   }
