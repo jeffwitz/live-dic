@@ -521,9 +521,11 @@ performance guarantee.
 The shared core also accepts ``initialization: 'global-affine'`` only with
 ``motionModel: 'affine'``. It performs a robust sampled fit over the masked
 reference domain on five CPU scales, then supplies one affine seed per local
-subset. This is experimental preprocessing for decoded sparse image pairs;
-it is not a camera-rate path. External texture streams are rejected in this
-mode because they do not provide CPU target pixels without a full readback.
+subset. In the browser workbench, loaded image and video files are accepted:
+their external texture is read back as grayscale pixels for the CPU fit.
+This is experimental preprocessing for sparse image pairs, not a camera-rate
+path; live camera streams are rejected because the per-frame readback and fit
+are expensive.
 Result configuration includes the global transform and per-scale fit
 diagnostics, and ``timing.globalAffineWallMs`` measures each target fit.
 See :doc:`../how-to/register-large-shifts`.

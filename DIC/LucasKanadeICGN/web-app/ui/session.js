@@ -17,7 +17,7 @@ export function createSession(send) {
   let showingReference = false;
   let display = { mode: 2, scale: null }, received = 0, completed = 0, exportSerial = 0;
   const ages = [], sampleLog = [];
-  let lastComparison = null, referenceAdmissible = 0;
+  let lastComparison = null, referenceAdmissible = 0, referenceSourceKind = null;
   let recording = false;
   let analysisEpoch = null;
   let activeOptions = null;
@@ -63,7 +63,7 @@ export function createSession(send) {
       } catch (error) { send({type:'error',message:`Presentation: ${error.message}`}); }
     }, delay);
   }
-  async function referenceFrom(frame, options, roiMask = null) {
+  async function referenceFrom(frame, options, roiMask = null, sourceKind = referenceSourceKind) {
     const selectedSupervision = supervisionOptions(options.supervision);
     const preparationStarted = performance.now();
     cancelPresentation();
@@ -79,6 +79,7 @@ export function createSession(send) {
     engine.device.lost.then((info) => { if (info.reason !== 'destroyed') send({ type: 'error', message: `GPU device lost: ${info.message}` }); });
     engine.device.addEventListener('uncapturederror', (event) => send({ type: 'error', message: `WebGPU: ${event.error.message}` }));
     mask = roiMask; profile = options.profile ?? 'portable';
+    referenceSourceKind = sourceKind;
     activeOptions = structuredClone(options);
     analysisEpoch = crypto.randomUUID();
     const info = await engine.setReference(frame, { roiMask: mask });
@@ -89,7 +90,7 @@ export function createSession(send) {
       usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT });
     engine.device.queue.copyExternalImageToTexture({ source: frame }, { texture: referenceTexture }, [width, height]);
     showingReference = false;
-    last = await engine.register(frame); paintLast();
+    last = await engine.register(frame, { sourceKind }); paintLast();
     present({ type: 'preview' }); engine.resetTemporalState();
     ages.length = 0; sampleLog.length = 0; received = completed = 0; completionTimes.length = 0;
     return { ...info, ...(supervisionConfigured?{supervision}:{}), controllerPreparationWallMs: performance.now() - preparationStarted };
@@ -108,7 +109,7 @@ export function createSession(send) {
         send({ type: 'capabilities', id, capabilities, worker: typeof document === 'undefined' });
       } else if (type === 'reference') {
         reference?.close(); reference = await createImageBitmap(message.frame);
-        try { const info = await referenceFrom(reference, message.options); send({ type: 'reference', id, info }); }
+        try { const info = await referenceFrom(reference, message.options, null, message.sourceKind); send({ type: 'reference', id, info }); }
         finally { message.frame.close(); }
       } else if (type === 'roi') {
         if (!reference) throw new Error('Capture a reference before drawing the ROI');
@@ -142,7 +143,8 @@ export function createSession(send) {
             if (message.reset && !gpuPair) engine.resetTemporalState();
             engine.setAnalyticTruth(message.truth ?? null);
             last = gpuPair
-              ? await engine.registerPair(message.referenceFrame, message.frame) : await engine.register(message.frame);
+              ? await engine.registerPair(message.referenceFrame, message.frame)
+              : await engine.register(message.frame, { sourceKind: message.comparison?.target?.kind ?? null });
             if (gpuPair) { preparationMs = null; referenceAdmissible = last.referenceAdmissible; }
             last.timing.pairReferencePreparationWallMs = preparationMs;
             lastComparison = {...message.comparison, referenceAdmissible, requested:last.selected, fixedImageCoordinateRoi:true};

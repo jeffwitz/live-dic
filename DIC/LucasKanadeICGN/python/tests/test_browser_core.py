@@ -302,14 +302,17 @@ class BrowserCoreExecutionTests(unittest.TestCase):
                     target[y*width+x]=Math.round((reference[i]*(1-fx)+reference[i+1]*fx)*(1-fy)
                       +(reference[i+width]*(1-fx)+reference[i+width+1]*fx)*fy);
                   }
+                  const rgba=bytes=>{const data=new Uint8ClampedArray(bytes.length*4);for(let i=0;i<bytes.length;i++)data.set([bytes[i],bytes[i],bytes[i],255],i*4);return createImageBitmap(new ImageData(data,width,height));};
+                  const referenceFrame=await rgba(reference),targetFrame=await rgba(target);
                   const engine=await DICEngine.create({width,height,motionModel:'affine',initialization:'global-affine',pyramidLevels:2,
                     iterationsPerLevel:[8,16],outlierPolicy:'disabled'});
                   try{
-                    await engine.setReference(reference,{roiMask:mask});
-                    const result=await engine.register(target);
+                    await engine.setReference(referenceFrame,{roiMask:mask});
+                    const result=await engine.register(targetFrame,{sourceKind:'images'});
+                    let cameraMessage='';try{await engine.register(targetFrame,{sourceKind:'camera'});}catch(error){cameraMessage=error.message;}
                     return {fit:result.config.globalAffineEstimate,accepted:result.accepted,finite:result.parameters.every(Number.isFinite),
-                      timing:result.timing};
-                  }finally{engine.destroy();}
+                      timing:result.timing,cameraMessage};
+                  }finally{engine.destroy();referenceFrame.close();targetFrame.close();}
                 })()"""
             )
         self.assertEqual(actual["fit"]["levels"], 5)
@@ -317,6 +320,7 @@ class BrowserCoreExecutionTests(unittest.TestCase):
         self.assertGreater(actual["accepted"], 0)
         self.assertTrue(actual["finite"])
         self.assertGreater(actual["timing"]["globalAffineWallMs"], 0)
+        self.assertIn("loaded image or video file", actual["cameraMessage"])
 
     def test_decimated_readback_is_a_gpu_sample_of_the_complete_field(self):
         from lucas_kanade_icgn import ICGNWebGL

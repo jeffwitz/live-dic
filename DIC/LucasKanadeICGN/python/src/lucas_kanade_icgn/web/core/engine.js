@@ -83,14 +83,14 @@ export class DICEngine {
     this.reference = await this.host.setReference(source, { ...this.options, ...options, roiMask: ownedMask });
     return this.reference;
   }
-  register(source) {
+  register(source, { sourceKind = null } = {}) {
     this.assertOpen();
     if (!this.reference) throw new Error('A reference image must be configured first');
     return this.ring.run(async (slotIndex) => {
       const started = performance.now();
       const result = source instanceof Uint8Array
         ? await this.host.registerBytes(source, this.reference.width, this.reference.height, {}, slotIndex)
-        : await this.host.registerExternal(source, slotIndex);
+        : await this.host.registerExternal(source, slotIndex, { sourceKind });
       result.timing.totalWallMs = performance.now() - started;
       return result;
     });

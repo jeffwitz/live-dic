@@ -99,12 +99,14 @@ ordered inputs and cannot guarantee recovery after discontinuous motion or
 accepted wrong-basin solutions. See :doc:`temporal-initialization`.
 
 The shared browser WGSL core has an experimental
-``initialization="global-affine"`` for decoded sparse image pairs. It fits
-one robust affine transform over sampled pixels in the reference mask using
-five CPU image scales, then seeds the local subsets. It is limited to the
-affine model and is not implemented by the native engine, Three.js, or
-GPU-IO. Per-target CPU fitting can take seconds and is not a live-stream
-solution. A single global affine model cannot represent strongly
+``initialization="global-affine"`` for sparse image pairs. It fits one robust
+affine transform over sampled pixels in the reference mask using five CPU
+image scales, then seeds the local subsets. The workbench supports loaded
+image and video files by reading grayscale pixels back from their external GPU
+image; live camera streams are rejected. The per-target readback and CPU fit
+can take substantial time, making this unsuitable for camera-rate processing.
+It is limited to the affine model and is not implemented by the native engine,
+Three.js, or GPU-IO. A single global affine model cannot represent strongly
 non-affine specimen deformation; the following local solve may still reject
 subsets. See :doc:`../how-to/register-large-shifts`.
 

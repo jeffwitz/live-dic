@@ -287,6 +287,8 @@ function updateSolverSettingsStatus() {
 async function prepareSolverSettings(requested) {
   if(!referenceInfo)throw new Error('Prepare a reference first');
   if(roiEditing)throw new Error('Apply or cancel mask edits before changing solver settings');
+  if(requested.initialization==='global-affine'&&!['images','video-file','demo','plate'].includes(source))
+    throw new Error('Global affine initialization needs loaded image or video files; select another initialization for a live camera.');
   // Reuse the retained reference, never the currently previewed target image.
   // This is a cold operation before a calculation; unchanged starts skip it.
   workbench.returnLive();workbench.setReady(false);$('export').disabled=true;
@@ -312,13 +314,17 @@ async function updateReferenceControls() {
 }
 async function captureReference(frame = null) {
   let requested;try{requested=options();}catch(error){frame?.close();throw error;}
+  if (requested.initialization === 'global-affine' && !['images', 'video-file', 'demo', 'plate'].includes(source)) {
+    frame?.close();
+    throw new Error('Global affine initialization needs loaded image or video files; select another initialization for a live camera.');
+  }
   workbench.returnLive();
   clearLiveMetrics();$('run-state').textContent='Preparing reference · no target field yet';
   pauseSource(); await drain(); workbench.setMask(null); workbench.setReady(false); roiEditing = false; $('roi-editor').hidden = true;
   frame ??= await frameFromVideo();
   if (source === 'camera') { sourceSettings.actual = stream?.getVideoTracks()[0]?.getSettings(); sourceSettings.outputSize = [video.videoWidth, video.videoHeight]; }
   if(source==='camera')sourceSettings.reference={kind:'camera',timestampUs:frame.timestamp??null,capturedAt: new Date().toISOString(),coordinateFrame:'captured reference image',timestampClock:'HTMLVideoElement media timeline'};
-  try {referenceInfo = (await send('reference', { frame, options: requested }, [frame])).info;appliedSolverKey=solverPreparationKey(requested);}catch(error){frame.close();throw error;} appliedShapes = []; draftMaskSource = appliedMaskSource = null; $('mask-import-summary').textContent='White pixels are kept; black pixels are excluded. Imported images must match the reference dimensions.';
+  try {referenceInfo = (await send('reference', { frame, options: requested, sourceKind: source }, [frame])).info;appliedSolverKey=solverPreparationKey(requested);}catch(error){frame.close();throw error;} appliedShapes = []; draftMaskSource = appliedMaskSource = null; $('mask-import-summary').textContent='White pixels are kept; black pixels are excluded. Imported images must match the reference dimensions.';
   $('placeholder').hidden = true; $('image-viewport').style.aspectRatio = `${referenceInfo.width}/${referenceInfo.height}`;
   roi.reset(referenceInfo.width, referenceInfo.height); appliedEditorState=roi.state(); $('apply-roi').disabled = true;
   for (const id of ['reference', 'pause', 'reset', 'draw', 'clear-roi', 'export', 'import-mask', 'save-mask']) $(id).disabled = false;

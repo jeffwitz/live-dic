@@ -72,7 +72,10 @@ local IC-GN solve then estimates the final field. The local pyramid depth
 remains independently configurable.
 
 In the workbench, check **Global affine initialization · masked 5-scale fit**
-in Solve. It requires the affine motion model and decoded image-pair input.
+in Solve. It requires the affine motion model and a loaded image or video file.
+The workbench carries the input kind through its worker so decoded local files
+can use this initializer even though their frames reach WebGPU as external
+textures. Live camera streams remain unsupported for this cold CPU fit.
 Fourier, temporal prediction, and global affine are mutually exclusive. A
 mask is optional; when supplied, only reference samples inside its white ROI
 are used by the global fit. The mask is fixed in reference coordinates.
@@ -85,7 +88,11 @@ the native ``ICGNWGPUFullPyramid`` do not implement this initializer.
 
 This is not a camera-rate initialization path. It builds a five-level CPU
 reference representation once and performs a robust, sampled affine fit for
-each target; full-resolution target fitting can take seconds on a CPU. It is
+each target. For a browser file frame, the worker first reads back grayscale
+pixels from the external GPU image so the CPU fitter can use them; this extra
+readback and fit can add substantial latency. Live camera input is rejected
+because doing this for every camera frame is not suitable for real-time
+processing. It is
 intended to establish a seed for difficult sparse pairs, not to replace the
 GPU local solve or to guarantee convergence when the specimen has strongly
 non-affine deformation, occlusion, or poor texture. Result metadata records

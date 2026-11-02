@@ -151,8 +151,10 @@ The Python-supervised raw browser backend additionally accepts
 ``initialization="global-affine"`` with ``backend="webgpu-wgsl"`` and
 ``motion_model="affine"``. It fits one mask-aware affine transform from
 sampled image pixels on five CPU pyramid scales and uses it to seed each local
-subset. It is experimental and intended for sparse decoded image pairs, not
-camera-rate streaming. It is not implemented by native
+subset. In the browser workbench, loaded image and video files are supported
+through a grayscale readback from the external GPU image. It is experimental
+and intended for sparse image pairs, not camera-rate streaming; live camera
+streams are rejected. It is not implemented by native
 ``ICGNWGPUFullPyramid``, Three.js, or GPU-IO. See
 :doc:`../how-to/register-large-shifts` for its cost and diagnostics.
 

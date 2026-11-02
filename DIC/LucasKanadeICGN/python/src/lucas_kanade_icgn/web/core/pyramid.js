@@ -1237,11 +1237,17 @@ export function createPyramidHost(options = {}) {
     return readResult({ gpuMs, wallMs }, slot);
   };
 
-  const registerExternal = async (frame, slotIndex = 0) => {
+  const registerExternal = async (frame, slotIndex = 0, { sourceKind = null } = {}) => {
     if (!referenceReady) throw new Error('A reference image must be configured first');
     const slot = slots[slotIndex], started = performance.now();
     if (!slot.external) throw new Error('External image input was not prepared');
-    if(globalAffine)throw new Error('Global affine initialization is currently for decoded image pairs, not camera or external-texture streams');
+    if (globalAffine) {
+      if (!['images', 'video-file', 'demo', 'plate'].includes(sourceKind)) {
+        throw new Error('Global affine initialization requires a loaded image or video file; live camera streams are unsupported');
+      }
+      const pixels = await slot.external.converter.referencePixels(frame);
+      await prepareGlobalAffine(slot, pixels);
+    }
     slot.externalActive = true;
     if(fourier)await prepareFourier(slot,frame);
     if(!slot.fourierInputReady)slot.external.converter.copy(frame);
