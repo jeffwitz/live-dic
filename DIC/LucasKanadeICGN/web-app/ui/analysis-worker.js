@@ -1,4 +1,5 @@
 import { analyzeField, componentValues, nearestIndex, extensometer, regionSummary } from './postprocess.js';
+import { sampleMeasurement } from './history.js';
 let field, mask, extractionMask;
 self.onmessage = ({ data }) => {
   try {
@@ -14,6 +15,12 @@ self.onmessage = ({ data }) => {
         if (index >= 0) { const component = componentValues(analysis, data.component); value = component.valid[index] ? component.values[index] : null; status = data.field.status[index]; }
       }
       self.postMessage({ id: data.id, value, status, count:region?.count??null,total:region?.total??null, processingWallMs: analysis.processingWallMs }); return;
+    }
+    if (data.extractMeasurements) {
+      if (Object.hasOwn(data, 'mask')) extractionMask = data.mask;
+      const analysis = analyzeField(data.field, data.recipe, extractionMask);
+      const rows = data.measurements.flatMap(measurement => sampleMeasurement(analysis, measurement, data.component));
+      self.postMessage({ id: data.id, rows, processingWallMs: analysis.processingWallMs }); return;
     }
     if (data.field) { field = data.field; mask = data.mask; }
     const { field: source, ...analysis } = analyzeField(field, data.recipe, mask);

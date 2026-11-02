@@ -245,6 +245,11 @@ clock is inferred from folder replay. Native CLI/workbench archive layouts are s
 requires confirmation, and sequence import requires an explicit frame. Other
 legacy layouts are not guessed. A history uses saved order and matching analysis
 provenance; it does not supply an acquisition clock or material trajectory.
+Multiple saved point, line, zone and extensometer definitions can be extracted
+together, but their coordinates remain fixed in the reference image. A line
+history chart shows its middle sampled subset; the long-format CSV retains all
+line samples at every field. These derived values are not raw images or an
+uncertainty estimate.
 
 Results projects preserve computed fields and recipes but exclude input images
 and live source permissions. Project import adds validated parts to the disk-backed library; it does not resume an acquisition automatically. Smoothing and

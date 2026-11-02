@@ -658,12 +658,32 @@ the project stores the recipes. Fixed colour limits are useful for comparison.
 Extract a measurement through saved fields
 -------------------------------------------
 
-Place a point probe, two extensometer endpoints or two region corners, then
-choose **Extract through saved fields**. The application applies the current analysis recipe to compatible
-saved fields one at a time in a separate worker. Progress and cancellation are
-available. Results from another analysis epoch, ROI or grid are counted as
-excluded; matching dimensions alone do not prove a shared reference. Native
-sequence fields imported from the same archive share its source hash.
+Create and name any number of points, lines, rectangular zones and
+extensometers. Select a tool, place its geometry with clicks or the coordinate
+form, then choose **Add as new**. Select an item in the measurement list to
+inspect or edit it; **Update selected** changes that item, while **Delete
+selected** and **Delete all** remove measurements. The overlays use reference
+coordinates and remain attached to the saved Results view/project.
+
+Choose **Extract all through saved fields** to evaluate every saved measurement
+on compatible fields. The application applies the current analysis recipe one
+field at a time in a separate worker, so it does not load a whole long recording
+into memory. Progress and cancellation are available. Fields from another
+analysis epoch, ROI or grid are excluded; matching dimensions alone do not prove
+a shared reference. Native sequence fields imported from the same archive share
+its source hash. Selecting a measurement after extraction displays its temporal
+trace; for a line, the chart shows the middle sample and the CSV retains every
+sample along the line for every field.
+
+Choose **Export time history CSV** for a long-format table. Each row records the
+saved-field order, source frame/time when available, measurement identity and
+type, coordinates/sample index, value and unit. Point histories have one row
+per field; lines have one row per sampled subset and field; zones report the
+valid-sample mean, spread, bounds and population; extensometers report reference
+and deformed lengths, extension and engineering strain. Missing or rejected
+values are blank, never zero-filled or interpolated. Measurement definitions
+and their selected quantity are also retained in the results project. CSV
+contains derived values, not source images.
 
 The chart uses **saved field order**, not an inferred physical acquisition clock.
 Exports retain input indices and media timestamps when present. Failed

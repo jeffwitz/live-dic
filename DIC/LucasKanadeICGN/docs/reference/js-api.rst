@@ -364,13 +364,22 @@ include the corresponding +0.5 offset. Display controls are saved separately
 from processing recipes. Application exports also include the assembled build's
 revision/content version and canonical shader hashes when available.
 
-``ui/postprocess.js`` also exposes ``regionSummary(analysis, component, a, b)``.
+``ui/postprocess.js`` exposes ``regionSummary(analysis, component, a, b)``.
 It snaps two reference pixel-index coordinate pairs to grid centres and returns
 null outside the grid. The inclusive rectangle report separates ``total``,
 ``selected`` and valid ``count``; its mean, population standard deviation and
 percentiles use equal weights. Status quantities return category counts with
-null scalar statistics. ``extractHistory`` accepts ``tool: 'region'`` and
-records ``validRegionSamples`` and ``regionGridPositions`` beside each mean.
+null scalar statistics. The Results workbench stores multiple named point,
+line, zone and extensometer definitions in its project view metadata.
+
+``ui/history.js`` exports ``sampleMeasurement(analysis, measurement,
+component)`` and extends ``extractHistory(entries, {measurements, recipe,
+component, ...})`` for multi-measurement time histories. Each field is analyzed
+once; point/gauge/zone rows have one sample per field and line rows have one
+sample per snapped subset. Region rows record their valid population and
+statistics. Measurements use fixed reference coordinates; histories do not
+accumulate consecutive-frame increments into material trajectories. The PWA's
+**Export time history CSV** is long format and leaves unavailable values blank.
 Status codes cannot be averaged through a region history.
 
 Application review does not require a WebGPU device. The core ``DICEngine`` still

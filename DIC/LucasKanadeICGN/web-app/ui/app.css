@@ -93,6 +93,14 @@ legend { font-size: 10px; color: var(--muted); }
 .analysis-controls { padding-right: 24px; border-right: 1px solid var(--line); }
 .analysis-controls label:first-child { margin-top: 0; }
 .inspection-tools { display: flex; flex-wrap: wrap; gap: 6px; }
+.measurement-library { margin: 12px 0; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: #f7fafb; }
+.measurement-library-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; }
+#measurement-list { list-style: none; display: grid; gap: 5px; padding: 0; margin: 8px 0 0; max-height: 190px; overflow: auto; }
+.measurement-item { display: flex; gap: 5px; align-items: stretch; }
+.measurement-select { flex: 1; min-width: 0; text-align: left; overflow-wrap: anywhere; }
+.measurement-select[aria-pressed="true"] { border-color: var(--accent); background: #e6f4f1; }
+.measurement-remove { width: 34px; padding: 4px; font-size: 18px; }
+#measure-name { margin-bottom: 8px; }
 .probe-value { display: block; border: 1px solid var(--line); background: #f5f9fa; padding: 14px; border-radius: 7px; font-size: 13px; line-height: 1.7; min-height: 70px; font-variant-numeric: tabular-nums; white-space: pre-wrap; }
 #profile-chart { display: block; width: 100%; height: auto; max-height: 280px; margin-top: 14px; border: 1px solid var(--line); border-radius: 7px; }
 .field-summary { display: flex; flex-wrap: wrap; gap: 12px 28px; font-size: 11px; line-height: 1.7; color: var(--muted); margin: 12px 0; font-variant-numeric: tabular-nums; }

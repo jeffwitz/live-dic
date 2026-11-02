@@ -206,12 +206,27 @@ image/grid geometry, model, ROI hash and comparison mode. It processes one field
 at a time and sends a shared static mask once to its worker. No GPU calculation
 or image decoding is repeated. Cancellation releases that worker.
 
-A probe samples an actual grid point; a gauge computes endpoint distance strain
-for each field independently. A region reports its valid-sample mean and sample
-count for each field; changing coverage is retained rather than hidden. Missing values stay null and break chart lines.
-The horizontal axis is saved order; input indices/timestamps are additional
-export columns. The tool does not infer regular sampling, accumulate incremental
-displacements or silently combine unrelated reference configurations.
+The workbench retains a named collection of point probes, line profiles,
+rectangular zones and extensometers in the saved Results view. A probe samples
+an actual grid point; a line returns distinct snapped grid samples; a gauge
+computes endpoint-distance strain for each field independently. A zone reports
+its valid-sample mean and population for each field; changing coverage is
+retained rather than hidden. The collection is saved with project view metadata,
+not embedded into the numerical field or solver.
+
+Time extraction analyzes each compatible saved field once in a bounded worker,
+then evaluates all measurement geometries against that result. Its long-format
+CSV uses one row per saved-field/measurement sample: points and gauges produce
+one row per field, line profiles produce one row per snapped subset and field,
+and zones produce one summary row per field. Coordinates remain fixed in the
+reference image. Missing or rejected values stay null and break chart lines;
+there is no interpolation or gap filling. The chart shows the selected point,
+gauge or zone over saved order; for a line it shows the middle snapped sample,
+while the CSV preserves the full profile at every field. Source indices and
+timestamps are included when available, but saved order is not an inferred
+physical acquisition clock. The tool does not infer regular sampling,
+accumulate incremental displacements or silently combine unrelated reference
+configurations.
 
 Results projects
 ----------------
