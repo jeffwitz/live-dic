@@ -1,5 +1,14 @@
 /** Mask images are cold reference geometry, never target-image preprocessing. */
 import { decodeImage } from './local-media.js';
+export function maskThreshold(mode, value = 128) {
+  if (mode === 'automatic') return 128;
+  if (mode === 'strict') return null;
+  if (mode !== 'threshold' || !Number.isInteger(value) || value < 0 || value > 255) {
+    throw new Error('Choose automatic, strict, or an integer luminance threshold from 0 to 255');
+  }
+  return value;
+}
+
 export function maskFromPixels(rgba, width, height, { threshold = null } = {}) {
   if (!(rgba instanceof Uint8Array || rgba instanceof Uint8ClampedArray) || rgba.length !== width*height*4) throw new Error('Expected full-size 8-bit RGBA mask pixels');
   if (threshold !== null && (!Number.isInteger(threshold) || threshold < 0 || threshold > 255)) throw new Error('Mask threshold must be an integer from 0 to 255');

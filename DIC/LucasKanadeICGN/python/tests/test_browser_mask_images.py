@@ -24,6 +24,13 @@ def javascript(script):
 
 @unittest.skipUnless(shutil.which("node"), "Node is needed for mask image contracts")
 class MaskImageTests(unittest.TestCase):
+    def test_mask_conversion_modes_choose_automatic_white_threshold_or_explicit_value(self):
+        result = javascript("""
+          console.log(JSON.stringify([m.maskThreshold('automatic'),m.maskThreshold('strict'),
+            m.maskThreshold('threshold',64)]));
+        """)
+        self.assertEqual(result, [128, None, 64])
+
     def test_exact_black_white_pixels_without_threshold_or_aliasing(self):
         result = javascript("""
           const rgba=new Uint8ClampedArray([0,0,0,255,255,255,255,255,0,0,0,255,255,255,255,255]);

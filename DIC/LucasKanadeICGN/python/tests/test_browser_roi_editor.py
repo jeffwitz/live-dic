@@ -23,6 +23,22 @@ def javascript(script):
 
 @unittest.skipUnless(shutil.which("node"), "Node is needed for browser geometry contracts")
 class BrowserRoiEditorTests(unittest.TestCase):
+    def test_blank_editor_starts_excluded_and_new_domain_selects_only_its_pixels(self):
+        result = javascript(f"""
+          import {{installRoi}} from {json.dumps((APP / "ui/roi.js").as_uri())};
+          const noop=()=>{{}},ctx={{clearRect:noop,beginPath:noop,rect:noop,stroke:noop}};
+          const canvas={{width:1,height:1,getContext:()=>ctx,addEventListener:noop,classList:{{add:noop,remove:noop}}}};
+          const editor=installRoi(canvas,{{value:'select'}},noop);
+          editor.reset(8,6,[],null,{{empty:true}});const blank=editor.mask();
+          editor.reset(8,6,[{{id:'domain',type:'rectangle',x:2,y:1,width:4,height:3}}],null,{{empty:true}});
+          console.log(JSON.stringify({{blank:[...blank],domain:[...editor.mask()],state:editor.state().empty}}));
+        """)
+        self.assertEqual(result["blank"], [0] * 48)
+        expected = np.zeros((6, 8), dtype=np.uint8)
+        expected[1:4, 2:6] = 1
+        np.testing.assert_array_equal(np.asarray(result["domain"]).reshape(6, 8), expected)
+        self.assertTrue(result["state"])
+
     def test_exact_circle_boundary_pixels_stay_outside(self):
         radii = [5, 10, 13, 17]
         masks = javascript(f"""

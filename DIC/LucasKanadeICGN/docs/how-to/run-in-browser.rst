@@ -185,12 +185,18 @@ container uses only 16 output levels under this mapping: convert such inputs
 with an explicit, common sensor range before import when precision matters.
 Keep originals; TIFF support does not add a 16-bit correlation solver.
 Decoded depth, compression, orientation and conversion accompany reference
-and target file provenance in exports. Binary TIFF masks use the same
-conversion and the existing strict black/white or explicit threshold rule.
-Grayscale-plus-alpha TIFF masks are accepted when the decoded alpha channel is
-opaque; transparent pixels are rejected by strict conversion and excluded by
-the explicit threshold conversion. The mask editor keeps its full-resolution
-binary geometry while displaying a bounded-size preview on very large images.
+and target file provenance in exports. Imported masks default to an automatic
+luminance threshold of 128 with alpha at least 128, so white/light TIFF pixels
+are retained and black/dark pixels are excluded without an extra conversion
+step. Choose strict conversion for exact opaque black/white masks, or a custom
+threshold when the grayscale separation needs adjustment. The mask editor
+keeps its full-resolution binary geometry while displaying a bounded-size
+preview on very large images.
+
+In **Input / Mask → Define the specimen**, choose **Create mask from scratch**
+to begin with every pixel excluded, then add domains with rectangles, ellipses,
+circles or polygons. Nested shapes still define holes and islands. Choose
+**Apply mask** to use the edited geometry; **Full image** removes the ROI.
 
 Images need not match the 720p/1080p/UHD camera presets, be square or have
 sizes divisible by the subset size. They keep their original dimensions. A

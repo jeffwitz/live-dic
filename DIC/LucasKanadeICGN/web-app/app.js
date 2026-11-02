@@ -2,7 +2,7 @@ import { RecordingQueue } from './ui/recording-queue.js';
 import { supervisionOptions } from './ui/supervision.js';
 import { vectorColour } from './render/live-vectors.js';
 import { parameterOrder, parameterUnits } from './ui/postprocess.js';
-import { decodeMaskImage, maskPng } from './ui/mask-image.js';
+import { decodeMaskImage, maskPng, maskThreshold } from './ui/mask-image.js';
 import { installWorkbench } from './ui/workbench.js';
 import { installWorkspace, solverOptions, solverPreparationKey } from './ui/workspace.js';
 import { installRoi } from './ui/roi.js';
@@ -263,7 +263,7 @@ async function stop() {
   localImages = []; imageIndex = 0; receivedOrdinal = 0;sourceSettings={};
   dropped=0;$('drops').textContent='0';clearLiveMetrics();
   $('run-state').textContent='No source selected';$('applied-solver-summary').textContent='No reference prepared.';$('last-reference-summary').textContent='';$('placeholder').hidden=false;$('camera-summary').hidden=true;
-  referenceInfo = null; appliedSolverKey = null; updateSolverSettingsStatus(); workbench.setPrepared(false);viewingInput=false;$('input-field').hidden=true;$('input-field').width=$('input-field').height=1; ['reference','pause','reset','draw','clear-roi','export','import-mask','save-mask'].forEach(id => $(id).disabled = true);
+  referenceInfo = null; appliedSolverKey = null; updateSolverSettingsStatus(); workbench.setPrepared(false);viewingInput=false;$('input-field').hidden=true;$('input-field').width=$('input-field').height=1; ['reference','pause','reset','draw','clear-roi','export','import-mask','create-mask','save-mask'].forEach(id => $(id).disabled = true);
   $('comparison').disabled=false; source = null; roiEditing = false; $('roi-editor').hidden = true; $('plate-load-label').hidden = true; $('local-controls').hidden = true;$('solve-range-label').hidden=true;
 }
 async function frameFromVideo() {
@@ -327,7 +327,7 @@ async function captureReference(frame = null) {
   try {referenceInfo = (await send('reference', { frame, options: requested, sourceKind: source }, [frame])).info;appliedSolverKey=solverPreparationKey(requested);}catch(error){frame.close();throw error;} appliedShapes = []; draftMaskSource = appliedMaskSource = null; $('mask-import-summary').textContent='White pixels are kept; black pixels are excluded. Imported images must match the reference dimensions.';
   $('placeholder').hidden = true; $('image-viewport').style.aspectRatio = `${referenceInfo.width}/${referenceInfo.height}`;
   roi.reset(referenceInfo.width, referenceInfo.height); appliedEditorState=roi.state(); $('apply-roi').disabled = true;
-  for (const id of ['reference', 'pause', 'reset', 'draw', 'clear-roi', 'export', 'import-mask', 'save-mask']) $(id).disabled = false;
+  for (const id of ['reference', 'pause', 'reset', 'draw', 'clear-roi', 'export', 'import-mask', 'create-mask', 'save-mask']) $(id).disabled = false;
   $('export').disabled = true; // Reference preview is not a measured target field.
   await updateReferenceControls();workbench.setPrepared(true);
   previousFrame = -1; details(); message('Reference captured. Camera and results stay on this device.');
@@ -665,7 +665,7 @@ $('finish-mask-top').onclick = () => $('finish-shape').click();
 $('cancel-mask-top').onclick = () => $('cancel-roi').click();
 $('cancel-roi').onclick = () => sourceChange(async()=>{
   if(!appliedEditorState)return;
-  roiEditing=false;roi.reset(appliedEditorState.width,appliedEditorState.height,appliedEditorState.shapes,appliedEditorState.baseMask);draftMaskSource=appliedMaskSource;
+  roiEditing=false;roi.reset(appliedEditorState.width,appliedEditorState.height,appliedEditorState.shapes,appliedEditorState.baseMask,{empty:appliedEditorState.empty});draftMaskSource=appliedMaskSource;
   $('roi-editor').hidden=true;$('mask-import-summary').textContent=appliedMaskSource?`${appliedMaskSource.name} · applied base restored.`:'No imported image base. White pixels are kept; black pixels are excluded.';await send('show-reference',{show:false});
   if(returnToInputAfterMask){if(source==='plate')await previewPlateTarget();else if(source==='images')await localSeek(imageIndex);else if(source==='video-file')showInputPreview(await frameFromVideo());}
   message('Unapplied mask edits discarded. The existing numerical field and applied ROI are unchanged.');
@@ -765,24 +765,33 @@ $('reset').onclick = () => send('reset');
 function roiMetadata() {
   return {version:appliedMaskSource?2:1,composition:appliedMaskSource?'imported binary image intersected with vector domains/holes':'union of roots; exact pixel-containment alternates domain/hole/island',baseImage:appliedMaskSource,shapes:appliedShapes};
 }
-$('mask-conversion').onchange = () => { $('mask-threshold-label').hidden=$('mask-conversion').value==='strict'; };
+$('mask-conversion').onchange = () => { $('mask-threshold-label').hidden=$('mask-conversion').value!=='threshold'; };
 $('import-mask').onclick = () => $('mask-file').click();
 $('mask-file').onchange = () => {
   const file=$('mask-file').files[0];$('mask-file').value='';if(!file)return;
   sourceChange(async()=>{
     if(!referenceInfo)throw new Error('Capture a reference before importing a mask');
     pauseSource();await drain();workbench.returnLive();
-    const threshold=$('mask-conversion').value==='strict'?null:Number($('mask-threshold').value);
+    const conversion=$('mask-conversion').value,threshold=maskThreshold(conversion,Number($('mask-threshold').value));
     const mask=await decodeMaskImage(file,referenceInfo.width,referenceInfo.height,{threshold,signal:sourceAbort.signal});
     const hash=await crypto.subtle.digest('SHA-256',await file.arrayBuffer());
     draftMaskSource={...fileInfo(file),sha256:Array.from(new Uint8Array(hash),b=>b.toString(16).padStart(2,'0')).join(''),threshold,
-      convention:threshold===null?'opaque exact black/white':'rounded BT.709 luminance >= threshold and alpha >= 128'};
+      convention:threshold===null?'opaque exact black/white':`${conversion==='automatic'?'automatic':'explicit'} rounded BT.709 luminance >= ${threshold} and alpha >= 128`};
     roi.reset(referenceInfo.width,referenceInfo.height,[{id:'image-mask-domain',label:'Clip image mask',type:'rectangle',x:0,y:0,width:referenceInfo.width,height:referenceInfo.height}],mask);
     roiEditing=true;workspace.showPane('mask');await send('show-reference',{show:true});$('roi-editor').hidden=false;$('shape').value='select';roi.start();
-    $('mask-import-summary').textContent=`${fileInfo(file).name} · ${threshold===null?'exact binary pixels':`explicit threshold ${threshold}`} · vectors clip this base image. Full image removes the base.`;
+    $('mask-import-summary').textContent=`${fileInfo(file).name} · ${threshold===null?'exact binary pixels':`${conversion==='automatic'?'automatic threshold':'explicit threshold'} ${threshold}`} · vectors clip this base image. Full image removes the base.`;
     message('Mask imported for review. Add vector holes or clipping regions, then Apply mask. White retains pixels; dimensions are unchanged.');
   });
 };
+$('create-mask').onclick = () => sourceChange(async () => {
+  if(!referenceInfo)throw new Error('Capture a reference before creating a mask');
+  returnToInputAfterMask=viewingInput;workbench.returnLive();pauseSource();await drain();
+  roi.reset(referenceInfo.width,referenceInfo.height,[],null,{empty:true});draftMaskSource=null;
+  $('mask-import-summary').textContent='Blank mask · all pixels start excluded. Add one or more domains to keep pixels.';
+  roiEditing=true;workspace.showPane('mask');$('pause').textContent='Start calculation';
+  await send('show-reference',{show:true});$('roi-editor').hidden=false;$('shape').value='select';roi.start();
+  message('Blank mask created. Add a rectangle, ellipse, circle or polygon for each domain to keep. Apply mask when ready.');
+});
 $('save-mask').onclick=async()=>{
   try{if(!referenceInfo)return;const mask=roi.mask(),blob=await maskPng(mask,referenceInfo.width,referenceInfo.height);download('live-dic-roi-edited.png',blob,'image/png');}
   catch(e){message(e.message,true);}

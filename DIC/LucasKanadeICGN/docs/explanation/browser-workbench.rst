@@ -270,8 +270,11 @@ not input images. Clearing site data/profile storage can remove entire sessions.
 Mask image editing
 ------------------
 
-An optional binary base is intersected with the existing exact vector mask. Undo
-snapshots retain an immutable base reference, not a copied full image per edit.
+An optional binary base is intersected with the existing exact vector mask.
+Imported masks use a default luminance threshold of 128 (white/light is kept),
+with strict binary and custom-threshold choices. **Create mask from scratch**
+starts from a full-size all-excluded mask; added domains mark the pixels to keep.
+Undo snapshots retain an immutable base reference, not a copied full image per edit.
 Only paused edits rasterize or compose masks. PNG import/export does not change
 IC-GN equations or add a pixel mask in the solver loop. Preparing a new ROI
 reuses the core's full-window selection, conservative links and canonical hash.

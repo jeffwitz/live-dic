@@ -6,14 +6,14 @@ export function installRoi(canvas, tool, onChange) {
   const ctx = canvas.getContext('2d');
   let shapes = [], selected = null, active = false, draft = null, drag = null, serial = 0;
   let compiled = { mask: null, shapes: [] }, preview = null, history = [];
-  let baseMask = null;
+  let baseMask = null, empty = false;
   let touchMode = false;
   const getPoint = e => { const b = canvas.getBoundingClientRect(); return [
     Math.max(0, Math.min(canvas.width, (e.clientX - b.left) * canvas.width / b.width)),
     Math.max(0, Math.min(canvas.height, (e.clientY - b.top) * canvas.height / b.height))]; };
   const current = () => shapes.find(s => s.id === selected);
-  const checkpoint = () => { history.push({shapes:structuredClone(shapes),baseMask}); if (history.length > 50) history.shift(); };
-  const notify = () => onChange({shapes:compiled.shapes,selected,editing:active,canUndo:history.length>0,hasBaseMask:!!baseMask});
+  const checkpoint = () => { history.push({shapes:structuredClone(shapes),baseMask,empty}); if (history.length > 50) history.shift(); };
+  const notify = () => onChange({shapes:compiled.shapes,selected,editing:active,canUndo:history.length>0,hasBaseMask:!!baseMask,empty});
   function path(s) {
     ctx.beginPath();
     if (s.type === 'polygon') { ctx.moveTo(...s.points[0]); s.points.slice(1).forEach(p => ctx.lineTo(...p)); ctx.closePath(); }
@@ -39,6 +39,7 @@ export function installRoi(canvas, tool, onChange) {
   }
   function update() {
     compiled = compileRoi(shapes, canvas.width, canvas.height); preview = null;
+    if(empty&&!compiled.mask)compiled.mask=new Uint8Array(canvas.width*canvas.height);
     if(baseMask)compiled.mask=intersectMasks(baseMask,compiled.mask);
     if (active && compiled.mask) {
       // The mask itself remains full resolution. The editor overlay is only a
@@ -118,7 +119,7 @@ export function installRoi(canvas, tool, onChange) {
     start() { active = true; canvas.classList.add('drawing'); update(); },
     stop({discardDraft=false}={}) { if(discardDraft)draft=drag=null;else if (draft) finish(); active = false; preview = null; canvas.classList.remove('drawing'); paint(); notify(); },
     finish,
-    state() { return {width:canvas.width,height:canvas.height,shapes:structuredClone(shapes),baseMask:baseMask?.slice()??null}; },
+    state() { return {width:canvas.width,height:canvas.height,shapes:structuredClone(shapes),baseMask:baseMask?.slice()??null,empty}; },
     addCentred(type='rectangle') {
       if(!active)throw new Error('Choose Edit mask first');
       if(!['rectangle','ellipse','circle'].includes(type))throw new Error('Choose rectangle, ellipse or circle for numeric creation');
@@ -126,12 +127,12 @@ export function installRoi(canvas, tool, onChange) {
       checkpoint();const shape={id:`region-${++serial}`,label:`${type} ${serial}`,type,x:(canvas.width-width)/2,y:(canvas.height-height)/2,width,height};
       shapes.push(shape);selected=shape.id;tool.value='select';update();
     },
-    reset(width, height, preset = [], raster = null) { if(raster&&(!(raster instanceof Uint8Array)||raster.length!==width*height||raster.some(v=>v>1)))throw new Error('Invalid imported image mask');canvas.width = width; canvas.height = height;baseMask=raster?.slice()??null; shapes = validateShapes(preset); selected = shapes[0]?.id ?? null; draft = drag = null; history = []; serial += preset.length; active = false; canvas.classList.remove('drawing'); update(); },
+    reset(width, height, preset = [], raster = null, options = {}) { if(raster&&(!(raster instanceof Uint8Array)||raster.length!==width*height||raster.some(v=>v>1)))throw new Error('Invalid imported image mask');canvas.width = width; canvas.height = height;baseMask=raster?.slice()??null;empty=options.empty===true; shapes = validateShapes(preset); selected = shapes[0]?.id ?? null; draft = drag = null; history = []; serial += preset.length; active = false; canvas.classList.remove('drawing'); update(); },
     select(id) { selected = id; tool.value = 'select'; paint(); notify(); },
     edit(box) { if (!current()) return; checkpoint(); shapes[shapes.findIndex(s => s.id === selected)] = transformShape(current(), box); update(); },
     remove() { if (!selected) return; checkpoint(); shapes = shapes.filter(s => s.id !== selected); selected = shapes.at(-1)?.id ?? null; update(); },
-    undo() { if (!history.length) return; const previous=history.pop();shapes = previous.shapes;baseMask=previous.baseMask; selected = shapes.at(-1)?.id ?? null; draft = drag = null; update(); },
-    clear() { checkpoint(); shapes = [];baseMask=null; selected = null; draft = drag = null; update(); },
+    undo() { if (!history.length) return; const previous=history.pop();shapes = previous.shapes;baseMask=previous.baseMask;empty=previous.empty; selected = shapes.at(-1)?.id ?? null; draft = drag = null; update(); },
+    clear() { checkpoint(); shapes = [];baseMask=null;empty=false; selected = null; draft = drag = null; update(); },
     mask() { if (draft) finish(); return compiled.mask?.slice() ?? null; },
     shapes() { return structuredClone(shapes); },
   };
