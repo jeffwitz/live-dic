@@ -957,9 +957,9 @@ class ICGNWebGL:
         try:
             level_count = 2 if pyramid_levels is None else operator.index(pyramid_levels)
         except TypeError as error:
-            raise ValueError("pyramid_levels must be an integer from 1 to 4") from error
-        if isinstance(pyramid_levels, bool) or not 1 <= level_count <= 4:
-            raise ValueError("pyramid_levels must be an integer from 1 to 4")
+            raise ValueError("pyramid_levels must be an integer from 1 to 6") from error
+        if isinstance(pyramid_levels, bool) or not 1 <= level_count <= 6:
+            raise ValueError("pyramid_levels must be an integer from 1 to 6")
         try:
             raw_iteration_schedule = (
                 None if iterations_per_level is None else tuple(iterations_per_level)

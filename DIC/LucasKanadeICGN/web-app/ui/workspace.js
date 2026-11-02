@@ -45,12 +45,12 @@ export function solverOptions() {
   const size = Number(get('subset-size').value), stride = Number(get('subset-stride').value);
   const levels = Number(get('pyramid-levels').value), coarse = Number(get('coarse-iterations').value), fine = Number(get('fine-iterations').value);
   if (!Number.isInteger(stride) || stride < 1 || stride > size) throw new Error('Grid step must be an integer between 1 and the window width');
-  if (![1,2,3,4].includes(levels)) throw new Error('Pyramid levels must be between 1 and 4');
+  if (!Number.isInteger(levels) || levels < 1 || levels > 6) throw new Error('Pyramid levels must be between 1 and 6');
   if (![coarse, fine].every(v => Number.isInteger(v) && v > 0 && v <= 30)) throw new Error('GN limits must be integers between 1 and 30');
   const temporal = !fourier && get('temporal-start').checked;
   return { ...base, subsetSize: size, subsetStride: stride, motionModel: get('motion-model').value,
     interpolation: get('interpolation').value, outlierPolicy: get('outlier-policy').value,
-    pyramidLevels: levels, iterationsPerLevel: levels === 1 ? [fine] : levels === 2 ? [coarse, fine] : levels === 3 ? [coarse, 4, fine] : [coarse, 8, 8, fine],
+    pyramidLevels: levels, iterationsPerLevel: levels === 1 ? [fine] : [coarse, ...(levels === 3 ? [4] : Array(Math.max(0, levels - 2)).fill(8)), fine],
     initialization: fourier ? 'fourier' : temporal ? 'temporal' : 'zero', temporalPrediction: temporal ? 'velocity' : 'none',
     temporalFineCorrection: temporal && levels === 2, divergencePatience: temporal ? 3 : null };
 }

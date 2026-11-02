@@ -409,5 +409,6 @@ local affine/translation correlation. It requires overlapping texture in a
 nonrigid motion. Score/overlap/correlation rejection is heuristic. CPU FFT and
 browser target-window readback add latency; this mode has no 4K60 claim.
 Quadratic, velocity prediction and temporal fine correction are unsupported
-combinations. Four local pyramid levels alone do not guarantee capture of
-large shifts. See :doc:`../how-to/register-large-shifts`.
+combinations. Four or six local pyramid levels alone do not guarantee capture
+of large shifts; five- and six-level schedules are experimental and have no
+general performance qualification. See :doc:`../how-to/register-large-shifts`.

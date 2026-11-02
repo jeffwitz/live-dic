@@ -45,26 +45,43 @@ export class FourierInitializer {
     const size=2**Math.min(10,Math.floor(Math.log2(Math.min(width,height))));
     if(size<32)throw new Error('Fourier initialization needs an image of at least 32 pixels per side');
     this.width=width;this.height=height;this.size=size;
-    const positions=[[.5,.5],...[0,.5,1].flatMap(y=>[0,.5,1].map(x=>[x,y]))];let best=null;
+    const positions=[[.5,.5],...[0,.5,1].flatMap(y=>[0,.5,1].map(x=>[x,y]))],unique=new Map();
     for(const [fx,fy] of positions){
       const x=Math.floor((width-size)*fx),y=Math.floor((height-size)*fy);let sum=0,squares=0,count=0;
       for(let j=0;j<size;j++)for(let i=0;i<size;i++){const k=(y+j)*width+x+i;if(mask&&!mask[k])continue;const v=reference[k];sum+=v;squares+=v*v;count++;}
       const coverage=count/(size*size),std=count?Math.sqrt(Math.max(0,squares/count-(sum/count)**2)):0;
-      if(coverage>=.25&&std>=1){const candidate={score:coverage*std,x,y,mean:sum/count};if(!best||candidate.score>best.score)best=candidate;
-        if(fx===.5&&fy===.5&&coverage>=.5)break;}
+      if(coverage>=.25&&std>=1&&!unique.has(`${x},${y}`)){
+        const pixels=new Uint8Array(size*size),localMask=mask?new Uint8Array(size*size):null;
+        for(let j=0;j<size;j++){
+          pixels.set(reference.subarray((y+j)*width+x,(y+j)*width+x+size),j*size);
+          if(localMask)localMask.set(mask.subarray((y+j)*width+x,(y+j)*width+x+size),j*size);
+        }
+        unique.set(`${x},${y}`,{score:coverage*std,x,y,mean:sum/count,center:fx===.5&&fy===.5,pixels,mask:localMask});
+      }
     }
-    if(!best)throw new Error('Fourier initialization has no sufficiently textured ROI window');
-    this._window={x:best.x,y:best.y,size,sampleStep:2};this.fft=new FFT2D(size);
+    this.candidates=[...unique.values()].sort((a,b)=>Number(b.center)-Number(a.center)||b.score-a.score);
+    if(!this.candidates.length)throw new Error('Fourier initialization has no sufficiently textured ROI window');
+    this.fft=new FFT2D(size);
     this.taper=Float64Array.from({length:size/2},(_,i)=>.5-.5*Math.cos(2*Math.PI*i/(size/2-1)));
     this.referenceSamples=new Float64Array(size*size/4);this.samples=new Float64Array(size*size/4);
     this.allowedSamples=new Uint8Array(size*size/4);
-    for(let j=0;j<size/2;j++)for(let i=0;i<size/2;i++){let allowed=true;for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++)if(mask&&!mask[(best.y+2*j+dy)*width+best.x+2*i+dx])allowed=false;this.allowedSamples[j*size/2+i]=+allowed;}
     this.referenceReal=new Float64Array(size*size);this.referenceImag=new Float64Array(size*size);
     this.real=new Float64Array(size*size);this.imag=new Float64Array(size*size);
-    this.fill(reference,this.referenceReal,best.mean,mask,width,best.x,best.y,this.referenceSamples);
-    this.fft.transform(this.referenceReal,this.referenceImag);
+    this.activeCandidate=-1;this._activateCandidate(0);
   }
   get window(){return {...this._window};}
+  _activateCandidate(index) {
+    const candidate=this.candidates[index],n=this.size,m=n/2;
+    this.activeCandidate=index;this._window={x:candidate.x,y:candidate.y,size:n,sampleStep:2};
+    this.referenceSamples.fill(0);this.allowedSamples.fill(0);
+    this.fill(candidate.pixels,this.referenceReal,candidate.mean,candidate.mask,n,0,0,this.referenceSamples);
+    for(let j=0;j<m;j++)for(let i=0;i<m;i++){
+      let allowed=true;
+      for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++)if(candidate.mask&&!candidate.mask[(2*j+dy)*n+2*i+dx])allowed=false;
+      this.allowedSamples[j*m+i]=+allowed;
+    }
+    this.referenceImag.fill(0);this.fft.transform(this.referenceReal,this.referenceImag);
+  }
   fill(pixels,output,mean,mask,width,x,y,samples) {
     const n=this.size,m=n/2;output.fill(0);
     for(let j=0;j<m;j++)for(let i=0;i<m;i++){
@@ -103,14 +120,28 @@ export class FourierInitializer {
     }
     const norm=Math.sqrt(Math.max(0,saa-sa*sa/countSamples)*Math.max(0,sbb-sb*sb/countSamples));
     const correlation=norm>0?(sab-sa*sb/countSamples)/norm:0;
-    if(score<8||overlap<.25||correlation<.2)throw new Error(`Fourier initialization is ambiguous (peak score ${score.toFixed(2)}, overlap ${overlap.toFixed(3)}); no local field was calculated`);
+    if(score<8||overlap<.25||correlation<.2)throw new Error(`Fourier initialization is ambiguous (peak score ${score.toFixed(2)}, shift ${dx.toFixed(1)}, ${dy.toFixed(1)} px, overlap ${overlap.toFixed(3)}, patch correlation ${correlation.toFixed(3)}); no local field was calculated`);
     return {dx,dy,peakScore:score,overlap,correlation,window:this.window,method:'linear-phase-correlation',wallMs:performance.now()-started};
   }
   estimate(pixels,width=this.width,height=this.height) {
     if(width!==this.width||height!==this.height||pixels.length!==width*height)throw new Error('Fourier target dimensions must match the prepared reference');
-    const {x,y,size}=this.window,patch=new Uint8Array(size*size);
-    for(let j=0;j<size;j++)patch.set(pixels.subarray((y+j)*width+x,(y+j)*width+x+size),j*size);
-    return this.estimatePatch(patch);
+    const order=[this.activeCandidate,...this.candidates.map((_,i)=>i).filter(i=>i!==this.activeCandidate)];let lastError=null;
+    for(const index of order){
+      if(index!==this.activeCandidate)this._activateCandidate(index);
+      const {x,y,size}=this.window,patch=new Uint8Array(size*size);
+      for(let j=0;j<size;j++)patch.set(pixels.subarray((y+j)*width+x,(y+j)*width+x+size),j*size);
+      try{return this.estimatePatch(patch);}catch(error){lastError=error;}
+    }
+    throw new Error(`Fourier initialization could not find a reliable rigid translation in ${this.candidates.length} centred image/ROI patches. ${lastError?.message??'No patch was usable.'}`);
   }
-  memoryBytes(){return [this.referenceReal,this.referenceImag,this.real,this.imag,this.referenceSamples,this.samples,this.allowedSamples,this.taper,this.fft.reverse,this.fft.cos,this.fft.sin].reduce((sum,array)=>sum+array.byteLength,0);}
+  async estimateWithPatchReader(readPatch) {
+    const order=[this.activeCandidate,...this.candidates.map((_,i)=>i).filter(i=>i!==this.activeCandidate)];let lastError=null;
+    for(const index of order){
+      if(index!==this.activeCandidate)this._activateCandidate(index);
+      const patch=await readPatch(this.window);
+      try{return this.estimatePatch(patch);}catch(error){lastError=error;}
+    }
+    throw new Error(`Fourier initialization could not find a reliable rigid translation in ${this.candidates.length} centred image/ROI patches. ${lastError?.message??'No patch was usable.'}`);
+  }
+  memoryBytes(){return [this.referenceReal,this.referenceImag,this.real,this.imag,this.referenceSamples,this.samples,this.allowedSamples,this.taper,this.fft.reverse,this.fft.cos,this.fft.sin].reduce((sum,array)=>sum+array.byteLength,0)+this.candidates.reduce((sum,candidate)=>sum+candidate.pixels.byteLength+(candidate.mask?.byteLength??0),0);}
 }

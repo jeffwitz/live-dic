@@ -149,7 +149,7 @@ Independent stride is implemented by the shared WGSL family:
 * ``ICGNWGPU`` and ``ICGNWGPUFullPyramid`` through native ``wgpu-py``;
 * ``ICGNWebGL(backend="webgpu-wgsl")`` in Chromium.
 
-It works with one to three pyramid levels and with translation, affine, and
+It works with one to six pyramid levels and with translation, affine, and
 quadratic motion models. Three.js/TSL, its WebGL2 fallback, and deprecated
 GPU-IO currently require ``subset_stride == subset_size`` and reject a
 non-default stride instead of silently changing its geometry.

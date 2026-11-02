@@ -86,13 +86,15 @@ Options and native correspondence
      - Linear and Keys cubic are explicit alternatives; cubic is not a qualified trajectory profile.
    * - ``pyramidLevels``
      - ``pyramid_levels=2``
-     - Fixed 1..3 levels; every configured level runs per frame.
+     - Fixed 1..6 levels; every configured level runs per frame. Five and six are experimental.
    * - ``iterationsPerLevel``
      - ``iterations_per_level=None``
-     - Coarse-to-fine schedules: [30], [8,16], [6,8,16].
+     - Coarse-to-fine schedules: [30], [8,16], [6,8,16], [12,8,8,16],
+       [12,8,8,8,16], [12,8,8,8,8,16].
    * - ``tolerancePerLevel``
      - ``tolerance_per_level=None``
-     - [0.001], [0.005,0.005], [0.01,0.005,0.005].
+     - [0.001], [0.005,0.005], [0.01,0.005,0.005], [0.01,0.01,0.005,0.005],
+       [0.01,0.01,0.005,0.005,0.005], [0.01,0.01,0.01,0.005,0.005,0.005].
    * - ``znccMin``
      - ``zncc_min=0.8`` at reference preparation
      - Finite value in [0,1].
@@ -512,4 +514,6 @@ fields preserve ``config.globalTranslation`` and ``timing.fourierWallMs``.
 slot seed arrays separately from GPU resources. External target conversion
 reads back only the cropped window; the ordinary path adds no such readback.
 See :doc:`../how-to/register-large-shifts` for rejection and latency limits.
-``pyramidLevels`` accepts 1–4; its default remains two.
+``pyramidLevels`` accepts 1–6; its default remains two. Five and six levels are
+experimental large-motion options and have no general capture-range or
+performance guarantee.

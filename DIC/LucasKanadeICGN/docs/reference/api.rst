@@ -31,8 +31,10 @@ Browser control engine
 .. autoclass:: lucas_kanade_icgn.ICGNWebGL
    :members: start, info, set_reference, register, register_pair, register_many, benchmark, close
 
-For ``backend="webgpu-wgsl"``, ``pyramid_levels`` accepts one to four levels
-and defaults to two. ``iterations_per_level`` and ``tolerance_per_level`` are
+For ``backend="webgpu-wgsl"``, ``pyramid_levels`` accepts one to six levels
+and defaults to two. Five and six levels are experimental options for sparse
+pairs with large motion; they have no general capture-range or performance
+guarantee. ``iterations_per_level`` and ``tolerance_per_level`` are
 coarse-to-fine tuples with exactly one value per level. Pyramid options are
 rejected by the independent Three.js/TSL and GPU-IO implementations.
 

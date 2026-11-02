@@ -112,7 +112,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--pyramid-levels",
         type=int,
-        help="full-pyramid level count for the webgpu-wgsl backend (1 to 4)",
+        help="full-pyramid level count for the webgpu-wgsl backend (1 to 6)",
     )
     parser.add_argument(
         "--iterations-per-level",

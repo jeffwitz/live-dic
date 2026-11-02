@@ -43,9 +43,15 @@ Browser workbench
    its correlation. Results playback remains separate from calculation.
 
 The checkbox works with the normal two-level preset and custom settings.
-It disables temporal warm start for this preparation. The separate **Try 4
-levels for large shifts** button tests a four-level local pyramid without
-Fourier; it has a smaller measured capture range and is not a substitute.
+It disables temporal warm start for this preparation. The separate **Try 6
+levels for large shifts** button selects six local scales, 20 iterations at
+the coarsest scale, and no temporal warm start. Five and six levels are now
+available in the browser workbench and the ``webgpu-wgsl`` interface. They are
+experimental: added scales can help a local solve follow larger displacement
+increments, but do not guarantee convergence. More levels also add reference
+preparation and per-image solve work. The existing four-level campaign did not
+capture every large-shift case, so the six-level setting still needs validation
+on each target sequence.
 
 The JavaScript API uses ``DICEngine.create({initialization:'fourier', ...})``.
 Both CPU and experimental GPU reference preparation support it, including
@@ -57,10 +63,13 @@ GPU-IO explicitly refuse this option.
 Interpretation and limits
 -------------------------
 
-The square reference zone is at most 1024 pixels wide. The centre is preferred;
-if it lacks texture/ROI coverage, nine candidate locations are considered.
-This is not an exhaustive image search. The reference ROI gates this cold
-selection; the target is not clipped against the fixed reference mask.
+The square reference zone is at most 1024 pixels wide. The image-centred patch
+is tried first. If its aligned intensity correlation is too low, the initializer
+tries the other eligible locations from a nine-position image grid and keeps
+the first reliable patch for later targets. This is not an exhaustive image
+search. The reference ROI gates this cold selection; the target is not clipped
+against the fixed reference mask. A patch with strong texture can still be
+invalid for a rigid estimate when its local deformation changes the pattern.
 
 The implementation averages 2 × 2 pixels, applies a Hann taper and zero pads
 for linear phase correlation. Its two-pixel seed is refined by IC-GN. Peak
@@ -78,11 +87,13 @@ path. Include this cost in image-to-field latency; do not compare a GPU-only
 solve time to a complete Fourier-initialized call. See
 :doc:`../reference/performance` for the UHD controls and timing boundary.
 
-For a local-only experiment, ``pyramid_levels=4`` is also available, with
-default iteration limits ``(12, 8, 8, 16)`` and tolerances
-``(0.01, 0.01, 0.005, 0.005)`` from coarse to fine. Four levels need an image
-large enough to contain a subset at 1/8 resolution. Existing one-, two- and
-three-level defaults remain unchanged.
+For local experiments, five and six levels use coarse-to-fine default
+iteration limits ``(12, 8, 8, 8, 16)`` and
+``(12, 8, 8, 8, 8, 16)`` respectively. Their tolerances start at ``0.01``
+and tighten to ``0.005`` toward the fine levels. Six levels need an image large
+enough to contain a subset at 1/32 resolution. Existing one- to four-level
+schedules and the two-level default remain unchanged. These schedules are
+initial settings, not a qualified solution for every large shift.
 
 A checkbox edit does not alter a field already saved in Results. The saved
 field summary shows its actual initialization and accepted subset count. Return

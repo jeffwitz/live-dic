@@ -832,7 +832,7 @@ for(const id of ['display-rate','preview-width'])$(id).onchange=()=>{
 };
 $('apply-solver-settings').onclick=()=>sourceChange(()=>prepareSolverSettings(options()));
 $('large-shift-preset').onclick = () => {
-  $('custom-solver').checked=true;$('pyramid-levels').value='4';
+  $('custom-solver').checked=true;$('pyramid-levels').value='6';
   $('coarse-iterations').value='20';$('fine-iterations').value='16';
   $('temporal-start').checked=false;$('fourier-start').checked=false;
   $('custom-solver').onchange();

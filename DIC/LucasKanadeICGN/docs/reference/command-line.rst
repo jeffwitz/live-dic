@@ -73,8 +73,9 @@ Solver options
    Opt-in Fourier global-translation bootstrap for ``webgpu-wgsl`` only. The
    default is zero initialization. See :doc:`../how-to/register-large-shifts`.
 
-``--pyramid-levels {1,2,3,4}``
-   Full-pyramid depth for ``webgpu-wgsl``. The backend default is two levels;
+``--pyramid-levels {1,2,3,4,5,6}``
+   Full-pyramid depth for ``webgpu-wgsl``. Five and six levels are experimental
+   large-motion options. The backend default is two levels;
    one selects the original single-scale path.
 
 ``--iterations-per-level COUNT [COUNT ...]``

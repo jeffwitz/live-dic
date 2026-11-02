@@ -42,12 +42,16 @@ export function createPyramidHost(options = {}) {
     2: [8, 16],
     3: [6, 8, 16],
     4: [12, 8, 8, 16],
+    5: [12, 8, 8, 8, 16],
+    6: [12, 8, 8, 8, 8, 16],
   };
   const TOLERANCE_SCHEDULES = {
     1: [1e-3],
     2: [5e-3, 5e-3],
     3: [1e-2, 5e-3, 5e-3],
     4: [1e-2, 1e-2, 5e-3, 5e-3],
+    5: [1e-2, 1e-2, 5e-3, 5e-3, 5e-3],
+    6: [1e-2, 1e-2, 1e-2, 5e-3, 5e-3, 5e-3],
   };
   const INTERPOLATION_CONSTANTS = {
     bspline: 0,
@@ -631,8 +635,8 @@ export function createPyramidHost(options = {}) {
     if(initialization==='fourier'&&(options.motionModel??configuration.motionModel)==='quadratic')throw new Error('Fourier initialization currently supports translation and affine models');
     const pyramidLevels = options.pyramidLevels === undefined
       ? configuration.pyramidLevels : Number(options.pyramidLevels);
-    if (!Number.isInteger(pyramidLevels) || pyramidLevels < 1 || pyramidLevels > 4) {
-      throw new Error('pyramidLevels must be an integer between 1 and 4');
+    if (!Number.isInteger(pyramidLevels) || pyramidLevels < 1 || pyramidLevels > 6) {
+      throw new Error('pyramidLevels must be an integer between 1 and 6');
     }
     if (!allowPyramidRebuild && levels.length && pyramidLevels !== runtimePyramidLevels) {
       throw new Error('Changing pyramidLevels requires setReference() to rebuild the runtime');
@@ -1127,7 +1131,9 @@ export function createPyramidHost(options = {}) {
     slot.fourierInputReady=false;
     if(!fourier||roiPlans[0]?.count===0)return;
     const started=performance.now();
-    const estimate=bytes?fourier.estimate(source):fourier.estimatePatch(await slot.external.converter.referencePixels(source,fourier.window));
+    const estimate=bytes?await fourier.estimate(source):await fourier.estimateWithPatchReader(
+      window=>slot.external.converter.referencePixels(source,window));
+    configuration.fourierWindow=fourier.window;
     if(!bytes)slot.fourierInputReady=true;
     estimate.wallMs=performance.now()-started;
     const coarse=slot.levels.at(-1),scale=2**coarse.index,stride=configuration.motionModel==='quadratic'?16:8;
