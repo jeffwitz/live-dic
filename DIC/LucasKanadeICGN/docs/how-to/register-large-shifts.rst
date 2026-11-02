@@ -60,6 +60,39 @@ Both CPU and experimental GPU reference preparation support it, including
 CLI accepts ``--backend webgpu-wgsl --initialization fourier``. Three.js and
 GPU-IO explicitly refuse this option.
 
+Global affine initialization
+----------------------------
+
+For sparse pairs whose dominant motion includes scale, shear, or rotation,
+the raw ``webgpu-wgsl`` browser engine also offers an experimental global
+affine seed. Unlike the local pyramid, this cold CPU step fits one affine
+transform over spatially sampled pixels from the entire reference mask using
+five image scales. That one transform initializes every subset; the normal
+local IC-GN solve then estimates the final field. The local pyramid depth
+remains independently configurable.
+
+In the workbench, check **Global affine initialization · masked 5-scale fit**
+in Solve. It requires the affine motion model and decoded image-pair input.
+Fourier, temporal prediction, and global affine are mutually exclusive. A
+mask is optional; when supplied, only reference samples inside its white ROI
+are used by the global fit. The mask is fixed in reference coordinates.
+
+Python supervision can request it with
+``ICGNWebGL(backend="webgpu-wgsl", initialization="global-affine",
+motion_model="affine")``. The ``webgpu-wgsl`` CLI accepts
+``--initialization global-affine --motion-model affine``. Three.js/GPU-IO and
+the native ``ICGNWGPUFullPyramid`` do not implement this initializer.
+
+This is not a camera-rate initialization path. It builds a five-level CPU
+reference representation once and performs a robust, sampled affine fit for
+each target; full-resolution target fitting can take seconds on a CPU. It is
+intended to establish a seed for difficult sparse pairs, not to replace the
+GPU local solve or to guarantee convergence when the specimen has strongly
+non-affine deformation, occlusion, or poor texture. Result metadata records
+the center translation, affine terms, correlation, overlap, sample count,
+per-level diagnostics, and initialization time. Treat low correlation or
+rejected local subsets as a failed registration, not as a recovered field.
+
 Interpretation and limits
 -------------------------
 

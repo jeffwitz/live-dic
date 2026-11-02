@@ -147,6 +147,15 @@ FFT latency; results retain ``config["globalTranslation"]`` and
 ``timing["fourierWallMs"]``. The raw browser wrapper accepts this same option;
 Three.js/GPU-IO refuse it. See :doc:`../how-to/register-large-shifts`.
 
+The Python-supervised raw browser backend additionally accepts
+``initialization="global-affine"`` with ``backend="webgpu-wgsl"`` and
+``motion_model="affine"``. It fits one mask-aware affine transform from
+sampled image pixels on five CPU pyramid scales and uses it to seed each local
+subset. It is experimental and intended for sparse decoded image pairs, not
+camera-rate streaming. It is not implemented by native
+``ICGNWGPUFullPyramid``, Three.js, or GPU-IO. See
+:doc:`../how-to/register-large-shifts` for its cost and diagnostics.
+
 ``initialization="zero"`` preserves historical initialization.
 ``initialization="temporal"`` projects the previous accepted fine field onto
 the coarsest grid, then solves every level for every image under the default

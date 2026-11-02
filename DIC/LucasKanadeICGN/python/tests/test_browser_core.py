@@ -19,6 +19,36 @@ CORE = Path(str(files("lucas_kanade_icgn").joinpath("web/core")))
 
 @unittest.skipUnless(shutil.which("node"), "Node is needed to execute ES modules")
 class BrowserGeometryTests(unittest.TestCase):
+    def test_global_affine_initializer_recovers_masked_subpixel_affine_pair(self):
+        initializer = CORE / "global-affine.js"
+        script = f"""
+          import {{ GlobalAffineInitializer }} from {json.dumps(initializer.as_uri())};
+          const width=1024,height=768,reference=new Uint8Array(width*height),target=new Uint8Array(width*height);
+          const mask=new Uint8Array(width*height);
+          for(let y=0;y<height;y++)for(let x=0;x<width;x++){{
+            const i=y*width+x;
+            reference[i]=Math.round(128+38*Math.sin(x*.17)+31*Math.sin(y*.13)+24*Math.sin((x+y)*.21)+16*Math.cos((2*x-y)*.09));
+            mask[i]=+(x>=24&&x<width-24&&y>=24&&y<height-24&&!(x>=240&&x<248&&y>=180&&y<204));
+          }}
+          const [a,b,c,d,dx,dy]=[1.025,.008,-.006,.985,3.2,-2.3],cx=(width-1)/2,cy=(height-1)/2,det=a*d-b*c;
+          for(let y=0;y<height;y++)for(let x=0;x<width;x++){{
+            const X=x-cx-dx,Y=y-cy-dy,rx=(d*X-b*Y)/det+cx,ry=(-c*X+a*Y)/det+cy;
+            const x0=Math.floor(rx),y0=Math.floor(ry);if(x0<0||x0>=width-1||y0<0||y0>=height-1)continue;
+            const fx=rx-x0,fy=ry-y0,i=y0*width+x0;
+            target[y*width+x]=Math.round((reference[i]*(1-fx)+reference[i+1]*fx)*(1-fy)
+              +(reference[i+width]*(1-fx)+reference[i+width+1]*fx)*fy);
+          }}
+          console.log(JSON.stringify(new GlobalAffineInitializer(reference,width,height,mask).estimate(target)));
+        """
+        estimate = json.loads(
+            subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
+        )
+        self.assertEqual(estimate["levels"], 5)
+        self.assertGreater(estimate["score"], 0.98)
+        self.assertAlmostEqual(estimate["dx"], 3.2, delta=0.2)
+        self.assertAlmostEqual(estimate["dy"], -2.3, delta=0.25)
+        np.testing.assert_allclose(estimate["linear"], [0.025, 0.008, -0.006, -0.015], atol=0.004)
+
     def test_full_roi_geometry_matches_native_conservative_links(self):
         mask = np.ones((93, 111), bool)
         mask[11:77, 54] = False
@@ -240,6 +270,53 @@ class BrowserCoreExecutionTests(unittest.TestCase):
         self.assertTrue(actual["excluded"])
         self.assertGreater(actual["accepted"], 0)
         self.assertTrue(actual["partial"])
+
+    def test_global_affine_seed_runs_through_the_gpu_pyramid(self):
+        from lucas_kanade_icgn import ICGNWebGL
+
+        flags = (
+            (
+                "--use-angle=swiftshader",
+                "--enable-unsafe-webgpu",
+                "--use-webgpu-adapter=swiftshader",
+                "--use-vulkan=swiftshader",
+            )
+            if os.environ.get("ICGN_BROWSER_SOFTWARE") == "1"
+            else ()
+        )
+        with ICGNWebGL(backend="webgpu-wgsl", chromium_args=flags, call_timeout=180) as browser:
+            actual = browser._evaluate(
+                """(async () => {
+                  const {DICEngine}=await import('../core/engine.js');
+                  const width=1024,height=768,reference=new Uint8Array(width*height),target=new Uint8Array(width*height),mask=new Uint8Array(width*height);
+                  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+                    const i=y*width+x;
+                    reference[i]=Math.round(128+38*Math.sin(x*.17)+31*Math.sin(y*.13)+24*Math.sin((x+y)*.21)+16*Math.cos((2*x-y)*.09));
+                    mask[i]=+(x>=24&&x<width-24&&y>=24&&y<height-24&&!(x>=500&&x<508&&y>=360&&y<384));
+                  }
+                  const [a,b,c,d,dx,dy]=[1.025,.008,-.006,.985,3.2,-2.3],cx=(width-1)/2,cy=(height-1)/2,det=a*d-b*c;
+                  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+                    const X=x-cx-dx,Y=y-cy-dy,rx=(d*X-b*Y)/det+cx,ry=(-c*X+a*Y)/det+cy;
+                    const x0=Math.floor(rx),y0=Math.floor(ry);if(x0<0||x0>=width-1||y0<0||y0>=height-1)continue;
+                    const fx=rx-x0,fy=ry-y0,i=y0*width+x0;
+                    target[y*width+x]=Math.round((reference[i]*(1-fx)+reference[i+1]*fx)*(1-fy)
+                      +(reference[i+width]*(1-fx)+reference[i+width+1]*fx)*fy);
+                  }
+                  const engine=await DICEngine.create({width,height,motionModel:'affine',initialization:'global-affine',pyramidLevels:2,
+                    iterationsPerLevel:[8,16],outlierPolicy:'disabled'});
+                  try{
+                    await engine.setReference(reference,{roiMask:mask});
+                    const result=await engine.register(target);
+                    return {fit:result.config.globalAffineEstimate,accepted:result.accepted,finite:result.parameters.every(Number.isFinite),
+                      timing:result.timing};
+                  }finally{engine.destroy();}
+                })()"""
+            )
+        self.assertEqual(actual["fit"]["levels"], 5)
+        self.assertGreater(actual["fit"]["score"], 0.98)
+        self.assertGreater(actual["accepted"], 0)
+        self.assertTrue(actual["finite"])
+        self.assertGreater(actual["timing"]["globalAffineWallMs"], 0)
 
     def test_decimated_readback_is_a_gpu_sample_of_the_complete_field(self):
         from lucas_kanade_icgn import ICGNWebGL

@@ -6,6 +6,7 @@ import { decodePacked, createResultReader, decodeCounters } from './result.js';
 import { loadShader } from './shaders.js';
 import { createGpuReferenceGraph } from './reference-gpu.js';
 import { FourierInitializer } from './fourier.js';
+import { GlobalAffineInitializer } from './global-affine.js';
 /*
  * Raw browser WebGPU adapter for the same portable WGSL used by wgpu-py.
  *
@@ -89,6 +90,7 @@ export function createPyramidHost(options = {}) {
   let temporal = null;
   let gpuReference = null;
   let fourier = null;
+  let globalAffine = null;
   let slots = [];
   let lastFieldBuffer = null;
   let lastSlot = null;
@@ -145,6 +147,7 @@ export function createPyramidHost(options = {}) {
 
   const destroyRuntimeResources = () => {
     fourier=null;
+    globalAffine=null;
     gpuReference?.destroy();gpuReference=null;
     const contexts = slots.length ? slots : [{ levels, reductionEdges, seedEdges, temporal }];
     const released = new Set();
@@ -471,12 +474,12 @@ export function createPyramidHost(options = {}) {
         levelBuffers.seedState = device.createBuffer({
           label: `DIC-RT seed state level ${levelIndex}`,
           size: gridCount * stateStride * 4,
-          usage: storage | (configuration.initialization==='fourier'?GPUBufferUsage.COPY_DST:0),
+          usage: storage | (['fourier','global-affine'].includes(configuration.initialization)?GPUBufferUsage.COPY_DST:0),
         });
         levelBuffers.activeMask = device.createBuffer({
           label: `DIC-RT active mask level ${levelIndex}`,
           size: gridCount * 4,
-          usage: storage | (configuration.initialization==='fourier'?GPUBufferUsage.COPY_DST:0),
+          usage: storage | (['fourier','global-affine'].includes(configuration.initialization)?GPUBufferUsage.COPY_DST:0),
         });
       }
       const baseEntries = [
@@ -633,6 +636,7 @@ export function createPyramidHost(options = {}) {
     validateTemporal({...hostOptions,...configuration,...options,initialization});
     if(!allowPyramidRebuild&&referenceReady&&initialization!==configuration.initialization)throw new Error('Changing initialization requires setReference()');
     if(initialization==='fourier'&&(options.motionModel??configuration.motionModel)==='quadratic')throw new Error('Fourier initialization currently supports translation and affine models');
+    if(initialization==='global-affine'&&(options.motionModel??configuration.motionModel)!=='affine')throw new Error('Global affine initialization requires motionModel="affine"');
     const pyramidLevels = options.pyramidLevels === undefined
       ? configuration.pyramidLevels : Number(options.pyramidLevels);
     if (!Number.isInteger(pyramidLevels) || pyramidLevels < 1 || pyramidLevels > 6) {
@@ -819,7 +823,7 @@ export function createPyramidHost(options = {}) {
     };
     const coarsestIndex = levels.length - 1;
     if (temporal) jobs.push(...temporal.before);
-    appendLevel(levels[coarsestIndex], !!temporal || !!slot.fourierEstimate);
+    appendLevel(levels[coarsestIndex], !!temporal || !!slot.fourierEstimate || !!slot.globalAffineEstimate);
     for (let destinationIndex = coarsestIndex - 1; destinationIndex >= 0; --destinationIndex) {
       const edge = seedEdges.get(destinationIndex);
       const destination = levels[destinationIndex];
@@ -1003,7 +1007,16 @@ export function createPyramidHost(options = {}) {
       gridTotal: GRID_COUNT, levelSelectedCounts: levels.map((level) => level.roi?.count ?? level.gridCount) };
     const runtimeBuildWallMs = performance.now() - runtimeStarted;
     const referenceStarted = performance.now();
+    delete configuration.globalAffine;
     try {
+      if (configuration.initialization === 'global-affine' && roiPlans[0]?.count !== 0) {
+        const grayscale = image.pixels ?? imageToGray(image, image.width, image.height, 1 / 255);
+        const referenceBytes = grayscale instanceof Uint8Array ? grayscale
+          : Uint8Array.from(grayscale, value => Math.max(0, Math.min(255, Math.round(value <= 1 ? value * 255 : value))));
+        globalAffine = new GlobalAffineInitializer(referenceBytes, image.width, image.height, ownedMask);
+        configuration.globalAffine = { levels: 5, domain: 'spatially sampled masked reference pixels',
+          maskAware: !!ownedMask, sampleCounts: globalAffine.levels.map(level => level.samples.values.length) };
+      }
       if(hostOptions.referencePreparation==='gpu'){
         for(const level of levels)if(level.roi){
           const neighbours=new Float32Array(level.gridCount*4);
@@ -1100,6 +1113,14 @@ export function createPyramidHost(options = {}) {
         device.queue.writeBuffer(slot.levels.at(-1).buffers.activeMask,0,coarse.roi?Uint32Array.from(coarse.roi.selected):new Uint32Array(coarse.gridCount).fill(1));
       }
     }
+    if(configuration.initialization==='global-affine'&&roiPlans[0]?.count!==0){
+      const coarse=levels.at(-1),scale=2**coarse.index,stride=8;
+      for(const slot of slots){
+        slot.globalAffineSeed=new Float32Array(coarse.gridCount*stride);
+        const selected=coarse.roi?Uint32Array.from(coarse.roi.selected):new Uint32Array(coarse.gridCount).fill(1);
+        device.queue.writeBuffer(slot.levels.at(-1).buffers.activeMask,0,selected);
+      }
+    }
     const referenceBuildWallMs = performance.now() - referenceStarted;
     referenceReady = true;
     return {
@@ -1119,12 +1140,24 @@ export function createPyramidHost(options = {}) {
   };
 
   const readResult = (timing,slot=slots[0],forceFull=false) => {
-    if(configuration.initialization!=='fourier')return readRawResult(timing,slot,forceFull);
-    return decorateFourier(timing,slot,forceFull);
+    if(configuration.initialization==='fourier')return decorateFourier(timing,slot,forceFull);
+    if(configuration.initialization==='global-affine')return decorateGlobalAffine(timing,slot,forceFull);
+    return readRawResult(timing,slot,forceFull);
   };
   const decorateFourier = async (timing,slot,forceFull) => {
     const result=await readRawResult(timing,slot,forceFull);
     if(slot.fourierEstimate){result.config={...result.config,globalTranslation:slot.fourierEstimate};result.timing.fourierWallMs=slot.fourierEstimate.wallMs;}
+    return result;
+  };
+  const decorateGlobalAffine = async (timing,slot,forceFull) => {
+    const result=await readRawResult(timing,slot,forceFull);
+    if(slot.globalAffineEstimate){
+      const estimate=slot.globalAffineEstimate;
+      result.config={...result.config,globalAffineEstimate:{dx:estimate.dx,dy:estimate.dy,linear:estimate.linear,
+        score:estimate.score,overlap:estimate.overlap,sampleCount:estimate.sampleCount,levels:estimate.levels,
+        diagnostics:estimate.diagnostics}};
+      result.timing.globalAffineWallMs=estimate.wallMs;
+    }
     return result;
   };
   const prepareFourier = async (slot,source,bytes=false) => {
@@ -1142,6 +1175,33 @@ export function createPyramidHost(options = {}) {
     slot.fourierEstimate=estimate;
   };
 
+  const prepareGlobalAffine = async (slot, pixels) => {
+    if (!globalAffine || roiPlans[0]?.count === 0) return;
+    if (!(pixels instanceof Uint8Array)) throw new Error('Global affine initialization needs decoded grayscale target pixels; use image-pair input rather than a camera stream');
+    const started=performance.now(),estimate=globalAffine.estimate(pixels);
+    const coarse=slot.levels.at(-1),scale=2**coarse.index,stride=8;
+    const fullCenterX=(FRAME_WIDTH-1)*0.5,fullCenterY=(FRAME_HEIGHT-1)*0.5;
+    for(let y=0;y<coarse.gridHeight;y++)for(let x=0;x<coarse.gridWidth;x++){
+      const index=y*coarse.gridWidth+x;
+      if(coarse.roi&&!coarse.roi.selected[index])continue;
+      const centerX=x*SUBSET_STRIDE+(SUBSET_SIZE-1)*0.5;
+      const centerY=y*SUBSET_STRIDE+(SUBSET_SIZE-1)*0.5;
+      const fullX=centerX*scale+(scale-1)*0.5,fullY=centerY*scale+(scale-1)*0.5;
+      const dx=estimate.dx+estimate.linear[0]*(fullX-fullCenterX)+estimate.linear[1]*(fullY-fullCenterY);
+      const dy=estimate.dy+estimate.linear[2]*(fullX-fullCenterX)+estimate.linear[3]*(fullY-fullCenterY);
+      const offset=index*stride;
+      slot.globalAffineSeed[offset]=dx/scale;
+      slot.globalAffineSeed[offset+1]=estimate.linear[0];
+      slot.globalAffineSeed[offset+2]=estimate.linear[1];
+      slot.globalAffineSeed[offset+3]=dy/scale;
+      slot.globalAffineSeed[offset+4]=estimate.linear[2];
+      slot.globalAffineSeed[offset+5]=estimate.linear[3];
+    }
+    device.queue.writeBuffer(coarse.buffers.seedState,0,slot.globalAffineSeed);
+    estimate.wallMs=performance.now()-started;
+    slot.globalAffineEstimate=estimate;
+  };
+
   const register = async (dataUrl, options = {}) => {
     await ensureDevice();
     if (!referenceReady) throw new Error('A reference image must be configured first');
@@ -1150,6 +1210,7 @@ export function createPyramidHost(options = {}) {
     try {
       const pixels=setTarget(image);
       if(fourier)await prepareFourier(slots[0],pixels,true);
+      if(globalAffine)await prepareGlobalAffine(slots[0],pixels);
     } finally {
       image.close?.();
     }
@@ -1168,6 +1229,7 @@ export function createPyramidHost(options = {}) {
     const fourierStarted=fourier?performance.now():null;
     slot.externalActive = false;
     if(fourier)await prepareFourier(slot,pixels,true);
+    if(globalAffine)await prepareGlobalAffine(slot,pixels);
     setTargetBytes(pixels, width, height, slot.levels[0].sourceTexture);
     const started = fourierStarted??performance.now();
     const gpuMs = await executePipeline({ measureGpu: true, slot });
@@ -1179,6 +1241,7 @@ export function createPyramidHost(options = {}) {
     if (!referenceReady) throw new Error('A reference image must be configured first');
     const slot = slots[slotIndex], started = performance.now();
     if (!slot.external) throw new Error('External image input was not prepared');
+    if(globalAffine)throw new Error('Global affine initialization is currently for decoded image pairs, not camera or external-texture streams');
     slot.externalActive = true;
     if(fourier)await prepareFourier(slot,frame);
     if(!slot.fourierInputReady)slot.external.converter.copy(frame);
@@ -1189,6 +1252,10 @@ export function createPyramidHost(options = {}) {
   const registerPair = async (reference,current) => {
     if(!referenceReady||!gpuReference)throw new Error('Prepare a GPU reference before registering pairs');
     const slot=slots[0],started=performance.now();
+    if(globalAffine){
+      if(!(current instanceof Uint8Array))throw new Error('Global affine initialization requires decoded grayscale image-pair input');
+      await prepareGlobalAffine(slot,current);
+    }
     if(configuration.initialization==='fourier'&&roiPlans[0]?.count!==0){
       const pixels=reference instanceof Uint8Array?reference:await slot.external.converter.referencePixels(reference);
       fourier=new FourierInitializer(pixels,FRAME_WIDTH,FRAME_HEIGHT,roiMask);configuration.fourierWindow=fourier.window;
@@ -1231,7 +1298,7 @@ export function createPyramidHost(options = {}) {
     configure(options);
     const image = typeof dataUrl === 'string' ? await loadImage(dataUrl) : dataUrl;
     try {
-      const pixels=setTarget(image);if(fourier)await prepareFourier(slots[0],pixels,true);
+      const pixels=setTarget(image);if(fourier)await prepareFourier(slots[0],pixels,true);if(globalAffine)await prepareGlobalAffine(slots[0],pixels);
     } finally {
       image.close?.();
     }
@@ -1306,7 +1373,7 @@ export function createPyramidHost(options = {}) {
     get imageTexture() { return lastSlot?.externalActive ? lastSlot.external.converter.source : (lastSlot?.levels[0].sourceTexture ?? sourceTexture); },
     get fieldBuffer() { return lastFieldBuffer ?? (configuration.outlierPolicy === 'disabled' ? buffers?.state : buffers?.filteredState); },
     get configuration() { return { ...configuration }; },
-    cpuMemoryBytes() { return (fourier?.memoryBytes()??0)+slots.reduce((sum,slot)=>sum+(slot.fourierSeed?.byteLength??0),0); },
+    cpuMemoryBytes() { return (fourier?.memoryBytes()??0)+slots.reduce((sum,slot)=>sum+(slot.fourierSeed?.byteLength??0)+(slot.globalAffineSeed?.byteLength??0),0); },
     memoryResources() { return {levels,reductionEdges,seedEdges,slots,queryResolveBuffer,sourceTexture,buffers,
       gpuReference:gpuReference?.memoryResources(),temporal:slots.map(slot=>slot.temporal?.memoryResources()),readers:slots.map(slot=>slot.resultReader?.memoryResources())}; },
     destroy() {

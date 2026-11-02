@@ -517,3 +517,13 @@ See :doc:`../how-to/register-large-shifts` for rejection and latency limits.
 ``pyramidLevels`` accepts 1–6; its default remains two. Five and six levels are
 experimental large-motion options and have no general capture-range or
 performance guarantee.
+
+The shared core also accepts ``initialization: 'global-affine'`` only with
+``motionModel: 'affine'``. It performs a robust sampled fit over the masked
+reference domain on five CPU scales, then supplies one affine seed per local
+subset. This is experimental preprocessing for decoded sparse image pairs;
+it is not a camera-rate path. External texture streams are rejected in this
+mode because they do not provide CPU target pixels without a full readback.
+Result configuration includes the global transform and per-scale fit
+diagnostics, and ``timing.globalAffineWallMs`` measures each target fit.
+See :doc:`../how-to/register-large-shifts`.

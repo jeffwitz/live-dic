@@ -98,6 +98,16 @@ accepted state. Temporal history requires
 ordered inputs and cannot guarantee recovery after discontinuous motion or
 accepted wrong-basin solutions. See :doc:`temporal-initialization`.
 
+The shared browser WGSL core has an experimental
+``initialization="global-affine"`` for decoded sparse image pairs. It fits
+one robust affine transform over sampled pixels in the reference mask using
+five CPU image scales, then seeds the local subsets. It is limited to the
+affine model and is not implemented by the native engine, Three.js, or
+GPU-IO. Per-target CPU fitting can take seconds and is not a live-stream
+solution. A single global affine model cannot represent strongly
+non-affine specimen deformation; the following local solve may still reject
+subsets. See :doc:`../how-to/register-large-shifts`.
+
 ``temporal_fine_correction=True`` is an additional two-level
 option. It preserves fine history while applying the measured coarse change,
 using the absolute seed if complete age-matched history is unavailable. It is

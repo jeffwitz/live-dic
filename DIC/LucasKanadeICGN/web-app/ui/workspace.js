@@ -40,18 +40,22 @@ export function solverOptions() {
     displayRate:get('display-rate').value==='off'?0:Number(get('display-rate').value),
     previewEnabled:get('display-rate').value!=='off',previewMaxWidth:Number(get('preview-width').value)};
   const fourier = !!get('fourier-start')?.checked;
+  const globalAffine = !!get('global-affine-start')?.checked;
+  if (fourier && globalAffine) throw new Error('Choose either Fourier or global affine initialization');
   if (fourier) Object.assign(base,{initialization:'fourier',temporalPrediction:'none',temporalFineCorrection:false,divergencePatience:null});
+  if (globalAffine) Object.assign(base,{initialization:'global-affine',motionModel:'affine',temporalPrediction:'none',temporalFineCorrection:false,divergencePatience:null});
   if (!get('custom-solver').checked) return base;
   const size = Number(get('subset-size').value), stride = Number(get('subset-stride').value);
   const levels = Number(get('pyramid-levels').value), coarse = Number(get('coarse-iterations').value), fine = Number(get('fine-iterations').value);
   if (!Number.isInteger(stride) || stride < 1 || stride > size) throw new Error('Grid step must be an integer between 1 and the window width');
   if (!Number.isInteger(levels) || levels < 1 || levels > 6) throw new Error('Pyramid levels must be between 1 and 6');
   if (![coarse, fine].every(v => Number.isInteger(v) && v > 0 && v <= 30)) throw new Error('GN limits must be integers between 1 and 30');
-  const temporal = !fourier && get('temporal-start').checked;
+  const temporal = !fourier && !globalAffine && get('temporal-start').checked;
+  if (globalAffine && get('motion-model').value !== 'affine') throw new Error('Global affine initialization requires the affine motion model');
   return { ...base, subsetSize: size, subsetStride: stride, motionModel: get('motion-model').value,
     interpolation: get('interpolation').value, outlierPolicy: get('outlier-policy').value,
     pyramidLevels: levels, iterationsPerLevel: levels === 1 ? [fine] : [coarse, ...(levels === 3 ? [4] : Array(Math.max(0, levels - 2)).fill(8)), fine],
-    initialization: fourier ? 'fourier' : temporal ? 'temporal' : 'zero', temporalPrediction: temporal ? 'velocity' : 'none',
+    initialization: fourier ? 'fourier' : globalAffine ? 'global-affine' : temporal ? 'temporal' : 'zero', temporalPrediction: temporal ? 'velocity' : 'none',
     temporalFineCorrection: temporal && levels === 2, divergencePatience: temporal ? 3 : null };
 }
 

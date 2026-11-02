@@ -416,7 +416,11 @@ class RuntimeAssetTests(unittest.TestCase):
     def test_browser_pyramid_options_are_validated(self) -> None:
         four = ICGNWebGL(backend="webgpu-wgsl", pyramid_levels=4)
         self.assertEqual(four.pyramid_levels, 4)
-        for levels in (0, 5, 1.5, True):
+        five = ICGNWebGL(backend="webgpu-wgsl", pyramid_levels=5)
+        six = ICGNWebGL(backend="webgpu-wgsl", pyramid_levels=6)
+        self.assertEqual(five.pyramid_levels, 5)
+        self.assertEqual(six.pyramid_levels, 6)
+        for levels in (0, 7, 1.5, True):
             with self.subTest(levels=levels), self.assertRaisesRegex(ValueError, "pyramid_levels"):
                 ICGNWebGL(backend="webgpu-wgsl", pyramid_levels=levels)
         with self.assertRaisesRegex(ValueError, "only.*webgpu-wgsl"):

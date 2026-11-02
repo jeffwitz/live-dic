@@ -920,12 +920,18 @@ class ICGNWebGL:
             raise ValueError("backend must be 'gpuio', 'three-tsl', or 'webgpu-wgsl'")
         if force_three_webgl and backend != "three-tsl":
             raise ValueError("force_three_webgl is supported only by the 'three-tsl' backend")
-        if not isinstance(initialization, str) or initialization not in {"zero", "fourier"}:
-            raise ValueError("initialization must be zero or fourier")
-        if initialization == "fourier" and backend != "webgpu-wgsl":
-            raise ValueError("Fourier initialization requires backend=webgpu-wgsl")
+        if not isinstance(initialization, str) or initialization not in {
+            "zero",
+            "fourier",
+            "global-affine",
+        }:
+            raise ValueError("initialization must be zero, fourier, or global-affine")
+        if initialization in {"fourier", "global-affine"} and backend != "webgpu-wgsl":
+            raise ValueError("Fourier and global affine initialization require backend=webgpu-wgsl")
         if initialization == "fourier" and motion_model == "quadratic":
             raise ValueError("Fourier initialization supports translation and affine models")
+        if initialization == "global-affine" and motion_model != "affine":
+            raise ValueError("Global affine initialization requires motion_model='affine'")
         self.initialization = initialization
         self.interpolation = normalize_interpolation(interpolation)
         self.motion_model = normalize_motion_model(motion_model)

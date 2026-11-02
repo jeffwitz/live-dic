@@ -71,8 +71,8 @@ export class DICEngine {
     this.inputs.forEach((input) => input.destroy()); this.inputs = [];
     for (let i = 0; i < this.ring.depth; i++) this.inputs.push(await createInputConverter(this.device, width, height));
     if (this.options.referencePreparation === 'gpu') {
-      if(this.options.initialization==='fourier'&&!(source instanceof Uint8Array))pixels=await this.inputs[0].referencePixels(source);
-      source = { width, height, gpuSource: source,...(this.options.initialization==='fourier'?{pixels}:{}) };
+      if(['fourier','global-affine'].includes(this.options.initialization)&&!(source instanceof Uint8Array))pixels=await this.inputs[0].referencePixels(source);
+      source = { width, height, gpuSource: source,...(['fourier','global-affine'].includes(this.options.initialization)?{pixels}:{}) };
     } else {
       if (!(source instanceof Uint8Array)) pixels = await this.inputs[0].referencePixels(source);
       if (pixels instanceof Uint8Array) {

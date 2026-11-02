@@ -69,9 +69,11 @@ Solver options
    value creates overlapping subsets and currently requires
    ``--backend webgpu-wgsl``.
 
-``--initialization {zero,fourier}``
-   Opt-in Fourier global-translation bootstrap for ``webgpu-wgsl`` only. The
-   default is zero initialization. See :doc:`../how-to/register-large-shifts`.
+``--initialization {zero,fourier,global-affine}``
+   Opt-in global initialization for ``webgpu-wgsl`` only. Fourier estimates a
+   rigid translation; ``global-affine`` fits the masked affine motion over
+   five CPU scales and requires ``--motion-model affine``. The default is zero
+   initialization. See :doc:`../how-to/register-large-shifts`.
 
 ``--pyramid-levels {1,2,3,4,5,6}``
    Full-pyramid depth for ``webgpu-wgsl``. Five and six levels are experimental

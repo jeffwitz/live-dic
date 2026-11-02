@@ -105,9 +105,9 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--initialization",
-        choices=("zero", "fourier"),
+        choices=("zero", "fourier", "global-affine"),
         default="zero",
-        help="Global Fourier translation seed (webgpu-wgsl only)",
+        help="Initial translation/affine seed (webgpu-wgsl only)",
     )
     parser.add_argument(
         "--pyramid-levels",

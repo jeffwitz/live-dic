@@ -180,6 +180,7 @@ async function receive({ data }) {
     $('fps').textContent = source === 'plate' ? 'Static pair' : data.fps.toFixed(1);
     $('age').textContent = `${data.ageMedian.toFixed(1)} / ${data.ageP95.toFixed(1)} ms`;
     if(data.globalTranslation)$('last-reference-summary').textContent+=` Fourier seed (${data.globalTranslation.dx}, ${data.globalTranslation.dy}) px · correlation ${data.globalTranslation.correlation.toFixed(3)}.`;
+    if(data.globalAffineEstimate){const fit=data.globalAffineEstimate;$('last-reference-summary').textContent+=` Global affine seed: centre (${fit.dx.toFixed(2)}, ${fit.dy.toFixed(2)}) px · correlation ${fit.score.toFixed(3)} · ${fit.levels} scales · ${data.timing.globalAffineWallMs?.toFixed(1)??'—'} ms CPU.`;}
     $('acceptance').textContent = `${data.accepted} / ${data.selected}`;
     $('iterations').textContent = data.meanIterations?.toFixed(2) ?? '—';
     $('error').textContent = data.truthRmse == null ? '—' : `${data.truthRmse.toFixed(4)} px`;
@@ -834,12 +835,19 @@ $('apply-solver-settings').onclick=()=>sourceChange(()=>prepareSolverSettings(op
 $('large-shift-preset').onclick = () => {
   $('custom-solver').checked=true;$('pyramid-levels').value='6';
   $('coarse-iterations').value='20';$('fine-iterations').value='16';
-  $('temporal-start').checked=false;$('fourier-start').checked=false;
+  $('temporal-start').checked=false;$('fourier-start').checked=false;$('global-affine-start').checked=false;
   $('custom-solver').onchange();
 };
-for (const id of ['fourier-start','overlap-pipeline','gpu-reference-preparation','custom-solver','motion-model','subset-size','subset-stride','interpolation','pyramid-levels','coarse-iterations','fine-iterations','outlier-policy','temporal-start']) $(id).onchange = () => {
+for (const id of ['fourier-start','global-affine-start','overlap-pipeline','gpu-reference-preparation','custom-solver','motion-model','subset-size','subset-stride','interpolation','pyramid-levels','coarse-iterations','fine-iterations','outlier-policy','temporal-start']) $(id).onchange = () => {
+  if (id === 'fourier-start' && $('fourier-start').checked) { $('global-affine-start').checked=false;$('temporal-start').checked=false; }
+  if (id === 'global-affine-start' && $('global-affine-start').checked) {
+    $('fourier-start').checked=false;$('temporal-start').checked=false;
+    $('motion-model').value='affine';
+  }
+  if (id === 'temporal-start' && $('temporal-start').checked) { $('fourier-start').checked=false;$('global-affine-start').checked=false; }
   $('solver-settings').disabled = !$('custom-solver').checked;
-  $('temporal-start').disabled = $('fourier-start').checked;
+  $('motion-model').disabled = !$('custom-solver').checked || $('global-affine-start').checked;
+  $('temporal-start').disabled = $('fourier-start').checked || $('global-affine-start').checked;
   $('subset-stride').max = $('subset-size').value;
   if (Number($('subset-stride').value) > Number($('subset-size').value)) $('subset-stride').value = $('subset-size').value;
   updateSolverSettingsStatus();

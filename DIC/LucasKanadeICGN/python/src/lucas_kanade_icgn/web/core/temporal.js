@@ -4,9 +4,12 @@ import { seedPermissions } from './roi.js';
 export function validateTemporal(options) {
   const initialization = options.initialization === undefined ? 'zero' : options.initialization;
   const prediction = options.temporalPrediction === undefined ? 'none' : options.temporalPrediction;
-  if (!['zero', 'temporal', 'fourier'].includes(initialization)) throw new Error("initialization must be 'zero', 'temporal' or 'fourier'");
+  if (!['zero', 'temporal', 'fourier', 'global-affine'].includes(initialization)) throw new Error("initialization must be 'zero', 'temporal', 'fourier' or 'global-affine'");
   if (!['none', 'velocity'].includes(prediction)) throw new Error("temporalPrediction must be 'none' or 'velocity'");
   if (prediction !== 'none' && initialization !== 'temporal') throw new Error('temporalPrediction requires temporal initialization');
+  if (initialization === 'global-affine' && (prediction !== 'none' || options.temporalFineCorrection)) {
+    throw new Error('Global affine initialization cannot be combined with temporal prediction');
+  }
   if (options.temporalFineCorrection && (initialization !== 'temporal' || (options.pyramidLevels ?? 2) !== 2)) {
     throw new Error('temporalFineCorrection requires temporal initialization and exactly two levels');
   }
