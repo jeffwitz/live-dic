@@ -6,6 +6,27 @@ is organized around a short path: choose input, define the reference and
 ROI, run correlation, then inspect and process the resulting fields. Pierre
 Margerit's foundational numerical work remains the basis of the engine.
 
+Two workspaces
+--------------
+
+The header switch separates two user goals while keeping one browser session,
+one result library and the same numerical core:
+
+* **Live** is for continuous camera or video streams. It foregrounds acquisition,
+  the fixed reference, the specimen mask, frame timing and a lightweight vector
+  preview. It does not show the saved-field post-processing panel. Fields can be
+  recorded during a run and opened in Analysis afterward.
+* **Analysis** is for image folders, image sequences, video files and saved
+  projects. It foregrounds solving a selected range, replaying saved fields,
+  post-processing, named measurements and exports. The camera control belongs
+  to Live.
+
+Switching workspaces changes navigation and presentation only. It does not
+change solver settings, discard fields, rebuild the reference or pause an
+active calculation. The selected workspace is remembered in the browser. Live
+rate and 4K60 goals remain device-specific; the workspace does not certify a
+browser or mobile device.
+
 Three distinct user operations
 ------------------------------
 

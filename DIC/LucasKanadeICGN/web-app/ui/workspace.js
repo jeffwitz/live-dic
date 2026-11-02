@@ -1,7 +1,32 @@
 /** Keep navigation and pending solver edits explicit; no numerical defaults live here. */
-export function installWorkspace({ shortcuts, onPane = () => {} }) {
+export function installWorkspace({ shortcuts, onPane = () => {}, onModeChange = () => {} }) {
   let pane = 'source';
+  let mode = 'analysis';
   const buttons = [...document.querySelectorAll('[data-pane]')];
+  const modeButtons = [...document.querySelectorAll('[data-workspace-mode]')];
+
+  function showMode(name, { persist = true, destination = null } = {}) {
+    if (!['live', 'analysis'].includes(name)) {
+      throw new Error("Workspace mode must be 'live' or 'analysis'");
+    }
+    mode = name;
+    document.body.dataset.workspaceMode = name;
+    for (const button of modeButtons) {
+      button.setAttribute('aria-pressed', String(button.dataset.workspaceMode === name));
+    }
+    for (const element of document.querySelectorAll('[data-mode-copy]')) {
+      element.hidden = element.dataset.modeCopy !== name;
+    }
+    for (const element of document.querySelectorAll('[data-workspace-only]')) {
+      element.hidden = element.dataset.workspaceOnly !== name;
+    }
+    if (persist) {
+      try { localStorage.setItem('live-dic-workspace-mode', name); } catch { /* Storage is optional. */ }
+    }
+    onModeChange(name);
+    if (destination) showPane(destination);
+  }
+
   function showPane(name) {
     pane = name;
     for (const button of buttons) {
@@ -12,6 +37,18 @@ export function installWorkspace({ shortcuts, onPane = () => {} }) {
     }
     onPane(name);
   }
+  for (const button of modeButtons) {
+    button.onclick = () => showMode(button.dataset.workspaceMode, {
+      destination: button.dataset.workspacePane || null,
+    });
+  }
+  let savedMode = 'analysis';
+  try {
+    const storedMode = localStorage.getItem('live-dic-workspace-mode');
+    if (['live', 'analysis'].includes(storedMode)) savedMode = storedMode;
+  } catch { /* Storage is optional. */ }
+  showMode(savedMode, { persist: false });
+
   buttons.forEach((button, i) => {
     button.onclick = () => showPane(button.dataset.pane);
     button.onkeydown = event => {
@@ -36,7 +73,7 @@ export function installWorkspace({ shortcuts, onPane = () => {} }) {
     if (event.key.toLowerCase() === 'r') shortcuts.reference();
     if (event.key === 'Escape') shortcuts.clear();
   });
-  return { showPane, get pane() { return pane; } };
+  return { showPane, showMode, get pane() { return pane; }, get mode() { return mode; } };
 }
 
 export function solverOptions() {

@@ -110,3 +110,70 @@ class SolverControlTests(unittest.TestCase):
         self.assertEqual(actual["larger"]["medianFilterSize"], 9)
         self.assertEqual(actual["unsmoothed"]["medianFilterSize"], 3)
         self.assertTrue(actual["cold"])
+
+    def test_workspace_modes_preserve_the_current_pane_and_toggle_mode_content(self):
+        ui = ROOT / "web-app/ui/workspace.js"
+        script = f"""
+          import {{installWorkspace}} from {json.dumps(ui.as_uri())};
+          const element=(dataset={{}})=>({{dataset,hidden:false,attributes:{{}},listeners:{{}},
+            setAttribute(name,value){{this.attributes[name]=value;}},
+            toggleAttribute(name,force){{if(force)this.attributes[name]=true;else delete this.attributes[name];}},
+            addEventListener(name,callback){{this.listeners[name]=callback;}},
+            click(){{this.onclick?.();}},focus(){{}},showModal(){{}},open:false}});
+          const panes=['source','mask','solve','view'].map(name=>element({{pane:name}}));
+          const modes=['live','analysis'].map(name=>element({{workspaceMode:name}}));
+          const copies=['live','analysis'].map(name=>element({{modeCopy:name}}));
+          const liveOnly=element({{workspaceOnly:'live'}}),analysisOnly=element({{workspaceOnly:'analysis'}});
+          const panels=new Map(['source','mask','solve','view'].map(name=>[`pane-${{name}}`,element()]));
+          const help=element(),policy=element();policy.value='median';
+          const medianSize=element();
+          globalThis.document={{body:{{dataset:{{}}}},
+            querySelectorAll(selector){{return {{'[data-pane]':panes,'[data-workspace-mode]':modes,
+              '[data-mode-copy]':copies,'[data-workspace-only]':[liveOnly,analysisOnly]}}[selector]??[];}},
+            getElementById(id){{return panels.get(id)??({{help,'quick-guide':help,'outlier-policy':policy,'median-filter-size':medianSize}}[id]??element());}},
+            querySelector(){{return null;}}}};
+          globalThis.window={{addEventListener(){{}}}};
+          globalThis.localStorage={{writes:[],getItem(){{return null;}},setItem(key,value){{this.writes.push([key,value]);}}}};
+          const paneCalls=[],modeCalls=[];const workspace=installWorkspace({{shortcuts:{{play(){{}},reference(){{}},clear(){{}}}},
+            onPane:name=>paneCalls.push(name),onModeChange:name=>modeCalls.push(name)}});
+          workspace.showPane('view');modes[0].click();
+          const live={{mode:workspace.mode,pane:workspace.pane,cameraHidden:liveOnly.hidden,
+            analysisHidden:analysisOnly.hidden,liveCopyHidden:copies[0].hidden,analysisCopyHidden:copies[1].hidden}};
+          modes[1].click();
+          const analysis={{mode:workspace.mode,pane:workspace.pane,cameraHidden:liveOnly.hidden,
+            analysisHidden:analysisOnly.hidden,liveCopyHidden:copies[0].hidden,analysisCopyHidden:copies[1].hidden}};
+          let invalidRejected=false;try{{workspace.showMode('unknown');}}catch{{invalidRejected=true;}}
+          console.log(JSON.stringify({{live,analysis,paneCalls,modeCalls,modeWrites:localStorage.writes,invalidRejected}}));
+        """
+        actual = json.loads(
+            subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
+        )
+        self.assertEqual(
+            actual["live"],
+            dict(
+                mode="live",
+                pane="view",
+                cameraHidden=False,
+                analysisHidden=True,
+                liveCopyHidden=False,
+                analysisCopyHidden=True,
+            ),
+        )
+        self.assertEqual(
+            actual["analysis"],
+            dict(
+                mode="analysis",
+                pane="view",
+                cameraHidden=True,
+                analysisHidden=False,
+                liveCopyHidden=True,
+                analysisCopyHidden=False,
+            ),
+        )
+        self.assertEqual(actual["paneCalls"], ["view"])
+        self.assertEqual(actual["modeCalls"], ["analysis", "live", "analysis"])
+        self.assertEqual(
+            actual["modeWrites"],
+            [["live-dic-workspace-mode", "live"], ["live-dic-workspace-mode", "analysis"]],
+        )
+        self.assertTrue(actual["invalidRejected"])

@@ -40,7 +40,10 @@ if (smoke) {
   console.error = (...args) => { status.errors.push(args.map(String).join(' ')); original(...args); };
 }
 const options = solverOptions;
-const workspace = installWorkspace({ onPane: name => {
+let workbench;
+const workspace = installWorkspace({ onModeChange: mode => {
+  if (mode === 'live' && workbench?.reviewing) workbench.returnLive(true);
+}, onPane: name => {
   $('result-transport').hidden=name!=='view';
   if(name==='view'&&!workbench.reviewing)finishCalculation().catch(e=>message(e.message,true));
   else if(name!=='view'&&workbench.reviewing)workbench.returnLive(true);
@@ -49,7 +52,7 @@ const workspace = installWorkspace({ onPane: name => {
   reference: () => { if (workspace.pane !== 'view' && !$('reference').disabled && !loadingSource) $('reference').click(); },
   clear: () => workbench.clearInspection(),
 } });
-const workbench = installWorkbench({
+workbench = installWorkbench({
   captureCurrent: captureCurrentField,
   beforeProjectExport: async () => { pauseSource(); await drain(); $('pause').textContent='Start calculation'; },
   requestMemory: async () => ({...await send('memory'),pendingRecordedFields:recordingQueue.report()}),
@@ -64,7 +67,7 @@ const workbench = installWorkbench({
     return send('recording', { enabled }).catch(e => message(e.message, true));
   },
   liveChanged: (reviewing,restore) => { document.querySelector('.metrics').hidden=reviewing;$('pipeline-timing').hidden=reviewing;$('reference').hidden=reviewing;$('reset').hidden=reviewing; $('input-field').hidden=reviewing||!viewingInput; if(!reviewing)$('field').hidden=viewingInput; if(restore && transport && referencePrepared) send('display',{display:displayOptions()}).catch(e=>message(e.message,true)); $('run-state').textContent = reviewing ? 'Saved field · reference coordinates' : source ? `${source} · ${paused ? 'paused' : 'running'}` : 'No source selected'; },
-  openResults: () => workspace.showPane('view'),
+  openResults: () => { workspace.showMode('analysis'); workspace.showPane('view'); },
 });
 recordingQueue = new RecordingQueue({
   sampleLimit:smoke?18000:256,

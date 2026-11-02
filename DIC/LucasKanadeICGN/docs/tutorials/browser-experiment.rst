@@ -37,10 +37,15 @@ still lets you open a saved NPZ field or results project for CPU analysis; it
 cannot perform new correlations. See :doc:`../how-to/run-in-browser` for device
 requirements, local serving and repository deployment details.
 
+Choose **Analysis** in the header for this file-based exercise. Choose **Live**
+for continuous camera/video acquisition, frame timing and the lightweight
+vector monitor. Switching workspaces preserves the current session and saved
+fields; it does not change the solver or restart a calculation.
+
 Choose the experiment and inspect its reference
 -----------------------------------------------
 
-1. In **Input**, choose **Plate with hole · UHD**. Wait for preparation and the
+1. In **Files**, choose **Plate with hole · UHD**. Wait for preparation and the
    reference preparation. In Solve, press **Start calculation** for the first saved field. The source uses the original reference and load-95 PNG.
 2. Read the source label and choose **Solve**. The applied summary tells you the
    actual model, interpolation, window/step, pyramid schedule and grid. Keep
@@ -72,12 +77,12 @@ Threshold conversion of a nonbinary image is an explicit option.
 Understand what is displayed
 ----------------------------
 
-In **Solve → Live monitor**, the lightweight preview shows norm-coloured
+In **Live → Run → Live monitor**, the lightweight preview shows norm-coloured
 displacement vectors on the current image. Its colourbar is measured pixels;
 a separate key shows length magnification. Tips identify current subset centres.
 Choose a slow preview rate or suspend it while computing/recording continues.
-For scalar maps, equivalent strain and statuses, inspect a saved field in the
-next step. Equivalent strain uses ``ezz=0``; it is not stress.
+Switch to **Analysis** to inspect saved scalar maps, equivalent strain and
+statuses. Equivalent strain uses ``ezz=0``; it is not stress.
 
 .. figure:: ../../benchmarks/results/browser-live-vectors-20261101/overview-vectors.png
    :width: 550px

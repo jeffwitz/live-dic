@@ -231,3 +231,29 @@ dialog li { margin: 14px 0; line-height: 1.7; font-size: 13px; }
 .result-controls label {margin:0}
 .result-timeline {display:grid;grid-template-columns:auto minmax(80px,1fr) auto;align-items:center;gap:10px;margin-top:8px}
 .result-transport p {margin:6px 0 0}
+
+/* Live acquisition and offline field analysis are separate workspaces over the same session. */
+body[data-workspace-mode="analysis"] { --accent: #315f8d; }
+.workspace-mode-switch { display:flex; align-items:center; gap:4px; margin-left:auto; padding:3px; border:1px solid var(--line); border-radius:9px; background:#f7fafb; }
+.brand { flex:0 0 auto; white-space:nowrap; }
+.workspace-mode-switch { flex:0 0 auto; }
+.workspace-mode-switch .mode-switch-label { padding:0 7px; color:var(--muted); font-size:10px; font-weight:650; }
+.workspace-mode-switch button { min-height:30px; padding:5px 12px; border:0; background:transparent; font-size:11px; }
+.workspace-mode-switch button[aria-pressed="true"] { color:var(--ink); background:#fff; box-shadow:0 1px 3px #173b4b20; }
+.workspace-note { margin:0 0 12px; padding:9px 12px; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--muted); font-size:11px; line-height:1.55; }
+body[data-workspace-mode="analysis"] .metrics,
+body[data-workspace-mode="analysis"] #pipeline-timing,
+body[data-workspace-mode="analysis"] #live-monitor,
+body[data-workspace-mode="analysis"] .live-vector-key { display:none !important; }
+body[data-workspace-mode="live"] #result-transport,
+body[data-workspace-mode="live"] .legend,
+body[data-workspace-mode="live"] #results-workbench,
+body[data-workspace-mode="live"] #review-controls { display:none !important; }
+body[data-workspace-mode="analysis"] #reset { display:none !important; }
+@media (max-width:850px) {
+  header { flex-wrap:wrap; }
+  .tag { display:none; }
+  .workspace-mode-switch { order:3; flex:1 0 100%; justify-content:center; margin:0; }
+  .workspace-mode-switch button { margin-left:0; flex:1; }
+  header #help { margin-left:auto; }
+}
