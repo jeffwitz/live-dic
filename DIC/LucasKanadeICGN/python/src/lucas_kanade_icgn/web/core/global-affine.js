@@ -3,7 +3,9 @@
  * This CPU preprocessing step provides seeds to the unchanged local GPU solver.
  */
 
-const LEVELS = 5;
+const DEFAULT_LEVELS = 5;
+const MIN_LEVELS = 5;
+const MAX_LEVELS = 8;
 const MAX_SAMPLES = 100000;
 const MAX_ITERATIONS = 24;
 function mirror(index, size) {
@@ -186,9 +188,12 @@ function fitLevel(points, target, width, height, initial) {
 }
 
 export class GlobalAffineInitializer {
-  constructor(reference, width, height, mask = null) {
+  constructor(reference, width, height, mask = null, levels = DEFAULT_LEVELS) {
     if (!(reference instanceof Uint8Array) || reference.length !== width * height) {
       throw new Error('Global affine initialization requires grayscale reference bytes');
+    }
+    if (!Number.isInteger(levels) || levels < MIN_LEVELS || levels > MAX_LEVELS) {
+      throw new Error(`Global affine levels must be an integer between ${MIN_LEVELS} and ${MAX_LEVELS}`);
     }
     if (mask && (!(mask instanceof Uint8Array || mask instanceof Uint8ClampedArray) || mask.length !== reference.length)) {
       throw new Error('Global affine initialization mask must match the reference dimensions');
@@ -196,15 +201,17 @@ export class GlobalAffineInitializer {
     this.width = width; this.height = height;
     const fullMask = mask ?? new Uint8Array(reference.length).fill(1);
     this.levels = [{ image: { values: reference.slice(), width, height }, mask: fullMask }];
-    for (let i = 1; i < LEVELS; i++) {
+    for (let i = 1; i < levels; i++) {
       const previous = this.levels[i - 1];
-      if (Math.min(previous.image.width, previous.image.height) < 32) break;
+      if (Math.min(previous.image.width, previous.image.height) < 32) {
+        throw new Error(`The image is too small for ${levels} global affine levels`);
+      }
       this.levels.push({
         image: reduceImage(previous.image.values, previous.image.width, previous.image.height),
         ...reduceMask(previous.mask, previous.image.width, previous.image.height),
       });
     }
-    if (this.levels.length !== LEVELS) throw new Error('Global affine initialization requires an image large enough for five pyramid levels');
+    if (this.levels.length !== levels) throw new Error(`The image is too small for ${levels} global affine levels`);
     this.levels.forEach(level => { level.samples = makeSamples(level.image.values, level.mask, level.image.width, level.image.height); });
   }
 
@@ -213,14 +220,14 @@ export class GlobalAffineInitializer {
       throw new Error('Global affine target must be grayscale bytes matching the reference');
     }
     const targets = [{ values: target, width: this.width, height: this.height }];
-    for (let i = 1; i < LEVELS; i++) {
+    for (let i = 1; i < this.levels.length; i++) {
       const previous = targets[i - 1]; targets.push(reduceImage(previous.values, previous.width, previous.height));
     }
     let params = [0, 0, 0, 0, 0, 0], final = null;
     const diagnostics = [];
-    for (let index = LEVELS - 1; index >= 0; index--) {
+    for (let index = this.levels.length - 1; index >= 0; index--) {
       const { image } = this.levels[index], targetLevel = targets[index];
-      if (index !== LEVELS - 1) { params[0] *= 2; params[1] *= 2; }
+      if (index !== this.levels.length - 1) { params[0] *= 2; params[1] *= 2; }
       const points = this.levels[index].samples;
       final = fitLevel(points, targetLevel.values, targetLevel.width, targetLevel.height, params);
       params = final.params;
@@ -236,7 +243,7 @@ export class GlobalAffineInitializer {
       dx: params[0], dy: params[1],
       linear: [params[2], params[3], params[4], params[5]],
       score: final.score, overlap: final.overlap, sampleCount: final.sampleCount,
-      levels: LEVELS,
+      levels: this.levels.length,
       diagnostics,
     };
   }

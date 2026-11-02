@@ -50,6 +50,23 @@ class SolverControlTests(unittest.TestCase):
         )
         self.assertEqual(actual, [True, True, True])
 
+    def test_global_affine_scales_are_a_cold_solver_setting(self):
+        ui = ROOT / "web-app/ui/workspace.js"
+        script = f"""
+          import {{solverOptions,solverPreparationKey}} from {json.dumps(ui.as_uri())};
+          const values={{profile:{{value:'portable'}},'custom-solver':{{checked:false}},
+            'global-affine-start':{{checked:true}},'global-affine-levels':{{value:'6'}}}};
+          globalThis.document={{getElementById:id=>values[id]}};
+          const six=solverOptions();values['global-affine-levels'].value='7';const seven=solverOptions();
+          console.log(JSON.stringify({{six,seven,different:solverPreparationKey(six)!==solverPreparationKey(seven)}}));
+        """
+        actual = json.loads(
+            subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
+        )
+        self.assertEqual(actual["six"]["globalAffineLevels"], 6)
+        self.assertEqual(actual["seven"]["globalAffineLevels"], 7)
+        self.assertTrue(actual["different"])
+
     def test_preset_is_unchanged_and_custom_combinations_reach_the_core(self):
         ui = ROOT / "web-app/ui/workspace.js"
         core = ROOT / "python/src/lucas_kanade_icgn/web/core/engine.js"

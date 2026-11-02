@@ -911,6 +911,7 @@ class ICGNWebGL:
         subset_size: int = DEFAULT_SUBSET_SIZE,
         subset_stride: int | None = None,
         initialization: str = "zero",
+        global_affine_levels: int = 5,
     ) -> None:
         if startup_timeout <= 0:
             raise ValueError("startup_timeout must be greater than zero")
@@ -932,7 +933,16 @@ class ICGNWebGL:
             raise ValueError("Fourier initialization supports translation and affine models")
         if initialization == "global-affine" and motion_model != "affine":
             raise ValueError("Global affine initialization requires motion_model='affine'")
+        if (
+            isinstance(global_affine_levels, bool)
+            or not isinstance(global_affine_levels, int)
+            or not 5 <= global_affine_levels <= 8
+        ):
+            raise ValueError("global_affine_levels must be an integer from 5 to 8")
+        if initialization != "global-affine" and global_affine_levels != 5:
+            raise ValueError("global_affine_levels requires initialization='global-affine'")
         self.initialization = initialization
+        self.global_affine_levels = global_affine_levels
         self.interpolation = normalize_interpolation(interpolation)
         self.motion_model = normalize_motion_model(motion_model)
         self.outlier_policy = normalize_outlier_policy(outlier_policy)
@@ -1210,6 +1220,8 @@ class ICGNWebGL:
             options["pyramidLevels"] = self.pyramid_levels
             if self.initialization != "zero":
                 options["initialization"] = self.initialization
+            if self.initialization == "global-affine":
+                options["globalAffineLevels"] = self.global_affine_levels
             if self.iterations_per_level is not None:
                 options["iterationsPerLevel"] = list(self.iterations_per_level)
             if self.tolerance_per_level is not None:
@@ -1575,6 +1587,7 @@ def register_pair(
     subset_size: int = DEFAULT_SUBSET_SIZE,
     subset_stride: int | None = None,
     initialization: str = "zero",
+    global_affine_levels: int = 5,
     iterations: int | None = None,
     tolerance: float | None = None,
     zncc_min: float | None = None,
@@ -1601,6 +1614,7 @@ def register_pair(
         subset_size=subset_size,
         subset_stride=subset_stride,
         initialization=initialization,
+        global_affine_levels=global_affine_levels,
     ) as engine:
         return engine.register_pair(
             reference,

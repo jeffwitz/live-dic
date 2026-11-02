@@ -150,8 +150,11 @@ Three.js/GPU-IO refuse it. See :doc:`../how-to/register-large-shifts`.
 The Python-supervised raw browser backend additionally accepts
 ``initialization="global-affine"`` with ``backend="webgpu-wgsl"`` and
 ``motion_model="affine"``. It fits one mask-aware affine transform from
-sampled image pixels on five CPU pyramid scales and uses it to seed each local
-subset. In the browser workbench, loaded image and video files are supported
+sampled image pixels on five CPU pyramid scales by default. Set
+``global_affine_levels`` to an integer from 5 to 8 to control the scale count;
+six to eight are experimental wider-capture settings. Pass the option to
+``ICGNWebGL`` or ``register_pair``. The selected fit seeds each local subset.
+In the browser workbench, loaded image and video files are supported
 through a grayscale readback from the external GPU image. It is experimental
 and intended for sparse image pairs, not camera-rate streaming; live camera
 streams are rejected. It is not implemented by native

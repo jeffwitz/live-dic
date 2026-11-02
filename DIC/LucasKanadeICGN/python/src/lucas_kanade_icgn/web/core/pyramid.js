@@ -83,6 +83,8 @@ export function createPyramidHost(options = {}) {
     interpolation: 'bspline',
     motionModel: 'affine',
     outlierPolicy: 'replace',
+    ...(options.initialization === 'global-affine'
+      ? { globalAffineLevels: Number(options.globalAffineLevels ?? 5) } : {}),
   };
 
   let roiMask = null;
@@ -637,6 +639,19 @@ export function createPyramidHost(options = {}) {
     if(!allowPyramidRebuild&&referenceReady&&initialization!==configuration.initialization)throw new Error('Changing initialization requires setReference()');
     if(initialization==='fourier'&&(options.motionModel??configuration.motionModel)==='quadratic')throw new Error('Fourier initialization currently supports translation and affine models');
     if(initialization==='global-affine'&&(options.motionModel??configuration.motionModel)!=='affine')throw new Error('Global affine initialization requires motionModel="affine"');
+    const globalAffineLevels = options.globalAffineLevels === undefined
+      ? Number(configuration.globalAffineLevels ?? 5) : Number(options.globalAffineLevels);
+    if (!Number.isInteger(globalAffineLevels) || globalAffineLevels < 5 || globalAffineLevels > 8) {
+      throw new Error('globalAffineLevels must be an integer between 5 and 8');
+    }
+    if (initialization !== 'global-affine' && options.globalAffineLevels !== undefined
+        && globalAffineLevels !== 5) {
+      throw new Error('globalAffineLevels requires initialization="global-affine"');
+    }
+    if (!allowPyramidRebuild && referenceReady && initialization === 'global-affine'
+        && globalAffineLevels !== configuration.globalAffineLevels) {
+      throw new Error('Changing globalAffineLevels requires setReference()');
+    }
     const pyramidLevels = options.pyramidLevels === undefined
       ? configuration.pyramidLevels : Number(options.pyramidLevels);
     if (!Number.isInteger(pyramidLevels) || pyramidLevels < 1 || pyramidLevels > 6) {
@@ -700,6 +715,7 @@ export function createPyramidHost(options = {}) {
       interpolation,
       motionModel,
       outlierPolicy,
+      ...(initialization === 'global-affine' ? { globalAffineLevels } : {}),
     };
     next.iterationsPerLevel[pyramidLevels - 1] = next.iterations;
     next.tolerancePerLevel[pyramidLevels - 1] = next.tolerance;
@@ -726,6 +742,7 @@ export function createPyramidHost(options = {}) {
       ? value.some((entry, index) => entry !== configuration[key]?.[index]) || value.length !== configuration[key]?.length
       : value !== configuration[key]);
     Object.assign(configuration, next);
+    if (initialization !== 'global-affine') delete configuration.globalAffineLevels;
     if (changed) updateConfig();
     return { ...configuration };
   };
@@ -1013,8 +1030,9 @@ export function createPyramidHost(options = {}) {
         const grayscale = image.pixels ?? imageToGray(image, image.width, image.height, 1 / 255);
         const referenceBytes = grayscale instanceof Uint8Array ? grayscale
           : Uint8Array.from(grayscale, value => Math.max(0, Math.min(255, Math.round(value <= 1 ? value * 255 : value))));
-        globalAffine = new GlobalAffineInitializer(referenceBytes, image.width, image.height, ownedMask);
-        configuration.globalAffine = { levels: 5, domain: 'spatially sampled masked reference pixels',
+        globalAffine = new GlobalAffineInitializer(referenceBytes, image.width, image.height, ownedMask,
+          configuration.globalAffineLevels ?? 5);
+        configuration.globalAffine = { levels: globalAffine.levels.length, domain: 'spatially sampled masked reference pixels',
           maskAware: !!ownedMask, sampleCounts: globalAffine.levels.map(level => level.samples.values.length) };
       }
       if(hostOptions.referencePreparation==='gpu'){

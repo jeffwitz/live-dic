@@ -442,6 +442,33 @@ class RuntimeAssetTests(unittest.TestCase):
                     iterations_per_level=schedule,
                 )
 
+    def test_global_affine_scale_option_is_validated_and_forwarded(self) -> None:
+        for levels in range(5, 9):
+            with self.subTest(levels=levels):
+                engine = ICGNWebGL(
+                    backend="webgpu-wgsl",
+                    initialization="global-affine",
+                    global_affine_levels=levels,
+                )
+                self.assertEqual(
+                    engine._options(iterations=None, tolerance=None, zncc_min=None)[
+                        "globalAffineLevels"
+                    ],
+                    levels,
+                )
+        for levels in (4, 9, 5.5, True):
+            with (
+                self.subTest(levels=levels),
+                self.assertRaisesRegex(ValueError, "global_affine_levels"),
+            ):
+                ICGNWebGL(
+                    backend="webgpu-wgsl",
+                    initialization="global-affine",
+                    global_affine_levels=levels,
+                )
+        with self.assertRaisesRegex(ValueError, "requires initialization"):
+            ICGNWebGL(backend="webgpu-wgsl", global_affine_levels=6)
+
     def test_browser_motion_model_is_validated_and_forwarded(self) -> None:
         with self.assertRaisesRegex(ValueError, "motion_model"):
             ICGNWebGL(motion_model="rigid")

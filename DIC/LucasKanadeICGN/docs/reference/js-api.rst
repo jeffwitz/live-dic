@@ -519,8 +519,9 @@ experimental large-motion options and have no general capture-range or
 performance guarantee.
 
 The shared core also accepts ``initialization: 'global-affine'`` only with
-``motionModel: 'affine'``. It performs a robust sampled fit over the masked
-reference domain on five CPU scales, then supplies one affine seed per local
+``motionModel: 'affine'``. ``globalAffineLevels`` selects 5–8 coarse-to-fine
+CPU scales (default: 5). It performs a robust sampled fit over the masked
+reference domain, then supplies one affine seed per local
 subset. In the browser workbench, loaded image and video files are accepted:
 their external texture is read back as grayscale pixels for the CPU fit.
 This is experimental preprocessing for sparse image pairs, not a camera-rate

@@ -110,6 +110,13 @@ def _parser() -> argparse.ArgumentParser:
         help="Initial translation/affine seed (webgpu-wgsl only)",
     )
     parser.add_argument(
+        "--global-affine-levels",
+        type=int,
+        choices=range(5, 9),
+        default=5,
+        help="Coarse-to-fine scales for global-affine initialization (5 to 8)",
+    )
+    parser.add_argument(
         "--pyramid-levels",
         type=int,
         help="full-pyramid level count for the webgpu-wgsl backend (1 to 6)",
@@ -365,6 +372,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         with ICGNWebGL(
             initialization=args.initialization,
+            global_affine_levels=args.global_affine_levels,
             repo_root=args.repo_root,
             chromium=args.chromium,
             startup_timeout=args.startup_timeout,

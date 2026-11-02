@@ -101,7 +101,11 @@ accepted wrong-basin solutions. See :doc:`temporal-initialization`.
 The shared browser WGSL core has an experimental
 ``initialization="global-affine"`` for sparse image pairs. It fits one robust
 affine transform over sampled pixels in the reference mask using five CPU
-image scales, then seeds the local subsets. The workbench supports loaded
+image scales by default. Configure 5–8 scales with ``global_affine_levels``
+in Python or ``globalAffineLevels`` in JavaScript; six to eight are
+experimental and require sufficient image dimensions and masked samples.
+This setting is independent of the local solve pyramid. The fit then seeds
+the local subsets. The workbench supports loaded
 image and video files by reading grayscale pixels back from their external GPU
 image; live camera streams are rejected. The per-target readback and CPU fit
 can take substantial time, making this unsuitable for camera-rate processing.

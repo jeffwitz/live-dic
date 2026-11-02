@@ -23,7 +23,7 @@ class BrowserGeometryTests(unittest.TestCase):
         initializer = CORE / "global-affine.js"
         script = f"""
           import {{ GlobalAffineInitializer }} from {json.dumps(initializer.as_uri())};
-          const width=1024,height=768,reference=new Uint8Array(width*height),target=new Uint8Array(width*height);
+          const width=1280,height=1024,reference=new Uint8Array(width*height),target=new Uint8Array(width*height);
           const mask=new Uint8Array(width*height);
           for(let y=0;y<height;y++)for(let x=0;x<width;x++){{
             const i=y*width+x;
@@ -38,16 +38,37 @@ class BrowserGeometryTests(unittest.TestCase):
             target[y*width+x]=Math.round((reference[i]*(1-fx)+reference[i+1]*fx)*(1-fy)
               +(reference[i+width]*(1-fx)+reference[i+width+1]*fx)*fy);
           }}
-          console.log(JSON.stringify(new GlobalAffineInitializer(reference,width,height,mask).estimate(target)));
+          const defaultEstimate=new GlobalAffineInitializer(reference,width,height,mask).estimate(target);
+          const sixScaleEstimate=new GlobalAffineInitializer(reference,width,height,mask,6).estimate(target);
+          console.log(JSON.stringify({{defaultEstimate,sixScaleEstimate}}));
         """
-        estimate = json.loads(
+        estimates = json.loads(
             subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
         )
+        estimate = estimates["defaultEstimate"]
+        six_scale = estimates["sixScaleEstimate"]
         self.assertEqual(estimate["levels"], 5)
         self.assertGreater(estimate["score"], 0.98)
         self.assertAlmostEqual(estimate["dx"], 3.2, delta=0.2)
         self.assertAlmostEqual(estimate["dy"], -2.3, delta=0.25)
         np.testing.assert_allclose(estimate["linear"], [0.025, 0.008, -0.006, -0.015], atol=0.004)
+        self.assertEqual(six_scale["levels"], 6)
+        self.assertEqual(len(six_scale["diagnostics"]), 6)
+        self.assertTrue(np.isfinite([six_scale["score"], six_scale["dx"], six_scale["dy"]]).all())
+        self.assertGreaterEqual(six_scale["sampleCount"], 500)
+
+    def test_global_affine_level_count_is_bounded(self):
+        initializer = CORE / "global-affine.js"
+        script = f"""
+          import {{ GlobalAffineInitializer }} from {json.dumps(initializer.as_uri())};
+          const reference=new Uint8Array(1024*768);
+          const failures=[4,9].map(levels=>{{try{{new GlobalAffineInitializer(reference,1024,768,null,levels);return null;}}catch(error){{return error.message;}}}});
+          console.log(JSON.stringify(failures));
+        """
+        failures = json.loads(
+            subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
+        )
+        self.assertTrue(all("between 5 and 8" in message for message in failures))
 
     def test_full_roi_geometry_matches_native_conservative_links(self):
         mask = np.ones((93, 111), bool)

@@ -43,7 +43,7 @@ export function solverOptions() {
   const globalAffine = !!get('global-affine-start')?.checked;
   if (fourier && globalAffine) throw new Error('Choose either Fourier or global affine initialization');
   if (fourier) Object.assign(base,{initialization:'fourier',temporalPrediction:'none',temporalFineCorrection:false,divergencePatience:null});
-  if (globalAffine) Object.assign(base,{initialization:'global-affine',motionModel:'affine',temporalPrediction:'none',temporalFineCorrection:false,divergencePatience:null});
+  if (globalAffine) Object.assign(base,{initialization:'global-affine',globalAffineLevels:Number(get('global-affine-levels')?.value??5),motionModel:'affine',temporalPrediction:'none',temporalFineCorrection:false,divergencePatience:null});
   if (!get('custom-solver').checked) return base;
   const size = Number(get('subset-size').value), stride = Number(get('subset-stride').value);
   const levels = Number(get('pyramid-levels').value), coarse = Number(get('coarse-iterations').value), fine = Number(get('fine-iterations').value);

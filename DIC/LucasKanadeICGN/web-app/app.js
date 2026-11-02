@@ -844,7 +844,7 @@ $('large-shift-preset').onclick = () => {
   $('temporal-start').checked=false;$('fourier-start').checked=false;$('global-affine-start').checked=false;
   $('custom-solver').onchange();
 };
-for (const id of ['fourier-start','global-affine-start','overlap-pipeline','gpu-reference-preparation','custom-solver','motion-model','subset-size','subset-stride','interpolation','pyramid-levels','coarse-iterations','fine-iterations','outlier-policy','temporal-start']) $(id).onchange = () => {
+for (const id of ['fourier-start','global-affine-start','global-affine-levels','overlap-pipeline','gpu-reference-preparation','custom-solver','motion-model','subset-size','subset-stride','interpolation','pyramid-levels','coarse-iterations','fine-iterations','outlier-policy','temporal-start']) $(id).onchange = () => {
   if (id === 'fourier-start' && $('fourier-start').checked) { $('global-affine-start').checked=false;$('temporal-start').checked=false; }
   if (id === 'global-affine-start' && $('global-affine-start').checked) {
     $('fourier-start').checked=false;$('temporal-start').checked=false;
@@ -854,6 +854,7 @@ for (const id of ['fourier-start','global-affine-start','overlap-pipeline','gpu-
   $('solver-settings').disabled = !$('custom-solver').checked;
   $('motion-model').disabled = !$('custom-solver').checked || $('global-affine-start').checked;
   $('temporal-start').disabled = $('fourier-start').checked || $('global-affine-start').checked;
+  $('global-affine-levels').disabled = !$('global-affine-start').checked;
   $('subset-stride').max = $('subset-size').value;
   if (Number($('subset-stride').value) > Number($('subset-size').value)) $('subset-stride').value = $('subset-size').value;
   updateSolverSettingsStatus();

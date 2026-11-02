@@ -72,8 +72,14 @@ Solver options
 ``--initialization {zero,fourier,global-affine}``
    Opt-in global initialization for ``webgpu-wgsl`` only. Fourier estimates a
    rigid translation; ``global-affine`` fits the masked affine motion over
-   five CPU scales and requires ``--motion-model affine``. The default is zero
+   five CPU scales by default and requires ``--motion-model affine``. The
+   ``--global-affine-levels`` option accepts 5–8 scales. The default is zero
    initialization. See :doc:`../how-to/register-large-shifts`.
+
+``--global-affine-levels {5,6,7,8}``
+   Number of coarse-to-fine CPU scales for ``global-affine`` initialization.
+   Default: ``5``. Six to eight are experimental settings for large shifts and
+   require sufficient image dimensions and masked samples.
 
 ``--pyramid-levels {1,2,3,4,5,6}``
    Full-pyramid depth for ``webgpu-wgsl``. Five and six levels are experimental
