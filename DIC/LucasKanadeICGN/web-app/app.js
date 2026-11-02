@@ -4,7 +4,7 @@ import { vectorColour } from './render/live-vectors.js';
 import { parameterOrder, parameterUnits } from './ui/postprocess.js';
 import { decodeMaskImage, maskPng, maskThreshold } from './ui/mask-image.js';
 import { installWorkbench } from './ui/workbench.js';
-import { installWorkspace, solverOptions, solverPreparationKey } from './ui/workspace.js';
+import { installWorkspace, solverOptions, solverPreparationKey, synchronizeInitializationControls } from './ui/workspace.js';
 import { installRoi } from './ui/roi.js';
 import { bounds, platePreset } from './ui/roi-geometry.js';
 import { imageFiles, fileInfo, decodeImage, waitForMedia, seekVideo } from './ui/local-media.js';
@@ -919,16 +919,8 @@ $('large-shift-preset').onclick = () => {
   $('custom-solver').onchange();
 };
 for (const id of ['fourier-start','global-affine-start','global-affine-levels','overlap-pipeline','gpu-reference-preparation','custom-solver','motion-model','subset-size','subset-stride','interpolation','pyramid-levels','coarse-iterations','fine-iterations','outlier-policy','temporal-start']) $(id).onchange = () => {
-  if (id === 'fourier-start' && $('fourier-start').checked) { $('global-affine-start').checked=false;$('temporal-start').checked=false; }
-  if (id === 'global-affine-start' && $('global-affine-start').checked) {
-    $('fourier-start').checked=false;$('temporal-start').checked=false;
-    $('motion-model').value='affine';
-  }
-  if (id === 'temporal-start' && $('temporal-start').checked) { $('fourier-start').checked=false;$('global-affine-start').checked=false; }
   $('solver-settings').disabled = !$('custom-solver').checked;
-  $('motion-model').disabled = !$('custom-solver').checked || $('global-affine-start').checked;
-  $('temporal-start').disabled = $('fourier-start').checked || $('global-affine-start').checked;
-  $('global-affine-levels').disabled = !$('global-affine-start').checked;
+  synchronizeInitializationControls(id);
   $('subset-stride').max = $('subset-size').value;
   if (Number($('subset-stride').value) > Number($('subset-size').value)) $('subset-stride').value = $('subset-size').value;
   invalidatePreparedReference();
