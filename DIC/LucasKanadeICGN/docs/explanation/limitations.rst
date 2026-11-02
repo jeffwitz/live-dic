@@ -255,7 +255,13 @@ in RAM and pause recording. Raw images are not recorded. Analysis is a reversibl
 post-processing view, not a new convergence test. Smoothing reduces spatial
 resolution. VSG can lose valid strain support near gaps and narrow regions;
 invalid values are not filled. Result palettes and clims are display-only: they
-never change stored parameters, statuses or exported measurements. Percentile
+never change stored parameters, statuses or exported measurements. The optional
+masked-estimate rendering shows finite solver states only where an iteration
+ran; it does not recover a failed solve. ROI exclusions and never-solved subsets
+stay blank. The diagnostic colours do not change the acceptance mask used by
+statistics, measurements or processed CSV exports. Use the categorical solver
+status map to distinguish non-convergence, correlation rejection and geometry
+exclusion. Percentile
 clims describe only the valid displayed population and can hide extreme values
 from view. Signed fields use a symmetric interval for percentile limits; a
 sequential palette still maps negative through positive values monotonically

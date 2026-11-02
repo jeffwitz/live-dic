@@ -109,7 +109,7 @@ export function createSession(send) {
         send({ type: 'capabilities', id, capabilities, worker: typeof document === 'undefined' });
       } else if (type === 'reference') {
         reference?.close(); reference = await createImageBitmap(message.frame);
-        try { const info = await referenceFrom(reference, message.options, null, message.sourceKind); send({ type: 'reference', id, info }); }
+        try { const info = await referenceFrom(reference, message.options, message.mask ?? null, message.sourceKind); send({ type: 'reference', id, info }); }
         finally { message.frame.close(); }
       } else if (type === 'roi') {
         if (!reference) throw new Error('Capture a reference before drawing the ROI');

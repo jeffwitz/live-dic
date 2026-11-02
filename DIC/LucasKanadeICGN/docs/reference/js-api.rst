@@ -366,9 +366,10 @@ include the corresponding +0.5 offset. Display controls are saved separately
 from processing recipes. Application exports also include the assembled build's
 revision/content version and canonical shader hashes when available.
 
-The standalone Results view places colour-map and clim controls directly below
-its colourbar. Scalar maps include the existing automatic, diverging,
-blue/green/gold and grayscale choices, plus bundled 256-entry Viridis, Cividis,
+The standalone Results view places colour-map and clim controls to the right of
+its colourbar, stacking them below on narrow screens. Scalar maps include the
+existing automatic, diverging, blue/green/gold and grayscale choices, plus
+bundled 256-entry Viridis, Cividis,
 Plasma, Inferno and Magma lookup tables sampled from Matplotlib's
 perceptually-uniform sequential maps. No Matplotlib runtime or network access is
 required. The default percentile clim remains 2–98%; both percentile endpoints
@@ -378,6 +379,13 @@ use the legend's displayed units. Colour clipping affects rendering only, not
 computed arrays, measurement exports or stored fields. Categorical solver
 status keeps its fixed six-colour key and ignores scalar clims. Palette, mode,
 limits and percentile endpoints are retained with the saved Results view.
+The opt-in **Show masked estimates** view recolours subsets with finite solver
+states after at least one iteration, including subsets outside the active
+acceptance population. It keeps ROI exclusions and never-solved subsets blank
+and leaves already-valid values unchanged. This is diagnostic rendering only:
+statistics, measurements, processed CSV validity and solver statuses continue
+to use their original acceptance rules. The **Acceptance criteria · solver
+status** quantity displays the categorical status map for the full grid.
 
 ``ui/postprocess.js`` exposes ``regionSummary(analysis, component, a, b)``.
 It snaps two reference pixel-index coordinate pairs to grid centres and returns

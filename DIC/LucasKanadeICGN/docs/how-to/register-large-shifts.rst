@@ -146,8 +146,9 @@ initial settings, not a qualified solution for every large shift.
 
 A checkbox edit does not alter a field already saved in Results. The saved
 field summary shows its actual initialization and accepted subset count. Return
-to Solve and calculate a new field after changing settings. **Apply settings to
-current reference** prepares the edited settings without calculating a target.
+to Solve and calculate a new field after changing settings. Input, mask and
+solver edits stay pending; **Start calculation** prepares the selected reference,
+mask and settings together before solving.
 For a named pair such as ``Ref.tiff`` / ``Def.tiff``, select the reference
 explicitly: natural filename ordering places ``Def.tiff`` first. Choosing the
 currently previewed image as reference suggests another target when available;

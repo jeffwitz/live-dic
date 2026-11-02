@@ -1,4 +1,4 @@
-import { DEFAULT_RECIPE, analyzeField, componentValues as deriveComponentValues, statistics, nearestIndex, extensometer, regionSummary, validateField } from './postprocess.js';
+import { DEFAULT_RECIPE, analyzeField, componentValues as deriveComponentValues, diagnosticFieldValues, statistics, nearestIndex, extensometer, regionSummary, validateField } from './postprocess.js';
 import { fieldArchive, importFieldArchive, projectArchive, importProjectArchive } from './archive.js';
 import { extractHistory, sameAnalysis } from './history.js';
 import { resultFigure } from './figure.js';
@@ -67,11 +67,12 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   const entries = [], canvas = $('review-field'), overlay = $('inspection'), chart = $('profile-chart');
   const viewCache = createViewCache(deriveComponentValues, statistics);
   const analysisCache = createAnalysisCache();
+  let diagnosticCacheEntry=null;
   const componentValues = (analysis, component) => viewCache.get(analysis, component);
   let analysisRuns = 0;
   document.querySelector('.viewer').append($('results-workbench'));
   let nextId = 1, selected = null, analysis = null, currentMask = null, reviewing = false;
-  let storage = new FieldStorage(), selectionSerial = 0, selectionBusy = false, libraryTimer = null, liveReady = false, prepared = false, captureBusy = false;
+  let storage = new FieldStorage(), selectionSerial = 0, selectionBusy = false, libraryTimer = null, liveReady = false, sourceReady = false, captureBusy = false;
   let tool = 'probe', points = [], measurements = [], activeMeasurementId = null, nextMeasurementId = 1;
   let extraction = [], computedView = false, figureLegend = null;
   let requestId = 0, workerBusy = false, pendingAnalysis = false, workerFieldId = null, debounce = null;
@@ -101,6 +102,12 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   let worker = typeof Worker === 'function' ? new Worker(new URL('./analysis-worker.js', import.meta.url), { type: 'module' }) : null;
   const recording = () => $('record-fields').checked;
   const activeEntry = () => entries.find(entry => entry.id === selected);
+  function diagnosticForView(component) {
+    if(diagnosticCacheEntry?.analysis!==analysis)diagnosticCacheEntry={analysis,components:diagnosticFieldValues(analysis,activeEntry()?.mask)};
+    const result=diagnosticCacheEntry.components.get(component);
+    if(!result)throw new Error('This quantity has no diagnostic solver estimate');
+    return result;
+  }
   function clearHistory() {
     historyAbort?.abort();history=null;$('spatial-view').hidden=true;$('history-state').textContent='';$('export-history').disabled=true;
   }
@@ -108,7 +115,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     return { component:$('review-component').value,colourScale:$('review-scale').value,
       minimum:Number($('review-min').value),maximum:Number($('review-max').value),
       minimumPercentile:Number($('review-low-percentile').value),maximumPercentile:Number($('review-high-percentile').value),
-      palette:$('review-palette').value,vectors:$('review-vectors').checked,vectorStep:Number($('review-vector-step').value),
+      palette:$('review-palette').value,showRejected:$('show-rejected-estimates').checked,vectors:$('review-vectors').checked,vectorStep:Number($('review-vector-step').value),
       vectorGain:Number($('review-vector-gain').value),contour:$('review-contour').checked,tool,points,
       measurements:measurements.map(item=>({...item,points:item.points.map(point=>[...point])})),activeMeasurementId };
   }
@@ -121,6 +128,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
       $('review-low-percentile').value=view.minimumPercentile;$('review-high-percentile').value=view.maximumPercentile;
     }
     updateColourControlVisibility();
+    $('show-rejected-estimates').checked=view.showRejected===true;
     $('review-vectors').checked=view.vectors===true;$('review-contour').checked=view.contour===true;
     if([2,4,8].includes(view.vectorStep))$('review-vector-step').value=view.vectorStep;
     if([1,5,20,50,100].includes(view.vectorGain))$('review-vector-gain').value=view.vectorGain;
@@ -186,7 +194,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     $('library-summary').textContent = `${entries.length} field(s) · ${(memoryBytes()/MiB).toFixed(1)} MiB resident / ${(info.memoryLimitBytes/MiB).toFixed(0)} MiB cache target · ${(analysisCache.report().bytes/MiB).toFixed(1)} MiB derived replay cache (32 MiB maximum) · ${info.diskFields} saved on browser disk. ${!entries.length?'No stored results.':hasUnsaved()?'Export for an independent backup; settings have unsaved changes.':'Project download requested or session settings saved; verify your backup.'} Images are not recorded.`;
     $('storage-summary').textContent=info.warning?`${info.warning}. ${info.unsavedFields} field(s) only in RAM; do not close before exporting/retrying.`:info.diskAvailable?'Disk-backed storage. Old cached fields are reloaded on demand. Browser storage is not an independent backup.':'Opening browser storage on first saved field; RAM remains bounded if disk is unavailable.';
     $('retry-storage').hidden=!info.unsavedFields&&!info.warning;$('save-session').disabled=!entries.length||!info.diskAvailable;
-    $('freeze-field').disabled=!liveReady||captureBusy||storage.readOnly||storageBlocked();$('record-fields').disabled=!prepared||storage.readOnly||storageBlocked();
+    $('freeze-field').disabled=!liveReady||captureBusy||storage.readOnly||storageBlocked();$('record-fields').disabled=!sourceReady||storage.readOnly||storageBlocked();
     $('solve-results').disabled=!entries.length;$('results-empty').hidden=!!entries.length;
     $('review-component').disabled=!entries.length;
     $('delete-field').title=storage.readOnly?'Saved sessions are read-only; close the session to start a new recording.':'';
@@ -217,7 +225,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     stopReplay();rememberView();
     historyAbort?.abort();history=null;
     reviewing = false; selectionSerial++;selectionBusy=false;storage.pin(null);storage.evict();requestId++; pendingAnalysis = false; clearTimeout(debounce);
-    analysis=null;displayed=null;workerFieldId=null;lastChartRows=[];lastChartOptions={};canvas.dataset.analysisState='idle';canvas.setAttribute('aria-busy','false');worker?.postMessage({clear:true});
+    analysis=null;diagnosticCacheEntry=null;displayed=null;workerFieldId=null;lastChartRows=[];lastChartOptions={};canvas.dataset.analysisState='idle';canvas.setAttribute('aria-busy','false');worker?.postMessage({clear:true});
     $('saved-solver-summary').textContent='';
     $('results-workbench').hidden = true; canvas.hidden = true; overlay.hidden = true;
     $('field').hidden = false; $('return-live').hidden = true;
@@ -321,9 +329,12 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     figureLegend = null;
     if (!analysis) return;
     const component = $('review-component').value, { values, valid, unit, source, statistics:stats } = viewCache.get(analysis, component);
+    const diagnostic=$('show-rejected-estimates').checked&&component!=='status'?diagnosticForView(component):null;
     document.querySelector('.legend').hidden=false;$('live-vector-key').hidden=true;
     $('review-colour-controls').hidden=component==='status';
-    document.querySelector('.gray-key').textContent='Grey: unavailable / rejected';
+    document.querySelector('.gray-key').textContent=diagnostic
+      ?'Grey: ROI excluded or no solver estimate · masked estimates are diagnostic only'
+      :'Grey: unavailable / rejected';
     $('quantity-source').hidden=!source;$('quantity-source').textContent=source?`Computed coefficient (${unit}). Workbench displacement smoothing and VSG do not change these values. The solver's original spatial policy still applies.`:'';
     const field = analysis.field, [gw,gh] = field.grid;
     const nonnegative = ['magnitude','vonMises','iterations'].includes(component);
@@ -363,6 +374,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
       let rgb = [71,86,96];
       if (component === 'status') rgb = STATUS_COLOURS[Math.round(values[i])] ?? rgb;
       else if (valid[i]) rgb=colour(values[i]);
+      else if (diagnostic?.valid[i]) rgb=colour(diagnostic.values[i]);
       image.data.set([...rgb,255],i*4);
     }
     context.putImageData(image,0,0);
@@ -406,18 +418,27 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     document.querySelector('.legend-bar').style.background=component==='status'
       ? `linear-gradient(90deg,${STATUS_ORDER.map((code,i)=>`rgb(${STATUS_COLOURS[code].join(',')}) ${i*100/6}% ${(i+1)*100/6}%`).join(',')})`
       : `linear-gradient(90deg,${Array.from({length:11},(_,i)=>`rgb(${colour(low+(high-low)*i/10).join(',')}) ${i*10}%`).join(',')})`;
-    const clipped = Array.from(values).reduce((n,v,i)=>n+ +(valid[i] && (v<low||v>high)),0);
+    let shownCount=0,clipped=0;
+    for(let i=0;i<values.length;i++){
+      const shown=!!valid[i]||!!diagnostic?.valid[i];if(!shown)continue;shownCount++;
+      const shownValue=valid[i]?values[i]:diagnostic.values[i];if(shownValue<low||shownValue>high)clipped++;
+    }
     figureLegend = component==='status'
       ? {categories:STATUS_ORDER.map(code=>({label:`${code} · ${STATUS[code]}`,colour:`rgb(${STATUS_COLOURS[code].join(',')})`}))}
       : {low:format(low,unit),high:format(high,unit),stops:Array.from({length:11},(_,i)=>[i/10,`rgb(${colour(low+(high-low)*i/10).join(',')})`])};
     const summary = $('field-summary'); summary.replaceChildren();
     const scaleDescription=scaleMode==='robust'?`${lowPercentile}–${highPercentile}% percentiles`:scaleMode==='full'?'full range':'manual clim';
-    const summaryRows=component==='status'?Object.entries(STATUS).map(([code,label])=>[label,field.status.reduce((n,status)=>n+ +(status===Number(code)),0)]):[['Valid values',`${stats.count} / ${values.length}`],['Minimum',format(stats.min,unit)],['Mean',format(stats.mean,unit)],['Maximum',format(stats.max,unit)],['Colour clipping',`${clipped} values · ${scaleDescription}`]];
+    const summaryRows=component==='status'?Object.entries(STATUS).map(([code,label])=>[label,field.status.reduce((n,status)=>n+ +(status===Number(code)),0)]):[
+      [diagnostic?'Solver estimates shown':'Valid values',`${shownCount} / ${values.length}`],
+      ...(diagnostic?[['Accepted for statistics',`${stats.count} / ${values.length}`]]:[]),
+      [diagnostic?'Accepted minimum':'Minimum',format(stats.min,unit)],
+      [diagnostic?'Accepted mean':'Mean',format(stats.mean,unit)],
+      [diagnostic?'Accepted maximum':'Maximum',format(stats.max,unit)],['Colour clipping',`${clipped} values · ${scaleDescription}`]];
     for (const [label,value] of summaryRows) {
       const box = document.createElement('div'), strong = document.createElement('strong'); box.textContent = label; strong.textContent = value; box.append(strong); summary.append(box);
     }
     displayed={id:selected,component};canvas.dataset.displayedField=String(selected);
-    $('result-render-state').textContent=`Showing field ${selected} · ${$('review-component').selectedOptions[0].textContent}`;
+    $('result-render-state').textContent=`Showing field ${selected} · ${$('review-component').selectedOptions[0].textContent}${diagnostic?' · masked estimates shown for diagnosis':''}`;
     const entry=activeEntry();$('result-title').textContent=entry.label;
     const requested=field.roiSelected?field.roiSelected.reduce((n,v)=>n+ +!!v,0):field.status.reduce((n,v)=>n+ +(v!==-3),0);
     const accepted=field.status.reduce((n,v)=>n+ +(v>=.5),0), fraction=requested?accepted/requested:null;
@@ -769,7 +790,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   $('reset-processing').onclick=()=>{stopReplay();setRecipe({...DEFAULT_RECIPE,strainSource:activeEntry()?.field.config.motionModel==='translation'?'vsg':'direct'});computedView=false;scheduleAnalysis();};
   $('compare-computed').onclick=()=>{stopReplay();computedView=!computedView;$('compare-computed').textContent=computedView?'Restore processing recipe':'Show computed field';scheduleAnalysis();};
   $('review-component').onchange=()=>{clearHistory();const item=activeMeasurement();if(item){item.component=$('review-component').value;changed();rememberView();renderMeasurementList();}$('review-scale').value='robust';updateColourControlVisibility();if(!reviewing&&entries.length)return selectEntry(entries[0].id,{preserveView:true});render();};
-  for(const id of ['review-scale','review-min','review-max','review-low-percentile','review-high-percentile','review-palette','review-vectors','review-vector-step','review-vector-gain','review-contour'])$(id).onchange=()=>{updateColourControlVisibility();render();};
+  for(const id of ['review-scale','review-min','review-max','review-low-percentile','review-high-percentile','review-palette','show-rejected-estimates','review-vectors','review-vector-step','review-vector-gain','review-contour'])$(id).onchange=()=>{updateColourControlVisibility();render();};
   $('save-npz').onclick=()=>{if(!analysis)return;const entry=activeEntry();download(`live-dic-${entry.id}.npz`,fieldArchive(entry.field,{...entry.metadata,workbench:{view:viewSettings()},analysis:{recipe:analysis.recipe,processingWallMs:analysis.processingWallMs}},analysis,entry.mask),'application/octet-stream');};
   $('save-processed-csv').onclick=()=>{if(!analysis)return;const {values,valid,unit}=componentValues(analysis,$('review-component').value),lines=[`x_px,y_px,${$('review-component').value}_${unit},valid,solver_status`];for(let i=0;i<values.length;i++)lines.push([...pointPosition(i),valid[i]?values[i]:'',valid[i],analysis.field.status[i]].join(','));download('live-dic-displayed-field.csv',lines.join('\n'),'text/csv');};
   $('save-profile').onclick=()=>{if(!extraction.length)return;const columns=Object.keys(extraction[0]);download('live-dic-extraction.csv',[columns.join(','),...extraction.map(row=>columns.map(k=>row[k]??'').join(','))].join('\n'),'text/csv');download('live-dic-extraction.json',JSON.stringify({recipe:analysis.recipe,view:viewSettings(),valueUnit:(history?.tool??tool)==='gauge'?'strain':componentValues(analysis,$('review-component').value).unit,coordinateUnit:'px',distanceUnit:analysis.recipe.unit,comparison:activeEntry().metadata.comparison},null,2),'application/json');};
@@ -779,6 +800,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     const details=[`${field.width} × ${field.height} reference pixels · ${field.config.motionModel} · window / step ${field.subsetSize} / ${field.subsetStride} px · grid ${field.grid.join(' × ')} · solver policy: ${field.config.outlierPolicy}`,
       categorical?'Stored solver status: workbench smoothing and VSG do not alter categories.':coefficient?'Stored model coefficient: workbench smoothing and VSG do not alter these values.':`Displacement smoothing: ${recipe.smoothing} · ${recipe.window} × ${recipe.window} grid points · strain: ${recipe.strainSource} / ${recipe.strainMeasure} · nominal strain support: ${analysis.strainSpanPx} px`,
       categorical?'Six categorical status colours; scalar colour limits do not apply.':`Length scale: ${recipe.unitsPerPixel} ${recipe.unit} / px (isotropic). Palette: ${$('review-palette').selectedOptions[0].textContent}; clim: ${figureLegend.low} to ${figureLegend.high}; ${$('review-scale').value==='robust'?`${$('review-low-percentile').value}–${$('review-high-percentile').value}% valid-value percentiles`: $('review-scale').value==='full'?'full valid-value range':'manually entered limits'}. Display settings do not alter numerical exports.`];
+    if($('show-rejected-estimates').checked&&!categorical)details.push('Diagnostic display includes finite solver estimates outside the active accepted population. ROI-excluded and never-solved subsets stay blank. Statistics, measurements and processed CSV validity remain based on the accepted population.');
     if($('review-vectors').checked)details.push(`Arrows: processed displacements · magnification ×${$('review-vector-gain').value} · every ${$('review-vector-step').value} grid points.`);
     if(points.length){
       const centres=points.map(([x,y])=>{const i=nearestIndex(field,x,y);return i<0?'outside measured grid':`(${pointPosition(i).map(value=>value.toFixed(1)).join(', ')})`;}).join(' → ');
@@ -791,7 +813,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   updateLibrary();
   return { add, returnLive, get mask(){return currentMask;}, get storageBlocked(){return storageBlocked();}, setMask(mask){currentMask=mask;}, get reviewing(){return reviewing;}, get recording(){return recording();},
     setReady(ready){liveReady=ready;$('freeze-field').disabled=!ready||captureBusy||storage.readOnly||storageBlocked();},
-    setPrepared(ready){prepared=ready;updateLibrary();},
+    setSourceReady(ready){sourceReady=ready;updateLibrary();},
     async startRecording(){await $('record-fields').onchange();},
     async openFirst({index=0}={}){if(entries.length&&!reviewing)await selectEntry((entries[index]??entries[0]).id,{preserveView:true});},
     flush:()=>storage.flush(),get storage(){return storage;},

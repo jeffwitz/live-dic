@@ -866,13 +866,25 @@ qualification rather than infer mobile coverage from desktop results.
   The four-level trial alone fails some larger-shift controls. Keep this
   negative result visible rather than implying an unlimited capture range.
 
-### Applying edited solver settings — 2026-11-02
+### Deferred browser solver preparation — 2026-11-02
 
-- Standalone Solve now applies pending cold settings before Start, against the
-  retained reference and applied ROI. The explicit Apply settings button prepares
-  without calculating. Unchanged starts and immediate preview edits retain the
-  preparation epoch; never rebuild in the per-frame loop. Python/core numerical
-  defaults and kernels are unchanged.
+- Input selection and reference capture stage a retained image and dimensions;
+  they do not create the DIC engine or prepare/upload a GPU reference. Mask
+  import/edit/apply, comparison changes, and solver/profile edits are local
+  pending state. Do not send `reference`, `roi` or another preparation request
+  from those handlers.
+- **Start calculation** sends the staged reference image, committed mask and
+  current solver settings together. Build the reference once there, before the
+  first target solve. Keep a transferable duplicate of the staged image so a
+  paused/restarted sequence can reuse it; close it on source replacement.
+- Distinguish an available staged source from a prepared GPU engine. Recording
+  controls must become available as soon as a reference is staged, while live
+  field export/readiness still requires a computed target. Unchanged starts
+  reuse preparation; settings, reference, mask or comparison changes defer a
+  rebuild until the next Start. Never rebuild in the per-frame loop.
+- The view navigation toolbar lives immediately below the colourbar. Zoom,
+  directional pan and Fit/centre only change the viewport; keep them independent
+  of field computation and result post-processing.
 - Results identifies the displayed saved field's initialization, pair and solver
   acceptance. Editing Solve or a recipe never rewrites old fields or fills rejected
   subsets. ROI exclusions do not count as requested failures. Preserve the last
@@ -880,8 +892,8 @@ qualification rather than infer mobile coverage from desktop results.
 - A different target is suggested when the user selects the previewed image as
   the fixed reference and other files exist; an explicit later seek still permits
   identity checks. Keep natural filename ordering; never infer Ref/Def semantics.
-- `tools/qualify_solver_settings.py` checks full native-UHD file input, automatic
-  and explicit application, mask/reference retention, unchanged-start reuse,
-  saved failed-field hashes/provenance, replay and invalid settings. Optional
+- `tools/qualify_solver_settings.py` checks full native-UHD file input, deferred
+  preparation at Start, mask/reference retention, unchanged-start reuse, saved
+  failed-field hashes/provenance, replay and invalid settings. Optional
   private TIFF paths are for local diagnosis; never add those images to fixtures
   or publish their derived fields without authorization.

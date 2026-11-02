@@ -132,6 +132,68 @@ export function componentValues(analysis,component) {
   return {values,valid:component==='status'?new Uint8Array(values.length).fill(1):strain?analysis.strainValid:analysis.valid,
     unit:strain?component==='rotation'?'rad':'strain':component==='status'?'status':component==='iterations'?'iterations':analysis.recipe.unit};
 }
+
+/** Build a cached-once, display-only field from every solver-evaluated subset. */
+export function diagnosticFieldValues(analysis,roiMask=null) {
+  const {field,recipe}=analysis,{count,components}=validateField(field),[gw,gh]=field.grid;
+  const selected=field.roiSelected;
+  if(selected&&selected.length!==count)throw new Error('ROI selection does not match the field grid');
+  const available=Uint8Array.from(field.status,(status,i)=>+((selected?selected[i]:status!==-3)&&(status>=.5||field.iterations[i]>0)));
+  const hasAvailable=available.some(Boolean);
+  const values=new Map(),u=new Float64Array(count),v=new Float64Array(count);
+  for(let i=0;i<count;i++){u[i]=field.parameters[i*components];v[i]=field.parameters[i*components+3];}
+  const centre=(field.subsetSize-1)/2,stride=field.subsetStride,radius=(recipe.window-1)/2;
+  const needsNeighbours=hasAvailable&&(recipe.strainSource==='vsg'||recipe.smoothing!=='none');
+  let neighbours=()=>[];
+  if(needsNeighbours) {
+    const clear=visibility(roiMask,field.width,field.height),clearGrid=visibility(available,gw,gh);
+    neighbours=i=>{
+      const x=i%gw,y=Math.floor(i/gw),cx=x*stride+centre,cy=y*stride+centre,points=[];
+      for(let dy=-radius;dy<=radius;dy++)for(let dx=-radius;dx<=radius;dx++){
+        const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=gw||ny>=gh)continue;
+        const j=ny*gw+nx;
+        if(available[j]&&clearGrid(x,y,nx,ny)&&clear(cx,cy,nx*stride+centre,ny*stride+centre))points.push([j,dx,dy]);
+      }
+      return points;
+    };
+  }
+  if(recipe.smoothing!=='none') {
+    const originalU=u.slice(),originalV=v.slice(),sigma=Math.max(.5,radius/2);
+    for(let i=0;i<count;i++)if(available[i]){
+      const points=neighbours(i);if(points.length<3)continue;
+      if(recipe.smoothing==='median'){u[i]=median(points.map(([j])=>originalU[j]));v[i]=median(points.map(([j])=>originalV[j]));}
+      else {let weightSum=0,sumU=0,sumV=0;for(const [j,dx,dy]of points){const weight=Math.exp(-(dx*dx+dy*dy)/(2*sigma*sigma));weightSum+=weight;sumU+=weight*originalU[j];sumV+=weight*originalV[j];}u[i]=sumU/weightSum;v[i]=sumV/weightSum;}
+    }
+  }
+  const put=(name,array,valid=available)=>values.set(name,{values:array,valid:Uint8Array.from(valid,(included,i)=>+(included&&Number.isFinite(array[i])))});
+  const scaledU=new Float64Array(count),scaledV=new Float64Array(count),magnitude=new Float64Array(count),iterations=Float64Array.from(field.iterations);
+  for(let i=0;i<count;i++)if(available[i]){scaledU[i]=u[i]*recipe.unitsPerPixel;scaledV[i]=v[i]*recipe.unitsPerPixel;magnitude[i]=Math.hypot(u[i],v[i])*recipe.unitsPerPixel;}
+  put('u',scaledU);put('v',scaledV);put('magnitude',magnitude);put('iterations',iterations);
+  for(let coefficient=0;coefficient<components;coefficient++){
+    if(field.config.motionModel==='translation'&&![0,3].includes(coefficient))continue;
+    const array=new Float64Array(count),scale=recipe.unitsPerPixel;
+    for(let i=0;i<count;i++)if(available[i])array[i]=field.parameters[i*components+coefficient]*([0,3].includes(coefficient)?scale:coefficient>=6?1/scale:1);
+    put(`computed-p${coefficient}`,array);
+  }
+  const strainNames=['exx','eyy','exy','principal1','principal2','vonMises','rotation'];
+  const strainValues=Object.fromEntries(strainNames.map(name=>[name,new Float64Array(count)])),strainValid=new Uint8Array(count);
+  for(let i=0;i<count;i++)if(available[i]){
+    const p=i*components;let slopes;
+    if(recipe.strainSource==='vsg'){slopes=plane(neighbours(i),u,v);if(slopes)slopes=slopes.map(value=>value/stride);}
+    else slopes=[field.parameters[p+1],field.parameters[p+2],field.parameters[p+4],field.parameters[p+5]];
+    if(!slopes)continue;
+    const [ux,uy,vx,vy]=slopes;let exx=ux,eyy=vy,exy=.5*(uy+vx);
+    if(recipe.strainMeasure==='green'){exx+=.5*(ux*ux+vx*vx);eyy+=.5*(uy*uy+vy*vy);exy+=.5*(ux*uy+vx*vy);}
+    const mean=.5*(exx+eyy),diff=Math.hypot(.5*(exx-eyy),exy);
+    const derived={exx,eyy,exy,principal1:mean+diff,principal2:mean-diff,
+      vonMises:2/3*Math.sqrt(Math.max(0,exx*exx-exx*eyy+eyy*eyy+3*exy*exy)),rotation:Math.atan2(vx-uy,2+ux+vy)};
+    for(const name of strainNames)strainValues[name][i]=derived[name];
+    strainValid[i]=+strainNames.every(name=>Number.isFinite(derived[name]));
+  }
+  for(const name of strainNames)put(name,strainValues[name],strainValid);
+  return values;
+}
+
 export function statistics(values,valid) {
   const sorted=Array.from(values).filter((v,i)=>valid[i]&&Number.isFinite(v)).sort((a,b)=>a-b),count=sorted.length;
   if(!count)return {count:0,min:null,max:null,mean:null,standardDeviation:null,p02:null,p98:null};

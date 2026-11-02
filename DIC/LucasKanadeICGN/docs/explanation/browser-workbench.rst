@@ -181,9 +181,10 @@ never overlays an old field on an unrelated current camera image. Point and
 gauge annotations also appear inside the viewer, while processing controls stay
 beside it. The solver's dense exclusions remain visible in status mode.
 
-Colour-map and clim controls stay directly below the colourbar. Robust limits
-use editable lower/upper percentiles of valid measurements (2 and 98 by
-default); signed fields retain symmetric limits around zero. Full-range and
+Colour-map and clim controls sit to the right of the colourbar, stacking below
+it on narrow screens. Robust limits use editable lower/upper percentiles of
+valid measurements (2 and 98 by default); signed fields retain symmetric limits
+around zero. Full-range and
 manual clims are explicit options. Alongside the existing automatic,
 blue/green/gold, blue/white/red and grayscale maps, the viewer bundles
 256-entry Viridis, Cividis, Plasma, Inferno and Magma lookup tables sampled
@@ -193,6 +194,18 @@ clipped in the data. Histograms use the valid population, not only the
 unsaturated range. Status categories retain their fixed discrete colours and do
 not use scalar clims. These controls recolour the cached analysis and do not
 trigger correlation or derived-field recalculation.
+
+Solver states outside the active acceptance population are masked from scalar
+maps by default. The optional **Show masked estimates** view evaluates the
+selected display recipe over finite estimates from every ROI-selected subset
+where at least one solver iteration ran, while retaining the normal rendering
+of already-valid values. This makes partially converged and correlation-
+rejected regions visible for diagnosis. ROI exclusions and subsets with no
+solver estimate stay blank. Drawing a diagnostic estimate does not make it pass
+the solver criteria: the categorical status map, scalar statistics,
+measurements and processed CSV retain the original accepted population. The
+status map is available as **Acceptance criteria · solver status** in the
+quantity selector.
 
 PNG exports use the displayed palette and limits, or the six exact categorical
 status colours. A separate wrapped footer records the field label, subset
@@ -396,20 +409,29 @@ and targets. This fixed reduction preserves PNG pixels embedded as ``value *
 records the conversion. Existing PNG/browser-decoder semantics are unchanged.
 See :doc:`../how-to/run-in-browser` for admitted formats and explicit limits.
 
-Applying solver edits
----------------------
+Lazy solver preparation
+-----------------------
 
-Solve keeps a fingerprint of the last successfully prepared request. Before
-starting calculation, a changed request rebuilds the engine against the retained
-reference bitmap and applied ROI; it never captures the currently previewed
-target as a new reference. The explicit Apply settings action does the same
-cold work without producing a target result. Invalid edits stop calculation.
-A failed rebuild invalidates preparation rather than falling back silently.
+Choosing an input stores a reference image and its dimensions in the page. It
+does not create the DIC engine or upload/preprocess the reference on the GPU.
+Selecting a different reference, committing a mask, changing the comparison
+mode or editing solver settings only updates the pending analysis. Mask
+geometry and solver controls therefore remain responsive while an engineer
+sets up an experiment.
 
-The fingerprint excludes display cadence/size/enabled state because these
-controls apply independently. It includes recording overlap, which belongs to
-cold session setup. An unchanged start retains its preparation/analysis epoch.
-All such checks happen before a calculation, outside the per-frame loop.
+**Start calculation** is the single preparation boundary. The supervisor sends
+the staged reference image, committed mask and current solver options together
+to the worker. The worker creates the engine, prepares the reference with the
+mask and returns the prepared grid before target solving starts. A failed
+preparation leaves the staged inputs available for correction and retry; it
+does not substitute an older image or mask.
+
+Solve keeps a fingerprint of the last successfully prepared request. An
+unchanged start reuses the engine and analysis epoch. A changed reference,
+mask, comparison mode or cold solver option invalidates that fingerprint and
+will be prepared at the next **Start calculation**. Presentation controls apply
+independently, and no reference is rebuilt in the per-frame loop. Saved fields
+retain their original arrays and configuration throughout.
 
 Saved fields retain their original arrays and configuration. Results reports
 initialization, input names and solver acceptance from the displayed field,

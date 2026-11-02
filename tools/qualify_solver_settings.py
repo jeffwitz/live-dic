@@ -1,4 +1,4 @@
-"""Check cold solver edits, automatic application and saved provenance on full-size image pairs."""
+"""Check deferred solver edits, Start-time preparation and saved provenance."""
 
 from __future__ import annotations
 
@@ -76,10 +76,10 @@ def main():
             browser._evaluate(
                 "globalThis.knownPairTruth=" + ("false" if args.reference else "true") + ";true"
             )
-            before = browser._evaluate(
-                "JSON.parse(document.getElementById('details').textContent).reference.config"
+            staged = browser._evaluate(
+                "JSON.parse(document.getElementById('details').textContent).reference"
             )
-            assert before["initialization"] == "temporal"
+            assert staged["prepared"] is False and "config" not in staged
             browser._evaluate(
                 "document.getElementById('solve-range').value='single';document.getElementById('pause').onclick().then(()=>true)"
             )
@@ -108,14 +108,15 @@ def main():
                   parametersSha256:await hash(field.parameters.buffer),statusSha256:await hash(field.status.buffer),comparison:metadata.comparison});
               }return records;})()"""
             first = browser._evaluate(record_script)[0]
+            assert first["config"]["initialization"] == "temporal"
             browser._evaluate("""document.querySelector('[data-pane=solve]').click();
               document.getElementById('fourier-start').checked=true;
               document.getElementById('custom-solver').checked=true;document.getElementById('subset-size').value='32';
               document.getElementById('subset-stride').value=16;document.getElementById('subset-size').onchange();true""")
             assert browser._evaluate(
-                "document.getElementById('solver-summary').dataset.pending==='true'&&!document.getElementById('apply-solver-settings').disabled"
+                "document.getElementById('solver-summary').dataset.pending==='true'&&liveDicWorkbench.report().count===1"
             )
-            # No re-capture and no Apply button: Start must apply and use the original reference.
+            # No re-capture: Start applies pending settings to the original reference.
             browser._evaluate("document.getElementById('pause').onclick().then(()=>true)")
             wait(
                 browser,
@@ -150,7 +151,9 @@ def main():
             browser._evaluate(
                 "document.querySelector('[data-pane=solve]').click();document.getElementById('display-rate').value='1';document.getElementById('display-rate').onchange();document.getElementById('local-seek').value=1;document.getElementById('local-seek').onchange().then(()=>true)"
             )
-            assert browser._evaluate("document.getElementById('apply-solver-settings').disabled")
+            assert browser._evaluate(
+                "JSON.parse(document.getElementById('details').textContent).reference.prepared===true"
+            )
             browser._evaluate("document.getElementById('pause').onclick().then(()=>true)")
             wait(
                 browser,
@@ -159,13 +162,13 @@ def main():
             records = browser._evaluate(record_script)
             assert records[2]["analysisEpoch"] == good["analysisEpoch"]
             assert records[2]["parametersSha256"] == good["parametersSha256"]
-            # Applying a policy change prepares only; it must not create a measured field.
+            # A policy edit stays pending and neither prepares nor creates a field.
             browser._evaluate(
-                "document.querySelector('[data-pane=solve]').click();document.getElementById('outlier-policy').value='disabled';document.getElementById('outlier-policy').onchange();document.getElementById('apply-solver-settings').onclick().then(()=>true)"
+                "document.querySelector('[data-pane=solve]').click();document.getElementById('outlier-policy').value='disabled';document.getElementById('outlier-policy').onchange();true"
             )
             assert browser._evaluate("liveDicWorkbench.report().count") == 3
             assert browser._evaluate(
-                "JSON.parse(document.getElementById('details').textContent).reference.config.outlierPolicy==='disabled'"
+                "document.getElementById('solver-summary').dataset.pending==='true'&&JSON.parse(document.getElementById('details').textContent).reference.config.outlierPolicy!=='disabled'"
             )
             # Selecting Ref (last in natural order) must suggest Def, not self-correlation.
             browser._evaluate(
@@ -183,6 +186,7 @@ def main():
             records = browser._evaluate(record_script)
             assert records[0] == first
             assert records[3]["accepted"] / records[3]["total"] > 0.90
+            assert records[3]["config"]["outlierPolicy"] == "disabled"
             # A cold solver edit retains the applied geometry and image mask.
             browser._evaluate(
                 """document.querySelector('[data-pane=solve]').click();document.getElementById('draw').onclick().then(()=>true)"""
@@ -192,7 +196,7 @@ def main():
               liveDicRoi.reset(info.width,info.height,[{id:'outer',type:'rectangle',x:64,y:64,width:info.width-128,height:info.height-128},
                 {id:'hole',type:'circle',x:info.width/2-80,y:info.height/2-80,width:160,height:160}]);
               await document.getElementById('apply-roi').onclick();
-              return JSON.parse(document.getElementById('details').textContent).reference.config.roi;
+              return true;
             })()""")
             browser._evaluate(
                 "document.getElementById('outlier-policy').value='median';document.getElementById('outlier-policy').onchange();document.getElementById('pause').onclick().then(()=>true)"
@@ -202,6 +206,9 @@ def main():
                 "liveDicWorkbench.report().count===5&&liveDicWorkbench.report().recipe!==null",
             )
             records = browser._evaluate(record_script)
+            roi = browser._evaluate(
+                "JSON.parse(document.getElementById('details').textContent).reference.config.roi"
+            )
             assert records[4]["config"]["roi"]["maskSha256"] == roi["maskSha256"]
             assert records[4]["config"]["roi"]["selected"] == roi["selected"]
             assert records[0] == first
@@ -227,14 +234,22 @@ def main():
                 ),
                 source_sha256={
                     name: hashlib.sha256((args.site / name).read_bytes()).hexdigest()
-                    for name in ["app.js", "index.html", "ui/workspace.js", "ui/workbench.js"]
+                    for name in [
+                        "app.js",
+                        "index.html",
+                        "ui/app.css",
+                        "ui/session.js",
+                        "ui/workspace.js",
+                        "ui/workbench.js",
+                    ]
                 },
                 qualifier_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
                 input_kind="private supplied TIFF pair"
                 if args.reference
                 else "archived native UHD texture, known integer shift",
                 input_sha256=[hashlib.sha256(p.read_bytes()).hexdigest() for p in paths],
-                initial_configuration=before,
+                staged_reference=staged,
+                initial_configuration=first["config"],
                 records=records,
                 source=state,
                 errors=browser._evaluate("liveDicStatus.errors"),

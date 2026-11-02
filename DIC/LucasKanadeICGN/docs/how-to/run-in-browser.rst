@@ -131,14 +131,17 @@ Use a camera
    manual modes only when exposed by the camera API; unsupported locks remain
    visible. Watch acceptance and iteration counts when illumination changes.
 5. Use **Pause calculation**, **Capture reference** or **Reset history** deliberately.
-   Changing resolution restarts camera capture and prepares a new reference.
+   Changing resolution restarts camera capture and stages a new reference; GPU
+   reference preparation waits until **Start calculation**.
    A disconnected/ended camera changes the calculation action into **Restart camera**, preserving
    the last completed field for export. Restart captures a new reference; reapply
    the mask. This recovery does not manufacture missing measurements.
-   A profile change is applied before the next calculation, or with **Apply settings to current reference**. After reference,
-   mask or comparison changes, target exports/review remain disabled until a new
-   target field arrives; old metrics are cleared. Drop counts restart on source
-   replacement.
+   A profile, solver, mask or comparison change only updates the pending setup.
+   **Start calculation** prepares the staged image, applied mask and selected
+   settings together. Loading images, editing/applying a mask and changing solver
+   controls do not build a GPU reference. After reference, mask or comparison
+   changes, target exports/review remain disabled until a new target field
+   arrives; old metrics are cleared. Drop counts restart on source replacement.
 
 Timestamp origins are labelled: a reference captured from the video element
 uses its media timeline, whereas track-processor frames use the browser/device's
@@ -196,7 +199,9 @@ preview on very large images.
 In **Input / Mask → Define the specimen**, choose **Create mask from scratch**
 to begin with every pixel excluded, then add domains with rectangles, ellipses,
 circles or polygons. Nested shapes still define holes and islands. Choose
-**Apply mask** to use the edited geometry; **Full image** removes the ROI.
+**Apply mask** to commit the edited geometry locally; **Full image** removes the
+ROI. Neither action builds the GPU reference. The mask is prepared together
+with the selected image and solver settings when **Start calculation** is pressed.
 
 Images need not match the 720p/1080p/UHD camera presets, be square or have
 sizes divisible by the subset size. They keep their original dimensions. A
@@ -390,17 +395,20 @@ Selecting equal dimensions also makes an ellipse circular. Delete removes the
 selected shape; its remaining nested shapes are reclassified. **Undo** restores
 previous geometry, including deletion. **Full image** removes the mask.
 
-Choose **Apply mask** when finished. The engine prepares the new static mask
-and history; no geometry work runs per video frame. To adjust it later, choose
+Choose **Apply mask** when finished. This commits the pending mask geometry;
+the GPU reference and static mask are built together when **Start calculation**
+is pressed. No geometry work runs per video frame. To adjust it later, choose
 **Edit mask** again. Edits remain unapplied until that action. With no shapes,
 there is no mask. Rectangular/polygon scanlines use pixel centres and half-open
 edges; ellipse/circle interiors are strict. Classification checks the entire
 rasterized support, not just centres or corners. The mask does not depend on
 canvas antialiasing or drawing order. Equal pixel footprints are duplicates.
 
-**Zoom** and scrollbars help inspect or position small shapes; **Centre view**
-centres the observation window. Zoom changes presentation only. Numeric
-coordinates, masks and the DIC grid remain at the original resolution.
+The navigation bar immediately below the colourbar provides stepped zoom, a
+directional pan pad and **Fit and centre** to restore the initial view. The
+zoom keeps the current viewport centre; scrollbars remain available for
+fine panning. These controls change presentation only: image coordinates,
+masks and the DIC grid remain at the original resolution.
 
 The square of every retained subset must lie entirely inside the mask; holes
 exclude complete crossing subsets. Nothing tests the moving target against the
@@ -422,8 +430,8 @@ For an antialiased or grayscale source, explicitly choose **luminance threshold*
 and an integer threshold 0–255 before importing. The conversion keeps pixels
 with rounded BT.709 luminance at least that threshold and alpha at least 128.
 The filename, file hash and conversion convention are recorded. Inspect the
-preview and choose **Apply mask**; import alone does not alter the last numerical
-field. **Full image** removes both the imported base and vector restrictions.
+preview and choose **Apply mask**; importing a mask does not run correlation or
+modify saved fields. **Full image** removes both the imported base and vector restrictions.
 
 The imported mask is a fixed base. Vector domains/holes clip it by intersection;
 they cannot restore a black base pixel. A full-image rectangle is supplied so
@@ -433,8 +441,8 @@ preserves the base and restores vector edits. To change an existing pixel hole,
 edit/reimport the image itself or replace the mask with vectors.
 
 **Download edited mask PNG** exports the current editable net mask as opaque
-black/white at original size, including unapplied edits. Apply it separately to
-use it for correlation. Numerical field exports always keep the **applied**
+black/white at original size, including unapplied edits. Apply it locally before
+calculation to select it for the next solve. Numerical field exports always keep the **applied**
 binary mask and geometry, even while another edit is being previewed. In Python:
 
 .. code-block:: python
@@ -451,8 +459,9 @@ Original UHD plate with a hole
 Choose **Plate with hole · UHD**. This loads the original archived reference
 and frame 95 at **3840 × 2160**, without resampling, tiling or video encoding.
 The outlined outer rectangle and circular hole are already present and editable.
-Choose **Edit mask** to adjust them or add more regions. Applying the mask prepares a new reference/ROI. Press **Start calculation**
-in Solve to calculate the selected pair. **Plate load** selects frame 95
+Choose **Edit mask** to adjust them or add more regions. Applying the mask only
+updates the pending ROI; **Start calculation** prepares the reference and mask
+and solves the selected pair. **Plate load** selects frame 95
 (250/0 MPa) or frame 225 (250/80 MPa). **Capture reference** restores the
 original reference and preset for this case.
 
@@ -524,11 +533,11 @@ operate while editing an input, modal or mask.
 
 In **Solve**, enable **Use custom settings** to choose translation/affine,
 window width, grid step, interpolator, pyramid levels, coarse/fine iteration
-limits and solver spatial policy. **Start calculation** applies pending settings
-to the retained reference and mask before solving. **Apply settings to current
-reference** prepares them without creating a measured field. Unchanged settings
-reuse their preparation; immediate display controls do not rebuild it. Exported
-configuration describes the applied settings,
+limits and solver spatial policy. **Start calculation** prepares the selected
+image, applied mask and pending settings together, then solves. Loading an
+image, changing a solver setting or applying a mask does not initialize the
+GPU. Unchanged starts reuse their preparation; immediate display controls do
+not rebuild it. Exported configuration describes the applied settings,
 not the pending form. Three-level custom runs use four middle-level iterations;
 one level uses the fine limit. These custom combinations do not inherit a
 qualified preset's precision/FPS claim. Translation has no direct strain field;
@@ -544,10 +553,10 @@ background, never an older field overlaid on an unrelated current image.
 model, configuration, ROI and input pair even after changing the active source.
 
 The quantity selector stays above the image. The colour-map and clim controls
-sit directly below the colourbar, beside the displayed field, so they remain
-close to the values they control. Choose displacement, strain components,
-equivalent strain, principal strains, polar rotation, iteration count or solver
-status.
+sit to the right of the colourbar to keep the Results view compact; they stack
+below it on narrow screens. Choose displacement, strain components, equivalent
+strain, principal strains, polar rotation, iteration count or acceptance
+criteria / solver status.
 
 Choose **Automatic**, **Viridis**, **Cividis**, **Plasma**, **Inferno** or
 **Magma** for a perceptually uniform sequential map, or choose the signed
@@ -567,6 +576,17 @@ Solver status is categorical, so its six status colours do not use a scalar clim
 Palette and clim edits recolour the cached displayed field. They do not rerun
 correlation or derived field analysis. The histogram shows the valid value
 distribution whenever no line profile is selected.
+
+By default, subsets outside the active acceptance population stay grey. Select
+**Show masked estimates** beside the colourbar to display finite solver states
+for subsets where at least one iteration ran. The selected display
+recipe is applied to those diagnostic estimates; valid displayed values stay
+unchanged. ROI-excluded and never-solved subsets remain blank. These values
+are diagnostic only: the status map, summary statistics, measurements and
+processed CSV continue to use the accepted population. Select **Acceptance
+criteria · solver status** to inspect every status category independently of
+the scalar field.
+
 Computed estimates are
 preserved, including any solver median already applied. Optional displacement
 median/Gaussian smoothing and VSG plane-fit strain are separate analysis
