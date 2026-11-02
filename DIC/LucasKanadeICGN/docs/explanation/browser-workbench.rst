@@ -181,11 +181,18 @@ never overlays an old field on an unrelated current camera image. Point and
 gauge annotations also appear inside the viewer, while processing controls stay
 beside it. The solver's dense exclusions remain visible in status mode.
 
-Robust colour bounds use the 2nd/98th percentiles of valid measurements; signed
-fields use symmetric limits. Full range and fixed bounds are explicit options.
-Sequential blue/green/gold, signed blue/white/red and grayscale palettes are
-presentation choices. Saturated values are counted but not removed or clipped
-in the data. Histograms use the valid population, not only the unsaturated range.
+Colour-map and clim controls stay directly below the colourbar. Robust limits
+use editable lower/upper percentiles of valid measurements (2 and 98 by
+default); signed fields retain symmetric limits around zero. Full-range and
+manual clims are explicit options. Alongside the existing automatic,
+blue/green/gold, blue/white/red and grayscale maps, the viewer bundles
+256-entry Viridis, Cividis, Plasma, Inferno and Magma lookup tables sampled
+from Matplotlib's perceptually uniform sequential maps. They require no runtime
+Matplotlib dependency. Saturated values are counted but are not removed or
+clipped in the data. Histograms use the valid population, not only the
+unsaturated range. Status categories retain their fixed discrete colours and do
+not use scalar clims. These controls recolour the cached analysis and do not
+trigger correlation or derived-field recalculation.
 
 PNG exports use the displayed palette and limits, or the six exact categorical
 status colours. A separate wrapped footer records the field label, subset

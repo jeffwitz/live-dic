@@ -366,6 +366,19 @@ include the corresponding +0.5 offset. Display controls are saved separately
 from processing recipes. Application exports also include the assembled build's
 revision/content version and canonical shader hashes when available.
 
+The standalone Results view places colour-map and clim controls directly below
+its colourbar. Scalar maps include the existing automatic, diverging,
+blue/green/gold and grayscale choices, plus bundled 256-entry Viridis, Cividis,
+Plasma, Inferno and Magma lookup tables sampled from Matplotlib's
+perceptually-uniform sequential maps. No Matplotlib runtime or network access is
+required. The default percentile clim remains 2–98%; both percentile endpoints
+are editable from 0 to 100. Signed scalar quantities use symmetric percentile
+limits around zero. Full-range and manual limits are available; manual limits
+use the legend's displayed units. Colour clipping affects rendering only, not
+computed arrays, measurement exports or stored fields. Categorical solver
+status keeps its fixed six-colour key and ignores scalar clims. Palette, mode,
+limits and percentile endpoints are retained with the saved Results view.
+
 ``ui/postprocess.js`` exposes ``regionSummary(analysis, component, a, b)``.
 It snaps two reference pixel-index coordinate pairs to grid centres and returns
 null outside the grid. The inclusive rectangle report separates ``total``,

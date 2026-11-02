@@ -254,7 +254,13 @@ project parts for an independent backup. Disk errors retain the completed field
 in RAM and pause recording. Raw images are not recorded. Analysis is a reversible
 post-processing view, not a new convergence test. Smoothing reduces spatial
 resolution. VSG can lose valid strain support near gaps and narrow regions;
-invalid values are not filled. Unit scaling is isotropic and does not correct
+invalid values are not filled. Result palettes and clims are display-only: they
+never change stored parameters, statuses or exported measurements. Percentile
+clims describe only the valid displayed population and can hide extreme values
+from view. Signed fields use a symmetric interval for percentile limits; a
+sequential palette still maps negative through positive values monotonically
+and does not mark zero as a visual centre. Use the diverging palette when zero
+or sign is important. Unit scaling is isotropic and does not correct
 lens distortion, perspective or out-of-plane motion. Gauge strain is an endpoint
 distance measure. No automatic cumulative trajectory or physical acquisition
 clock is inferred from folder replay. Native CLI/workbench archive layouts are supported. Missing image geometry

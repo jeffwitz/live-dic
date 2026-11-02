@@ -4,16 +4,35 @@ import { extractHistory, sameAnalysis } from './history.js';
 import { resultFigure } from './figure.js';
 import { FieldStorage, defaultCacheBytes, fieldArrayBytes, MiB } from './field-storage.js';
 import { createViewCache, createAnalysisCache } from './view-cache.js';
+import { sequentialColour } from '../render/colormaps.js';
 
 const $ = id => document.getElementById(id);
 const number = value => value == null || !Number.isFinite(value) ? 'unavailable' : value.toPrecision(5);
 const STRAIN_COMPONENTS = new Set(['exx','eyy','exy','vonMises','principal1','principal2']);
+const PERCEPTUAL_SEQUENTIAL_MAPS = new Set(['viridis','cividis','plasma','inferno','magma']);
 const ARCHIVE_IMPORT_BYTES = 256 * MiB;
 const encoderBytes = value => new TextEncoder().encode(JSON.stringify(value)).byteLength;
 const STATUS = { '-3': 'Excluded by ROI', '-2': 'Rejected correlation', '-1': 'Unavailable reference / bounds',
   0: 'Not converged', 1: 'Accepted', 2: 'Flagged / replaced by solver policy' };
 const STATUS_COLOURS = { '-3':[160,170,178],'-2':[202,51,64],'-1':[71,86,96],0:[240,193,52],1:[36,151,110],2:[238,135,45] };
 const STATUS_ORDER = [-3,-2,-1,0,1,2];
+const percentileCache = new WeakMap();
+
+function percentileBounds(analysis, component, values, valid, minimum, maximum) {
+  let components = percentileCache.get(analysis);
+  if (!components) { components = new Map(); percentileCache.set(analysis, components); }
+  let sorted = components.get(component);
+  if (!sorted) {
+    sorted = Array.from(values).filter((value, index) => valid[index] && Number.isFinite(value)).sort((a, b) => a - b);
+    components.set(component, sorted);
+  }
+  if (!sorted.length) return [null, null];
+  const quantile = percentile => {
+    const position = (sorted.length - 1) * percentile / 100, index = Math.floor(position);
+    return sorted[index] + (position - index) * (sorted[Math.min(sorted.length - 1, index + 1)] - sorted[index]);
+  };
+  return [quantile(minimum), quantile(maximum)];
+}
 
 function download(name, content, type) {
   const url = URL.createObjectURL(new Blob([content], { type }));
@@ -88,6 +107,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   function viewSettings() {
     return { component:$('review-component').value,colourScale:$('review-scale').value,
       minimum:Number($('review-min').value),maximum:Number($('review-max').value),
+      minimumPercentile:Number($('review-low-percentile').value),maximumPercentile:Number($('review-high-percentile').value),
       palette:$('review-palette').value,vectors:$('review-vectors').checked,vectorStep:Number($('review-vector-step').value),
       vectorGain:Number($('review-vector-gain').value),contour:$('review-contour').checked,tool,points,
       measurements:measurements.map(item=>({...item,points:item.points.map(point=>[...point])})),activeMeasurementId };
@@ -97,11 +117,19 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     for(const [id,key] of [['review-component','component'],['review-scale','colourScale'],['review-palette','palette']])
       if([...$(id).options].some(option=>option.value===view[key]&&!option.disabled))$(id).value=view[key];
     if([view.minimum,view.maximum].every(Number.isFinite)&&view.maximum>view.minimum){$('review-min').value=view.minimum;$('review-max').value=view.maximum;}
-    $('manual-limits').hidden=$('review-scale').value!=='manual';
+    if([view.minimumPercentile,view.maximumPercentile].every(value=>Number.isFinite(value)&&value>=0&&value<=100)&&view.maximumPercentile>view.minimumPercentile){
+      $('review-low-percentile').value=view.minimumPercentile;$('review-high-percentile').value=view.maximumPercentile;
+    }
+    updateColourControlVisibility();
     $('review-vectors').checked=view.vectors===true;$('review-contour').checked=view.contour===true;
     if([2,4,8].includes(view.vectorStep))$('review-vector-step').value=view.vectorStep;
     if([1,5,20,50,100].includes(view.vectorGain))$('review-vector-gain').value=view.vectorGain;
     restoreInspection(view);
+  }
+  function updateColourControlVisibility() {
+    const mode=$('review-scale').value;
+    $('percentile-limits').hidden=mode!=='robust';
+    $('manual-limits').hidden=mode!=='manual';
   }
   function restoreInspection(view) {
     const field=activeEntry()?.field;
@@ -194,7 +222,8 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     $('results-workbench').hidden = true; canvas.hidden = true; overlay.hidden = true;
     $('field').hidden = false; $('return-live').hidden = true;
     $('roi').hidden=false;$('review-controls').hidden=true;$('live-appearance').hidden=false;$('cursor-value').hidden=true;
-    document.querySelector('.legend div').style.background='';
+    document.querySelector('.legend-bar').style.background='';
+    $('review-colour-controls').hidden=true;
     liveChanged(false, restore);updateLibrary();
   }
   async function selectEntry(id,{replay=false,preserveView=reviewing}={}) {
@@ -206,10 +235,10 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     historyAbort?.abort();history=null;$('spatial-view').hidden=true;$('history-state').textContent='';
     pause(); selected = entry.id; analysis = null; reviewing = true; computedView = false; points = []; extraction = [];
     const token=++selectionSerial;selectionBusy=true;storage.pin(entry.id);requestId++;pendingAnalysis=false;clearTimeout(debounce);
-    canvas.dataset.analysisState='pending';canvas.setAttribute('aria-busy','true');pendingLabel(`Loading field ${entry.id}`);$('review-controls').inert=true;
+    canvas.dataset.analysisState='pending';canvas.setAttribute('aria-busy','true');pendingLabel(`Loading field ${entry.id}`);$('review-controls').inert=true;$('review-colour-controls').inert=true;
     for(const key of ['save-npz','save-processed-csv','save-figure','measurement-inputs','apply-recipe-analysis'])$(key).disabled=true;
-    try {await storage.load(entry);} catch(e){if(token===selectionSerial){selectionBusy=false;$('review-controls').inert=false;canvas.dataset.analysisState='failed';canvas.setAttribute('aria-busy','false');$('result-render-state').textContent=$('analysis-state').textContent=`Unable to load field ${entry.id}. ${displayed ? `Still showing field ${displayed.id}. ` : ''}${e.message}`;error(e.message);}return;}
-    if(token!==selectionSerial)return;selectionBusy=false;$('review-controls').inert=false;
+    try {await storage.load(entry);} catch(e){if(token===selectionSerial){selectionBusy=false;$('review-controls').inert=false;$('review-colour-controls').inert=false;canvas.dataset.analysisState='failed';canvas.setAttribute('aria-busy','false');$('result-render-state').textContent=$('analysis-state').textContent=`Unable to load field ${entry.id}. ${displayed ? `Still showing field ${displayed.id}. ` : ''}${e.message}`;error(e.message);}return;}
+    if(token!==selectionSerial)return;selectionBusy=false;$('review-controls').inert=false;$('review-colour-controls').inert=false;
     $('saved-fields').value = entry.id; $('results-workbench').hidden = false;
     $('return-live').hidden = false; canvas.hidden = false; overlay.hidden = false; $('field').hidden = true;
     for(const id of ['measure-ax','measure-bx'])$(id).max=entry.field.width-1;
@@ -293,22 +322,33 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     if (!analysis) return;
     const component = $('review-component').value, { values, valid, unit, source, statistics:stats } = viewCache.get(analysis, component);
     document.querySelector('.legend').hidden=false;$('live-vector-key').hidden=true;
+    $('review-colour-controls').hidden=component==='status';
     document.querySelector('.gray-key').textContent='Grey: unavailable / rejected';
     $('quantity-source').hidden=!source;$('quantity-source').textContent=source?`Computed coefficient (${unit}). Workbench displacement smoothing and VSG do not change these values. The solver's original spatial policy still applies.`:'';
     const field = analysis.field, [gw,gh] = field.grid;
     const nonnegative = ['magnitude','vonMises','iterations'].includes(component);
     const scaleMode=$('review-scale').value,factor=STRAIN_COMPONENTS.has(component)?1e6:1;
-    let low=scaleMode==='full'?stats.min:stats.p02,high=scaleMode==='full'?stats.max:stats.p98;
+    const lowPercentile=Number($('review-low-percentile').value),highPercentile=Number($('review-high-percentile').value);
+    let low,high;
+    if(scaleMode==='full'){low=stats.min;high=stats.max;}
+    else if(scaleMode==='manual'){low=stats.min;high=stats.max;}
+    else {
+      if(!Number.isFinite(lowPercentile)||!Number.isFinite(highPercentile)||lowPercentile<0||lowPercentile>100||highPercentile<0||highPercentile>100||highPercentile<=lowPercentile){
+        $('analysis-state').textContent='Choose percentiles from 0 to 100, with the maximum greater than the minimum.';return;
+      }
+      [low,high]=lowPercentile===2&&highPercentile===98?[stats.p02,stats.p98]:percentileBounds(analysis,component,values,valid,lowPercentile,highPercentile);
+    }
     low??=0;high??=1;
-    if(!nonnegative){const limit=Math.max(Math.abs(low),Math.abs(high),1e-12);low=-limit;high=limit;}
+    if(scaleMode!=='manual'&&!nonnegative){const limit=Math.max(Math.abs(low),Math.abs(high),1e-12);low=-limit;high=limit;}
     if(scaleMode==='manual'){
       low=Number($('review-min').value)/factor;high=Number($('review-max').value)/factor;
-      if(!Number.isFinite(low)||!Number.isFinite(high)||high<=low){$('analysis-state').textContent='Fixed maximum must be greater than minimum, with finite limits.';return;}
+      if(!Number.isFinite(low)||!Number.isFinite(high)||high<=low){$('analysis-state').textContent='The clim maximum must be greater than its minimum, with finite values.';return;}
     } else {$('review-min').value=Number((low*factor).toPrecision(6));$('review-max').value=Number((high*factor).toPrecision(6));}
     if(high-low<Math.max(1e-14,Math.abs(high)*1e-12)){const pad=Math.max(1e-12,Math.abs(high)*.01);low-=pad;high+=pad;}
     const palette=$('review-palette').value==='auto'?(nonnegative?'sequential':'diverging'):$('review-palette').value;
     function colour(value){
       const t=Math.max(0,Math.min(1,(value-low)/(high-low)));
+      if(PERCEPTUAL_SEQUENTIAL_MAPS.has(palette))return sequentialColour(palette,t);
       if(palette==='gray')return Array(3).fill(Math.round(24+220*t));
       if(palette==='sequential'){
         const stops=[[21,57,99],[31,132,138],[241,206,95]],position=t*2,index=Math.min(1,Math.floor(position)),f=position-index;
@@ -363,7 +403,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     $('high').textContent = component==='status' ? 'Accepted / flagged' : format(high,unit);
     document.querySelector('.legend').classList.toggle('status',component==='status');
     document.querySelector('.legend').classList.toggle('magnitude',nonnegative);
-    document.querySelector('.legend div').style.background=component==='status'
+    document.querySelector('.legend-bar').style.background=component==='status'
       ? `linear-gradient(90deg,${STATUS_ORDER.map((code,i)=>`rgb(${STATUS_COLOURS[code].join(',')}) ${i*100/6}% ${(i+1)*100/6}%`).join(',')})`
       : `linear-gradient(90deg,${Array.from({length:11},(_,i)=>`rgb(${colour(low+(high-low)*i/10).join(',')}) ${i*10}%`).join(',')})`;
     const clipped = Array.from(values).reduce((n,v,i)=>n+ +(valid[i] && (v<low||v>high)),0);
@@ -371,7 +411,8 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
       ? {categories:STATUS_ORDER.map(code=>({label:`${code} · ${STATUS[code]}`,colour:`rgb(${STATUS_COLOURS[code].join(',')})`}))}
       : {low:format(low,unit),high:format(high,unit),stops:Array.from({length:11},(_,i)=>[i/10,`rgb(${colour(low+(high-low)*i/10).join(',')})`])};
     const summary = $('field-summary'); summary.replaceChildren();
-    const summaryRows=component==='status'?Object.entries(STATUS).map(([code,label])=>[label,field.status.reduce((n,status)=>n+ +(status===Number(code)),0)]):[['Valid values',`${stats.count} / ${values.length}`],['Minimum',format(stats.min,unit)],['Mean',format(stats.mean,unit)],['Maximum',format(stats.max,unit)],['Colour clipping',`${clipped} values · ${scaleMode} scale`]];
+    const scaleDescription=scaleMode==='robust'?`${lowPercentile}–${highPercentile}% percentiles`:scaleMode==='full'?'full range':'manual clim';
+    const summaryRows=component==='status'?Object.entries(STATUS).map(([code,label])=>[label,field.status.reduce((n,status)=>n+ +(status===Number(code)),0)]):[['Valid values',`${stats.count} / ${values.length}`],['Minimum',format(stats.min,unit)],['Mean',format(stats.mean,unit)],['Maximum',format(stats.max,unit)],['Colour clipping',`${clipped} values · ${scaleDescription}`]];
     for (const [label,value] of summaryRows) {
       const box = document.createElement('div'), strong = document.createElement('strong'); box.textContent = label; strong.textContent = value; box.append(strong); summary.append(box);
     }
@@ -727,8 +768,8 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   };
   $('reset-processing').onclick=()=>{stopReplay();setRecipe({...DEFAULT_RECIPE,strainSource:activeEntry()?.field.config.motionModel==='translation'?'vsg':'direct'});computedView=false;scheduleAnalysis();};
   $('compare-computed').onclick=()=>{stopReplay();computedView=!computedView;$('compare-computed').textContent=computedView?'Restore processing recipe':'Show computed field';scheduleAnalysis();};
-  $('review-component').onchange=()=>{clearHistory();const item=activeMeasurement();if(item){item.component=$('review-component').value;changed();rememberView();renderMeasurementList();}$('review-scale').value='robust';$('manual-limits').hidden=true;if(!reviewing&&entries.length)return selectEntry(entries[0].id,{preserveView:true});render();};
-  for(const id of ['review-scale','review-min','review-max','review-palette','review-vectors','review-vector-step','review-vector-gain','review-contour'])$(id).onchange=()=>{$('manual-limits').hidden=$('review-scale').value!=='manual';render();};
+  $('review-component').onchange=()=>{clearHistory();const item=activeMeasurement();if(item){item.component=$('review-component').value;changed();rememberView();renderMeasurementList();}$('review-scale').value='robust';updateColourControlVisibility();if(!reviewing&&entries.length)return selectEntry(entries[0].id,{preserveView:true});render();};
+  for(const id of ['review-scale','review-min','review-max','review-low-percentile','review-high-percentile','review-palette','review-vectors','review-vector-step','review-vector-gain','review-contour'])$(id).onchange=()=>{updateColourControlVisibility();render();};
   $('save-npz').onclick=()=>{if(!analysis)return;const entry=activeEntry();download(`live-dic-${entry.id}.npz`,fieldArchive(entry.field,{...entry.metadata,workbench:{view:viewSettings()},analysis:{recipe:analysis.recipe,processingWallMs:analysis.processingWallMs}},analysis,entry.mask),'application/octet-stream');};
   $('save-processed-csv').onclick=()=>{if(!analysis)return;const {values,valid,unit}=componentValues(analysis,$('review-component').value),lines=[`x_px,y_px,${$('review-component').value}_${unit},valid,solver_status`];for(let i=0;i<values.length;i++)lines.push([...pointPosition(i),valid[i]?values[i]:'',valid[i],analysis.field.status[i]].join(','));download('live-dic-displayed-field.csv',lines.join('\n'),'text/csv');};
   $('save-profile').onclick=()=>{if(!extraction.length)return;const columns=Object.keys(extraction[0]);download('live-dic-extraction.csv',[columns.join(','),...extraction.map(row=>columns.map(k=>row[k]??'').join(','))].join('\n'),'text/csv');download('live-dic-extraction.json',JSON.stringify({recipe:analysis.recipe,view:viewSettings(),valueUnit:(history?.tool??tool)==='gauge'?'strain':componentValues(analysis,$('review-component').value).unit,coordinateUnit:'px',distanceUnit:analysis.recipe.unit,comparison:activeEntry().metadata.comparison},null,2),'application/json');};
@@ -737,7 +778,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     const {field,recipe}=analysis,component=$('review-component').value,coefficient=component.startsWith('computed-p'),categorical=component==='status';
     const details=[`${field.width} × ${field.height} reference pixels · ${field.config.motionModel} · window / step ${field.subsetSize} / ${field.subsetStride} px · grid ${field.grid.join(' × ')} · solver policy: ${field.config.outlierPolicy}`,
       categorical?'Stored solver status: workbench smoothing and VSG do not alter categories.':coefficient?'Stored model coefficient: workbench smoothing and VSG do not alter these values.':`Displacement smoothing: ${recipe.smoothing} · ${recipe.window} × ${recipe.window} grid points · strain: ${recipe.strainSource} / ${recipe.strainMeasure} · nominal strain support: ${analysis.strainSpanPx} px`,
-      categorical?'Six categorical status colours; scalar colour limits do not apply.':`Length scale: ${recipe.unitsPerPixel} ${recipe.unit} / px (isotropic). Colour scale: ${$('review-scale').value}; displayed values are preserved in numerical exports.`];
+      categorical?'Six categorical status colours; scalar colour limits do not apply.':`Length scale: ${recipe.unitsPerPixel} ${recipe.unit} / px (isotropic). Palette: ${$('review-palette').selectedOptions[0].textContent}; clim: ${figureLegend.low} to ${figureLegend.high}; ${$('review-scale').value==='robust'?`${$('review-low-percentile').value}–${$('review-high-percentile').value}% valid-value percentiles`: $('review-scale').value==='full'?'full valid-value range':'manually entered limits'}. Display settings do not alter numerical exports.`];
     if($('review-vectors').checked)details.push(`Arrows: processed displacements · magnification ×${$('review-vector-gain').value} · every ${$('review-vector-step').value} grid points.`);
     if(points.length){
       const centres=points.map(([x,y])=>{const i=nearestIndex(field,x,y);return i<0?'outside measured grid':`(${pointPosition(i).map(value=>value.toFixed(1)).join(', ')})`;}).join(' → ');

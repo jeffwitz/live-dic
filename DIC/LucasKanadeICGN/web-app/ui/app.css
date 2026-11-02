@@ -60,10 +60,19 @@ main { max-width: 1688px; padding: 22px 24px; margin: auto; }
 #inspection { z-index: 3; }
 #inspection.inspecting { pointer-events: auto; touch-action: none; cursor: crosshair; }
 #placeholder { position: absolute; inset: 0; display: grid; place-content: center; color: #c5d5dc; text-align: center; padding: 24px; pointer-events: none; background:#152a34; }
-.legend { padding: 10px 12px; background: #fff; display: flex; gap: 10px; align-items: center; font-size: 10px; min-height: 38px; }
-.legend div { height: 10px; width: 150px; border-radius: 3px; background: linear-gradient(90deg, #1f52cc, #fafafa, #d62e1f); }
-.legend.magnitude div { background: linear-gradient(90deg, #fafafa, #d62e1f); }
-.legend.status div { background: linear-gradient(90deg, #19a666 0 25%, #ff801a 25% 50%, #facf26 50% 75%, #cc1f29 75% 100%); }
+.legend { padding: 8px 12px; background: #fff; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: 10px; min-height: 38px; }
+.legend-row { display: flex; flex: 1 1 100%; gap: 10px; align-items: center; min-width: 0; }
+.legend-bar { height: 10px; width: 150px; max-width: 35vw; flex: 0 1 150px; border-radius: 3px; background: linear-gradient(90deg, #1f52cc, #fafafa, #d62e1f); }
+.legend.magnitude .legend-bar { background: linear-gradient(90deg, #fafafa, #d62e1f); }
+.legend.status .legend-bar { background: linear-gradient(90deg, #19a666 0 25%, #ff801a 25% 50%, #facf26 50% 75%, #cc1f29 75% 100%); }
+.legend-controls { display: flex; flex: 1 1 100%; flex-wrap: wrap; gap: 8px 12px; align-items: end; padding-top: 7px; border-top: 1px solid #e6edef; }
+.legend-controls[hidden], .clim-controls[hidden] { display: none; }
+.legend-controls label { display: flex; flex-direction: column; gap: 3px; color: #50646d; font-size: 10px; }
+.legend-controls select, .legend-controls input { min-height: 30px; padding: 4px 8px; font-size: 11px; }
+.legend-controls select { min-width: 148px; }
+.legend-controls input { width: 96px; }
+.clim-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.clim-controls label { min-width: 96px; }
 .gray-key { margin-left: auto; color: var(--muted); }
 .panel { background: #fff; border: 1px solid var(--line); border-radius: 10px; max-height: calc(100vh - 40px); overflow: auto; }
 .workflow { position: sticky; top: 0; z-index: 5; background: #fff; display: grid; grid-template-columns: repeat(4, 1fr); padding: 8px; gap: 4px; border-bottom: 1px solid var(--line); }

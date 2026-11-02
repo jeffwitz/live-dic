@@ -101,7 +101,7 @@ function updateScale(scale) {
   if (!Number.isFinite(scale)) return;
   const legend=document.querySelector('.legend');legend.hidden=lastVectorLegend?.imageOnly??Number($('component').value)===8;
   legend.classList.remove('status');legend.classList.add('magnitude');
-  legend.querySelector('div').style.background=`linear-gradient(90deg,${Array.from({length:11},(_,i)=>`rgb(${vectorColour(i/10).join(',')}) ${i*10}%`).join(',')})`;
+  legend.querySelector('.legend-bar').style.background=`linear-gradient(90deg,${Array.from({length:11},(_,i)=>`rgb(${vectorColour(i/10).join(',')}) ${i*10}%`).join(',')})`;
   $('low').textContent='0 px';$('high').textContent=`${scale.toPrecision(3)} px · |u|`;
   document.querySelector('.gray-key').textContent='Grey crosses: requested but unavailable. ROI holes have no vectors.';
   updateVectorLengthLegend();

@@ -543,12 +543,30 @@ background, never an older field overlaid on an unrelated current image.
 **Return to live view** restores GPU rendering. A saved field retains its own
 model, configuration, ROI and input pair even after changing the active source.
 
-The analysis controls stay beside the saved field. Choose displacement, strain components, equivalent strain, principal strains,
-polar rotation, iteration count or solver status. Colour bounds can use robust
-2–98 percentiles, full range or explicit fixed limits in the legend units.
-Clipped colour values are counted; underlying measurements stay unchanged.
-Choose a signed diverging, sequential or grayscale palette. The histogram
-shows the valid value distribution whenever no line profile is selected.
+The quantity selector stays above the image. The colour-map and clim controls
+sit directly below the colourbar, beside the displayed field, so they remain
+close to the values they control. Choose displacement, strain components,
+equivalent strain, principal strains, polar rotation, iteration count or solver
+status.
+
+Choose **Automatic**, **Viridis**, **Cividis**, **Plasma**, **Inferno** or
+**Magma** for a perceptually uniform sequential map, or choose the signed
+blue–white–red, blue–green–gold or grayscale map. Automatic preserves the
+existing signed diverging/nonnegative sequential behaviour. The sequential maps
+are bundled lookup tables; the page does not load a plotting package or CDN.
+
+The default clim uses the valid-value **2nd and 98th percentiles**. Change the
+minimum and maximum percentile fields directly to choose another range; for
+example, 1 and 99. Signed quantities keep symmetric limits around zero. Choose
+**Full value range** to include every valid value, or **Manual limits** to type
+the lower and upper clim in the units shown by the legend (including µε for
+strain components). Outlying values are counted as colour-clipped; computed
+measurements and exports are never clipped or changed by these display limits.
+Solver status is categorical, so its six status colours do not use a scalar clim.
+
+Palette and clim edits recolour the cached displayed field. They do not rerun
+correlation or derived field analysis. The histogram shows the valid value
+distribution whenever no line profile is selected.
 Computed estimates are
 preserved, including any solver median already applied. Optional displacement
 median/Gaussian smoothing and VSG plane-fit strain are separate analysis
