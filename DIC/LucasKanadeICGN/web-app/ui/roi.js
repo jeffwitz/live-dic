@@ -26,7 +26,7 @@ export function installRoi(canvas, tool, onChange) {
   }
   function paint() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (active && preview) ctx.drawImage(preview, 0, 0);
+    if (active && preview) ctx.drawImage(preview, 0, 0, canvas.width, canvas.height);
     for (const s of [...shapes, ...(draft ? [draft] : [])]) {
       const record = compiled.shapes.find(p => p.id === s.id);
       path(s); ctx.strokeStyle = s.id === selected ? '#f9cc45' : record?.role === 'hole' ? '#fc8271' : '#62ecce';
@@ -41,9 +41,20 @@ export function installRoi(canvas, tool, onChange) {
     compiled = compileRoi(shapes, canvas.width, canvas.height); preview = null;
     if(baseMask)compiled.mask=intersectMasks(baseMask,compiled.mask);
     if (active && compiled.mask) {
-      preview = document.createElement('canvas'); preview.width = canvas.width; preview.height = canvas.height;
-      const pc = preview.getContext('2d'), image = pc.createImageData(canvas.width, canvas.height);
-      for (let i = 0; i < compiled.mask.length; i++) { const kept = compiled.mask[i], k = i * 4; image.data[k] = kept ? 220 : 50; image.data[k + 1] = kept ? 255 : 15; image.data[k + 2] = kept ? 242 : 20; image.data[k + 3] = kept ? 35 : 160; }
+      // The mask itself remains full resolution. The editor overlay is only a
+      // visual aid: cap its RGBA backing store to keep 4K/8K TIFF editing from
+      // allocating several hundred MiB for every geometry change.
+      const previewScale=Math.min(1,2048/Math.max(canvas.width,canvas.height));
+      const previewWidth=Math.max(1,Math.round(canvas.width*previewScale));
+      const previewHeight=Math.max(1,Math.round(canvas.height*previewScale));
+      preview = document.createElement('canvas'); preview.width = previewWidth; preview.height = previewHeight;
+      const pc = preview.getContext('2d'), image = pc.createImageData(previewWidth, previewHeight);
+      for (let y = 0; y < previewHeight; y++) for (let x = 0; x < previewWidth; x++) {
+        const sourceY=Math.min(canvas.height-1,Math.floor((y+.5)*canvas.height/previewHeight));
+        const sourceX=Math.min(canvas.width-1,Math.floor((x+.5)*canvas.width/previewWidth));
+        const kept=compiled.mask[sourceY*canvas.width+sourceX],k=(y*previewWidth+x)*4;
+        image.data[k]=kept?220:50;image.data[k+1]=kept?255:15;image.data[k+2]=kept?242:20;image.data[k+3]=kept?35:160;
+      }
       pc.putImageData(image, 0, 0);
     }
     paint(); notify();

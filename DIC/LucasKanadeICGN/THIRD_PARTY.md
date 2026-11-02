@@ -43,14 +43,14 @@ runtime. GPU drivers remain a platform prerequisite.
 
 ## Standalone browser TIFF input
 
-The PWA vendors [UTIF.js](https://github.com/photopea/UTIF.js) 3.1.0 and
-[pako](https://github.com/nodeca/pako) 1.0.11 (inflate-only browser build) under
-`web-app/vendor/`. Both are plain JavaScript from their official npm tarballs;
-no project binary, compiler or CDN is required. These PWA files are not added
-to the Python wheel. The matching licence files and npm integrity values are
-kept beside the original, unmodified sources in `tiff-provenance.json`.
+The PWA vendors [UTIF.js](https://github.com/photopea/UTIF.js) 3.1.0 under
+`web-app/vendor/`. It is plain JavaScript; no project binary, compiler or CDN
+is required. The pinned upstream source snapshot includes TIFF LZW decoder
+corrections absent from the npm tarball, which otherwise truncated some strip
+rows in the grayscale-plus-alpha mask used by the project. These PWA files are
+not added to the Python wheel. The source commit, SHA-256 and MIT licence are
+recorded in `web-app/vendor/tiff-provenance.json`.
 
 | Component | Local file | SHA-256 |
 | --- | --- | --- |
-| UTIF.js 3.1.0 | `web-app/vendor/UTIF-3.1.0.js` | `e3e76115f49571e39624c3316a76b3c4c5b2c5ca518dfec4b66a9f7af8c6d059` |
-| pako 1.0.11 inflate | `web-app/vendor/pako-inflate-1.0.11.min.js` | `2ca27e9a8dae569cdeac42752ed1aed1afeff7f19282d3cc12c0aaa54a08bc04` |
+| UTIF.js 3.1.0 upstream snapshot `5883510` | `web-app/vendor/UTIF-3.1.0.js` | `e6239b23207e012bcf6c41664bba30ea9746fea32dbbee774f783d1ed60221f2` |

@@ -369,11 +369,13 @@ TIFF input decoding
 
 TIFF admission is separate from the numerical engine. ``ui/tiff-codec.js``
 reads a bounded classic-TIFF directory and validates its layout before the
-unchanged UTIF decoder decompresses the selected image. It deliberately skips
+pinned UTIF.js upstream source snapshot decompresses the selected image. This
+snapshot fixes truncated LZW strip output in the published npm bundle. It also
+allows interleaved grayscale-plus-alpha samples for imported masks. It deliberately skips
 unrelated EXIF directories and refuses multipage stacks rather than treating
-a first page as a whole sequence. ``ui/tiff-worker.js`` loads pinned local
-UTIF/pako scripts; the application service worker caches those scripts with the
-other assets. Each decode owns a short-lived Worker and transfers one
+a first page as a whole sequence. ``ui/tiff-worker.js`` loads the pinned local
+UTIF source; the application service worker caches it with the other assets.
+Each decode owns a short-lived Worker and transfers one
 ImageBitmap. Abort, timeout and failures terminate that Worker; dimensions are
 checked before pixel decoding. This keeps source changes bounded and avoids
 blocking the UI on UHD decompression. It is input decoding, not a new GPU solver.

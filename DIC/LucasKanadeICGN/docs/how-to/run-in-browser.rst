@@ -167,8 +167,9 @@ JPEG, WebP, BMP, AVIF and GIF use the browser decoder; animated formats are
 still images. Unsupported extensions are listed as ignored. No images are uploaded.
 
 TIFF images and imported TIFF masks can use uncompressed, LZW, Deflate or
-PackBits storage. Supported pixels are unsigned 1/8/16-bit grayscale, 8/16-bit
-interleaved RGB(A), and 8-bit palette colour. TIFF orientation is honoured;
+PackBits storage. Supported pixels are unsigned 1/8/16-bit grayscale,
+8/16-bit grayscale with one alpha channel, 8/16-bit interleaved RGB(A), and
+8-bit palette colour. TIFF orientation is honoured;
 ICC profiles are not applied. Images are never resized. Choose a folder of
 single-page TIFFs; stacks/multipage TIFF and BigTIFF are explicitly refused.
 Signed/float samples, planar channels, reversed bit fill order, unsupported
@@ -186,6 +187,10 @@ Keep originals; TIFF support does not add a 16-bit correlation solver.
 Decoded depth, compression, orientation and conversion accompany reference
 and target file provenance in exports. Binary TIFF masks use the same
 conversion and the existing strict black/white or explicit threshold rule.
+Grayscale-plus-alpha TIFF masks are accepted when the decoded alpha channel is
+opaque; transparent pixels are rejected by strict conversion and excluded by
+the explicit threshold conversion. The mask editor keeps its full-resolution
+binary geometry while displaying a bounded-size preview on very large images.
 
 Images need not match the 720p/1080p/UHD camera presets, be square or have
 sizes divisible by the subset size. They keep their original dimensions. A

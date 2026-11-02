@@ -17,7 +17,7 @@ LOADER = f"""
 import fs from 'node:fs';import vm from 'node:vm';import {{createHash}} from 'node:crypto';
 import {{decodeTiff}} from {json.dumps((APP / "ui/tiff-codec.js").as_uri())};
 const sandbox={{console:{{log(){{}}}}}};sandbox.self=sandbox;vm.createContext(sandbox);
-for(const name of ['pako-inflate-1.0.11.min.js','UTIF-3.1.0.js'])vm.runInContext(fs.readFileSync({json.dumps(str(APP / "vendor"))}+'/'+name,'utf8'),sandbox);
+vm.runInContext(fs.readFileSync({json.dumps(str(APP / "vendor/UTIF-3.1.0.js"))},'utf8'),sandbox);
 const decode=path=>{{const bytes=fs.readFileSync(path);return decodeTiff(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),sandbox.UTIF);}};
 """
 

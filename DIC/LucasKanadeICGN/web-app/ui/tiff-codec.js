@@ -43,9 +43,14 @@ export function decodeTiff(buffer, decoder, expected = null) {
   if ((image.t339??[1]).some(format=>format!==1)) throw new Error('Only unsigned integer TIFF samples are supported; floating-point and signed TIFF require explicit conversion');
   if (value(284,1)!==1) throw new Error('Planar TIFF is not supported; export interleaved samples');
   const gray=(photo===0||photo===1)&&samples===1&&[1,8,16].includes(bits);
+  // TIFF grayscale plus one declared extra sample is commonly emitted as
+  // grayscale/alpha (GA), including by mask editors such as GIMP. Accept it
+  // without asking UTIF to infer a colour model for the two-channel pixels.
+  const grayAlpha=(photo===0||photo===1)&&samples===2&&[8,16].includes(bits)
+    &&image.t338?.length===1&&[1,2].includes(image.t338[0]);
   const rgb=photo===2&&[3,4].includes(samples)&&[8,16].includes(bits);
   const palette=photo===3&&samples===1&&bits===8&&image.t320?.length===768;
-  if (!gray&&!rgb&&!palette) throw new Error('Supported TIFF pixels: 1/8/16-bit grayscale, 8/16-bit RGB(A), or 8-bit palette');
+  if (!gray&&!grayAlpha&&!rgb&&!palette) throw new Error('Supported TIFF pixels: 1/8/16-bit grayscale, 8/16-bit grayscale with alpha or RGB(A), or 8-bit palette');
   if ((image.t258??[bits]).some(depth=>depth!==bits) || (rgb&&image.t258?.length!==samples)) throw new Error('Mixed TIFF channel depths are not supported');
   const compression=value(259,1);
   if (![1,5,8,32946,32773].includes(compression)) throw new Error(`Unsupported TIFF compression ${compression}; use uncompressed, LZW, Deflate or PackBits`);
@@ -70,13 +75,17 @@ export function decodeTiff(buffer, decoder, expected = null) {
   // UTIF normalizes 16-bit decompressed samples to little endian. Retaining
   // their high byte is a fixed floor(value/256), never image-wise scaling.
   let rgba;
-  if (gray) {
+  if (gray||grayAlpha) {
     rgba=new Uint8Array(width*height*4);
     for(let y=0;y<height;y++)for(let x=0;x<width;x++){
       const source=y*stride, target=(y*width+x)*4;
-      let sample=bits===1?((image.data[source+(x>>3)]>>(7-(x&7)))&1)*255:image.data[source+x*(bits/8)+(bits===16?1:0)];
+      const bytes=bits/8, pixel=source+x*bytes*samples;
+      let sample=bits===1?((image.data[source+(x>>3)]>>(7-(x&7)))&1)*255:image.data[pixel+(bits===16?1:0)];
+      let alpha=255;
+      if(grayAlpha){alpha=image.data[pixel+bytes+(bits===16?1:0)];
+        if(image.t338[0]===1)sample=alpha?Math.min(255,Math.round(sample*255/alpha)):0;}
       if(photo===0)sample=255-sample;
-      rgba[target]=rgba[target+1]=rgba[target+2]=sample;rgba[target+3]=255;
+      rgba[target]=rgba[target+1]=rgba[target+2]=sample;rgba[target+3]=alpha;
     }
   } else rgba=decoder.toRGBA8(image);
   if (rgb&&samples===4&&value(338,0)===1) {
@@ -94,5 +103,5 @@ export function decodeTiff(buffer, decoder, expected = null) {
   return { width:outputSize[0],height:outputSize[1],rgba:oriented,
     metadata:{format:'TIFF',bitsPerSample:bits,samplesPerPixel:samples,compression,orientation,
       conversion:bits===16?'unsigned 16-bit → uint8: floor(value / 256), fixed for every image':'unsigned samples → 8-bit RGBA; no automatic contrast scaling',
-      decoder:'UTIF 3.1.0',colourManagement:'TIFF ICC profiles are not applied'} };
+      decoder:'UTIF.js 3.1.0 (upstream snapshot 5883510)',colourManagement:'TIFF ICC profiles are not applied'} };
 }

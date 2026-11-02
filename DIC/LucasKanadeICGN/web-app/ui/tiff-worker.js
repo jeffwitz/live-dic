@@ -1,5 +1,5 @@
 /* Classic Worker keeps the upstream browser bundles byte-for-byte unchanged. */
-importScripts('../vendor/pako-inflate-1.0.11.min.js','../vendor/UTIF-3.1.0.js');
+importScripts('../vendor/UTIF-3.1.0.js');
 onmessage = async ({data}) => {
   try {
     const {decodeTiff,MAX_TIFF_BYTES}=await import('./tiff-codec.js');
