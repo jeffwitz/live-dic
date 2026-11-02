@@ -1,0 +1,733 @@
+{
+  "build": {
+    "commit": "6c249ae34c7919aca2c0d324a97eceac42f5efd7",
+    "dirty": false,
+    "shaders": {
+      "full_pyramid.wgsl": "d00ef999c5dbc23013928e95ea6ca498a52fbb63850056c05bdbd3c963dc0401",
+      "icgn.wgsl": "a60231689fbc3d29953fd98eb8d04649ec93cbec0f5a89a65446df716152299b",
+      "icgn_subgroup.wgsl": "d68225b1b6b6b21071e59ea6109bbd24dc0fd8b6734b6ebc4f7d59356799a034",
+      "input.wgsl": "d269f8bf203e3363a6e753476c49de27188329409fa5a848358ea031bb554f7e",
+      "reference.wgsl": "0d86eefde8fb6ac25a7cfd46b23c71b7bc6e827696602cd13229c4cab29102c2",
+      "result.wgsl": "a587a3112670a702578df6c13f75addd4136e43fa6c7efba7959aa472d0e3267",
+      "subgroup_probe.wgsl": "6e4d149ed7f17969ede557a3062742d8da6c62cb6dd745d5510112c1489fed61"
+    },
+    "demo_manifest_sha256": "c78c445a38a8541d632f28e85ec1154e492b4195c7b8f5d4755597e07605f24a",
+    "plate_image_sha256": {
+      "reference.png": "26135118b554c5996443f07abd2a89273a344154338c4c7f428ab283f85f7192",
+      "frame_095.png": "af0f4c09d2e9292beb4cbbabe01c6651a2e914c1b36b569a5861a8be431d3faf",
+      "frame_225.png": "abe3693810e289b8a2029833011a0d59fdf7ff1ea975eea91b12dc5e708d2897"
+    },
+    "cache_version": "6c249ae34c7919aca2c0d324a97eceac42f5efd7"
+  },
+  "software": false,
+  "capabilities": {
+    "supported": true,
+    "adapter": {
+      "vendor": "intel",
+      "architecture": "xe-2lpg",
+      "device": "",
+      "description": ""
+    },
+    "limits": {
+      "maxStorageBuffersPerShaderStage": 16,
+      "maxBindGroups": 4,
+      "maxStorageBufferBindingSize": 4294967292,
+      "maxBufferSize": 4294967292,
+      "maxComputeWorkgroupStorageSize": 65536,
+      "maxComputeInvocationsPerWorkgroup": 1024,
+      "maxTextureDimension2D": 16384
+    },
+    "features": [
+      "depth32float-stencil8",
+      "chromium-experimental-subgroup-matrix",
+      "rg11b10ufloat-renderable",
+      "texture-formats-tier1",
+      "bgra8unorm-storage",
+      "chromium-experimental-multi-draw-indirect",
+      "texture-compression-bc",
+      "dual-source-blending",
+      "core-features-and-limits",
+      "chromium-experimental-sampling-resource-table",
+      "chromium-experimental-timestamp-query-inside-passes",
+      "float32-filterable",
+      "indirect-first-instance",
+      "float32-blendable",
+      "atomic-vec2u-min-max",
+      "subgroup-size-control",
+      "texture-compression-unaligned",
+      "texture-compression-etc2",
+      "depth-clip-control",
+      "texture-compression-bc-sliced-3d",
+      "timestamp-query",
+      "shader-f16",
+      "texture-formats-tier2",
+      "clip-distances",
+      "primitive-index",
+      "texture-component-swizzle",
+      "subgroups"
+    ],
+    "resolutions": [
+      [
+        1280,
+        720
+      ],
+      [
+        1920,
+        1080
+      ],
+      [
+        3840,
+        2160
+      ]
+    ],
+    "recommendedProfile": "portable",
+    "reasons": [
+      "Start at 720p; measure the real graph before raising resolution"
+    ],
+    "profiles": {
+      "portable": true,
+      "qualified-latency": true,
+      "minimal": false
+    }
+  },
+  "source_sha256": {
+    "app.js": "9ea279d9d764c1f8a6e3f6d3927dd2d69477981ad376027158ec4522bb57afca",
+    "index.html": "aca4eb8b8ee2b3f6f8c46a0c1ef46a7a489fdced2de234b142b1e4c545d3468b",
+    "ui/workspace.js": "814aaa5d1bc4a2bb6a4990d56c8bb37d451506f10d8165a4fba0e0b3073b48d0",
+    "ui/workbench.js": "50bf85b81524bbcdddb8dc1480c339b8630812d91ac390f97d12874e5971e1eb"
+  },
+  "qualifier_sha256": "0b26f5ae8ab6283a0a2dd106ca73338bbaf4a01980fa3b84911d1653ba5f8b70",
+  "input_kind": "archived native UHD texture, known integer shift",
+  "input_sha256": [
+    "aec67b36a58191928643963686c75ee788acfbda53b2c4c025cea2d6f8984895",
+    "fc921bad6c8b869946a0dfaf766d645700cf2bba46615dd75678ae4f98f1ef62"
+  ],
+  "initial_configuration": {
+    "subsetSize": 16,
+    "subsetStride": 16,
+    "initialization": "temporal",
+    "temporalPrediction": "velocity",
+    "temporalFineCorrection": true,
+    "temporalMaxAge": null,
+    "divergencePatience": 3,
+    "divergenceMinIterations": 4,
+    "pyramidPolicy": "fixed",
+    "spatialWeighting": "uniform",
+    "solverWorkgroupSize": 16,
+    "pipelineDepth": 1,
+    "iterations": 16,
+    "tolerance": 0.005,
+    "znccMin": 0.8,
+    "pyramidLevels": 2,
+    "iterationsPerLevel": [
+      8,
+      16
+    ],
+    "tolerancePerLevel": [
+      0.005,
+      0.005
+    ],
+    "interpolation": "bspline",
+    "motionModel": "affine",
+    "outlierPolicy": "median"
+  },
+  "records": [
+    {
+      "index": 1,
+      "accepted": 209,
+      "total": 32400,
+      "quality": {
+        "selected": 23108,
+        "valid": 158,
+        "coverage": 0.006837458888696555,
+        "rmse": 71.36601167342235,
+        "accurateCoverage": 0
+      },
+      "config": {
+        "subsetSize": 16,
+        "subsetStride": 16,
+        "initialization": "temporal",
+        "temporalPrediction": "velocity",
+        "temporalFineCorrection": true,
+        "temporalMaxAge": null,
+        "divergencePatience": 3,
+        "divergenceMinIterations": 4,
+        "pyramidPolicy": "fixed",
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "pipelineDepth": 1,
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median"
+      },
+      "analysisEpoch": "f4af9fb7-e3ce-4a8b-bdd5-a9266a160491",
+      "parametersSha256": "144c466c8dd34ef30e991e9c0fe9cbb1159631e6218ce8e95608e873a0dc0c98",
+      "statusSha256": "84e6a7d012e9853438030ba1bd751a22982961014d36c6a3a54236a8c1e86352",
+      "comparison": {
+        "mode": "fixed",
+        "reference": {
+          "kind": "images",
+          "index": 0,
+          "name": "Def.tiff",
+          "size": 8294522,
+          "type": "image/tiff",
+          "lastModified": 1793605430335,
+          "decoding": {
+            "format": "TIFF",
+            "bitsPerSample": 8,
+            "samplesPerPixel": 1,
+            "compression": 1,
+            "orientation": 1,
+            "conversion": "unsigned samples \u2192 8-bit RGBA; no automatic contrast scaling",
+            "decoder": "UTIF 3.1.0",
+            "colourManagement": "TIFF ICC profiles are not applied"
+          }
+        },
+        "target": {
+          "kind": "images",
+          "ordinal": 1,
+          "timestampUs": null,
+          "timestampClock": null,
+          "index": 1,
+          "name": "Ref.tiff",
+          "size": 8294522,
+          "type": "image/tiff",
+          "lastModified": 1793605430333,
+          "decoding": {
+            "format": "TIFF",
+            "bitsPerSample": 8,
+            "samplesPerPixel": 1,
+            "compression": 1,
+            "orientation": 1,
+            "conversion": "unsigned samples \u2192 8-bit RGBA; no automatic contrast scaling",
+            "decoder": "UTIF 3.1.0",
+            "colourManagement": "TIFF ICC profiles are not applied"
+          }
+        },
+        "referenceAdmissible": 31757,
+        "requested": 32400,
+        "fixedImageCoordinateRoi": true
+      }
+    },
+    {
+      "index": 2,
+      "accepted": 30654,
+      "total": 32026,
+      "quality": {
+        "selected": 23108,
+        "valid": 23108,
+        "coverage": 1,
+        "rmse": 0,
+        "accurateCoverage": 1
+      },
+      "config": {
+        "subsetSize": 32,
+        "subsetStride": 16,
+        "initialization": "fourier",
+        "temporalPrediction": "none",
+        "temporalFineCorrection": false,
+        "temporalMaxAge": null,
+        "divergencePatience": null,
+        "divergenceMinIterations": 4,
+        "pyramidPolicy": "fixed",
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "pipelineDepth": 1,
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median",
+        "fourierWindow": {
+          "x": 1408,
+          "y": 568,
+          "size": 1024,
+          "sampleStep": 2
+        },
+        "globalTranslation": {
+          "dx": -64,
+          "dy": 32,
+          "peakScore": 2511.631141758862,
+          "overlap": 0.908203125,
+          "correlation": 0.9999999999938087,
+          "window": {
+            "x": 1408,
+            "y": 568,
+            "size": 1024,
+            "sampleStep": 2
+          },
+          "method": "linear-phase-correlation",
+          "wallMs": 215.70000004768372
+        }
+      },
+      "analysisEpoch": "7bf42131-f3c5-44b3-a6d8-b49f5d38d964",
+      "parametersSha256": "0601ac060a4ca7ddf32a22839026b85ef2696569bc0383742bb3eec18b333531",
+      "statusSha256": "e066baf1bdc3e784517aa25e215b549afc40ac90d46a81eadfaa722ea1f4baed",
+      "comparison": {
+        "mode": "fixed",
+        "reference": {
+          "kind": "images",
+          "index": 0,
+          "name": "Def.tiff",
+          "size": 8294522,
+          "type": "image/tiff",
+          "lastModified": 1793605430335,
+          "decoding": {
+            "format": "TIFF",
+            "bitsPerSample": 8,
+            "samplesPerPixel": 1,
+            "compression": 1,
+            "orientation": 1,
+            "conversion": "unsigned samples \u2192 8-bit RGBA; no automatic contrast scaling",
+            "decoder": "UTIF 3.1.0",
+            "colourManagement": "TIFF ICC profiles are not applied"
+          }
+        },
+        "target": {
+          "kind": "images",
+          "ordinal": 2,
+          "timestampUs": null,
+          "timestampClock": null,
+          "index": 1,
+          "name": "Ref.tiff",
+          "size": 8294522,
+          "type": "image/tiff",
+          "lastModified": 1793605430333,
+          "decoding": {
+            "format": "TIFF",
+            "bitsPerSample": 8,
+            "samplesPerPixel": 1,
+            "compression": 1,
+            "orientation": 1,
+            "conversion": "unsigned samples \u2192 8-bit RGBA; no automatic contrast scaling",
+            "decoder": "UTIF 3.1.0",
+            "colourManagement": "TIFF ICC profiles are not applied"
+          }
+        },
+        "referenceAdmissible": 31758,
+        "requested": 32026,
+        "fixedImageCoordinateRoi": true
+      }
+    },
+    {
+      "index": 3,
+      "accepted": 30654,
+      "total": 32026,
+      "quality": {
+        "selected": 23108,
+        "valid": 23108,
+        "coverage": 1,
+        "rmse": 0,
+        "accurateCoverage": 1
+      },
+      "config": {
+        "subsetSize": 32,
+        "subsetStride": 16,
+        "initialization": "fourier",
+        "temporalPrediction": "none",
+        "temporalFineCorrection": false,
+        "temporalMaxAge": null,
+        "divergencePatience": null,
+        "divergenceMinIterations": 4,
+        "pyramidPolicy": "fixed",
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "pipelineDepth": 1,
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median",
+        "fourierWindow": {
+          "x": 1408,
+          "y": 568,
+          "size": 1024,
+          "sampleStep": 2
+        },
+        "globalTranslation": {
+          "dx": -64,
+          "dy": 32,
+          "peakScore": 2511.631141758862,
+          "overlap": 0.908203125,
+          "correlation": 0.9999999999938087,
+          "window": {
+            "x": 1408,
+            "y": 568,
+            "size": 1024,
+            "sampleStep": 2
+          },
+          "method": "linear-phase-correlation",
+          "wallMs": 215.30000001192093
+        }
+      },
+      "analysisEpoch": "7bf42131-f3c5-44b3-a6d8-b49f5d38d964",
+      "parametersSha256": "0601ac060a4ca7ddf32a22839026b85ef2696569bc0383742bb3eec18b333531",
+      "statusSha256": "e066baf1bdc3e784517aa25e215b549afc40ac90d46a81eadfaa722ea1f4baed",
+      "comparison": {
+        "mode": "fixed",
+        "reference": {
+          "kind": "images",
+          "index": 0,
+          "name": "Def.tiff",
+          "size": 8294522,
+          "type": "image/tiff",
+          "lastModified": 1793605430335,
+          "decoding": {
+            "format": "TIFF",
+            "bitsPerSample": 8,
+            "samplesPerPixel": 1,
+            "compression": 1,
+            "orientation": 1,
+            "conversion": "unsigned samples \u2192 8-bit RGBA; no automatic contrast scaling",
+            "decoder": "UTIF 3.1.0",
+            "colourManagement": "TIFF ICC profiles are not applied"
+          }
+        },
+        "target": {
+          "kind": "images",
+          "ordinal": 3,
+          "timestampUs": null,
+          "timestampClock": null,
+          "index": 1,
+          "name": "Ref.tiff",
+          "size": 8294522,
+          "type": "image/tiff",
+          "lastModified": 1793605430333,
+          "decoding": {
+            "format": "TIFF",
+            "bitsPerSample": 8,
+            "samplesPerPixel": 1,
+            "compression": 1,
+            "orientation": 1,
+            "conversion": "unsigned samples \u2192 8-bit RGBA; no automatic contrast scaling",
+            "decoder": "UTIF 3.1.0",
+            "colourManagement": "TIFF ICC profiles are not applied"
+          }
+        },
+        "referenceAdmissible": 31758,
+        "requested": 32026,
+        "fixedImageCoordinateRoi": true
+      }
+    },
+    {
+      "index": 4,
+      "accepted": 30523,
+      "total": 32026,
+      "quality": {
+        "selected": 23108,
+        "valid": 23108,
+        "coverage": 1,
+        "rmse": 1.2547260160718462e-08,
+        "accurateCoverage": 1
+      },
+      "config": {
+        "subsetSize": 32,
+        "subsetStride": 16,
+        "initialization": "fourier",
+        "temporalPrediction": "none",
+        "temporalFineCorrection": false,
+        "temporalMaxAge": null,
+        "divergencePatience": null,
+        "divergenceMinIterations": 4,
+        "pyramidPolicy": "fixed",
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "pipelineDepth": 1,
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "disabled",
+        "fourierWindow": {
+          "x": 1408,
+          "y": 568,
+          "size": 1024,
+          "sampleStep": 2
+        },
+        "globalTranslation": {
+          "dx": 64,
+          "dy": -32,
+          "peakScore": 2511.6311417585266,
+          "overlap": 0.908203125,
+          "correlation": 0.9999999999938087,
+          "window": {
+            "x": 1408,
+            "y": 568,
+            "size": 1024,
+            "sampleStep": 2
+          },
+          "method": "linear-phase-correlation",
+          "wallMs": 207.70000004768372
+        }
+      },
+      "analysisEpoch": "091e3304-c532-467e-b9ea-38c02977a739",
+      "parametersSha256": "b7462c192e736c4a7b6759a701ef18833e562fec736729c0139da81df22e79a8",
+      "statusSha256": "7687e1f74ef3c1c3279d9b23ae9d1103ba62f0e10eac0113a6e574f2e3f2a52a",
+      "comparison": {
+        "mode": "fixed",
+        "reference": {
+          "kind": "images",
+          "index": 1,
+          "name": "Ref.tiff",
+          "size": 8294522,
+          "type": "image/tiff",
+          "lastModified": 1793605430333,
+          "decoding": {
+            "format": "TIFF",
+            "bitsPerSample": 8,
+            "samplesPerPixel": 1,
+            "compression": 1,
+            "orientation": 1,
+            "conversion": "unsigned samples \u2192 8-bit RGBA; no automatic contrast scaling",
+            "decoder": "UTIF 3.1.0",
+            "colourManagement": "TIFF ICC profiles are not applied"
+          }
+        },
+        "target": {
+          "kind": "images",
+          "ordinal": 4,
+          "timestampUs": null,
+          "timestampClock": null,
+          "index": 0,
+          "name": "Def.tiff",
+          "size": 8294522,
+          "type": "image/tiff",
+          "lastModified": 1793605430335,
+          "decoding": {
+            "format": "TIFF",
+            "bitsPerSample": 8,
+            "samplesPerPixel": 1,
+            "compression": 1,
+            "orientation": 1,
+            "conversion": "unsigned samples \u2192 8-bit RGBA; no automatic contrast scaling",
+            "decoder": "UTIF 3.1.0",
+            "colourManagement": "TIFF ICC profiles are not applied"
+          }
+        },
+        "referenceAdmissible": 32026,
+        "requested": 32026,
+        "fixedImageCoordinateRoi": true
+      }
+    },
+    {
+      "index": 5,
+      "accepted": 28142,
+      "total": 32026,
+      "quality": {
+        "selected": 22988,
+        "valid": 22978,
+        "coverage": 0.9995649904297894,
+        "rmse": 3.979000281152095e-08,
+        "accurateCoverage": 0.9995649904297894
+      },
+      "config": {
+        "subsetSize": 32,
+        "subsetStride": 16,
+        "initialization": "fourier",
+        "temporalPrediction": "none",
+        "temporalFineCorrection": false,
+        "temporalMaxAge": null,
+        "divergencePatience": null,
+        "divergenceMinIterations": 4,
+        "pyramidPolicy": "fixed",
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "pipelineDepth": 1,
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "interpolation": "bspline",
+        "motionModel": "affine",
+        "outlierPolicy": "median",
+        "roi": {
+          "policy": "full",
+          "maskShape": [
+            2160,
+            3840
+          ],
+          "maskSha256": "4571f92b80487f22174246eec0c4ee98b685092c717e5b03a9d7fef340e3e893",
+          "selected": 28986,
+          "excluded": 3040,
+          "gridTotal": 32026,
+          "levelSelectedCounts": [
+            28986,
+            6848
+          ]
+        },
+        "fourierWindow": {
+          "x": 1408,
+          "y": 568,
+          "size": 1024,
+          "sampleStep": 2
+        },
+        "globalTranslation": {
+          "dx": 64,
+          "dy": -32,
+          "peakScore": 1471.7260308216405,
+          "overlap": 0.908203125,
+          "correlation": 1.0000000000020186,
+          "window": {
+            "x": 1408,
+            "y": 568,
+            "size": 1024,
+            "sampleStep": 2
+          },
+          "method": "linear-phase-correlation",
+          "wallMs": 210.9000000357628
+        }
+      },
+      "analysisEpoch": "38f2eb1a-5603-41d1-88a9-28c69e1bc311",
+      "parametersSha256": "44edf376a23d0f9609fa84cc74617008fd6c28eb33844acfd10428d2198da26e",
+      "statusSha256": "bcfe4b3b29b5e109d3905188a4fe8d8550b90729aa0c8302d253fceb8c3f9d19",
+      "comparison": {
+        "mode": "fixed",
+        "reference": {
+          "kind": "images",
+          "index": 1,
+          "name": "Ref.tiff",
+          "size": 8294522,
+          "type": "image/tiff",
+          "lastModified": 1793605430333,
+          "decoding": {
+            "format": "TIFF",
+            "bitsPerSample": 8,
+            "samplesPerPixel": 1,
+            "compression": 1,
+            "orientation": 1,
+            "conversion": "unsigned samples \u2192 8-bit RGBA; no automatic contrast scaling",
+            "decoder": "UTIF 3.1.0",
+            "colourManagement": "TIFF ICC profiles are not applied"
+          }
+        },
+        "target": {
+          "kind": "images",
+          "ordinal": 5,
+          "timestampUs": null,
+          "timestampClock": null,
+          "index": 0,
+          "name": "Def.tiff",
+          "size": 8294522,
+          "type": "image/tiff",
+          "lastModified": 1793605430335,
+          "decoding": {
+            "format": "TIFF",
+            "bitsPerSample": 8,
+            "samplesPerPixel": 1,
+            "compression": 1,
+            "orientation": 1,
+            "conversion": "unsigned samples \u2192 8-bit RGBA; no automatic contrast scaling",
+            "decoder": "UTIF 3.1.0",
+            "colourManagement": "TIFF ICC profiles are not applied"
+          }
+        },
+        "referenceAdmissible": 28986,
+        "requested": 28986,
+        "fixedImageCoordinateRoi": true
+      }
+    }
+  ],
+  "source": {
+    "source": "images",
+    "paused": true,
+    "viewingInput": true,
+    "pane": "solve",
+    "loadingSource": false,
+    "inFlight": 0,
+    "index": 0,
+    "fileCount": 2,
+    "localBusy": false,
+    "loop": false,
+    "settings": {
+      "source": "local image files",
+      "ordering": "natural relative filename, lexical tie-break",
+      "files": [
+        {
+          "name": "Def.tiff",
+          "size": 8294522,
+          "type": "image/tiff",
+          "lastModified": 1793605430335
+        },
+        {
+          "name": "Ref.tiff",
+          "size": 8294522,
+          "type": "image/tiff",
+          "lastModified": 1793605430333
+        }
+      ],
+      "ignored": [],
+      "reference": {
+        "kind": "images",
+        "index": 1,
+        "name": "Ref.tiff",
+        "size": 8294522,
+        "type": "image/tiff",
+        "lastModified": 1793605430333,
+        "decoding": {
+          "format": "TIFF",
+          "bitsPerSample": 8,
+          "samplesPerPixel": 1,
+          "compression": 1,
+          "orientation": 1,
+          "conversion": "unsigned samples \u2192 8-bit RGBA; no automatic contrast scaling",
+          "decoder": "UTIF 3.1.0",
+          "colourManagement": "TIFF ICC profiles are not applied"
+        }
+      }
+    },
+    "comparison": "fixed",
+    "videoTime": 0,
+    "videoPaused": true
+  },
+  "errors": []
+}
