@@ -45,21 +45,46 @@ export class FourierInitializer {
     const size=2**Math.min(10,Math.floor(Math.log2(Math.min(width,height))));
     if(size<32)throw new Error('Fourier initialization needs an image of at least 32 pixels per side');
     this.width=width;this.height=height;this.size=size;
-    const positions=[[.5,.5],...[0,.5,1].flatMap(y=>[0,.5,1].map(x=>[x,y]))],unique=new Map();
-    for(const [fx,fy] of positions){
-      const x=Math.floor((width-size)*fx),y=Math.floor((height-size)*fy);let sum=0,squares=0,count=0;
-      for(let j=0;j<size;j++)for(let i=0;i<size;i++){const k=(y+j)*width+x+i;if(mask&&!mask[k])continue;const v=reference[k];sum+=v;squares+=v*v;count++;}
-      const coverage=count/(size*size),std=count?Math.sqrt(Math.max(0,squares/count-(sum/count)**2)):0;
-      if(coverage>=.25&&std>=1&&!unique.has(`${x},${y}`)){
-        const pixels=new Uint8Array(size*size),localMask=mask?new Uint8Array(size*size):null;
-        for(let j=0;j<size;j++){
-          pixels.set(reference.subarray((y+j)*width+x,(y+j)*width+x+size),j*size);
-          if(localMask)localMask.set(mask.subarray((y+j)*width+x,(y+j)*width+x+size),j*size);
-        }
-        unique.set(`${x},${y}`,{score:coverage*std,x,y,mean:sum/count,center:fx===.5&&fy===.5,pixels,mask:localMask});
+    const axis=(length)=>{
+      const end=length-size,step=Math.max(1,Math.floor(size/2)),values=new Set([0,end,Math.floor(end/2)]);
+      for(let position=step;position<end;position+=step)values.add(position);
+      return [...values].sort((a,b)=>a-b);
+    };
+    const centerX=Math.floor((width-size)/2),centerY=Math.floor((height-size)/2),sampleStep=Math.max(1,Math.floor(size/128));
+    const positions=[];
+    for(const y of axis(height))for(const x of axis(width)){
+      let sum=0,squares=0,count=0;
+      for(let j=0;j<size;j+=sampleStep)for(let i=0;i<size;i+=sampleStep){
+        const k=(y+j)*width+x+i;if(mask&&!mask[k])continue;
+        const value=reference[k];sum+=value;squares+=value*value;count++;
       }
+      const coverage=count/Math.ceil(size/sampleStep)**2;
+      const std=count?Math.sqrt(Math.max(0,squares/count-(sum/count)**2)):0;
+      if(coverage>=.20&&std>=1)positions.push({x,y,score:coverage*std,center:x===centerX&&y===centerY});
     }
-    this.candidates=[...unique.values()].sort((a,b)=>Number(b.center)-Number(a.center)||b.score-a.score);
+    positions.sort((a,b)=>Number(b.center)-Number(a.center)||b.score-a.score||a.y-b.y||a.x-b.x);
+    this.candidates=[];
+    for(const position of positions){
+      if(this.candidates.length>=9)break;
+      const {x,y}=position;
+      // Keep fallback patches spatially distinct so they do not all sample the
+      // same local deformation or repeated texture.
+      if(this.candidates.some(candidate=>
+        x<candidate.x+size&&candidate.x<x+size&&y<candidate.y+size&&candidate.y<y+size))continue;
+      let sum=0,squares=0,count=0;
+      for(let j=0;j<size;j++)for(let i=0;i<size;i++){
+        const k=(y+j)*width+x+i;if(mask&&!mask[k])continue;
+        const value=reference[k];sum+=value;squares+=value*value;count++;
+      }
+      const coverage=count/(size*size),std=count?Math.sqrt(Math.max(0,squares/count-(sum/count)**2)):0;
+      if(coverage<.25||std<1)continue;
+      const pixels=new Uint8Array(size*size),localMask=mask?new Uint8Array(size*size):null;
+      for(let j=0;j<size;j++){
+        pixels.set(reference.subarray((y+j)*width+x,(y+j)*width+x+size),j*size);
+        if(localMask)localMask.set(mask.subarray((y+j)*width+x,(y+j)*width+x+size),j*size);
+      }
+      this.candidates.push({score:coverage*std,x,y,mean:sum/count,center:position.center,pixels,mask:localMask});
+    }
     if(!this.candidates.length)throw new Error('Fourier initialization has no sufficiently textured ROI window');
     this.fft=new FFT2D(size);
     this.taper=Float64Array.from({length:size/2},(_,i)=>.5-.5*Math.cos(2*Math.PI*i/(size/2-1)));
@@ -132,7 +157,7 @@ export class FourierInitializer {
       for(let j=0;j<size;j++)patch.set(pixels.subarray((y+j)*width+x,(y+j)*width+x+size),j*size);
       try{return this.estimatePatch(patch);}catch(error){lastError=error;}
     }
-    throw new Error(`Fourier initialization could not find a reliable rigid translation in ${this.candidates.length} centred image/ROI patches. ${lastError?.message??'No patch was usable.'}`);
+    throw new Error(`Fourier initialization could not find a reliable rigid translation in ${this.candidates.length} spatially separated image/ROI patches. ${lastError?.message??'No patch was usable.'}`);
   }
   async estimateWithPatchReader(readPatch) {
     const order=[this.activeCandidate,...this.candidates.map((_,i)=>i).filter(i=>i!==this.activeCandidate)];let lastError=null;

@@ -65,11 +65,14 @@ Interpretation and limits
 
 The square reference zone is at most 1024 pixels wide. The image-centred patch
 is tried first. If its aligned intensity correlation is too low, the initializer
-tries the other eligible locations from a nine-position image grid and keeps
-the first reliable patch for later targets. This is not an exhaustive image
-search. The reference ROI gates this cold selection; the target is not clipped
-against the fixed reference mask. A patch with strong texture can still be
-invalid for a rigid estimate when its local deformation changes the pattern.
+samples a half-window-spaced grid, retains up to nine non-overlapping eligible
+patches, and tries them in turn. It caches the first reliable patch for later
+targets. This is a bounded search, not an exhaustive image search. The
+reference ROI gates this cold selection; the target is not clipped against the
+fixed reference mask. A patch with strong texture can still be invalid for a
+rigid estimate when its local deformation changes the pattern. A fallback may
+read back several target patches before solving, so ambiguous first targets
+can take longer.
 
 The implementation averages 2 × 2 pixels, applies a Hann taper and zero pads
 for linear phase correlation. Its two-pixel seed is refined by IC-GN. Peak
