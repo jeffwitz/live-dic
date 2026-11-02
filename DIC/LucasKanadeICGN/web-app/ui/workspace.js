@@ -21,6 +21,13 @@ export function installWorkspace({ shortcuts, onPane = () => {} }) {
     };
   });
   document.getElementById('help').onclick = () => document.getElementById('quick-guide').showModal();
+  const outlierPolicy = document.getElementById('outlier-policy');
+  const medianSize = document.getElementById('median-filter-size');
+  const updateMedianSizeAvailability = () => {
+    medianSize.disabled = outlierPolicy.value !== 'median';
+  };
+  outlierPolicy.addEventListener('change', updateMedianSizeAvailability);
+  updateMedianSizeAvailability();
   window.addEventListener('keydown', event => {
     if (event.repeat || event.ctrlKey || event.altKey || event.metaKey
         || event.target.closest('button,a,summary,input,select,textarea,[contenteditable=true],[role=button],dialog')
@@ -53,8 +60,12 @@ export function solverOptions() {
   if (![coarse, fine].every(v => Number.isInteger(v) && v > 0 && v <= 30)) throw new Error('GN limits must be integers between 1 and 30');
   const temporal = !fourier && !globalAffine && get('temporal-start').checked;
   if (globalAffine && get('motion-model').value !== 'affine') throw new Error('Global affine initialization requires the affine motion model');
+  const outlierPolicy = get('outlier-policy').value;
+  const medianFilterSize = outlierPolicy === 'median'
+    ? Number(get('median-filter-size')?.value ?? 3) : 3;
+  if (![3, 5, 7, 9].includes(medianFilterSize)) throw new Error('Median neighbourhood must be 3, 5, 7, or 9 subsets');
   return { ...base, subsetSize: size, subsetStride: stride, motionModel: get('motion-model').value,
-    interpolation: get('interpolation').value, outlierPolicy: get('outlier-policy').value,
+    interpolation: get('interpolation').value, outlierPolicy, medianFilterSize,
     pyramidLevels: levels, iterationsPerLevel: levels === 1 ? [fine] : [coarse, ...(levels === 3 ? [4] : Array(Math.max(0, levels - 2)).fill(8)), fine],
     initialization: fourier ? 'fourier' : globalAffine ? 'global-affine' : temporal ? 'temporal' : 'zero', temporalPrediction: temporal ? 'velocity' : 'none',
     temporalFineCorrection: temporal && levels === 2, divergencePatience: temporal ? 3 : null };

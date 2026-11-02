@@ -102,6 +102,14 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--median-filter-size",
+        type=int,
+        choices=(3, 5, 7, 9),
+        default=3,
+        metavar="SUBSETS",
+        help="odd square subset-grid width for --outlier-policy median",
+    )
+    parser.add_argument(
         "--subset-size",
         type=_subset_size_argument,
         default=16,
@@ -386,6 +394,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.benchmark and len(args.targets) != 1:
         parser.error("--benchmark requires exactly one target image")
+    if args.median_filter_size > 3 and args.outlier_policy != "median":
+        parser.error("--median-filter-size greater than 3 requires --outlier-policy median")
+    if args.median_filter_size > 3 and args.backend != "webgpu-wgsl":
+        parser.error("--median-filter-size greater than 3 requires --backend webgpu-wgsl")
 
     try:
         with ICGNWebGL(
@@ -405,6 +417,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             interpolation=args.interpolation,
             motion_model=args.motion_model,
             outlier_policy=args.outlier_policy,
+            median_filter_size=args.median_filter_size,
             subset_size=args.subset_size,
             subset_stride=args.subset_stride,
         ) as engine:

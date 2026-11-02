@@ -14,6 +14,7 @@ from functools import lru_cache
 
 import numpy as np
 
+from .outlier import normalize_median_filter_size
 from .subset import subset_grid_shape
 
 PARTIAL_MAX_NORMALIZED_CONDITION = 1e8
@@ -118,6 +119,7 @@ class RoiPlan:
     support_condition: np.ndarray | None = None
     support_rank: np.ndarray | None = None
     support_contrast: np.ndarray | None = None
+    median_neighbour_words: np.ndarray | None = None
 
     @property
     def empty(self) -> bool:
@@ -172,7 +174,9 @@ def prepare_roi(
     *,
     policy: str = "full",
     truncation: str = "none",
+    median_filter_size: int = 3,
 ) -> RoiPlan | None:
+    median_filter_size = normalize_median_filter_size(median_filter_size)
     if mask is None:
         return None
     selected = select_windows(mask, size, stride)
@@ -197,6 +201,31 @@ def prepare_roi(
             allowed = inside & selected & selected[ny, nx]
             allowed &= _links_clear(prefix, ax, ay, ax + dx * stride, ay + dy * stride)
             bits |= allowed.astype(np.uint32) << ((dy + 1) * 3 + dx + 1)
+    median_words = None
+    if median_filter_size > 3:
+        # Pack the wider median-neighbour map into four exact 24-bit float
+        # integers per subset. The fixed 9 x 9 bit lattice keeps offsets stable
+        # for 5 x 5 and 7 x 7 specializations too.
+        radius = median_filter_size // 2
+        median_words = np.zeros((*selected.shape, 4), dtype=np.float32)
+        for dy in range(-radius, radius + 1):
+            for dx in range(-radius, radius + 1):
+                nx, ny = x + dx, y + dy
+                inside = (nx >= 0) & (ny >= 0) & (nx < selected.shape[1]) & (ny < selected.shape[0])
+                clipped_x = nx.clip(0, selected.shape[1] - 1)
+                clipped_y = ny.clip(0, selected.shape[0] - 1)
+                allowed = inside & selected & selected[clipped_y, clipped_x]
+                allowed &= _links_clear(
+                    prefix,
+                    ax,
+                    ay,
+                    ax + dx * stride,
+                    ay + dy * stride,
+                )
+                bit_index = (dy + 4) * 9 + dx + 4
+                word_index, word_bit = divmod(bit_index, 24)
+                median_words[..., word_index] += allowed.astype(np.float32) * float(1 << word_bit)
+        median_words = immutable(median_words.reshape(-1, 4))
     digest = hashlib.sha256(
         b"live-dic-roi-v1\0" + struct.pack("<QQ", *mask.shape) + mask.tobytes(order="C")
     ).hexdigest()
@@ -213,6 +242,7 @@ def prepare_roi(
         support_words,
         support_boxes,
         coverage,
+        median_neighbour_words=median_words,
     )
 
 

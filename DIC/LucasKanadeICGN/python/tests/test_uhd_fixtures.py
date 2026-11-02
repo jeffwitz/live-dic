@@ -391,6 +391,41 @@ class UHDRegistrationRegressionTests(unittest.TestCase):
                 finally:
                     engine.close()
 
+    def test_uhd_wider_solver_medians_preserve_analytic_field_bounds(self) -> None:
+        limits = _manifest()["regression_limits"]
+        reference = _image("reference.png")
+        target = _image("frame_040.png")
+        row = _truth()[40]
+        ex = float(row["stretch_x"]) - 1.0
+        ey = float(row["stretch_y"]) - 1.0
+
+        for filter_size in (5, 9):
+            with (
+                self.subTest(median_filter_size=filter_size),
+                ICGNWGPUFullPyramid(
+                    motion_model="affine",
+                    interpolation="bspline",
+                    outlier_policy="median",
+                    median_filter_size=filter_size,
+                    device_type="gpu",
+                ) as engine,
+            ):
+                info = engine.set_reference(reference)
+                result = engine.register(target)
+                self.assertEqual(result.parameters.shape, (135, 240, 6))
+                self.assertEqual(result.config["medianFilterSize"], filter_size)
+                self.assertTrue(np.isfinite(result.parameters).all())
+                interior, x, y = _interior(result, limits["interior_margin_px"])
+                population = interior if info.roi_selected is None else interior & info.roi_selected
+                accepted = population & result.accepted_mask
+                self.assertGreaterEqual(accepted.sum() / population.sum(), 0.90)
+                truth = np.stack((ex * (x - 1920), ey * (y - 1080)), axis=-1)
+                distance = np.linalg.norm(result.displacement[accepted] - truth[accepted], axis=-1)
+                self.assertLess(float(np.sqrt(np.mean(distance**2))), 0.05)
+                self.assertLess(float(np.percentile(distance, 95)), 0.10)
+                gradient_error = result.parameters[..., (1, 2, 4, 5)][accepted] - [ex, 0, 0, ey]
+                self.assertLess(float(np.sqrt(np.mean(gradient_error**2))), 0.002)
+
 
 @unittest.skipUnless(
     os.environ.get("ICGN_RUN_BROWSER_TESTS") == "1", "set ICGN_RUN_BROWSER_TESTS=1"

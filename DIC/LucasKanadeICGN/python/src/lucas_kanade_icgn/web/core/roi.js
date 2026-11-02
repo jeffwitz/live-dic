@@ -39,7 +39,10 @@ function linkTest(mask, width, height) {
     Math.min(width, Math.floor(Math.max(ax, bx) + .5) + 1),
     Math.min(height, Math.floor(Math.max(ay, by) + .5) + 1));
 }
-export function planRoi(mask, width, height, size, stride) {
+export function planRoi(mask, width, height, size, stride, medianFilterSize = 3) {
+  if (![3, 5, 7, 9].includes(medianFilterSize)) {
+    throw new Error('medianFilterSize must be 3, 5, 7, or 9');
+  }
   const gx = 1 + Math.floor((width - size) / stride), gy = 1 + Math.floor((height - size) / stride);
   const selected = new Uint8Array(gx * gy), neighbours = new Uint32Array(gx * gy);
   const box = prefix(mask, width, height), clear = linkTest(mask, width, height);
@@ -57,7 +60,26 @@ export function planRoi(mask, width, height, size, stride) {
       }
     }
   }
+  let medianNeighbourWords = null;
+  if (medianFilterSize > 3) {
+    medianNeighbourWords = new Float32Array(gx * gy * 4);
+    const radius = medianFilterSize >> 1;
+    for (let y = 0; y < gy; y++) for (let x = 0; x < gx; x++) {
+      const source = y * gx + x;
+      if (!selected[source]) continue;
+      for (let dy = -radius; dy <= radius; dy++) for (let dx = -radius; dx <= radius; dx++) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || nx >= gx || ny < 0 || ny >= gy || !selected[ny * gx + nx]) continue;
+        if (!clear(center + x * stride, center + y * stride,
+          center + nx * stride, center + ny * stride)) continue;
+        const bitIndex = (dy + 4) * 9 + dx + 4;
+        const word = bitIndex / 24 | 0;
+        medianNeighbourWords[source * 4 + word] += 2 ** (bitIndex % 24);
+      }
+    }
+  }
   return { mask, width, height, gridWidth: gx, gridHeight: gy, selected, neighbours,
+    medianNeighbourWords,
     count: selected.reduce((a, b) => a + b, 0) };
 }
 export function seedPermissions(source, destination, sourceScale, destinationScale, size, stride, mask, width, height) {

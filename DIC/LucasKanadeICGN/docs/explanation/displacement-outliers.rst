@@ -18,7 +18,8 @@ The policy is selected when the engine is created:
 
 ``replace`` is the default.  ``flag`` preserves the raw solver coefficients,
 ``disabled`` omits the complete post-pass, and ``median`` applies a centred
-3 by 3 component median to every valid subset.
+component median to every valid subset. The median width defaults to 3 by 3
+subset-grid cells; shared-WGSL engines also accept 5 by 5, 7 by 7, and 9 by 9.
 
 Detection rule
 --------------
@@ -82,12 +83,13 @@ the solver without robustness-pass cost.
 Explicit median smoothing
 -------------------------
 
-The ``median`` policy deliberately bypasses the UOD score.  For every valid
-subset, the subset itself and every valid direct neighbour are expressed at
-the current subset centre.  Each active translation, affine, or quadratic
-coefficient is then replaced independently by the median of those available
-samples.  The centre is included, so a fully populated interior stencil has
-nine samples.  Boundary stencils use the valid samples that exist.
+The ``median`` policy deliberately bypasses the UOD score. For every valid
+subset, the subset itself and every valid neighbour in the configured square
+subset-grid stencil are expressed at the current subset centre. Each active
+translation, affine, or quadratic coefficient is then replaced independently
+by the median of those available samples. The centre is included. A fully
+populated 3 by 3 stencil has nine samples and a 9 by 9 stencil has up to 81;
+boundary stencils use the valid samples that exist.
 
 Recentring preserves the meaning of a spatial polynomial: neighbour
 translations and first derivatives are transported to the current centre
@@ -115,9 +117,9 @@ benchmark would confound:
   ``replace`` changing the complete state and ``flag`` preserving it;
 * a one-subset-wide band with true ``du/dx = 0.004`` must remain present and
   must not be flagged merely because it is spatially localized.
-* the explicit ``median`` policy must match an independent centred 3 by 3
-  component-median oracle for translation, affine, and quadratic states,
-  including boundary stencils, without changing solver status.
+* the explicit ``median`` policy must match an independent component-median
+  oracle at larger configured widths for translation, affine, and quadratic
+  states, including boundary stencils, without changing solver status.
 
 These are behavioural guards, not a full metrological qualification.  Real
 camera noise, texture variation, discontinuities, and multiple GPU vendors

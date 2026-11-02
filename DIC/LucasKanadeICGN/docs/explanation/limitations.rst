@@ -60,6 +60,12 @@ Geometry and input
   support widths 8, 16, and 32 and still require stride equal to size.
 * Centred Gaussian subset integration is currently exposed by the native
   engines. Browser hosts use uniform integration.
+* Solver-time median smoothing defaults to 3 by 3 subset-grid cells. The
+  shared-WGSL native and raw-browser paths accept 5, 7, or 9; the largest
+  stencil is bounded at 81 samples. These larger variants have not received a
+  general performance or metrology qualification. Three.js and GPU-IO retain
+  a fixed 3 by 3 solver filter. This is separate from saved-field display
+  smoothing.
 * Grid dimensions are ``1 + floor((width - subset_size) / subset_stride)`` by
   ``1 + floor((height - subset_size) / subset_stride)``; only fully contained
   subsets are emitted.

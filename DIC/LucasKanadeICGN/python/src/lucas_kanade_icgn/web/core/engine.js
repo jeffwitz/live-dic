@@ -15,7 +15,7 @@ export class DICEngine {
   constructor(options = {}) {
     const supported = new Set(['device', 'width', 'height', 'subsetSize', 'subsetStride', 'motionModel',
       'interpolation', 'pyramidLevels', 'iterationsPerLevel', 'tolerancePerLevel', 'iterations', 'tolerance',
-      'znccMin', 'outlierPolicy', 'initialization', 'temporalPrediction', 'temporalFineCorrection',
+      'znccMin', 'outlierPolicy', 'medianFilterSize', 'initialization', 'temporalPrediction', 'temporalFineCorrection',
       'temporalMaxAge', 'divergencePatience', 'divergenceMinIterations', 'pipelineDepth', 'readback',
       'spatialWeighting', 'roiPolicy', 'roiTruncation', 'pyramidPolicy', 'solverWorkgroupSize',
       'referencePreparation', 'globalAffineLevels']);
@@ -32,8 +32,15 @@ export class DICEngine {
     if (options.temporalFineCorrection !== undefined && typeof options.temporalFineCorrection !== 'boolean') throw new Error('temporalFineCorrection must be boolean');
     for (const key of ['width', 'height']) if (options[key] !== undefined && (!Number.isInteger(options[key]) || options[key] < 1)) throw new Error(`${key} must be a positive integer`);
 
-    for (const key of ['subsetSize', 'subsetStride', 'pyramidLevels', 'iterations', 'tolerance', 'znccMin']) {
+    for (const key of ['subsetSize', 'subsetStride', 'pyramidLevels', 'iterations', 'tolerance', 'znccMin', 'medianFilterSize']) {
       if (options[key] !== undefined && typeof options[key] !== 'number') throw new Error(`${key} must be a number`);
+    }
+    if (options.medianFilterSize !== undefined
+        && ![3, 5, 7, 9].includes(options.medianFilterSize)) {
+      throw new Error('medianFilterSize must be 3, 5, 7, or 9 subsets');
+    }
+    if (options.medianFilterSize > 3 && options.outlierPolicy !== 'median') {
+      throw new Error("medianFilterSize greater than 3 requires outlierPolicy='median'");
     }
     if (options.globalAffineLevels !== undefined
         && (!Number.isInteger(options.globalAffineLevels)

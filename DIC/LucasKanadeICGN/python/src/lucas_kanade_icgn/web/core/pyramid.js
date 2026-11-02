@@ -83,6 +83,7 @@ export function createPyramidHost(options = {}) {
     interpolation: 'bspline',
     motionModel: 'affine',
     outlierPolicy: 'replace',
+    medianFilterSize: 3,
     ...(options.initialization === 'global-affine'
       ? { globalAffineLevels: Number(options.globalAffineLevels ?? 5) } : {}),
   };
@@ -387,6 +388,8 @@ export function createPyramidHost(options = {}) {
         {
           MOTION_MODEL: MOTION_MODEL_CONSTANTS[configuration.motionModel],
           OUTLIER_POLICY: OUTLIER_POLICY_CONSTANTS[configuration.outlierPolicy],
+          MEDIAN_FILTER_SIZE: configuration.outlierPolicy === 'median'
+            ? configuration.medianFilterSize : 3,
           ROI_ENABLED: +!!roiMask,
           SUBSET_SIZE,
           SUBSET_STRIDE,
@@ -686,6 +689,18 @@ export function createPyramidHost(options = {}) {
         && outlierPolicy !== configuration.outlierPolicy) {
       throw new Error('Changing outlierPolicy requires setReference()');
     }
+    const medianFilterSize = options.medianFilterSize === undefined
+      ? configuration.medianFilterSize : Number(options.medianFilterSize);
+    if (![3, 5, 7, 9].includes(medianFilterSize)) {
+      throw new Error('medianFilterSize must be 3, 5, 7, or 9 subsets');
+    }
+    if (medianFilterSize > 3 && outlierPolicy !== 'median') {
+      throw new Error("medianFilterSize greater than 3 requires outlierPolicy='median'");
+    }
+    if (!allowPyramidRebuild && referenceReady
+        && medianFilterSize !== configuration.medianFilterSize) {
+      throw new Error('Changing medianFilterSize requires setReference()');
+    }
     const changedLevels = pyramidLevels !== configuration.pyramidLevels;
     const iterationsPerLevel = options.iterationsPerLevel === undefined
       ? (changedLevels
@@ -715,6 +730,7 @@ export function createPyramidHost(options = {}) {
       interpolation,
       motionModel,
       outlierPolicy,
+      medianFilterSize,
       ...(initialization === 'global-affine' ? { globalAffineLevels } : {}),
     };
     next.iterationsPerLevel[pyramidLevels - 1] = next.iterations;
@@ -1011,7 +1027,14 @@ export function createPyramidHost(options = {}) {
     if (roiMask) {
       let reduced = { mask: roiMask, width: image.width, height: image.height };
       for (let i = 0; i < configuration.pyramidLevels; i++) {
-        roiPlans.push(planRoi(reduced.mask, reduced.width, reduced.height, SUBSET_SIZE, SUBSET_STRIDE));
+        roiPlans.push(planRoi(
+          reduced.mask,
+          reduced.width,
+          reduced.height,
+          SUBSET_SIZE,
+          SUBSET_STRIDE,
+          configuration.outlierPolicy === 'median' ? configuration.medianFilterSize : 3,
+        ));
         if (i + 1 < configuration.pyramidLevels) reduced = reduceMask(reduced.mask, reduced.width, reduced.height);
       }
     }
@@ -1075,7 +1098,15 @@ export function createPyramidHost(options = {}) {
           const metaStride = configuration.motionModel === 'quadratic' ? 28 : 16;
           for (let i = 0; i < level.gridCount; i++) {
             if (!level.roi.selected[i]) metadata[i * metaStride + 1] = -3;
-            metadata[prepared.metadata.length + i * 4] = level.roi.neighbours[i];
+            if (configuration.outlierPolicy === 'median'
+                && configuration.medianFilterSize > 3) {
+              metadata.set(
+                level.roi.medianNeighbourWords.subarray(i * 4, i * 4 + 4),
+                prepared.metadata.length + i * 4,
+              );
+            } else {
+              metadata[prepared.metadata.length + i * 4] = level.roi.neighbours[i];
+            }
           }
           if (level.roi.count === 0) {
             const stateStride = configuration.motionModel === 'quadratic' ? 16 : 8;
@@ -1379,6 +1410,7 @@ export function createPyramidHost(options = {}) {
       interpolation: configuration.interpolation,
       motionModel: configuration.motionModel,
       outlierPolicy: configuration.outlierPolicy,
+      medianFilterSize: configuration.medianFilterSize,
       iterationsPerLevel: [...configuration.iterationsPerLevel],
       tolerancePerLevel: [...configuration.tolerancePerLevel],
       solver: configuration.pyramidLevels > 1

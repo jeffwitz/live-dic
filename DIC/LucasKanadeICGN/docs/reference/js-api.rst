@@ -18,7 +18,7 @@ a page or dedicated worker uses the same source. The core never reads
      subsetSize: 16, subsetStride: 16, pyramidLevels: 2,
      initialization: 'temporal', temporalPrediction: 'velocity',
      temporalFineCorrection: true, divergencePatience: 3,
-     divergenceMinIterations: 4, outlierPolicy: 'median',
+     divergenceMinIterations: 4, outlierPolicy: 'median', medianFilterSize: 5,
      pipelineDepth: 1, readback: 'none',
    });
    await engine.setReference(referenceFrame, { roiMask });
@@ -101,6 +101,9 @@ Options and native correspondence
    * - ``outlierPolicy``
      - ``outlier_policy="replace"``
      - Also flag, disabled, median. Median is explicit smoothing, not outlier detection.
+   * - ``medianFilterSize``
+     - ``median_filter_size=3``
+     - Shared WGSL median only: widths 3, 5, 7, 9 subset-grid cells; values above 3 require ``outlierPolicy: 'median'``.
    * - ``initialization``
      - ``initialization="zero"``
      - Temporal mode is opt-in.

@@ -69,8 +69,11 @@ override INTERPOLATION_MODE: u32 = 0u;
 override MOTION_MODEL: u32 = 0u;
 // 0: flag displacement outliers without changing parameters; 1: replace the
 // complete active motion state; 2: host-side disabled policy, which skips this
-// entry point; 3: apply a centred 3x3 component median to every valid subset.
+// entry point; 3: apply a centred component median to every valid subset.
 override OUTLIER_POLICY: u32 = 1u;
+// Odd square neighbourhood width in subset-grid cells. UOD keeps its 3x3
+// neighbourhood; this override changes only the explicit median policy.
+override MEDIAN_FILTER_SIZE: u32 = 3u;
 // Square subset width. The portable hosts specialize any integer width from
 // 4 to 64 while preserving 16 as the default pipeline constant. Pixel work is
 // distributed over SOLVER_WORKGROUP_SIZE lanes.
@@ -1073,10 +1076,207 @@ fn median_nine(values: ptr<function, array<f32, 9>>, count: u32) -> f32 {
     return 0.5 * ((*values)[count / 2u - 1u] + (*values)[count / 2u]);
 }
 
+fn select_median_rank(values: ptr<function, array<f32, 81>>, count: u32, rank_index: u32) -> f32 {
+    var low = 0i;
+    var high = i32(count) - 1i;
+    let rank = i32(rank_index);
+    loop {
+        if low >= high {
+            return (*values)[rank_index];
+        }
+        let pivot = (*values)[u32(low + (high - low) / 2i)];
+        var left = low;
+        var right = high;
+        loop {
+            while left <= high && (*values)[u32(left)] < pivot {
+                left += 1i;
+            }
+            while right >= low && (*values)[u32(right)] > pivot {
+                right -= 1i;
+            }
+            if left > right {
+                break;
+            }
+            let saved = (*values)[u32(left)];
+            (*values)[u32(left)] = (*values)[u32(right)];
+            (*values)[u32(right)] = saved;
+            left += 1i;
+            right -= 1i;
+        }
+        if rank <= right {
+            high = right;
+        } else if rank >= left {
+            low = left;
+        } else {
+            return (*values)[rank_index];
+        }
+    }
+    return (*values)[rank_index];
+}
+
+fn median_up_to_81(values: ptr<function, array<f32, 81>>, count: u32) -> f32 {
+    if count % 2u == 1u {
+        return select_median_rank(values, count, count / 2u);
+    }
+    let lower = select_median_rank(values, count, count / 2u - 1u);
+    let upper = select_median_rank(values, count, count / 2u);
+    return 0.5 * (lower + upper);
+}
+
+fn recentered_component(subset_index: u32, component: u32, offset_x: f32, offset_y: f32) -> f32 {
+    let state_index = subset_index * state_vec4_stride();
+    let a = state.values[state_index];
+    let b = state.values[state_index + 1u];
+    if MOTION_MODEL == 2u {
+        let quadratic_b = b;
+        let c = state.values[state_index + 2u];
+        switch component {
+            case 0u: {
+                return a.x + a.y * offset_x + a.z * offset_y
+                    + 0.5 * quadratic_b.z * offset_x * offset_x
+                    + quadratic_b.w * offset_x * offset_y
+                    + 0.5 * c.x * offset_y * offset_y;
+            }
+            case 1u: { return a.y + quadratic_b.z * offset_x + quadratic_b.w * offset_y; }
+            case 2u: { return a.z + quadratic_b.w * offset_x + c.x * offset_y; }
+            case 3u: {
+                return a.w + quadratic_b.x * offset_x + quadratic_b.y * offset_y
+                    + 0.5 * c.y * offset_x * offset_x
+                    + c.z * offset_x * offset_y
+                    + 0.5 * c.w * offset_y * offset_y;
+            }
+            case 4u: { return quadratic_b.x + c.y * offset_x + c.z * offset_y; }
+            case 5u: { return quadratic_b.y + c.z * offset_x + c.w * offset_y; }
+            case 6u: { return quadratic_b.z; }
+            case 7u: { return quadratic_b.w; }
+            case 8u: { return c.x; }
+            case 9u: { return c.y; }
+            case 10u: { return c.z; }
+            default: { return c.w; }
+        }
+    }
+    switch component {
+        case 0u: { return a.x + a.y * offset_x + a.z * offset_y; }
+        case 1u: { return a.y; }
+        case 2u: { return a.z; }
+        case 3u: { return a.w + b.x * offset_x + b.y * offset_y; }
+        case 4u: { return b.x; }
+        default: { return b.y; }
+    }
+}
+
+fn median_filter_large(subset_index: u32) {
+    let stride = state_vec4_stride();
+    let state_index = subset_index * stride;
+    let own_a = state.values[state_index];
+    let own_b = state.values[state_index + 1u];
+    var own_c = vec4<f32>(0.0);
+    var own_d = vec4<f32>(0.0);
+    if MOTION_MODEL == 2u {
+        own_c = state.values[state_index + 2u];
+        own_d = state.values[state_index + 3u];
+    }
+    for (var item = 0u; item < stride; item += 1u) {
+        filtered_state.values[state_index + item] = state.values[state_index + item];
+    }
+    var own_status = own_b.z;
+    if MOTION_MODEL == 2u {
+        own_status = own_d.x;
+    }
+    if own_status < 0.5 {
+        return;
+    }
+
+    let point_x = i32(subset_index % config.grid_width);
+    let point_y = i32(subset_index / config.grid_width);
+    let grid_height = i32(config.grid_count / config.grid_width);
+    let radius = i32(MEDIAN_FILTER_SIZE / 2u);
+    let component_order = array<u32, 12>(
+        0u, 3u, 1u, 2u, 4u, 5u, 6u, 7u, 8u, 9u, 10u, 11u,
+    );
+    var active_count = 6u;
+    if MOTION_MODEL == 1u {
+        active_count = 2u;
+    } else if MOTION_MODEL == 2u {
+        active_count = 12u;
+    }
+    var filtered = array<f32, 12>(
+        own_a.x, own_a.y, own_a.z, own_a.w,
+        own_b.x, own_b.y, own_b.z, own_b.w,
+        own_c.x, own_c.y, own_c.z, own_c.w,
+    );
+    var roi_permissions = vec4<f32>(0.0);
+    if ROI_ENABLED != 0u {
+        roi_permissions = metadata.values[config.grid_count * 4u + subset_index];
+    }
+
+    for (var active_index = 0u; active_index < active_count; active_index += 1u) {
+        let component = component_order[active_index];
+        var values: array<f32, 81>;
+        var count = 0u;
+        values[count] = recentered_component(subset_index, component, 0.0, 0.0);
+        count += 1u;
+        for (var dy = -radius; dy <= radius; dy += 1i) {
+            for (var dx = -radius; dx <= radius; dx += 1i) {
+                if dx == 0i && dy == 0i {
+                    continue;
+                }
+                let neighbour_x = point_x + dx;
+                let neighbour_y = point_y + dy;
+                if neighbour_x < 0i || neighbour_y < 0i
+                    || neighbour_x >= i32(config.grid_width) || neighbour_y >= grid_height {
+                    continue;
+                }
+                if ROI_ENABLED != 0u {
+                    let bit_index = u32((dy + 4i) * 9i + dx + 4i);
+                    let packed_word = u32(roi_permissions[bit_index / 24u]);
+                    if (packed_word & (1u << (bit_index % 24u))) == 0u {
+                        continue;
+                    }
+                }
+                let neighbour_index = u32(neighbour_y) * config.grid_width + u32(neighbour_x);
+                let neighbour_state = neighbour_index * stride;
+                var neighbour_status = state.values[neighbour_state + 1u].z;
+                if MOTION_MODEL == 2u {
+                    neighbour_status = state.values[neighbour_state + 3u].x;
+                }
+                if neighbour_status < 0.5 {
+                    continue;
+                }
+                values[count] = recentered_component(
+                    neighbour_index,
+                    component,
+                    -f32(SUBSET_STRIDE) * f32(dx),
+                    -f32(SUBSET_STRIDE) * f32(dy),
+                );
+                count += 1u;
+            }
+        }
+        filtered[component] = median_up_to_81(&values, count);
+    }
+
+    filtered_state.values[state_index] = vec4<f32>(
+        filtered[0], filtered[1], filtered[2], filtered[3],
+    );
+    filtered_state.values[state_index + 1u] = vec4<f32>(
+        filtered[4], filtered[5], own_b.z, own_b.w,
+    );
+    if MOTION_MODEL == 2u {
+        filtered_state.values[state_index + 2u] = vec4<f32>(
+            filtered[8], filtered[9], filtered[10], filtered[11],
+        );
+        filtered_state.values[state_index + 3u] = own_d;
+    }
+}
+
 @compute @workgroup_size(256)
 fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let subset_index = global_id.x;
     if subset_index >= config.grid_count {
+        return;
+    }
+    if OUTLIER_POLICY == 3u && MEDIAN_FILTER_SIZE > 3u {
+        median_filter_large(subset_index);
         return;
     }
     let stride = state_vec4_stride();

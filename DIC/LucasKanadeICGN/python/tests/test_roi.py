@@ -95,6 +95,28 @@ class RoiGeometryTests(unittest.TestCase):
         self.assertFalse(bool(plan.neighbour_bits[1, 1] & (1 << 5)))
         self.assertTrue(bool(plan.neighbour_bits[1, 0] & (1 << 5)))
 
+    def test_large_median_links_cover_the_requested_window_without_crossing_cracks(self):
+        mask = np.ones((112, 112), bool)
+        plan = prepare_roi(mask, 8, 8, median_filter_size=9)
+        self.assertEqual(plan.median_neighbour_words.shape, (14 * 14, 4))
+        center = 7 * 14 + 7
+        words = plan.median_neighbour_words[center].astype(np.uint32)
+        for dy in range(-4, 5):
+            for dx in range(-4, 5):
+                bit = (dy + 4) * 9 + dx + 4
+                self.assertTrue(words[bit // 24] & (1 << (bit % 24)))
+
+        cracked = mask.copy()
+        cracked[:, 55] = False
+        plan = prepare_roi(cracked, 8, 8, median_filter_size=5)
+        self.assertIsNotNone(plan.median_neighbour_words)
+        # The two endpoint windows remain selected while an intervening window
+        # is excluded by the crack.
+        left = 7 * plan.selected.shape[1] + 5
+        words = plan.median_neighbour_words[left].astype(np.uint32)
+        across_bit = 4 * 9 + 2 + 4
+        self.assertFalse(words[across_bit // 24] & (1 << (across_bit % 24)))
+
     def test_seed_links_and_destinations_respect_static_geometry(self):
         mask = np.ones((128, 128), bool)
         mask[:, 63] = False

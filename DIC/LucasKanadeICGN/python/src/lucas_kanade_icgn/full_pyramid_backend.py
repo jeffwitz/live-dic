@@ -29,7 +29,7 @@ from .motion import (
     parameter_count,
     state_float_count,
 )
-from .outlier import normalize_outlier_policy
+from .outlier import normalize_median_filter_size, normalize_outlier_policy
 from .roi import reduce_mask, seed_permissions, validate_roi
 from .subset import DEFAULT_SUBSET_SIZE, normalize_subset_size, normalize_subset_stride
 from .weighting import (
@@ -194,6 +194,7 @@ class ICGNWGPUFullPyramid:
         interpolation: str = "bspline",
         motion_model: str = "affine",
         outlier_policy: str = "replace",
+        median_filter_size: int = 3,
         subset_size: int = DEFAULT_SUBSET_SIZE,
         subset_stride: int | None = None,
         spatial_weighting: str = "uniform",
@@ -270,6 +271,9 @@ class ICGNWGPUFullPyramid:
             )
         self._fourier = None
         self.outlier_policy = normalize_outlier_policy(outlier_policy)
+        self.median_filter_size = normalize_median_filter_size(median_filter_size)
+        if self.median_filter_size > 3 and self.outlier_policy != "median":
+            raise ValueError("median_filter_size > 3 requires outlier_policy='median'")
         self.subset_size = normalize_subset_size(subset_size)
         self.subset_stride = normalize_subset_stride(
             subset_stride,
@@ -316,6 +320,7 @@ class ICGNWGPUFullPyramid:
             interpolation=self.interpolation,
             motion_model=self.motion_model,
             outlier_policy=self.outlier_policy,
+            median_filter_size=self.median_filter_size,
             subset_size=self.subset_size,
             subset_stride=self.subset_stride,
             spatial_weighting=self.spatial_weighting,
@@ -1227,6 +1232,7 @@ class ICGNWGPUFullPyramid:
                 "interpolation": self.interpolation,
                 "motionModel": self.motion_model,
                 "outlierPolicy": self.outlier_policy,
+                "medianFilterSize": self.median_filter_size,
                 "subsetStride": self.subset_stride,
                 "spatialWeighting": self.spatial_weighting,
                 "solverWorkgroupSize": self.solver_workgroup_size,

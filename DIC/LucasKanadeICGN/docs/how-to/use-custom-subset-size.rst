@@ -47,3 +47,29 @@ custom width.
 
 See :doc:`../explanation/subset-size` for centre conventions, overlap geometry,
 weighting and the relation between subset size and stride.
+
+Choose a solver median neighbourhood
+------------------------------------
+
+The calculation-time ``median`` policy has a separate neighbourhood width,
+measured in grid cells rather than image pixels. Three by three remains the
+default. The shared-WGSL engines support opt-in widths up to nine by nine:
+
+.. code-block:: python
+
+   with ICGNWGPUFullPyramid(
+       outlier_policy="median",
+       median_filter_size=5,
+       device_type="gpu",
+   ) as engine:
+       engine.set_reference(reference)
+       result = engine.register(target)
+
+The same ``median_filter_size`` argument is available on ``ICGNWGPU``.
+``ICGNWebGL(backend="webgpu-wgsl")`` accepts the option as well; its CLI form
+is ``--median-filter-size 5 --outlier-policy median``. In the PWA, select the
+width under Solve before starting the calculation. Changing the width requires
+reference preparation again because it specializes the GPU pipeline. Three.js
+and GPU-IO continue to use a fixed 3 by 3 neighbourhood. Larger filters can
+remove real local gradients or curvature; compare raw and smoothed fields on
+the specimen before using them for metrology.

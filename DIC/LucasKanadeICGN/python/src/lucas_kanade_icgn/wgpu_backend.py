@@ -30,7 +30,11 @@ from .motion import (
     parameter_count,
     state_float_count,
 )
-from .outlier import OUTLIER_POLICY_PIPELINE_CONSTANTS, normalize_outlier_policy
+from .outlier import (
+    OUTLIER_POLICY_PIPELINE_CONSTANTS,
+    normalize_median_filter_size,
+    normalize_outlier_policy,
+)
 from .partial import filter_and_support_data, prepare_partial_reference
 from .roi import RoiPlan, immutable, prepare_roi, reduce_mask, seed_permissions, validate_roi
 from .subset import (
@@ -837,6 +841,7 @@ class ICGNWGPU:
         interpolation: str = "bspline",
         motion_model: str = "affine",
         outlier_policy: str = "replace",
+        median_filter_size: int = 3,
         subset_size: int = DEFAULT_SUBSET_SIZE,
         subset_stride: int | None = None,
         spatial_weighting: str = "uniform",
@@ -848,6 +853,12 @@ class ICGNWGPU:
         self.interpolation = normalize_interpolation(interpolation)
         self.motion_model = normalize_motion_model(motion_model)
         self.outlier_policy = normalize_outlier_policy(outlier_policy)
+        self.median_filter_size = normalize_median_filter_size(median_filter_size)
+        if self.median_filter_size > 3 and self.outlier_policy != "median":
+            raise ValueError("median_filter_size > 3 requires outlier_policy='median'")
+        self._compiled_median_filter_size = (
+            self.median_filter_size if self.outlier_policy == "median" else 3
+        )
         self.subset_size = normalize_subset_size(subset_size)
         self.subset_stride = normalize_subset_stride(
             subset_stride,
@@ -1050,6 +1061,7 @@ class ICGNWGPU:
                 "constants": {
                     "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
                     "OUTLIER_POLICY": OUTLIER_POLICY_PIPELINE_CONSTANTS[self.outlier_policy],
+                    "MEDIAN_FILTER_SIZE": self._compiled_median_filter_size,
                     "SUBSET_SIZE": self.subset_size,
                     "SUBSET_STRIDE": self.subset_stride,
                 },
@@ -1122,6 +1134,8 @@ class ICGNWGPU:
         level.interpolation = getattr(self, "interpolation", "bspline")
         level.motion_model = getattr(self, "motion_model", "affine")
         level.outlier_policy = getattr(self, "outlier_policy", "replace")
+        level.median_filter_size = getattr(self, "median_filter_size", 3)
+        level._compiled_median_filter_size = getattr(self, "_compiled_median_filter_size", 3)
         level.subset_size = self.subset_size
         level.subset_stride = getattr(self, "subset_stride", self.subset_size)
         level.solver_workgroup_size = getattr(self, "solver_workgroup_size", 16)
@@ -2067,6 +2081,7 @@ class ICGNWGPU:
                 "interpolation": getattr(self, "interpolation", "bspline"),
                 "motionModel": getattr(self, "motion_model", "affine"),
                 "outlierPolicy": getattr(self, "outlier_policy", "replace"),
+                "medianFilterSize": getattr(self, "median_filter_size", 3),
                 "subsetStride": self.subset_stride,
                 "spatialWeighting": getattr(self, "spatial_weighting", "uniform"),
                 "solverWorkgroupSize": getattr(self, "solver_workgroup_size", 16),
@@ -2212,6 +2227,7 @@ class ICGNWGPU:
                 interpolation=self.interpolation,
                 motion_model=self.motion_model,
                 outlier_policy=self.outlier_policy,
+                median_filter_size=self.median_filter_size,
                 subset_size=self.subset_size,
                 subset_stride=self.subset_stride,
                 spatial_weighting=self.spatial_weighting,
@@ -2278,7 +2294,12 @@ class ICGNWGPU:
         config = _validated_config(iterations, tolerance, zncc_min)
         mask = validate_roi(roi_mask, roi_policy, frame.shape, self.motion_model, roi_truncation)
         roi = prepare_roi(
-            mask, self.subset_size, subset_stride, policy=roi_policy, truncation=roi_truncation
+            mask,
+            self.subset_size,
+            subset_stride,
+            policy=roi_policy,
+            truncation=roi_truncation,
+            median_filter_size=self._compiled_median_filter_size,
         )
         reference_start = time.perf_counter()
         reference, inverse, metadata = _reference_arrays(
@@ -2317,7 +2338,14 @@ class ICGNWGPU:
             # Native-only tail: one vec4 per subset. Shared WGSL consumers
             # leave ROI_ENABLED=0 and retain the historical buffer layout.
             links = np.zeros((roi.selected.size, 4), dtype=np.float32)
-            links[:, 0] = roi.neighbour_bits.ravel()
+            if (
+                self.outlier_policy == "median"
+                and self.median_filter_size > 3
+                and roi.median_neighbour_words is not None
+            ):
+                links[:] = roi.median_neighbour_words
+            else:
+                links[:, 0] = roi.neighbour_bits.ravel()
             metadata = np.concatenate((metadata, links.ravel()))
             if roi.partial_indices is not None and roi.partial_indices.size:
                 boxes = np.zeros((roi.selected.size, 4), np.float32)
@@ -2353,6 +2381,7 @@ class ICGNWGPU:
                     "constants": {
                         "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
                         "OUTLIER_POLICY": OUTLIER_POLICY_PIPELINE_CONSTANTS[self.outlier_policy],
+                        "MEDIAN_FILTER_SIZE": self._compiled_median_filter_size,
                         "SUBSET_SIZE": self.subset_size,
                         "SUBSET_STRIDE": subset_stride,
                         "ROI_ENABLED": 1,
@@ -2386,6 +2415,7 @@ class ICGNWGPU:
                 "interpolation": getattr(self, "interpolation", "bspline"),
                 "motionModel": getattr(self, "motion_model", "affine"),
                 "outlierPolicy": getattr(self, "outlier_policy", "replace"),
+                "medianFilterSize": getattr(self, "median_filter_size", 3),
                 "subsetStride": subset_stride,
                 "spatialWeighting": getattr(self, "spatial_weighting", "uniform"),
                 "solverWorkgroupSize": getattr(self, "solver_workgroup_size", 16),
@@ -2494,6 +2524,7 @@ class ICGNWGPU:
                 "interpolation": getattr(self, "interpolation", "bspline"),
                 "motionModel": getattr(self, "motion_model", "affine"),
                 "outlierPolicy": getattr(self, "outlier_policy", "replace"),
+                "medianFilterSize": getattr(self, "median_filter_size", 3),
                 "subsetStride": subset_stride,
                 "spatialWeighting": getattr(self, "spatial_weighting", "uniform"),
                 "solverWorkgroupSize": getattr(self, "solver_workgroup_size", 16),

@@ -23,7 +23,7 @@ from lucas_kanade_icgn.full_pyramid_backend import (
     _DEFAULT_TOLERANCES,
     _schedule,
 )
-from lucas_kanade_icgn.outlier import normalize_outlier_policy
+from lucas_kanade_icgn.outlier import normalize_median_filter_size, normalize_outlier_policy
 from lucas_kanade_icgn.subset import (
     MAX_SUBSET_SIZE,
     MIN_SUBSET_SIZE,
@@ -188,6 +188,23 @@ class NativeReferenceTests(unittest.TestCase):
                 ICGNWGPU(outlier_policy=value)  # type: ignore[arg-type]
             with self.subTest(value=value), self.assertRaisesRegex(ValueError, "outlier_policy"):
                 ICGNWGPUFullPyramid(outlier_policy=value)  # type: ignore[arg-type]
+
+    def test_median_filter_size_is_validated_before_gpu_creation(self) -> None:
+        for value in (3, 5, 7, 9, np.int32(5)):
+            with self.subTest(value=value):
+                self.assertEqual(normalize_median_filter_size(value), int(value))
+        for value in (True, 4, 11, 5.0, "5", None):
+            with (
+                self.subTest(value=value),
+                self.assertRaisesRegex(ValueError, "median_filter_size"),
+            ):
+                ICGNWGPU(median_filter_size=value)  # type: ignore[arg-type]
+        for engine_type in (ICGNWGPU, ICGNWGPUFullPyramid):
+            with (
+                self.subTest(engine=engine_type.__name__),
+                self.assertRaisesRegex(ValueError, "requires outlier_policy='median'"),
+            ):
+                engine_type(median_filter_size=5)
 
     def test_solver_autotuning_accepts_numerically_equivalent_output(self) -> None:
         portable = np.zeros((200, 8), dtype=np.float32)

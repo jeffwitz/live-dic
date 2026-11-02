@@ -89,3 +89,24 @@ class SolverControlTests(unittest.TestCase):
         self.assertEqual(result["preset"], {"profile": "portable"})
         self.assertEqual(result["errors"], [])
         self.assertEqual(result["count"], 192)
+
+    def test_median_neighbourhood_is_a_cold_setting_and_reaches_the_core(self):
+        ui = ROOT / "web-app/ui/workspace.js"
+        core = ROOT / "python/src/lucas_kanade_icgn/web/core/engine.js"
+        script = f"""
+          import {{solverOptions,solverPreparationKey}} from {json.dumps(ui.as_uri())};
+          import {{DICEngine}} from {json.dumps(core.as_uri())};
+          const values={{profile:{{value:'portable'}},'custom-solver':{{checked:true}},'subset-size':{{value:'16'}},'subset-stride':{{value:'16'}},'median-filter-size':{{value:'5'}},'pyramid-levels':{{value:'2'}},'coarse-iterations':{{value:'8'}},'fine-iterations':{{value:'16'}},'temporal-start':{{checked:false}},'motion-model':{{value:'affine'}},interpolation:{{value:'bspline'}},'outlier-policy':{{value:'median'}}}};
+          globalThis.document={{getElementById:id=>values[id]}};
+          const options=solverOptions();const {{profile,...coreOptions}}=options;const engine=new DICEngine({{...coreOptions,width:128,height:128}});engine.destroy();
+          values['median-filter-size'].value='9';const larger=solverOptions();
+          values['outlier-policy'].value='replace';const unsmoothed=solverOptions();
+          console.log(JSON.stringify({{options,larger,unsmoothed,cold:solverPreparationKey(options)!==solverPreparationKey(larger)}}));
+        """
+        actual = json.loads(
+            subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
+        )
+        self.assertEqual(actual["options"]["medianFilterSize"], 5)
+        self.assertEqual(actual["larger"]["medianFilterSize"], 9)
+        self.assertEqual(actual["unsmoothed"]["medianFilterSize"], 3)
+        self.assertTrue(actual["cold"])

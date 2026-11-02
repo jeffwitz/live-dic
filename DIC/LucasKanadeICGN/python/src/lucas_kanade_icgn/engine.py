@@ -34,7 +34,7 @@ from PIL import Image
 
 from .interpolation import normalize_interpolation
 from .motion import AFFINE_PARAMETER_ORDER, normalize_motion_model, parameter_order
-from .outlier import normalize_outlier_policy
+from .outlier import normalize_median_filter_size, normalize_outlier_policy
 from .roi import RoiPlan, immutable, prepare_roi, validate_roi
 from .subset import DEFAULT_SUBSET_SIZE, normalize_subset_size, normalize_subset_stride
 
@@ -908,6 +908,7 @@ class ICGNWebGL:
         interpolation: str = "bspline",
         motion_model: str = "affine",
         outlier_policy: str = "replace",
+        median_filter_size: int = 3,
         subset_size: int = DEFAULT_SUBSET_SIZE,
         subset_stride: int | None = None,
         initialization: str = "zero",
@@ -946,6 +947,11 @@ class ICGNWebGL:
         self.interpolation = normalize_interpolation(interpolation)
         self.motion_model = normalize_motion_model(motion_model)
         self.outlier_policy = normalize_outlier_policy(outlier_policy)
+        self.median_filter_size = normalize_median_filter_size(median_filter_size)
+        if self.median_filter_size > 3 and self.outlier_policy != "median":
+            raise ValueError("median_filter_size > 3 requires outlier_policy='median'")
+        if self.median_filter_size > 3 and backend != "webgpu-wgsl":
+            raise ValueError("median_filter_size > 3 currently requires backend='webgpu-wgsl'")
         self.subset_size = normalize_subset_size(subset_size)
         self.subset_stride = normalize_subset_stride(
             subset_stride,
@@ -1210,6 +1216,7 @@ class ICGNWebGL:
         options["interpolation"] = self.interpolation
         options["motionModel"] = self.motion_model
         options["outlierPolicy"] = self.outlier_policy
+        options["medianFilterSize"] = self.median_filter_size
         if iterations is not None:
             options["iterations"] = int(iterations)
         if tolerance is not None:
@@ -1584,6 +1591,7 @@ def register_pair(
     interpolation: str = "bspline",
     motion_model: str = "affine",
     outlier_policy: str = "replace",
+    median_filter_size: int = 3,
     subset_size: int = DEFAULT_SUBSET_SIZE,
     subset_stride: int | None = None,
     initialization: str = "zero",
@@ -1611,6 +1619,7 @@ def register_pair(
         interpolation=interpolation,
         motion_model=motion_model,
         outlier_policy=outlier_policy,
+        median_filter_size=median_filter_size,
         subset_size=subset_size,
         subset_stride=subset_stride,
         initialization=initialization,
