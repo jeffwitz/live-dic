@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import json
 import os
 import shutil
@@ -11,10 +12,12 @@ from importlib.resources import files
 from pathlib import Path
 
 import numpy as np
+from PIL import Image
 
 from lucas_kanade_icgn.roi import prepare_roi, reduce_mask, seed_permissions
 
 CORE = Path(str(files("lucas_kanade_icgn").joinpath("web/core")))
+UHD_TENSILE = Path(__file__).resolve().parents[2] / "assets" / "uhd_tensile"
 
 
 @unittest.skipUnless(shutil.which("node"), "Node is needed to execute ES modules")
@@ -131,16 +134,18 @@ class BrowserGeometryTests(unittest.TestCase):
             {{spatialWeighting:'gaussian'}},{{roiPolicy:'partial'}},{{solverWorkgroupSize:32}},{{unknownOption:1}},{{roiPolicy:0}},{{readback:null}},{{spatialWeighting:null}},{{initialization:null}},{{pipelineDepth:null}}];
           const rejected=cases.map(options=>{{try{{new DICEngine(options);return false;}}catch{{return true;}}}});
           let acceptsSix=false;try{{new DICEngine({{initialization:'global-affine',globalAffineLevels:6}});acceptsSix=true;}}catch{{}}
+          let acceptsTranslationGlobalAffine=false;try{{new DICEngine({{initialization:'global-affine',globalAffineLevels:6,motionModel:'translation'}});acceptsTranslationGlobalAffine=true;}}catch{{}}
           const invalidScales=[4,9,5.5].map(value=>{{try{{new DICEngine({{initialization:'global-affine',globalAffineLevels:value}});return false;}}catch{{return true;}}}});
           let rejectsWithoutInitializer=false;try{{new DICEngine({{globalAffineLevels:6}});}}catch{{rejectsWithoutInitializer=true;}}
           const acceptsSubsetSizes=[4,7,24,64].map(subsetSize=>{{try{{new DICEngine({{subsetSize}});return true;}}catch{{return false;}}}});
-          console.log(JSON.stringify({{rejected,acceptsSix,invalidScales,rejectsWithoutInitializer,acceptsSubsetSizes}}));
+          console.log(JSON.stringify({{rejected,acceptsSix,acceptsTranslationGlobalAffine,invalidScales,rejectsWithoutInitializer,acceptsSubsetSizes}}));
         """
         results = json.loads(
             subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
         )
         self.assertTrue(all(results["rejected"]))
         self.assertTrue(results["acceptsSix"])
+        self.assertTrue(results["acceptsTranslationGlobalAffine"])
         self.assertTrue(all(results["invalidScales"]))
         self.assertTrue(results["rejectsWithoutInitializer"])
         self.assertTrue(all(results["acceptsSubsetSizes"]))
@@ -333,24 +338,122 @@ class BrowserCoreExecutionTests(unittest.TestCase):
                       +(reference[i+width]*(1-fx)+reference[i+width+1]*fx)*fy);
                   }
                   const rgba=bytes=>{const data=new Uint8ClampedArray(bytes.length*4);for(let i=0;i<bytes.length;i++)data.set([bytes[i],bytes[i],bytes[i],255],i*4);return createImageBitmap(new ImageData(data,width,height));};
-                  const referenceFrame=await rgba(reference),targetFrame=await rgba(target);
-                  const engine=await DICEngine.create({width,height,motionModel:'affine',initialization:'global-affine',pyramidLevels:2,
-                    iterationsPerLevel:[8,16],outlierPolicy:'disabled'});
-                  try{
-                    await engine.setReference(referenceFrame,{roiMask:mask});
-                    const result=await engine.register(targetFrame,{sourceKind:'images'});
-                    let cameraMessage='';try{await engine.register(targetFrame,{sourceKind:'camera'});}catch(error){cameraMessage=error.message;}
-                    return {fit:result.config.globalAffineEstimate,accepted:result.accepted,finite:result.parameters.every(Number.isFinite),
-                      timing:result.timing,cameraMessage};
-                  }finally{engine.destroy();referenceFrame.close();targetFrame.close();}
+                  const run=async motionModel=>{
+                    const referenceFrame=await rgba(reference),targetFrame=await rgba(target);
+                    const engine=await DICEngine.create({width,height,motionModel,initialization:'global-affine',pyramidLevels:2,
+                      iterationsPerLevel:[8,16],outlierPolicy:'disabled'});
+                    try{
+                      await engine.setReference(referenceFrame,{roiMask:mask});
+                      const result=await engine.register(targetFrame,{sourceKind:'images'});
+                      let cameraMessage='';
+                      if(motionModel==='affine'){
+                        const cameraFrame=await rgba(target);
+                        try{await engine.register(cameraFrame,{sourceKind:'camera'});}catch(error){cameraMessage=error.message;}
+                        finally{cameraFrame.close();}
+                      }
+                      let truthRmse=null,maxLocalGradient=null;
+                      if(motionModel==='translation'){
+                        let squaredError=0,count=0;maxLocalGradient=0;
+                        for(let index=0;index<result.status.length;index++){
+                          const offset=index*6;
+                          maxLocalGradient=Math.max(maxLocalGradient,Math.abs(result.parameters[offset+1]),
+                            Math.abs(result.parameters[offset+2]),Math.abs(result.parameters[offset+4]),
+                            Math.abs(result.parameters[offset+5]));
+                          if(result.status[index]<.5)continue;
+                          const gx=index%result.grid[0],gy=Math.floor(index/result.grid[0]);
+                          const x=gx*16+8,y=gy*16+8,X=x-cx,Y=y-cy;
+                          const expectedU=dx+(a-1)*X+b*Y,expectedV=dy+c*X+(d-1)*Y;
+                          squaredError+=(result.parameters[offset]-expectedU)**2
+                            +(result.parameters[offset+3]-expectedV)**2;count++;
+                        }
+                        truthRmse=Math.sqrt(squaredError/(2*count));
+                      }
+                      return {model:result.config.motionModel,fit:result.config.globalAffineEstimate,accepted:result.accepted,
+                        finite:result.parameters.every(Number.isFinite),timing:result.timing,cameraMessage,truthRmse,maxLocalGradient};
+                    }finally{engine.destroy();referenceFrame.close();targetFrame.close();}
+                  };
+                  return {affine:await run('affine'),translation:await run('translation')};
                 })()"""
             )
-        self.assertEqual(actual["fit"]["levels"], 5)
-        self.assertGreater(actual["fit"]["score"], 0.98)
-        self.assertGreater(actual["accepted"], 0)
-        self.assertTrue(actual["finite"])
-        self.assertGreater(actual["timing"]["globalAffineWallMs"], 0)
-        self.assertIn("loaded image or video file", actual["cameraMessage"])
+        for model in ("affine", "translation"):
+            with self.subTest(model=model):
+                result = actual[model]
+                self.assertEqual(result["model"], model)
+                self.assertEqual(result["fit"]["levels"], 5)
+                self.assertGreater(result["fit"]["score"], 0.98)
+                self.assertGreater(result["accepted"], 0)
+                self.assertTrue(result["finite"])
+                self.assertGreater(result["timing"]["globalAffineWallMs"], 0)
+        self.assertIn("loaded image or video file", actual["affine"]["cameraMessage"])
+        self.assertLess(actual["translation"]["truthRmse"], 0.15)
+        self.assertLess(actual["translation"]["maxLocalGradient"], 1e-8)
+
+    def test_global_affine_initialization_seeds_uhd_translation_solver(self):
+        from lucas_kanade_icgn import ICGNWebGL
+
+        with Image.open(UHD_TENSILE / "reference.png") as image:
+            reference = np.asarray(image, dtype=np.uint8)
+        with Image.open(UHD_TENSILE / "frame_040.png") as image:
+            target = np.asarray(image, dtype=np.uint8)
+        with (UHD_TENSILE / "machine_truth.csv").open(newline="", encoding="utf-8") as stream:
+            truth = next(row for row in csv.DictReader(stream) if int(row["frame"]) == 40)
+        stretch_x = float(truth["stretch_x"])
+        stretch_y = float(truth["stretch_y"])
+
+        flags = (
+            (
+                "--use-angle=swiftshader",
+                "--enable-unsafe-webgpu",
+                "--use-webgpu-adapter=swiftshader",
+                "--use-vulkan=swiftshader",
+            )
+            if os.environ.get("ICGN_BROWSER_SOFTWARE") == "1"
+            else ()
+        )
+        with ICGNWebGL(
+            backend="webgpu-wgsl",
+            motion_model="translation",
+            initialization="global-affine",
+            global_affine_levels=5,
+            pyramid_levels=2,
+            iterations_per_level=(8, 16),
+            interpolation="bspline",
+            outlier_policy="disabled",
+            subset_size=16,
+            subset_stride=16,
+            chromium_args=flags,
+            call_timeout=300,
+        ) as browser:
+            reference_info = browser.set_reference(reference)
+            result = browser.register(target)
+
+        self.assertEqual((reference_info.width, reference_info.height), (3840, 2160))
+        self.assertEqual(result.config["motionModel"], "translation")
+        self.assertEqual(result.config["initialization"], "global-affine")
+        self.assertTrue(np.isfinite(result.parameters).all())
+        fit = result.config["globalAffineEstimate"]
+        self.assertGreater(fit["score"], 0.98)
+        self.assertAlmostEqual(fit["linear"][0], stretch_x - 1, delta=5e-4)
+        self.assertAlmostEqual(fit["linear"][3], stretch_y - 1, delta=5e-4)
+
+        grid_y, grid_x = np.indices(result.status.shape)
+        x = grid_x * result.subset_stride + (result.subset_size - 1) / 2
+        y = grid_y * result.subset_stride + (result.subset_size - 1) / 2
+        expected = np.stack(
+            (
+                (stretch_x - 1) * (x - 1920),
+                (stretch_y - 1) * (y - 1080),
+            ),
+            axis=-1,
+        )
+        interior = (x >= 32) & (x < 3840 - 32) & (y >= 32) & (y < 2160 - 32)
+        accepted = interior & result.accepted_mask
+        self.assertGreater(int(accepted.sum()), 0)
+        error = np.linalg.norm(result.displacement[accepted] - expected[accepted], axis=-1)
+        self.assertGreaterEqual(float(accepted.sum() / interior.sum()), 0.90)
+        self.assertLess(float(np.sqrt(np.mean(error**2))), 0.05)
+        self.assertLess(float(np.percentile(error, 95)), 0.10)
+        self.assertLess(float(np.max(np.abs(result.parameters[..., (1, 2, 4, 5)]))), 1e-8)
 
     def test_decimated_readback_is_a_gpu_sample_of_the_complete_field(self):
         from lucas_kanade_icgn import ICGNWebGL

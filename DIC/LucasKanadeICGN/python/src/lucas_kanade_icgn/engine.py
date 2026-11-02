@@ -932,8 +932,6 @@ class ICGNWebGL:
             raise ValueError("Fourier and global affine initialization require backend=webgpu-wgsl")
         if initialization == "fourier" and motion_model == "quadratic":
             raise ValueError("Fourier initialization supports translation and affine models")
-        if initialization == "global-affine" and motion_model != "affine":
-            raise ValueError("Global affine initialization requires motion_model='affine'")
         if (
             isinstance(global_affine_levels, bool)
             or not isinstance(global_affine_levels, int)

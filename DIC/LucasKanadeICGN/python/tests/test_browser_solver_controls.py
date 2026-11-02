@@ -67,6 +67,27 @@ class SolverControlTests(unittest.TestCase):
         self.assertEqual(actual["seven"]["globalAffineLevels"], 7)
         self.assertTrue(actual["different"])
 
+    def test_global_affine_initializer_keeps_translation_local_model(self):
+        ui = ROOT / "web-app/ui/workspace.js"
+        script = f"""
+          import {{solverOptions}} from {json.dumps(ui.as_uri())};
+          const values={{profile:{{value:'portable'}},'custom-solver':{{checked:true}},
+            'global-affine-start':{{checked:true}},'global-affine-levels':{{value:'6'}},
+            'fourier-start':{{checked:false}},'subset-size':{{value:'16'}},'subset-stride':{{value:'16'}},
+            'pyramid-levels':{{value:'2'}},'coarse-iterations':{{value:'8'}},'fine-iterations':{{value:'16'}},
+            'temporal-start':{{checked:true}},'motion-model':{{value:'translation'}},
+            interpolation:{{value:'bspline'}},'outlier-policy':{{value:'disabled'}},'median-filter-size':{{value:'3'}}}};
+          globalThis.document={{getElementById:id=>values[id]??null}};
+          console.log(JSON.stringify(solverOptions()));
+        """
+        actual = json.loads(
+            subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
+        )
+        self.assertEqual(actual["initialization"], "global-affine")
+        self.assertEqual(actual["motionModel"], "translation")
+        self.assertEqual(actual["globalAffineLevels"], 6)
+        self.assertEqual(actual["temporalPrediction"], "none")
+
     def test_preset_is_unchanged_and_custom_combinations_reach_the_core(self):
         ui = ROOT / "web-app/ui/workspace.js"
         core = ROOT / "python/src/lucas_kanade_icgn/web/core/engine.js"

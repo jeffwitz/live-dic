@@ -641,7 +641,6 @@ export function createPyramidHost(options = {}) {
     validateTemporal({...hostOptions,...configuration,...options,initialization});
     if(!allowPyramidRebuild&&referenceReady&&initialization!==configuration.initialization)throw new Error('Changing initialization requires setReference()');
     if(initialization==='fourier'&&(options.motionModel??configuration.motionModel)==='quadratic')throw new Error('Fourier initialization currently supports translation and affine models');
-    if(initialization==='global-affine'&&(options.motionModel??configuration.motionModel)!=='affine')throw new Error('Global affine initialization requires motionModel="affine"');
     const globalAffineLevels = options.globalAffineLevels === undefined
       ? Number(configuration.globalAffineLevels ?? 5) : Number(options.globalAffineLevels);
     if (!Number.isInteger(globalAffineLevels) || globalAffineLevels < 5 || globalAffineLevels > 8) {

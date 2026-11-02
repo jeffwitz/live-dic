@@ -156,12 +156,16 @@ FFT latency; results retain ``config["globalTranslation"]`` and
 Three.js/GPU-IO refuse it. See :doc:`../how-to/register-large-shifts`.
 
 The Python-supervised raw browser backend additionally accepts
-``initialization="global-affine"`` with ``backend="webgpu-wgsl"`` and
-``motion_model="affine"``. It fits one mask-aware affine transform from
+``initialization="global-affine"`` with ``backend="webgpu-wgsl"`` and the
+translation or affine local motion model. It fits one mask-aware affine transform from
 sampled image pixels on five CPU pyramid scales by default. Set
 ``global_affine_levels`` to an integer from 5 to 8 to control the scale count;
 six to eight are experimental wider-capture settings. Pass the option to
-``ICGNWebGL`` or ``register_pair``. The selected fit seeds each local subset.
+``ICGNWebGL`` or ``register_pair``. The selected fit seeds each local subset;
+the local model still determines the parameters estimated and returned at
+each subset. With ``motion_model="translation"``, the affine fit is evaluated
+at each subset centre and only its displacement initializes the two-parameter
+local translation solve.
 In the browser workbench, loaded image and video files are supported
 through a grayscale readback from the external GPU image. It is experimental
 and intended for sparse image pairs, not camera-rate streaming; live camera

@@ -115,7 +115,9 @@ the local subsets. The workbench supports loaded
 image and video files by reading grayscale pixels back from their external GPU
 image; live camera streams are rejected. The per-target readback and CPU fit
 can take substantial time, making this unsuitable for camera-rate processing.
-It is limited to the affine model and is not implemented by the native engine,
+It can initialize local translation or affine solves; with translation, each
+subset receives only the fitted displacement at its centre, so local
+deformation is not estimated. It is not implemented by the native engine,
 Three.js, or GPU-IO. A single global affine model cannot represent strongly
 non-affine specimen deformation; the following local solve may still reject
 subsets. See :doc:`../how-to/register-large-shifts`.

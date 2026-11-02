@@ -486,6 +486,15 @@ class RuntimeAssetTests(unittest.TestCase):
                     initialization="global-affine",
                     global_affine_levels=levels,
                 )
+        translation = ICGNWebGL(
+            backend="webgpu-wgsl",
+            initialization="global-affine",
+            motion_model="translation",
+        )
+        self.assertEqual(
+            translation._options(iterations=None, tolerance=None, zncc_min=None)["motionModel"],
+            "translation",
+        )
         with self.assertRaisesRegex(ValueError, "requires initialization"):
             ICGNWebGL(backend="webgpu-wgsl", global_affine_levels=6)
 

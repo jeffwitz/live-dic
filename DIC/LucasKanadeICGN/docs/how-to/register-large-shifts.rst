@@ -76,7 +76,11 @@ In the workbench, check **Global affine initialization** in Solve, then choose
 the number of **Global affine fit scales** (5–8; default: 5). Six scales can
 extend the coarse capture range on large images; seven and eight are
 experimental. This setting is independent of the local optical-flow pyramid
-depth. It requires the affine motion model and a loaded image or video file.
+depth and the local motion model. With the translation model, the affine fit
+is evaluated at every subset centre and supplies a translation seed; each
+local solve still estimates only the two displacement components. With the
+affine model, each local solve also estimates its six affine parameters. A
+loaded image or video file is required.
 The workbench carries the input kind through its worker so decoded local files
 can use this initializer even though their frames reach WebGPU as external
 textures. Live camera streams remain unsupported for this cold CPU fit.
@@ -86,8 +90,10 @@ are used by the global fit. The mask is fixed in reference coordinates.
 
 Python supervision can request six scales with
 ``ICGNWebGL(backend="webgpu-wgsl", initialization="global-affine",
-motion_model="affine", global_affine_levels=6)``. The ``webgpu-wgsl`` CLI
-accepts ``--initialization global-affine --motion-model affine
+motion_model="translation", global_affine_levels=6)``. Use
+``motion_model="affine"`` when the local solve should also estimate
+deformation. The ``webgpu-wgsl`` CLI accepts
+``--initialization global-affine --motion-model translation
 --global-affine-levels 6``. The Python API and CLI accept values from 5 to 8.
 Three.js/GPU-IO and
 the native ``ICGNWGPUFullPyramid`` do not implement this initializer.

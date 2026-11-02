@@ -79,8 +79,10 @@ Solver options
 
 ``--initialization {zero,fourier,global-affine}``
    Opt-in global initialization for ``webgpu-wgsl`` only. Fourier estimates a
-   rigid translation; ``global-affine`` fits the masked affine motion over
-   five CPU scales by default and requires ``--motion-model affine``. The
+   rigid translation; ``global-affine`` fits masked affine motion over
+   five CPU scales by default, independently of the selected local model.
+   With ``--motion-model translation``, the fit provides per-subset translation
+   seeds while the local solver estimates only two displacement parameters. The
    ``--global-affine-levels`` option accepts 5–8 scales. The default is zero
    initialization. See :doc:`../how-to/register-large-shifts`.
 

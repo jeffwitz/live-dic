@@ -87,7 +87,7 @@ export function solverOptions() {
   const globalAffine = !!get('global-affine-start')?.checked;
   if (fourier && globalAffine) throw new Error('Choose either Fourier or global affine initialization');
   if (fourier) Object.assign(base,{initialization:'fourier',temporalPrediction:'none',temporalFineCorrection:false,divergencePatience:null});
-  if (globalAffine) Object.assign(base,{initialization:'global-affine',globalAffineLevels:Number(get('global-affine-levels')?.value??5),motionModel:'affine',temporalPrediction:'none',temporalFineCorrection:false,divergencePatience:null});
+  if (globalAffine) Object.assign(base,{initialization:'global-affine',globalAffineLevels:Number(get('global-affine-levels')?.value??5),temporalPrediction:'none',temporalFineCorrection:false,divergencePatience:null});
   if (!get('custom-solver').checked) return base;
   const size = Number(get('subset-size').value), stride = Number(get('subset-stride').value);
   const levels = Number(get('pyramid-levels').value), coarse = Number(get('coarse-iterations').value), fine = Number(get('fine-iterations').value);
@@ -96,7 +96,6 @@ export function solverOptions() {
   if (!Number.isInteger(levels) || levels < 1 || levels > 6) throw new Error('Pyramid levels must be between 1 and 6');
   if (![coarse, fine].every(v => Number.isInteger(v) && v > 0 && v <= 30)) throw new Error('GN limits must be integers between 1 and 30');
   const temporal = !fourier && !globalAffine && get('temporal-start').checked;
-  if (globalAffine && get('motion-model').value !== 'affine') throw new Error('Global affine initialization requires the affine motion model');
   const outlierPolicy = get('outlier-policy').value;
   const medianFilterSize = outlierPolicy === 'median'
     ? Number(get('median-filter-size')?.value ?? 3) : 3;
