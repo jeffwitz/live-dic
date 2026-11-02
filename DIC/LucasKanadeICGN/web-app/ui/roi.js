@@ -7,13 +7,19 @@ export function installRoi(canvas, tool, onChange) {
   let shapes = [], selected = null, active = false, draft = null, drag = null, serial = 0;
   let compiled = { mask: null, shapes: [] }, preview = null, history = [];
   let baseMask = null, empty = false;
+  const isImageMaskHelper = shape => shape?.id === 'image-mask-domain';
   let touchMode = false;
   const getPoint = e => { const b = canvas.getBoundingClientRect(); return [
     Math.max(0, Math.min(canvas.width, (e.clientX - b.left) * canvas.width / b.width)),
     Math.max(0, Math.min(canvas.height, (e.clientY - b.top) * canvas.height / b.height))]; };
   const current = () => shapes.find(s => s.id === selected);
   const checkpoint = () => { history.push({shapes:structuredClone(shapes),baseMask,empty}); if (history.length > 50) history.shift(); };
-  const notify = () => onChange({shapes:compiled.shapes,selected,editing:active,canUndo:history.length>0,hasBaseMask:!!baseMask,empty});
+  const notify = () => onChange({
+    // Imported raster masks use a hidden full-frame helper to make vector
+    // shapes subtractive. It is part of the geometry model, not user geometry.
+    shapes:compiled.shapes.filter(shape => !isImageMaskHelper(shape)),
+    selected,editing:active,canUndo:history.length>0,hasBaseMask:!!baseMask,empty,
+  });
   function path(s) {
     ctx.beginPath();
     if (s.type === 'polygon') { ctx.moveTo(...s.points[0]); s.points.slice(1).forEach(p => ctx.lineTo(...p)); ctx.closePath(); }
@@ -28,6 +34,7 @@ export function installRoi(canvas, tool, onChange) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (active && preview) ctx.drawImage(preview, 0, 0, canvas.width, canvas.height);
     for (const s of [...shapes, ...(draft ? [draft] : [])]) {
+      if (isImageMaskHelper(s)) continue;
       const record = compiled.shapes.find(p => p.id === s.id);
       path(s); ctx.strokeStyle = s.id === selected ? '#f9cc45' : record?.role === 'hole' ? '#fc8271' : '#62ecce';
       ctx.lineWidth = canvas.width / 500; ctx.stroke();
@@ -78,7 +85,7 @@ export function installRoi(canvas, tool, onChange) {
     if (tool.value === 'select') {
       const s = current(), tolerance = canvas.width / canvas.getBoundingClientRect().width * (touchMode?24:12);
       const handle = s ? handles(s).findIndex(q => Math.hypot(q[0] - p[0], q[1] - p[1]) < tolerance) : -1;
-      if (handle < 0) selected = [...shapes].reverse().find(s => hit(s, p))?.id ?? null;
+      if (handle < 0) selected = [...shapes].reverse().find(s => !isImageMaskHelper(s) && hit(s, p))?.id ?? null;
       if (current()) { checkpoint(); drag = { point: p, original: structuredClone(current()), handle }; canvas.setPointerCapture(e.pointerId); }
       paint(); notify();
     } else if (tool.value === 'polygon') {
@@ -127,11 +134,11 @@ export function installRoi(canvas, tool, onChange) {
       checkpoint();const shape={id:`region-${++serial}`,label:`${type} ${serial}`,type,x:(canvas.width-width)/2,y:(canvas.height-height)/2,width,height};
       shapes.push(shape);selected=shape.id;tool.value='select';update();
     },
-    reset(width, height, preset = [], raster = null, options = {}) { if(raster&&(!(raster instanceof Uint8Array)||raster.length!==width*height||raster.some(v=>v>1)))throw new Error('Invalid imported image mask');canvas.width = width; canvas.height = height;baseMask=raster?.slice()??null;empty=options.empty===true; shapes = validateShapes(preset); selected = shapes[0]?.id ?? null; draft = drag = null; history = []; serial += preset.length; active = false; canvas.classList.remove('drawing'); update(); },
-    select(id) { selected = id; tool.value = 'select'; paint(); notify(); },
+    reset(width, height, preset = [], raster = null, options = {}) { if(raster&&(!(raster instanceof Uint8Array)||raster.length!==width*height||raster.some(v=>v>1)))throw new Error('Invalid imported image mask');canvas.width = width; canvas.height = height;baseMask=raster?.slice()??null;empty=options.empty===true; shapes = validateShapes(preset); selected = shapes.find(s => !isImageMaskHelper(s))?.id ?? null; draft = drag = null; history = []; serial += preset.length; active = false; canvas.classList.remove('drawing'); update(); },
+    select(id) { selected = shapes.some(s => s.id===id && !isImageMaskHelper(s)) ? id : null; tool.value = 'select'; paint(); notify(); },
     edit(box) { if (!current()) return; checkpoint(); shapes[shapes.findIndex(s => s.id === selected)] = transformShape(current(), box); update(); },
-    remove() { if (!selected) return; checkpoint(); shapes = shapes.filter(s => s.id !== selected); selected = shapes.at(-1)?.id ?? null; update(); },
-    undo() { if (!history.length) return; const previous=history.pop();shapes = previous.shapes;baseMask=previous.baseMask;empty=previous.empty; selected = shapes.at(-1)?.id ?? null; draft = drag = null; update(); },
+    remove() { if (!selected || isImageMaskHelper(shapes.find(s => s.id===selected))) return; checkpoint(); shapes = shapes.filter(s => s.id !== selected); selected = [...shapes].reverse().find(s => !isImageMaskHelper(s))?.id ?? null; update(); },
+    undo() { if (!history.length) return; const previous=history.pop();shapes = previous.shapes;baseMask=previous.baseMask;empty=previous.empty; selected = [...shapes].reverse().find(s => !isImageMaskHelper(s))?.id ?? null; draft = drag = null; update(); },
     clear() { checkpoint(); shapes = [];baseMask=null;empty=false; selected = null; draft = drag = null; update(); },
     mask() { if (draft) finish(); return compiled.mask?.slice() ?? null; },
     shapes() { return structuredClone(shapes); },

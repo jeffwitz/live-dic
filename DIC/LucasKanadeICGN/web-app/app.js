@@ -664,7 +664,14 @@ const roi = installRoi($('roi'), $('shape'), (state) => {
   $('undo-roi').disabled = !state.canUndo;
   if (selected) bounds(selected).forEach((v, i) => { $(['roi-x','roi-y','roi-width','roi-height'][i]).value = Math.round(v * 1000) / 1000; });
   $('roi-height').disabled = selected?.type === 'circle';
-  $('roi-summary').textContent = (state.hasBaseMask ? 'Image mask ∩ ' : '') + (state.shapes.length ? `${state.shapes.filter(s => s.role === 'domain').length} domain(s), ${state.shapes.filter(s => s.role === 'hole').length} hole(s)${roiEditing ? ' · unapplied edits' : ''}` : 'Full image · no mask.');
+  const geometrySummary = state.hasBaseMask
+    ? (state.shapes.length ? `Imported image mask · ${state.shapes.length} vector shape(s)` : 'Imported image mask · white pixels retained')
+    : state.empty
+      ? 'Blank mask · all pixels excluded'
+      : state.shapes.length
+        ? `${state.shapes.filter(s => s.role === 'domain').length} domain(s), ${state.shapes.filter(s => s.role === 'hole').length} hole(s)`
+        : 'Full image · no mask.';
+  $('roi-summary').textContent = `${geometrySummary}${roiEditing ? ' · unapplied edits' : ''}`;
   if(state.editing&&!editorWasActive&&matchMedia('(max-width:760px)').matches)requestAnimationFrame(()=>document.querySelector('.viewer').scrollIntoView({block:'start'})); editorWasActive=state.editing;
   $('apply-roi').disabled = !roiEditing; $('mask-toolbar').hidden=!roiEditing; $('apply-mask-top').disabled=!roiEditing;
 });
