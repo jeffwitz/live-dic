@@ -17,7 +17,8 @@ export class DICEngine {
       'interpolation', 'pyramidLevels', 'iterationsPerLevel', 'tolerancePerLevel', 'iterations', 'tolerance',
       'znccMin', 'outlierPolicy', 'initialization', 'temporalPrediction', 'temporalFineCorrection',
       'temporalMaxAge', 'divergencePatience', 'divergenceMinIterations', 'pipelineDepth', 'readback',
-      'spatialWeighting', 'roiPolicy', 'roiTruncation', 'pyramidPolicy', 'solverWorkgroupSize', 'referencePreparation']);
+      'spatialWeighting', 'roiPolicy', 'roiTruncation', 'pyramidPolicy', 'solverWorkgroupSize',
+      'referencePreparation', 'globalAffineLevels']);
     for (const key of Object.keys(options)) if (!supported.has(key)) throw new Error(`Unsupported engine option: ${key}`);
     if (options.referencePreparation !== undefined && !['cpu', 'gpu'].includes(options.referencePreparation)) {
       throw new Error("referencePreparation must be 'cpu' or 'gpu'");
@@ -33,6 +34,15 @@ export class DICEngine {
 
     for (const key of ['subsetSize', 'subsetStride', 'pyramidLevels', 'iterations', 'tolerance', 'znccMin']) {
       if (options[key] !== undefined && typeof options[key] !== 'number') throw new Error(`${key} must be a number`);
+    }
+    if (options.globalAffineLevels !== undefined
+        && (!Number.isInteger(options.globalAffineLevels)
+          || options.globalAffineLevels < 5 || options.globalAffineLevels > 8)) {
+      throw new Error('globalAffineLevels must be an integer between 5 and 8');
+    }
+    if (options.globalAffineLevels !== undefined && options.globalAffineLevels !== 5
+        && options.initialization !== 'global-affine') {
+      throw new Error('globalAffineLevels requires initialization="global-affine"');
     }
     for (const key of ['iterationsPerLevel', 'tolerancePerLevel']) {
       if (options[key] !== undefined && (typeof options[key] === 'string' || options[key] === null

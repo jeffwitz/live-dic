@@ -129,12 +129,19 @@ class BrowserGeometryTests(unittest.TestCase):
           import {{DICEngine}} from {json.dumps((CORE / "engine.js").as_uri())};
           const cases=[{{subsetSize:'16'}},{{pyramidLevels:true}},{{initialization:'temporal',pyramidLevels:3,temporalFineCorrection:true}},
             {{spatialWeighting:'gaussian'}},{{roiPolicy:'partial'}},{{solverWorkgroupSize:32}},{{unknownOption:1}},{{roiPolicy:0}},{{readback:null}},{{spatialWeighting:null}},{{initialization:null}},{{pipelineDepth:null}}];
-          console.log(JSON.stringify(cases.map(options=>{{try{{new DICEngine(options);return false;}}catch{{return true;}}}})));
+          const rejected=cases.map(options=>{{try{{new DICEngine(options);return false;}}catch{{return true;}}}});
+          let acceptsSix=false;try{{new DICEngine({{initialization:'global-affine',globalAffineLevels:6}});acceptsSix=true;}}catch{{}}
+          const invalidScales=[4,9,5.5].map(value=>{{try{{new DICEngine({{initialization:'global-affine',globalAffineLevels:value}});return false;}}catch{{return true;}}}});
+          let rejectsWithoutInitializer=false;try{{new DICEngine({{globalAffineLevels:6}});}}catch{{rejectsWithoutInitializer=true;}}
+          console.log(JSON.stringify({{rejected,acceptsSix,invalidScales,rejectsWithoutInitializer}}));
         """
         results = json.loads(
             subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
         )
-        self.assertTrue(all(results))
+        self.assertTrue(all(results["rejected"]))
+        self.assertTrue(results["acceptsSix"])
+        self.assertTrue(all(results["invalidScales"]))
+        self.assertTrue(results["rejectsWithoutInitializer"])
 
 
 @unittest.skipUnless(
