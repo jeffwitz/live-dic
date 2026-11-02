@@ -222,6 +222,9 @@ def main():
             report = dict(
                 build=json.loads((args.site / "build.json").read_text()),
                 software=args.software,
+                capabilities=browser._evaluate(
+                    "JSON.parse(document.getElementById('details').textContent).capabilities"
+                ),
                 source_sha256={
                     name: hashlib.sha256((args.site / name).read_bytes()).hexdigest()
                     for name in ["app.js", "index.html", "ui/workspace.js", "ui/workbench.js"]
