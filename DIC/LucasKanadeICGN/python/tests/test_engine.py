@@ -262,6 +262,21 @@ class BinaryTransportServerTests(unittest.TestCase):
 
 
 class NotebookLoopTests(unittest.TestCase):
+    def test_devtools_keepalive_respects_long_computation_deadline(self) -> None:
+        engine = ICGNWebGL(call_timeout=600)
+        engine._websocket_url = "ws://127.0.0.1:12345/devtools/page/test"
+        engine._devtools_origin = "http://127.0.0.1:12345"
+        socket = mock.AsyncMock()
+        socket.recv.return_value = '{"id": 1, "result": {"result": {"value": true}}}'
+        connection = mock.MagicMock()
+        connection.__aenter__.return_value = socket
+        with mock.patch(
+            "lucas_kanade_icgn.engine.websockets.connect", return_value=connection
+        ) as connect:
+            self.assertTrue(asyncio.run(engine._evaluate_async("true")))
+        self.assertEqual(connect.call_args.kwargs["ping_timeout"], 600)
+        self.assertEqual(connect.call_args.kwargs["open_timeout"], 600)
+
     def test_blocking_bridge_inside_running_loop(self) -> None:
         async def outer() -> int:
             return _run_async_blocking(asyncio.sleep(0, result=7))

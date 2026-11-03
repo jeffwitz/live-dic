@@ -1115,6 +1115,9 @@ class ICGNWebGL:
             origin=self._devtools_origin,
             max_size=_MAX_CDP_MESSAGE_BYTES,
             open_timeout=self.call_timeout,
+            # Large cold preparations can block Chromium's DevTools responses.
+            # Keepalive must respect the same deadline as the computation.
+            ping_timeout=self.call_timeout,
         ) as websocket:
             request = {
                 "id": 1,
