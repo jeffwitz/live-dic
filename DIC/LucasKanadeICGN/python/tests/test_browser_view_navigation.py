@@ -25,14 +25,20 @@ class BrowserViewNavigationTests(unittest.TestCase):
           }};
           globalThis.requestAnimationFrame = callback => {{ callback(); return 1; }};
           globalThis.ResizeObserver = undefined;
-          const resetImageView = installViewNavigation({{getElement: element, updateVectorLengthLegend() {{}}}});
+          let legendUpdates = 0;
+          const resetImageView = installViewNavigation({{getElement: element, updateVectorLengthLegend() {{ legendUpdates++; }}}});
           element('view-zoom-in').onclick();
+          element('view-zoom-in').onclick();
+          element('view-zoom-in').onclick();
+          element('view-zoom-out').onclick();
+          const steppedOut = element('view-zoom-label').textContent;
+          element('view-zoom-out').onclick();
           element('view-pan-right').onclick();
           const zoomed = {{width: element('scene').style.width, label: element('view-zoom-label').textContent}};
           const panned = element('image-viewport').lastScrollBy;
           element('view-reset').onclick();
           console.log(JSON.stringify({{
-            zoomed, panned,
+            zoomed, panned, steppedOut, legendUpdates,
             resetHandlerReturned: typeof resetImageView === 'function',
             resetHandlerInstalled: resetImageView === element('view-reset').onclick,
             fitted: {{width: element('scene').style.width, label: element('view-zoom-label').textContent,
@@ -44,6 +50,8 @@ class BrowserViewNavigationTests(unittest.TestCase):
         )
 
         self.assertEqual(result["zoomed"], {"width": "150%", "label": "150%"})
+        self.assertEqual(result["steppedOut"], "200%")
+        self.assertEqual(result["legendUpdates"], 6)
         self.assertEqual(result["panned"]["left"], 195)
         self.assertTrue(result["resetHandlerReturned"])
         self.assertTrue(result["resetHandlerInstalled"])

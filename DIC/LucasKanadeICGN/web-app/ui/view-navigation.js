@@ -21,7 +21,8 @@ export function installViewNavigation({ getElement, updateVectorLengthLegend }) 
   }
 
   function stepZoom(direction) {
-    const next = zoomStops.find(value => direction > 0
+    const stops = direction > 0 ? zoomStops : [...zoomStops].reverse();
+    const next = stops.find(value => direction > 0
       ? value > zoom + 1e-6
       : value < zoom - 1e-6);
     setZoom(next ?? (direction > 0 ? 8 : 1));
@@ -38,11 +39,14 @@ export function installViewNavigation({ getElement, updateVectorLengthLegend }) 
     $('scene').style.width = '100%';
     $('view-zoom-label').textContent = '100%';
     const view = $('image-viewport');
-    requestAnimationFrame(() => view.scrollTo({
-      left: Math.max(0, (view.scrollWidth - view.clientWidth) / 2),
-      top: Math.max(0, (view.scrollHeight - view.clientHeight) / 2),
-      behavior: 'smooth',
-    }));
+    requestAnimationFrame(() => {
+      view.scrollTo({
+        left: Math.max(0, (view.scrollWidth - view.clientWidth) / 2),
+        top: Math.max(0, (view.scrollHeight - view.clientHeight) / 2),
+        behavior: 'smooth',
+      });
+      updateVectorLengthLegend();
+    });
   }
 
   $('view-zoom-out').onclick = () => stepZoom(-1);
