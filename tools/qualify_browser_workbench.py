@@ -295,7 +295,7 @@ def main():
                 figure = export_figure(browser, args.output / f"export-{component}.png")
                 caption = " ".join(row["text"] for row in figure["texts"])
                 assert "window / step 16 / 16" in caption
-                assert "Methodology informed by prior GPU-DIC" in caption
+                assert "live-dic developed by Jeff Witz" in caption
                 if component == "status":
                     assert "Not converged" in caption and "Excluded by ROI" in caption
                     assert figure["categories"] == [

@@ -7,7 +7,7 @@
   "display": "standalone",
   "background_color": "#f1f5f5",
   "theme_color": "#153c48",
-  "description": "Local WebGPU digital image correlation. Methodology informed by prior GPU-DIC and Three.js/WebGPU prototypes by Pierre Margerit. Demonstration and field screening; not qualified for hand-held metrology.",
+  "description": "Local WebGPU digital image correlation developed by Jeff Witz. Demonstration and field screening; not qualified for hand-held metrology.",
   "icons": [
     { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
