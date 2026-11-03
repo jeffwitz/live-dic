@@ -26,7 +26,7 @@ let buildInfo = null, appliedSolverKey = null;
 let pipelineTimingUpdatedAt = -Infinity;
 const synchronousAdmissions = [];
 let recordingQueue = null, supervision = supervisionOptions(), lastPresentation = null, lastHudAt = -Infinity, pipelineStateUpdatedAt = -Infinity;
-let lastVectorLegend = null, viewingInput = false, returnToInputAfterMask = false, startingCalculation = false, finishingCalculation = null, calculationStartIndex = 0;
+let lastVectorLegend = null, viewingInput = false, returnToInputAfterMask = false, startingCalculation = false, activeCalculationMode = null, finishingCalculation = null, calculationStartIndex = 0;
 const pending = new Map(), video = $('video');
 const imageSequence = createImageSequenceController({
   $,
@@ -39,7 +39,12 @@ const imageSequence = createImageSequenceController({
     paused,
     video,
   }),
-  setPaused: value => { paused = value; },
+  setPaused: value => {
+    paused = value;
+    if (value) activeCalculationMode = null;
+    else activeCalculationMode ??= workspace.mode;
+    updateSessionIndicator();
+  },
   pauseSource: () => pauseSource(),
   drain: () => drain(),
   decodeImage,
@@ -60,6 +65,19 @@ const updateLocalPosition = (...args) => imageSequence.updateLocalPosition(...ar
 sourceButtons.forEach(id => $(id).disabled = true);
 const status = globalThis.liveDicStatus = { ready: false, completed: 0, errors: [], results: [] };
 function message(text, error = false) { $('message').textContent = text; $('message').classList.toggle('error', error); }
+function updateSessionIndicator() {
+  const indicator = $('active-session');
+  const cameraConnected = source === 'camera'
+    && stream?.getVideoTracks().some(track => track.readyState === 'live');
+  const calculationActive = !!source && (!paused || startingCalculation);
+  indicator.hidden = !cameraConnected && !calculationActive;
+  if (indicator.hidden) return;
+  const runMode = activeCalculationMode ?? workspace.mode;
+  const activity = startingCalculation
+    ? 'Preparing'
+    : `${runMode === 'live' ? 'Live' : 'Analysis'} calculation running`;
+  $('active-session-label').textContent = calculationActive ? `${activity} · ${source}` : 'Camera connected · paused';
+}
 function send(type, data = {}, transfer = []) {
   const id = ++requests;
   const result = new Promise((resolve, reject) => pending.set(id, { resolve, reject }));
@@ -98,7 +116,7 @@ workbench = installWorkbench({
     }
     return send('recording', { enabled }).catch(e => message(e.message, true));
   },
-  liveChanged: (reviewing,restore) => { document.querySelector('.metrics').hidden=reviewing;$('pipeline-timing').hidden=reviewing;$('reference').hidden=reviewing;$('reset').hidden=reviewing; $('input-field').hidden=reviewing||!viewingInput; if(!reviewing)$('field').hidden=viewingInput; if(restore && transport && referencePrepared) send('display',{display:displayOptions()}).catch(e=>message(e.message,true)); $('run-state').textContent = reviewing ? 'Saved field · reference coordinates' : source ? `${source} · ${paused ? 'paused' : 'running'}` : 'No source selected'; },
+  liveChanged: (reviewing,restore) => { $('reference').hidden=reviewing; $('input-field').hidden=reviewing||!viewingInput; if(!reviewing)$('field').hidden=viewingInput; if(restore && transport && referencePrepared) send('display',{display:displayOptions()}).catch(e=>message(e.message,true)); $('run-state').textContent = reviewing ? 'Saved field · reference coordinates' : source ? `${source} · ${paused ? 'paused' : 'running'}` : 'No source selected'; updateSessionIndicator(); },
   openResults: () => { workspace.showMode('analysis'); workspace.showPane('view'); },
 });
 recordingQueue = new RecordingQueue({
@@ -131,7 +149,7 @@ function details() {
   if(source==='camera'&&settings) $('camera-summary').textContent=`Actual ${settings.width} × ${settings.height} · ${settings.frameRate ?? '?'} Hz negotiated (requested ${sourceSettings.requested?.width} × ${sourceSettings.requested?.height} · ${sourceSettings.requested?.frameRate} Hz). ${sourceSettings.frameDelivery ?? 'Preparing capture'} · ${sourceSettings.deliveryState ?? 'preparing'}. Delivered/processed rates may be lower.`;
   $('details').textContent = JSON.stringify({ capabilities, acquisition: { ...sourceSettings, files: sourceSettings.files ? `${sourceSettings.files.length} file records retained in export` : undefined },
   build: buildInfo, execution: transport.isMain ? 'Main-thread fallback: OffscreenCanvas unavailable' : 'Dedicated worker',
-  reference: referenceInfo ? { ...referenceInfo, prepared:referencePrepared, roiSelected: undefined, referenceValid: undefined } : null, profile: $('profile').value,
+  reference: referenceInfo ? { ...referenceInfo, prepared:referencePrepared, roiSelected: undefined, referenceValid: undefined } : null, profile: options().profile,
   requestedResolution: $('resolution').value }, null, 2); }
 function updateScale(scale) {
   if (!Number.isFinite(scale)) return;
@@ -258,9 +276,14 @@ async function init() {
   }
   sourceButtons.forEach(id => $(id).disabled = false);
   $('placeholder').textContent='Open images, a video or a camera. Try the plate demo to explore.';
-  $('profile').value = capabilities.recommendedProfile;
   const recommended = capabilities.recommendedResolution ?? capabilities.resolutions[0];
   if (recommended) $('resolution').value = recommended.join('x');
+  if (!workspace.hasSavedMode && navigator.mediaDevices?.enumerateDevices) {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      if (devices.some(device => device.kind === 'videoinput')) workspace.showMode('live', { persist: false });
+    } catch { /* Camera discovery must not block startup. */ }
+  }
   message(`Ready. ${capabilities.reasons.join('. ')}`); status.ready = true;
   if (smoke && query.get('case') !== 'manual') {
     // Canned diagnostic URLs explicitly request a preview calculation, without recording.
@@ -283,7 +306,7 @@ function clearPendingReference() { pendingReferenceFrame?.close(); pendingRefere
 async function duplicateFrame(frame) {
   return typeof frame.clone === 'function' ? frame.clone() : createImageBitmap(frame);
 }
-function pauseSource() { paused = true; imageSequence.wakePlayback(); if (source === 'video-file') video.pause(); clearPreviousCapture(); }
+function pauseSource() { paused = true; activeCalculationMode = null; imageSequence.wakePlayback(); if (source === 'video-file') video.pause(); clearPreviousCapture(); updateSessionIndicator(); }
 async function sourceChange(operation, {propagate = false} = {}) {
   if (loadingSource) return;
   loadingSource = true; document.querySelector('.workspace').inert=true; sourceButtons.forEach(id => $(id).disabled = true);
@@ -307,7 +330,7 @@ async function stop() {
   dropped=0;$('drops').textContent='0';clearLiveMetrics();
   $('run-state').textContent='No source selected';$('applied-solver-summary').textContent='No reference prepared.';$('last-reference-summary').textContent='';$('placeholder').hidden=false;$('camera-summary').hidden=true;
   referenceInfo = null; appliedSolverKey = null; updateSolverSettingsStatus(); workbench.setSourceReady(false);viewingInput=false;$('input-field').hidden=true;$('input-field').width=$('input-field').height=1; ['reference','pause','reset','draw','clear-roi','export','import-mask','create-mask','save-mask'].forEach(id => $(id).disabled = true);
-  $('comparison').disabled=false; source = null; roiEditing = false; $('roi-editor').hidden = true; $('plate-load-label').hidden = true; $('local-controls').hidden = true;$('solve-range-label').hidden=true;
+  $('comparison').disabled=false; source = null; roiEditing = false; $('roi-editor').hidden = true; $('plate-load-label').hidden = true; $('local-controls').hidden = true;$('solve-range-label').hidden=true; updateSessionIndicator();
 }
 async function frameFromVideo() {
   if (source === 'video-file' && referenceInfo && (video.videoWidth !== referenceInfo.width || video.videoHeight !== referenceInfo.height)) throw new Error('Video dimensions changed; capture a new reference. Frames are not resized.');
@@ -574,6 +597,7 @@ $('camera-device').onchange = () => { if(source==='camera') sourceChange(startCa
 function cameraStopped(token, reason) {
   if(generation!==token||source!=='camera')return;
   pauseSource();sourceSettings.deliveryState='stopped';sourceSettings.deliveryError=reason;
+  updateSessionIndicator();
   $('pause').textContent='Restart camera';if(!workbench.reviewing)$('run-state').textContent='Camera stopped · last completed field';
   details();message(`${reason} Restart camera to capture a new reference; reapply the mask afterwards.`,true);
 }
@@ -585,7 +609,9 @@ async function startCamera() {
   video.src = ''; video.srcObject = stream; await video.play();
   const track = stream.getVideoTracks()[0]; await refreshCameras();
   sourceSettings = { source: 'camera', deliveryState:'running', requested: { width, height, frameRate: 60 }, ...await lockCamera(track), outputSize: [video.videoWidth, video.videoHeight] };
+  updateSessionIndicator();
   await captureReference(); paused = true; $('pause').textContent = 'Start calculation';
+  updateSessionIndicator();
   const token = generation;
   if (typeof MediaStreamTrackProcessor === 'function') {
     try { reader = new MediaStreamTrackProcessor({ track }).readable.getReader(); }
@@ -713,6 +739,8 @@ async function startCalculation() {
   if(roiEditing){message('Apply the mask before calculation.');return;}
   if(source==='camera'&&sourceSettings.deliveryState==='stopped')return sourceChange(startCamera);
   startingCalculation=true;
+  activeCalculationMode=workspace.mode;
+  updateSessionIndicator();
   calculationProgress.begin('Preparing reference and GPU solver…');
   const token=generation;
   const includeCurrent=viewingInput;
@@ -728,26 +756,27 @@ async function startCalculation() {
     viewingInput=false;$('input-field').hidden=true;$('field').hidden=false;
     $('solve-progress').textContent=workbench.recording?'Calculating and saving full fields. Stop to inspect Results.':'Preview calculation only: fields are not saved. Enable saving for replay.';
     calculationProgress.setTargets(calculationFrameTotal(includeCurrent));
-    if(source==='plate'){await runPlateTarget();startingCalculation=false;if(token===generation)await finishCalculation();return;}
+    if(source==='plate'){await runPlateTarget();startingCalculation=false;updateSessionIndicator();if(token===generation)await finishCalculation();return;}
     if(source==='video-file'&&$('solve-range').value==='single'){
       if($('comparison').value!=='fixed')throw new Error('A single video target needs fixed-reference comparison; use a sequence for consecutive pairs.');
       await processFrame(await frameFromVideo(),null,{force:true,reset:true,input:{kind:source,file:sourceSettings.file,timeSeconds:video.currentTime}});
-      startingCalculation=false;if(token===generation)await finishCalculation();return;
+      startingCalculation=false;updateSessionIndicator();if(token===generation)await finishCalculation();return;
     }
     if(source==='video-file'||source==='demo'){
       if(video.ended){await seekVideo(video,0,sourceAbort.signal);await send('reset');}
       await video.play();
     }
-    paused=false;$('pause').textContent='Pause calculation';startingCalculation=false;
+    paused=false;$('pause').textContent='Pause calculation';startingCalculation=false;updateSessionIndicator();
     if(source==='images'){
       if($('solve-range').value==='single'){paused=true;await runImage(imageSequence.index,true);}
       else await playImages(includeCurrent);
       if(token===generation)await finishCalculation();
     }
   } catch(error){pauseSource();calculationProgress.finish();message(error.message,true);}
-  finally{startingCalculation=false;}
+  finally{startingCalculation=false;updateSessionIndicator();}
 }
 $('pause').onclick = () => !paused?finishCalculation():startCalculation();
+$('stop-active-session').onclick = () => stop().catch(error => message(error.message, true));
 $('solve-results').onclick = () => finishCalculation();
 $('go-solve').onclick = () => workspace.showPane('solve');
 $('reset').onclick = () => send('reset');
@@ -830,7 +859,6 @@ $('download-device-report').onclick = () => {
   const stamp = report.generatedAt.replaceAll(':', '-');
   download(`live-dic-device-report-${stamp}.json`, JSON.stringify(report, null, 2), 'application/json');
 };
-$('profile').onchange = () => invalidatePreparedReference();
 window.addEventListener('pagehide', () => { workbench.destroy(); sourceAbort.abort(); clearPreviousCapture();clearPendingReference(); if (localVideoUrl) URL.revokeObjectURL(localVideoUrl); stream?.getTracks().forEach((t) => t.stop()); transport?.postMessage({ type: 'destroy' }); });
 window.addEventListener('error', (event) => { status.errors.push(event.message); message(event.message, true); });
 window.addEventListener('unhandledrejection', (event) => { const text = String(event.reason); status.errors.push(text); message(text, true); });

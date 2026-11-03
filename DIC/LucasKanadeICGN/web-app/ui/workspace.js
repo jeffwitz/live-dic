@@ -3,7 +3,7 @@ export function installWorkspace({ shortcuts, onPane = () => {}, onModeChange = 
   let pane = 'source';
   let mode = 'analysis';
   const buttons = [...document.querySelectorAll('[data-pane]')];
-  const modeButtons = [...document.querySelectorAll('[data-workspace-mode]')];
+  const modeButtons = [...document.querySelectorAll('button[data-workspace-mode]')];
 
   function showMode(name, { persist = true, destination = null } = {}) {
     if (!['live', 'analysis'].includes(name)) {
@@ -21,6 +21,7 @@ export function installWorkspace({ shortcuts, onPane = () => {}, onModeChange = 
       element.hidden = element.dataset.workspaceOnly !== name;
     }
     if (persist) {
+      hasSavedMode = true;
       try { localStorage.setItem('live-dic-workspace-mode', name); } catch { /* Storage is optional. */ }
     }
     onModeChange(name);
@@ -43,9 +44,13 @@ export function installWorkspace({ shortcuts, onPane = () => {}, onModeChange = 
     });
   }
   let savedMode = 'analysis';
+  let hasSavedMode = false;
   try {
     const storedMode = localStorage.getItem('live-dic-workspace-mode');
-    if (['live', 'analysis'].includes(storedMode)) savedMode = storedMode;
+    if (['live', 'analysis'].includes(storedMode)) {
+      savedMode = storedMode;
+      hasSavedMode = true;
+    }
   } catch { /* Storage is optional. */ }
   showMode(savedMode, { persist: false });
 
@@ -73,22 +78,34 @@ export function installWorkspace({ shortcuts, onPane = () => {}, onModeChange = 
     if (event.key.toLowerCase() === 'r') shortcuts.reference();
     if (event.key === 'Escape') shortcuts.clear();
   });
-  return { showPane, showMode, get pane() { return pane; }, get mode() { return mode; } };
+  return {
+    showPane,
+    showMode,
+    get pane() { return pane; },
+    get mode() { return mode; },
+    get hasSavedMode() { return hasSavedMode; },
+  };
 }
 
 /** Read the selected initializer and local solver controls without coupling them. */
-export function solverOptions() {
+export function solverOptions(mode = document.body?.dataset.workspaceMode ?? 'analysis') {
   const get = id => document.getElementById(id);
-  const base = { profile: get('profile').value };
-  if (get('gpu-reference-preparation')?.checked) base.referencePreparation = 'gpu';
+  const base = { profile: 'portable' };
   if (get('display-rate') && get('preview-width')) base.supervision = {overlapRecording:!!get('overlap-pipeline')?.checked,
     displayRate:get('display-rate').value==='off'?0:Number(get('display-rate').value),
     previewEnabled:get('display-rate').value!=='off',previewMaxWidth:Number(get('preview-width').value)};
+  if (mode === 'live') {
+    return { ...base, initialization: 'temporal', temporalPrediction: 'velocity',
+      temporalFineCorrection: true, divergencePatience: 3 };
+  }
+  if (mode !== 'analysis') throw new Error("Workspace mode must be 'live' or 'analysis'");
+  if (get('gpu-reference-preparation')?.checked) base.referencePreparation = 'gpu';
   const fourier = !!get('fourier-start')?.checked;
   const globalAffine = !!get('global-affine-start')?.checked;
   if (fourier && globalAffine) throw new Error('Choose either Fourier or global affine initialization');
   if (fourier) Object.assign(base,{initialization:'fourier',temporalPrediction:'none',temporalFineCorrection:false,divergencePatience:null});
   if (globalAffine) Object.assign(base,{initialization:'global-affine',globalAffineLevels:Number(get('global-affine-levels')?.value??5),temporalPrediction:'none',temporalFineCorrection:false,divergencePatience:null});
+  if (fourier || globalAffine || get('custom-solver').checked || base.referencePreparation) base.profile = 'custom';
   if (!get('custom-solver').checked) return base;
   const size = Number(get('subset-size').value), stride = Number(get('subset-stride').value);
   const levels = Number(get('pyramid-levels').value), coarse = Number(get('coarse-iterations').value), fine = Number(get('fine-iterations').value);

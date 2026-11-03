@@ -14,6 +14,12 @@ supervisor for NumPy acquisition and complete NumPy result fields. See
 Prepare, calculate, then replay
 -------------------------------
 
+The header switches between **Live** and **Analysis** without resetting the
+shared session. On a first visit with no saved workspace choice, Live is
+selected when the browser enumerates a camera; otherwise Analysis opens. If a
+source or calculation remains active while you review fields in Analysis, the
+header keeps an activity badge and a **Stop** control visible.
+
 1. **Input / Mask:** open the source, choose a reference and define the ROI.
    The input slider and previous/next image buttons show image previews; they
    do not request target correlation. Reference preparation builds static
@@ -138,7 +144,7 @@ Use a camera
    A disconnected/ended camera changes the calculation action into **Restart camera**, preserving
    the last completed field for export. Restart captures a new reference; reapply
    the mask. This recovery does not manufacture missing measurements.
-   A profile, solver, mask or comparison change only updates the pending setup.
+   A solver, mask or comparison change only updates the pending setup.
    **Start calculation** prepares the staged image, applied mask and selected
    settings together. Loading images, editing/applying a mask and changing solver
    controls do not build a GPU reference. After reference, mask or comparison
@@ -794,20 +800,27 @@ This is not a CPU implementation of IC-GN inside the browser.
 Profiles and device limits
 --------------------------
 
-``portable`` and ``qualified-latency`` use the portable 16-lane solver,
-B-spline, affine 16/16 subsets, two fixed levels, one slot and explicit median
-smoothing. The latter name identifies the native-qualified latency
-configuration: raw-history velocity prediction, fine correction and finest-only
-stagnation stopping (3/4). It does not certify a phone's precision or FPS.
-Portable use starts at lower resolution. Core API defaults remain the native
-FullPyramid defaults; the application explicitly selects this latency profile.
+The **Live** workspace always uses the fixed two-level affine B-spline latency
+preset: 16 × 16 windows, stride 16, one processing slot, temporal velocity
+initialization, fine correction and the existing median spatial policy. Its
+display rate and preview width are separate presentation controls. Fourier,
+global-affine initialization, custom solver parameters and the six-level
+large-shift preset are available only in **Analysis**, where they can be used
+for decoded files without imposing per-frame CPU initialization on a stream.
+
+Analysis starts with the same portable solver preset and can opt into custom
+solver settings. The old **Profile** selector was removed because its choices
+fed the same solver configuration. Export metadata labels the preset as
+``portable`` and custom settings or initializers as ``custom``; this label
+does not select a device-specific kernel or guarantee a particular FPS. Core API
+defaults remain independent of these browser workspaces.
 
 On startup an on-device zero-motion microbenchmark tries the permitted
-resolutions. Its short measurements guide the recommendation; they do not
-replace the changing-trajectory qualification or a long thermal run. Minimal
-single-level processing stays disabled because it has not passed the required
-trajectory gates. Adaptive pyramids and cubic are not offered as qualified
-profiles.
+resolutions. Its short measurements guide the resolution recommendation; they
+do not replace the changing-trajectory qualification or a long thermal run.
+Minimal single-level processing stays disabled because it has not passed the
+required trajectory gates. Custom one-level and cubic configurations remain
+experimental.
 
 An adapter can satisfy the binding limits and still lack memory for UHD.
 Choose a lower resolution after allocation/device-loss errors. Missing WebGPU

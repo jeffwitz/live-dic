@@ -74,7 +74,7 @@ export function createSession(send) {
     supervision = selectedSupervision; supervisionConfigured = requestedSupervision !== undefined;
     lastDrawnAt = -Infinity; lastPresentation = null; lastResultId = null; lastWorkerArrivalEpochMs = null;
     presentationStats = {draws:0,bitmaps:0,drawWallMs:0,bitmapWallMs:0};
-    if (!['portable', 'qualified-latency'].includes(profileName)) throw new Error('Unsupported application profile');
+    if (!['portable', 'custom', 'qualified-latency'].includes(profileName)) throw new Error('Unsupported application profile');
     engine = await DICEngine.create({ ...LATENCY_OPTIONS, width, height, ...engineOptions, readback: 'none', pipelineDepth: 1 });
     engine.device.lost.then((info) => { if (info.reason !== 'destroyed') send({ type: 'error', message: `GPU device lost: ${info.message}` }); });
     engine.device.addEventListener('uncapturederror', (event) => send({ type: 'error', message: `WebGPU: ${event.error.message}` }));
