@@ -1,4 +1,5 @@
 import { presentationSize } from '../ui/supervision.js';
+import { resizeAndConfigureCanvas } from './canvas-context.js';
 
 export const VECTOR_COLOURS = [[21, 57, 99], [31, 132, 138], [241, 206, 95]];
 
@@ -46,7 +47,9 @@ export class LiveVectorRenderer {
     this.context = canvas.getContext('webgpu');
     if (!this.context) throw new Error('This canvas cannot present WebGPU');
     const format = navigator.gpu.getPreferredCanvasFormat();
+    this.format = format;
     this.context.configure({ device, format, alphaMode: 'opaque' });
+    this.configuredCanvasSize = { width: canvas.width, height: canvas.height };
     this.config = device.createBuffer({ size: 64, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
     this.backgroundGroups = new WeakMap(); this.vectorGroups = new WeakMap(); this.legend = null;
     const image = device.createShaderModule({ label: 'Live image without field sampling', code: `
@@ -130,8 +133,15 @@ export class LiveVectorRenderer {
     if (!Number.isFinite(opacity) || opacity < 0 || opacity > 1) throw new Error('Vector opacity must be 0..1');
     const appearance = vectorAppearance(result, { scale, arrowStep, arrowGain, previewMaxWidth });
     const { viewWidth, viewHeight, maximumPx, gain } = appearance;
-    if (this.canvas.width !== viewWidth) this.canvas.width = viewWidth;
-    if (this.canvas.height !== viewHeight) this.canvas.height = viewHeight;
+    resizeAndConfigureCanvas(
+      this.canvas,
+      this.context,
+      this.device,
+      this.format,
+      viewWidth,
+      viewHeight,
+      this.configuredCanvasSize,
+    );
     const texture = imageTexture ?? engine.imageTexture;
     const bytes = new ArrayBuffer(64), u = new Uint32Array(bytes), f = new Float32Array(bytes);
     u.set([result.width,result.height,...result.grid,result.config.motionModel==='quadratic'?16:8,

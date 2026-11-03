@@ -11,6 +11,33 @@ APP = Path(__file__).resolve().parents[2] / "web-app"
 
 @unittest.skipUnless(shutil.which("node"), "Node is needed for presentation contracts")
 class LiveVectorTests(unittest.TestCase):
+    def test_canvas_resize_reconfigures_webgpu_before_texture_acquisition(self):
+        script = f"""
+          import {{resizeAndConfigureCanvas}} from {json.dumps((APP / "render/canvas-context.js").as_uri())};
+          let configured=false,configureCalls=0;
+          const canvas={{_width:300,_height:150}};
+          Object.defineProperties(canvas,{{
+            width:{{get(){{return this._width;}},set(value){{this._width=value;configured=false;}}}},
+            height:{{get(){{return this._height;}},set(value){{this._height=value;configured=false;}}}},
+          }});
+          const context={{configure(){{configured=true;configureCalls++;}},getCurrentTexture(){{
+            if(!configured)throw new Error('Canvas not configured');return {{}};
+          }}}};
+          const device={{}},size={{width:canvas.width,height:canvas.height}};
+          context.configure();
+          resizeAndConfigureCanvas(canvas,context,device,'bgra8unorm',640,480,size);
+          context.getCurrentTexture();
+          const firstCalls=configureCalls;
+          resizeAndConfigureCanvas(canvas,context,device,'bgra8unorm',640,480,size);
+          const stableCalls=configureCalls;
+          canvas.width=200;
+          resizeAndConfigureCanvas(canvas,context,device,'bgra8unorm',640,480,size);
+          context.getCurrentTexture();
+          console.log(JSON.stringify({{firstCalls,stableCalls,finalCalls:configureCalls,configured}}));
+        """
+        value = self.node(script)
+        self.assertEqual(value, {"firstCalls": 2, "stableCalls": 2, "finalCalls": 3, "configured": True})
+
     def test_norm_scale_and_preview_do_not_change_field_geometry(self):
         script = f"""
           import {{vectorAppearance,vectorColour}} from {json.dumps((APP / "render/live-vectors.js").as_uri())};

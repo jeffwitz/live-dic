@@ -1,4 +1,5 @@
 import { presentationSize } from '../ui/supervision.js';
+import { resizeAndConfigureCanvas } from './canvas-context.js';
 /** Plane-strain equivalent strain, matching the archived plate convention. */
 export const equivalentStrain = (exx, eyy, exy) => 2 / 3 * Math.sqrt(Math.max(0, exx * exx - exx * eyy + eyy * eyy + 3 * exy * exy));
 
@@ -11,7 +12,9 @@ export class FieldRenderer {
     this.context = canvas.getContext('webgpu');
     if (!this.context) throw new Error('This canvas cannot present WebGPU');
     const format = navigator.gpu.getPreferredCanvasFormat();
+    this.format = format;
     this.context.configure({ device, format, alphaMode: 'opaque' });
+    this.configuredCanvasSize = { width: canvas.width, height: canvas.height };
     this.config = device.createBuffer({ size: 80, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
     const module = device.createShaderModule({ code: `
       struct Field { values: array<f32> }
@@ -108,8 +111,15 @@ export class FieldRenderer {
     if (!Number.isInteger(arrowStep) || arrowStep < 1 || !Number.isFinite(arrowGain) || arrowGain < 0) throw new Error('Invalid arrow spacing or magnification');
     const width = result.width, height = result.height;
     const [viewWidth, viewHeight] = presentationSize(width, height, previewMaxWidth);
-    if (this.canvas.width !== viewWidth) this.canvas.width = viewWidth;
-    if (this.canvas.height !== viewHeight) this.canvas.height = viewHeight;
+    resizeAndConfigureCanvas(
+      this.canvas,
+      this.context,
+      this.device,
+      this.format,
+      viewWidth,
+      viewHeight,
+      this.configuredCanvasSize,
+    );
     const max = scale ?? (mode === 7 ? (result.maxAbs?.[3] ?? 1) * Math.sqrt(8 / 3) : result.maxAbs?.[mode < 3 ? mode : 3]) ?? 1;
     const bytes = new ArrayBuffer(80), u = new Uint32Array(bytes), f = new Float32Array(bytes);
     const texture = imageTexture ?? engine.imageTexture;

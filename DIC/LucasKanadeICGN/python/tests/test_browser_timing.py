@@ -99,6 +99,9 @@ class BrowserTimingTests(unittest.TestCase):
             for name in ("session.js", "plate-truth.js", "supervision.js"):
                 shutil.copyfile(PROJECT / "web-app/ui" / name, root / "ui" / name)
             shutil.copyfile(
+                PROJECT / "web-app/render/canvas-context.js", root / "render/canvas-context.js"
+            )
+            shutil.copyfile(
                 PROJECT / "web-app/render/live-vectors.js", root / "render/live-vectors.js"
             )
             script = f"""
