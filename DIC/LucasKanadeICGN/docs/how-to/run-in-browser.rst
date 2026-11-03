@@ -5,9 +5,11 @@ For a guided first exercise, start with :doc:`../tutorials/browser-experiment`.
 
 The browser companion accepts a camera, local video, local image sequence or an analytic demonstration and keeps
 its frame processing on the device. It uses the same portable WGSL solver as
-native Python. Pierre Margerit's foundational GPU work made this project
-possible. Python remains the recommended supervisor for NumPy acquisition and
-complete NumPy result fields.
+native Python. Earlier GPU-DIC and Three.js/WebGPU prototypes by Pierre Margerit
+informed the methodological and browser-GPU exploration; the maintained solver
+is a separate live-dic implementation. Python remains the recommended
+supervisor for NumPy acquisition and complete NumPy result fields. See
+:doc:`../explanation/acknowledgements` for the scope of this acknowledgment.
 
 Prepare, calculate, then replay
 -------------------------------

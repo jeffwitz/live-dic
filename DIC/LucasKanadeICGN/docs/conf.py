@@ -12,7 +12,7 @@ PYTHON_SOURCE = PROJECT_ROOT / "python" / "src"
 sys.path.insert(0, str(PYTHON_SOURCE))
 
 project = "live-dic"
-author = "live-dic contributors; foundational work by Pierre Margerit"
+author = "live-dic contributors"
 copyright = "2026, Real-Time DIC contributors"
 project_metadata = tomllib.loads(
     (PROJECT_ROOT / "python/pyproject.toml").read_text(encoding="utf-8")

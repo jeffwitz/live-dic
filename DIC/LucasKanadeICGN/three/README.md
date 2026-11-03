@@ -1,10 +1,11 @@
 # Three.js/TSL browser compatibility backend
 
-> **Built on Pierre Margerit's foundational work.** His original
-> [`tests_gpuio`](https://github.com/MargeritPierre/tests_gpuio) project
-> established the original DIC prototype. His later
-> [`Strobox`](https://github.com/MargeritPierre/Strobox) repository contains
-> a Three.js/WebGPU camera prototype that informed this browser path.
+> **Methodology acknowledgment — [Pierre Margerit](https://github.com/MargeritPierre).**
+> His earlier [GPU-DIC prototype](https://github.com/MargeritPierre/tests_gpuio)
+> and [Three.js/WebGPU camera prototype](https://github.com/MargeritPierre/Strobox)
+> informed the methodological and browser-GPU exploration. The Three.js/TSL
+> solver maintained here is a separate live-dic implementation, not a copy of
+> Strobox source code.
 
 This directory is a checkout entry point for live-dic's browser backend.
 The canonical implementation is packaged at

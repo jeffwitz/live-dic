@@ -2,8 +2,9 @@
 
 These are actual standalone-workbench PNG downloads from the original checked-in
 UHD plate-with-hole pair. The interface keeps its computed fields and geometry;
-this change adds self-contained presentation legends and captions only. Pierre
-Margerit's numerical foundation remains unchanged.
+this change adds self-contained presentation legends and captions only. Earlier
+GPU-DIC and Three.js/WebGPU prototype work by Pierre Margerit informed the
+methodology; the maintained solver is a separate implementation.
 
 `hardware.json` and `software.json` retain the complete workbench qualification,
 build identifiers and source fingerprints, archive hashes, independent NumPy
@@ -23,7 +24,7 @@ replay. Each additionally exports strain, displacement and categorical status:
 
 - Decode the actual PNG and compare every full-resolution field/annotation
   pixel with an independent pre-export canvas composition (SHA-256 equality).
-- Check all footer text bounds, reference geometry and foundational credit.
+- Check all footer text bounds, reference geometry and captured credit text.
 - Check the sequential palette endpoints, strain units, all six exact status
   colours and the same six colours in the on-screen status legend.
 - Preserve fields, statuses and iteration arrays; analytical operators still
@@ -35,3 +36,7 @@ accuracy of a measured displacement. These correctness runs are not FPS
 campaigns. They qualify Chromium on the local Intel hardware and SwiftShader;
 no physical camera, phone, Safari or Firefox qualification is inferred. PNG is a
 presentation artifact; retain NPZ/projects for complete data and provenance.
+The JSON files preserve the exact historical footer text and its PNG hashes,
+including the credit wording present when these exports were captured. That
+embedded text is retained as campaign evidence and is not the current
+methodology acknowledgment; see the maintained project's acknowledgments.

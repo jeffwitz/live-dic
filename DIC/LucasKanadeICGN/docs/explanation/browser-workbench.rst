@@ -3,8 +3,10 @@ Browser workbench design and scientific contract
 
 The browser companion complements the native Python supervisor. Its interface
 is organized around a short path: choose input, define the reference and
-ROI, run correlation, then inspect and process the resulting fields. Pierre
-Margerit's foundational numerical work remains the basis of the engine.
+ROI, run correlation, then inspect and process the resulting fields. Earlier
+GPU-DIC and Three.js/WebGPU prototypes by Pierre Margerit informed the
+methodological and browser-GPU exploration. The maintained solver is a separate
+live-dic implementation; see :doc:`acknowledgements` for details.
 
 Two workspaces
 --------------

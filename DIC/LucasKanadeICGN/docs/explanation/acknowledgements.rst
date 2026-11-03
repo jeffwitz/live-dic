@@ -1,30 +1,28 @@
 Acknowledgements and provenance
 ===============================
 
-Pierre Margerit's foundational contribution
---------------------------------------------
+Methodology acknowledgement — Pierre Margerit
+----------------------------------------------
 
-Pierre Margerit's `tests_gpuio project
-<https://github.com/MargeritPierre/tests_gpuio>`_ established the original DIC
-prototype, which used GPU-IO and WebGL. That implementation has since been
-removed from this repository. His later `Strobox project
-<https://github.com/MargeritPierre/Strobox>`_ contains a Three.js/WebGPU camera
-prototype that informed the browser path developed here.
-
-The affine IC-GN solver, headless Python interface, benchmarks, and documentation
-in this repository continue that foundational work. Presentations and reuse
-should credit Pierre and distinguish both project stages.
+Earlier GPU-based DIC experimentation in Pierre Margerit's `tests_gpuio project
+<https://github.com/MargeritPierre/tests_gpuio>`_ and his later `Strobox project
+<https://github.com/MargeritPierre/Strobox>`_ informed the methodological and
+browser-GPU exploration in live-dic. Strobox documents a Three.js/WebGPU camera
+prototype. This acknowledgment describes methodological influence; it does not
+claim that Pierre authored the maintained live-dic solver or that the solver
+reuses Strobox source code. The active Three.js/TSL solver was implemented as a
+separate live-dic backend. Third-party software licenses and notices are listed
+separately in the project-root ``THIRD_PARTY.md`` file.
 
 Implementation provenance
 -------------------------
 
-The affine inverse-compositional formulation is ported from the associated SYCL
-DIC prototype and was first integrated into Pierre's GPU-IO implementation.
-The current solver no longer includes GPU-IO. His later Three.js/WebGPU
-experiments in Strobox informed the browser execution direction. The supplied
-validation images are direct luma-frame extractions from the recorded raw YUV test sequence; their
-source path, format, hashes, and analytical motion are stored in
-``assets/source.json``.
+The maintained solver and host adapters are developed in this repository. The
+affine inverse-compositional formulation follows the associated SYCL DIC
+prototype and the established IC-GN method; the old GPU-IO runtime has been
+removed. The supplied validation images are direct luma-frame extractions from
+the recorded raw YUV test sequence; their source path, format, hashes, and
+analytical motion are stored in ``assets/source.json``.
 
 The twelve-parameter second-order warp follows the established quadratic DIC
 formulation described by Bai et al., "A novel 2nd-order shape function based

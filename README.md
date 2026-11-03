@@ -1,11 +1,11 @@
 # live-dic — Python-supervised DIC toward 4K60
 
-> **Foundational work by [Pierre Margerit](https://github.com/MargeritPierre).**
-> His [`tests_gpuio`](https://github.com/MargeritPierre/tests_gpuio) project
-> established the original DIC prototype. His later
-> [`Strobox`](https://github.com/MargeritPierre/Strobox) repository contains a
-> Three.js/WebGPU camera prototype that informed this browser path. live-dic
-> continues this work with a substantially expanded numerical engine.
+> **Methodology acknowledgment — [Pierre Margerit](https://github.com/MargeritPierre).**
+> His earlier [GPU-DIC prototype](https://github.com/MargeritPierre/tests_gpuio)
+> and [Three.js/WebGPU camera prototype](https://github.com/MargeritPierre/Strobox)
+> informed the methodological and browser-GPU exploration in live-dic. The
+> maintained live-dic solvers are separate implementations; this acknowledgment
+> does not imply reuse of Strobox source code or authorship of the current solver.
 
 [![Python tests](https://github.com/jeffwitz/live-dic/actions/workflows/python-tests.yml/badge.svg)](https://github.com/jeffwitz/live-dic/actions/workflows/python-tests.yml)
 [![Documentation](https://github.com/jeffwitz/live-dic/actions/workflows/docs.yml/badge.svg)](https://github.com/jeffwitz/live-dic/actions/workflows/docs.yml)

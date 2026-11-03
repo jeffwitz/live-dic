@@ -1,10 +1,11 @@
 # live-dic Python package
 
-> **Built on Pierre Margerit's foundational work.** His
-> [`tests_gpuio`](https://github.com/MargeritPierre/tests_gpuio) project
-> established the original GPU-IO/WebGL DIC prototype, and his later
-> [`Strobox`](https://github.com/MargeritPierre/Strobox) repository contains
-> the Three.js/WebGPU camera prototype that informed this browser path.
+> **Methodology acknowledgment — [Pierre Margerit](https://github.com/MargeritPierre).**
+> His earlier [GPU-DIC prototype](https://github.com/MargeritPierre/tests_gpuio)
+> and [Three.js/WebGPU camera prototype](https://github.com/MargeritPierre/Strobox)
+> informed the methodological and browser-GPU exploration in live-dic. The
+> maintained live-dic solvers are separate implementations; this acknowledgment
+> does not imply reuse of Strobox source code or authorship of the current solver.
 
 live-dic provides Python-supervised digital image correlation on NumPy images.
 The recommended engine, `ICGNWGPUFullPyramid`, uses **native wgpu-py**, keeps

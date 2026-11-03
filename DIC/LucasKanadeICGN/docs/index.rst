@@ -1,13 +1,15 @@
 live-dic: real-time DIC from Python
 ===================================
 
-.. important:: Foundational work by Pierre Margerit
+.. important:: Methodology acknowledgment — Pierre Margerit
 
-   `tests_gpuio <https://github.com/MargeritPierre/tests_gpuio>`_ established
-   Pierre's original GPU-IO/WebGL DIC prototype. His later
-   `Strobox <https://github.com/MargeritPierre/Strobox>`_ repository contains
-   a Three.js/WebGPU camera prototype that informed this browser path. live-dic
-   continues this work with a substantially expanded numerical engine.
+   Earlier GPU-DIC experimentation in `tests_gpuio
+   <https://github.com/MargeritPierre/tests_gpuio>`_ and the Three.js/WebGPU
+   camera prototype in `Strobox <https://github.com/MargeritPierre/Strobox>`_
+   informed the methodological and browser-GPU exploration in live-dic. The
+   maintained solver is a separate implementation; this acknowledgment does not
+   imply reuse of Strobox source code or authorship of the current solver. See
+   :doc:`explanation/acknowledgements` for implementation and license provenance.
 
 live-dic is a numerical engine for Python measurement applications. A
 persistent Python supervisor provides NumPy images, manages references and

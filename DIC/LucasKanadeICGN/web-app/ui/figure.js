@@ -26,7 +26,7 @@ export function resultFigure({ field, annotations, title, label, legend, details
     { size: 28, rows: wrap(title, 28) },
     { size: 18, rows: wrap(label, 18) },
     ...details.map(text => ({ size: 18, rows: wrap(text, 18) })),
-    { size: 16, rows: wrap('Reference pixel indices: x right, y down. Presentation only; retain the NPZ/project for values and provenance. Foundational work by Pierre Margerit.', 16) },
+    { size: 16, rows: wrap('Reference pixel indices: x right, y down. Presentation only; retain the NPZ/project for values and provenance. Methodology informed by prior GPU-DIC and Three.js/WebGPU prototypes by Pierre Margerit.', 16) },
   ];
   const legendHeight = legend.categories ? 120 : 108;
   const textHeight = sections.reduce((height, section) => height + section.rows.length * (section.size + 9) + 12, 0);

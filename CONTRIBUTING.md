@@ -2,7 +2,9 @@
 
 The maintained Python project is under `DIC/LucasKanadeICGN/`. Keep the
 distribution `lucas-kanade-icgn-webgl`, import `lucas_kanade_icgn` and CLI
-`icgn-webgl` stable. Preserve Pierre Margerit's foundational attribution.
+`icgn-webgl` stable. Preserve a precise methodological acknowledgment of
+Pierre Margerit's prior GPU-DIC and Three.js/WebGPU prototype work without
+implying that the current solver is his code or reuses Strobox source.
 
 ## Environment
 

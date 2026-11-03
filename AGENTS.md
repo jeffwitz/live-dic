@@ -5,7 +5,11 @@ Read its [AGENTS.md](DIC/LucasKanadeICGN/AGENTS.md) before changing it.
 [CONTRIBUTING.md](CONTRIBUTING.md) contains the development and validation commands.
 
 - Write code, documentation and commit messages in English.
-- Preserve Pierre Margerit's prominent foundational credit on landing pages.
+- Preserve a prominent, precise methodological acknowledgment of Pierre
+  Margerit's prior GPU-DIC and Three.js/WebGPU prototype work on landing pages.
+  Do not imply that the current solver is his code or that live-dic reuses
+  Strobox source unless that has been verified. Keep software-license notices
+  separate from methodological acknowledgments.
 - Keep the repository focused on the maintained live-dic Python engine and
   browser workbench. Do not restore retired standalone experiments unless
   explicitly requested.

@@ -1,11 +1,11 @@
 # live-dic numerical engine
 
-> **Foundational work by [Pierre Margerit](https://github.com/MargeritPierre).**
-> His [`tests_gpuio`](https://github.com/MargeritPierre/tests_gpuio) project
-> established the original DIC prototype. His later
-> [`Strobox`](https://github.com/MargeritPierre/Strobox) repository contains
-> the Three.js/WebGPU camera prototype that informed this browser path.
-> live-dic continues that work with a substantially expanded numerical engine.
+> **Methodology acknowledgment — [Pierre Margerit](https://github.com/MargeritPierre).**
+> His earlier [GPU-DIC prototype](https://github.com/MargeritPierre/tests_gpuio)
+> and [Three.js/WebGPU camera prototype](https://github.com/MargeritPierre/Strobox)
+> informed the methodological and browser-GPU exploration in live-dic. The
+> maintained live-dic solvers are separate implementations; this acknowledgment
+> does not imply reuse of Strobox source code or authorship of the current solver.
 
 This directory contains live-dic's Python-supervised digital image correlation
 engine, its browser compatibility runtimes, analytic image fixtures and

@@ -1,11 +1,15 @@
-# Attribution and scope
+# Methodology acknowledgement and scope
 
-live-dic builds on Pierre Margerit's foundational work. His
-`tests_gpuio` project established the original DIC prototype:
+Earlier GPU-based DIC experimentation by Pierre Margerit in his
+`tests_gpuio` project informed the methodological exploration in live-dic:
 https://github.com/MargeritPierre/tests_gpuio
 His later `Strobox` repository contains a Three.js/WebGPU camera prototype that
-informed the browser execution path:
+informed the browser-GPU exploration:
 https://github.com/MargeritPierre/Strobox
+
+This is an acknowledgment of methodological influence. The maintained live-dic
+solver is a separate implementation; this wording does not claim that Pierre
+authored the current solver or that live-dic reuses Strobox source code.
 
 This standalone application uses the live-dic portable WGSL solver. It does
 not use GPU-IO, Three.js or Tweakpane; pinned browser codecs and their licences

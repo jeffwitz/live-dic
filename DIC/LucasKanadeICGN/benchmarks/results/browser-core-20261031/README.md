@@ -3,7 +3,11 @@
 This campaign accompanies the extraction of the dependency-free `web/core`
 engine, its temporal/full-ROI port and the standalone worker PWA. The native
 layout change is qualified separately in `../binding-budget-20261031/`.
-Pierre Margerit's foundational work remains the starting point of this project.
+Earlier GPU-DIC experimentation and the Three.js/WebGPU camera prototype by
+Pierre Margerit informed the methodology and browser-GPU exploration. The
+maintained live-dic solver is a separate implementation; this is a
+methodological acknowledgment, not a claim of solver authorship or copied
+source.
 
 ## Boundaries and admission criteria
 

@@ -2,10 +2,13 @@ Your first visual DIC experiment
 ================================
 
 This tutorial takes you from a checked-in UHD image pair to a saved displacement
-and strain analysis. You need no camera and no GPU-programming knowledge. The
-browser companion uses the numerical foundation established by
-`Pierre Margerit <https://github.com/MargeritPierre>`_; native Python remains the
-recommended supervisor for scientific NumPy measurement pipelines.
+and strain analysis. You need no camera and no GPU-programming knowledge.
+Earlier GPU-DIC and Three.js/WebGPU prototypes by
+`Pierre Margerit <https://github.com/MargeritPierre>`_ informed the methodology
+and browser-GPU exploration. This tutorial uses the maintained live-dic solver,
+a separate implementation. Native Python remains the recommended supervisor
+for scientific NumPy measurement pipelines; see
+:doc:`../explanation/acknowledgements` for provenance.
 
 The exercise uses the original 3840 x 2160 plate-with-hole images. It does not
 resize, tile or regenerate them. This is an observation window in an infinite
