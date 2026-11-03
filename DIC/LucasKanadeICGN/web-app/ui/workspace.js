@@ -76,31 +76,7 @@ export function installWorkspace({ shortcuts, onPane = () => {}, onModeChange = 
   return { showPane, showMode, get pane() { return pane; }, get mode() { return mode; } };
 }
 
-/** Keep initialization choices exclusive without changing the selected local model. */
-export function synchronizeInitializationControls(changedId) {
-  const get = id => document.getElementById(id);
-  const fourier = get('fourier-start');
-  const globalAffine = get('global-affine-start');
-  const temporal = get('temporal-start');
-
-  if (changedId === 'fourier-start' && fourier.checked) {
-    globalAffine.checked = false;
-    temporal.checked = false;
-  }
-  if (changedId === 'global-affine-start' && globalAffine.checked) {
-    fourier.checked = false;
-    temporal.checked = false;
-  }
-  if (changedId === 'temporal-start' && temporal.checked) {
-    fourier.checked = false;
-    globalAffine.checked = false;
-  }
-
-  get('motion-model').disabled = !get('custom-solver').checked;
-  temporal.disabled = fourier.checked || globalAffine.checked;
-  get('global-affine-levels').disabled = !globalAffine.checked;
-}
-
+/** Read the selected initializer and local solver controls without coupling them. */
 export function solverOptions() {
   const get = id => document.getElementById(id);
   const base = { profile: get('profile').value };

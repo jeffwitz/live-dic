@@ -290,6 +290,23 @@ Portable OS CI and the prepared browser-software CI job do not certify those
 untested devices. Camera locks, optics, rolling shutter and hand-held motion
 remain separate metrology questions.
 
+Collecting a device report
+--------------------------
+
+On a device that has not been qualified, open **Device, acquisition and timing
+details** and choose **Download device compatibility report**. The JSON records
+the app build, browser identifiers available to the page, secure-context state,
+host concurrency and memory hints, and the WebGPU adapter capabilities and
+limits reported by the application. Fields unavailable in a browser are left
+null. The report is created locally and is never uploaded; it excludes images,
+masks, acquisition paths and calculated fields.
+
+This report makes it easier to attach consistent environment information to a
+manual test. It is not itself a compatibility or performance qualification.
+Qualification still requires running the intended image/demo or camera scenario
+on that device and recording correctness, throughput, result age and any
+browser/adapter errors.
+
 Editable mask and scientific display
 ------------------------------------
 

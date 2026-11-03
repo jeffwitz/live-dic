@@ -79,7 +79,7 @@ In the workbench, configure the local solve and initializer separately:
 2. Enable **Use custom settings** and choose **Motion model: Translation** for
    translation-only local solves. Choose **Affine** only when local subset
    deformation should also be estimated.
-3. Enable **Global affine initialization**, choose **Global affine fit scales**
+3. Select **Global affine initialization**, choose **Global affine fit scales**
    (5–8; default: 5), and press **Start calculation**.
 
 Enabling global affine initialization does not change the selected local model

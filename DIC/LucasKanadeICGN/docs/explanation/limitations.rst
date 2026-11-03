@@ -447,6 +447,30 @@ local affine/translation correlation. It requires overlapping texture in a
 nonrigid motion. Score/overlap/correlation rejection is heuristic. CPU FFT and
 browser target-window readback add latency; this mode has no 4K60 claim.
 Quadratic, velocity prediction and temporal fine correction are unsupported
-combinations. Four or six local pyramid levels alone do not guarantee capture
-of large shifts; five- and six-level schedules are experimental and have no
-general performance qualification. See :doc:`../how-to/register-large-shifts`.
+combinations. Four or more local pyramid levels alone do not guarantee capture
+of large shifts; extended schedules remain experimental and have no general
+performance qualification. Available local pyramid depths differ by host:
+
+.. list-table:: Current large-shift capabilities by execution path
+   :header-rows: 1
+
+   * - Execution path
+     - Local pyramid depth
+     - Global-affine initializer
+   * - Shared browser core (PWA and Python browser shim)
+     - 1–6 levels
+     - Available for decoded image/video pairs
+   * - Native ``ICGNWGPUFullPyramid``
+     - 1–4 levels
+     - Not implemented
+   * - Native ``ICGNWGPU`` selective-recovery engine
+     - 1–3 levels
+     - Not implemented
+   * - Three.js and GPU-IO browser engines
+     - Backend-specific; no global-affine initializer
+     - Not implemented
+
+These are implementation limits, not a claim of numerical or performance
+parity. The global-affine initializer is browser-core-only and is not intended
+for camera-rate streaming. See :doc:`../how-to/register-large-shifts` for its
+scope and current qualification.

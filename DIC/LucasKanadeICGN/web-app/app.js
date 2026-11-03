@@ -4,10 +4,11 @@ import { vectorColour } from './render/live-vectors.js';
 import { parameterOrder, parameterUnits } from './ui/postprocess.js';
 import { decodeMaskImage, maskPng, maskThreshold } from './ui/mask-image.js';
 import { installWorkbench } from './ui/workbench.js';
-import { installWorkspace, solverOptions, solverPreparationKey, synchronizeInitializationControls } from './ui/workspace.js';
+import { installWorkspace, solverOptions, solverPreparationKey } from './ui/workspace.js';
 import { installRoi } from './ui/roi.js';
 import { bounds, platePreset } from './ui/roi-geometry.js';
 import { imageFiles, fileInfo, decodeImage, waitForMedia, seekVideo } from './ui/local-media.js';
+import { createDeviceReport } from './ui/device-report.js';
 const $ = (id) => document.getElementById(id);
 const query = new URLSearchParams(location.search), smoke = query.has('smoke');
 let transport, stream, reader, manifest, source = null, paused = true, inFlight = 0, dropped = 0;
@@ -214,6 +215,7 @@ async function init() {
     capabilities = (await send('boot', { canvas, measure: !smoke, captureErrors: smoke })).capabilities;
   }
   details();
+  $('download-device-report').disabled = false;
   if (!capabilities.supported) {
     message(`WebGPU is unavailable for correlation. ${capabilities.reasons.join('. ')} You can still open saved NPZ fields or results projects for CPU post-processing.`, true);
     workspace.showPane('view');$('placeholder').textContent='Open a saved NPZ field or results project. New correlations require WebGPU.';
@@ -902,6 +904,11 @@ $('export').onclick = async () => {
   download('live-dic-metadata.json', JSON.stringify(metadata, null, 2), 'application/json');
 };
 $('resolution').onchange = () => { if (source === 'camera') sourceChange(startCamera); };
+$('download-device-report').onclick = () => {
+  const report = createDeviceReport({ capabilities, build: buildInfo });
+  const stamp = report.generatedAt.replaceAll(':', '-');
+  download(`live-dic-device-report-${stamp}.json`, JSON.stringify(report, null, 2), 'application/json');
+};
 $('profile').onchange = () => invalidatePreparedReference();
 window.addEventListener('pagehide', () => { workbench.destroy(); sourceAbort.abort(); clearPreviousCapture();clearPendingReference(); if (localVideoUrl) URL.revokeObjectURL(localVideoUrl); stream?.getTracks().forEach((t) => t.stop()); transport?.postMessage({ type: 'destroy' }); });
 window.addEventListener('error', (event) => { status.errors.push(event.message); message(event.message, true); });
@@ -920,7 +927,8 @@ $('large-shift-preset').onclick = () => {
 };
 for (const id of ['fourier-start','global-affine-start','global-affine-levels','overlap-pipeline','gpu-reference-preparation','custom-solver','motion-model','subset-size','subset-stride','interpolation','pyramid-levels','coarse-iterations','fine-iterations','outlier-policy','temporal-start']) $(id).onchange = () => {
   $('solver-settings').disabled = !$('custom-solver').checked;
-  synchronizeInitializationControls(id);
+  $('temporal-start').disabled = !$('custom-solver').checked;
+  $('global-affine-levels').disabled = !$('global-affine-start').checked;
   $('subset-stride').max = $('subset-size').value;
   if (Number($('subset-stride').value) > Number($('subset-size').value)) $('subset-stride').value = $('subset-size').value;
   invalidatePreparedReference();

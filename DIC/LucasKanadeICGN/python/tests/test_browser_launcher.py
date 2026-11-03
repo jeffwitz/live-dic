@@ -33,6 +33,7 @@ class BrowserLauncherTests(unittest.TestCase):
             self.assertTrue((site / ".nojekyll").is_file())
             self.assertIn("./", assets)
             self.assertIn("./app.js", assets)
+            self.assertIn("./ui/device-report.js", assets)
             self.assertIn("./shaders/icgn.wgsl", assets)
             self.assertIn("./demo/plate/reference.png", assets)
             for asset in assets:

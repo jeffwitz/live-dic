@@ -6,6 +6,7 @@ import json
 import shutil
 import subprocess
 import unittest
+from html.parser import HTMLParser
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -13,6 +14,29 @@ ROOT = Path(__file__).resolve().parents[2]
 
 @unittest.skipUnless(shutil.which("node"), "Node is needed for solver-control contracts")
 class SolverControlTests(unittest.TestCase):
+    def test_initialization_controls_are_one_radio_group(self):
+        class InputParser(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.inputs = []
+
+            def handle_starttag(self, tag, attrs):
+                if tag == "input":
+                    self.inputs.append(dict(attrs))
+
+        parser = InputParser()
+        parser.feed((ROOT / "web-app/index.html").read_text(encoding="utf-8"))
+        initialization = [item for item in parser.inputs if item.get("name") == "initialization"]
+        self.assertEqual(
+            {item.get("id") for item in initialization},
+            {"fourier-start", "global-affine-start", "temporal-start"},
+        )
+        self.assertTrue(all(item.get("type") == "radio" for item in initialization))
+        self.assertEqual(
+            [item["id"] for item in initialization if "checked" in item],
+            ["temporal-start"],
+        )
+
     def test_preview_controls_are_independent_of_recording_overlap(self):
         script = f"""
           import {{solverOptions}} from {json.dumps((ROOT / "web-app/ui/workspace.js").as_uri())};
@@ -70,17 +94,15 @@ class SolverControlTests(unittest.TestCase):
     def test_global_affine_initializer_keeps_translation_local_model(self):
         ui = ROOT / "web-app/ui/workspace.js"
         script = f"""
-          import {{solverOptions,synchronizeInitializationControls}} from {json.dumps(ui.as_uri())};
+          import {{solverOptions}} from {json.dumps(ui.as_uri())};
           const values={{profile:{{value:'portable'}},'custom-solver':{{checked:true}},
             'global-affine-start':{{checked:true}},'global-affine-levels':{{value:'6'}},
             'fourier-start':{{checked:false}},'subset-size':{{value:'16'}},'subset-stride':{{value:'16'}},
             'pyramid-levels':{{value:'2'}},'coarse-iterations':{{value:'8'}},'fine-iterations':{{value:'16'}},
-            'temporal-start':{{checked:true}},'motion-model':{{value:'translation',disabled:true}},
+            'temporal-start':{{checked:false}},'motion-model':{{value:'translation'}},
             interpolation:{{value:'bspline'}},'outlier-policy':{{value:'disabled'}},'median-filter-size':{{value:'3'}}}};
           globalThis.document={{getElementById:id=>values[id]??null}};
-          synchronizeInitializationControls('global-affine-start');
-          const selectedModel=values['motion-model'].value,modelDisabled=values['motion-model'].disabled;
-          console.log(JSON.stringify({{options:solverOptions(),selectedModel,modelDisabled}}));
+          console.log(JSON.stringify({{options:solverOptions(),selectedModel:values['motion-model'].value}}));
         """
         actual = json.loads(
             subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
@@ -90,7 +112,6 @@ class SolverControlTests(unittest.TestCase):
         self.assertEqual(actual["options"]["globalAffineLevels"], 6)
         self.assertEqual(actual["options"]["temporalPrediction"], "none")
         self.assertEqual(actual["selectedModel"], "translation")
-        self.assertFalse(actual["modelDisabled"])
 
     def test_preset_is_unchanged_and_custom_combinations_reach_the_core(self):
         ui = ROOT / "web-app/ui/workspace.js"

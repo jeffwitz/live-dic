@@ -543,12 +543,12 @@ one level uses the fine limit. These custom combinations do not inherit a
 qualified preset's precision/FPS claim. Translation has no direct strain field;
 use displacement-neighbourhood strain analysis in the results lab.
 
-The **Motion model** and initialization checkboxes control different stages.
+The **Motion model** and initialization radio options control different stages.
 For a translation-only local field with a global affine seed, enable **Use
-custom settings**, select **Translation**, then check **Global affine
+custom settings**, select **Translation**, then select **Global affine
 initialization**. This fits an affine transform to the loaded image pair and
 evaluates its displacement at each subset centre; the local solve still updates
-only the two translations. The checkbox does not reset the model selection or
+only the two translations. The radio option does not reset the model selection or
 disable its menu. The global-fit scale selector is also separate from the local
 pyramid-level selector. This cold initializer is intended for sparse loaded
 image pairs, not camera-rate processing. See

@@ -161,8 +161,8 @@ six curvature coefficients at zero; the local solve can then estimate
 curvature from each subset.
 
 In the browser workbench, enable **Use custom settings** and choose **Motion
-model: Translation** to request translation-only local solves. Then enable
-**Global affine initialization** in Solve. The initializer checkbox leaves
+model: Translation** to request translation-only local solves. Then select
+**Global affine initialization** in Solve. The initializer radio option leaves
 the selected local model unchanged and the model selector available. Its
 **Global affine fit scales** control is separate from the local pyramid-level
 control. See :doc:`../how-to/register-large-shifts` for the complete image-pair
