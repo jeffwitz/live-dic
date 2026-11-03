@@ -108,8 +108,10 @@ fn choose(@builtin(workgroup_id) group: vec3<u32>,
         let minimum = origin + p;
         let maximum = minimum + vec2<f32>(f32(config.size - 1u));
         if candidate.z == 0.0 || !all(abs(p) <= vec2<f32>(1e12))
-            || any(minimum < vec2<f32>(0.0))
-            || any(maximum >= vec2<f32>(f32(config.width - 1u), f32(config.height - 1u))) {
+            // Match the existing IC-GN image-support guard. An initial warp
+            // outside it is rejected before the first solver iteration.
+            || any(minimum < vec2<f32>(2.0))
+            || any(maximum > vec2<f32>(f32(config.width - 3u), f32(config.height - 3u))) {
             continue;
         }
         var s = vec4<f32>(0.0);
