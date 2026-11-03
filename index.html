@@ -3,54 +3,63 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta http-equiv="cache-control" content="no-cache">
-    <meta http-equiv="expires" content="0">
-    <meta http-equiv="pragma" content="no-cache">
-    <title>GPU-IO Tests</title>
-    <link rel="stylesheet" href="./common/github-markdown.css">
+    <meta name="description" content="Python-supervised real-time digital image correlation with WebGPU.">
+    <title>live-dic — Python-supervised DIC</title>
     <style>
-      .markdown-body {
-        box-sizing: border-box;
-        min-width: 200px;
-        max-width: 980px;
-        margin: 0 auto;
-        padding: 45px;
+      :root {
+        color-scheme: light;
+        font: 16px/1.6 system-ui, sans-serif;
+        color: #18302b;
+        background: #f3f7f5;
       }
 
-      @media (max-width: 767px) {
-        .markdown-body {
-          padding: 15px;
-        }
+      body {
+        box-sizing: border-box;
+        max-width: 920px;
+        margin: 0 auto;
+        padding: clamp(1.5rem, 5vw, 4rem);
       }
+
+      main {
+        padding: clamp(1.5rem, 5vw, 3rem);
+        border: 1px solid #d6e3de;
+        border-radius: 1rem;
+        background: white;
+        box-shadow: 0 1rem 3rem rgb(18 55 44 / 8%);
+      }
+
+      h1 { margin-top: 0; font-size: clamp(2rem, 6vw, 3.5rem); }
+      .credit { padding: 1rem; border-left: 4px solid #27966f; background: #eef8f3; }
+      nav { display: grid; gap: 1rem; margin-top: 2rem; }
+      a { color: #12684c; }
+      nav a { padding: 1rem; border: 1px solid #d6e3de; border-radius: .6rem; text-decoration: none; }
+      nav a:hover { background: #f3f9f6; }
+      nav strong { display: block; font-size: 1.1rem; }
     </style>
   </head>
   <body>
-    <article class="markdown-body">
-      <h1 id="gpu-io-tests">Tests for GPU-IO</h1>
-
-      <blockquote>
-        <p>
-          <strong>Foundational work by
-            <a href="https://github.com/MargeritPierre">Pierre Margerit</a>.</strong>
-          This fork and its real-time Python DIC work build directly on Pierre's
-          original <a href="https://github.com/MargeritPierre/tests_gpuio">tests_gpuio</a>
-          project, GPU-IO experiments, and WebGL groundwork.
-        </p>
-      </blockquote>
-
-      <h3 id="dic"><a href="./DIC/">DIC</a></h3>
-      <p>A real-time local DIC implementation that requires an available video feed.</p>
-
-      <h3 id="python-dic">
-        <a href="./DIC/LucasKanadeICGN/">Python real-time DIC backend</a>
-      </h3>
-      <p>Affine IC-GN with a headless Python API, benchmarks, and Sphinx documentation.</p>
-
-      <h3 id="wave"><a href="./Wave/">Wave Painting</a></h3>
-      <p>Wave propagation in heterogeneous material.</p>
-
-      <h3 id="jump-flooding"><a href="./JumpFlooding/">Jump Flooding</a></h3>
-      <p>Compute a Voronoi diagram through jump flooding.</p>
-    </article>
+    <main>
+      <h1>live-dic</h1>
+      <p>Python-supervised digital image correlation, built toward qualified 4K at 60 FPS.</p>
+      <p class="credit">
+        <strong>Foundational work by <a href="https://github.com/MargeritPierre">Pierre Margerit</a>.</strong>
+        live-dic continues his original <a href="https://github.com/MargeritPierre/tests_gpuio">tests_gpuio</a>
+        project, GPU-IO experiments and WebGL groundwork.
+      </p>
+      <nav aria-label="Project resources">
+        <a href="https://jeffwitz.github.io/live-dic/">
+          <strong>Open the browser workbench</strong>
+          Run the local WebGPU application from GitHub Pages.
+        </a>
+        <a href="https://github.com/jeffwitz/live-dic">
+          <strong>Project source and documentation</strong>
+          Installation, the Python API, benchmarks and development guidance.
+        </a>
+        <a href="https://github.com/jeffwitz/live-dic/blob/main/DIC/LucasKanadeICGN/python/README.md">
+          <strong>Python engine</strong>
+          Start with the maintained NumPy-to-field interface.
+        </a>
+      </nav>
+    </main>
   </body>
 </html>

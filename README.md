@@ -205,6 +205,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for tests, packaging, documentation and
 validation outside the checkout. The maintained source is under
 [`DIC/LucasKanadeICGN/python`](DIC/LucasKanadeICGN/python/); Sphinx/Diátaxis
 sources are under [`docs`](DIC/LucasKanadeICGN/docs/).
-The original GPU-IO demonstrations remain accessible from [index.html](index.html).
+The root [project page](index.html) links to the published workbench and the
+maintained Python engine.
 Third-party attributions are in
 [THIRD_PARTY.md](DIC/LucasKanadeICGN/THIRD_PARTY.md).

@@ -6,7 +6,9 @@ Read its [AGENTS.md](DIC/LucasKanadeICGN/AGENTS.md) before changing it.
 
 - Write code, documentation and commit messages in English.
 - Preserve Pierre Margerit's prominent foundational credit on landing pages.
-- Keep the original browser demonstrations outside the Python project intact.
+- Keep the repository focused on the maintained live-dic Python engine and
+  browser workbench. Do not restore retired standalone experiments unless
+  explicitly requested.
 - Do not rename the Python distribution, module or CLI as part of cleanup.
 - Preserve user edits and existing local commits. Fetch before integrating
   remote changes; never force-push or rewrite published history.
