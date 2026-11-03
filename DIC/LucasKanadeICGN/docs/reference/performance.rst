@@ -134,7 +134,8 @@ Current backend policy
 * Both native engines expose bounded sequence execution. ``ICGNWGPU()`` is
   the single-scale engine; its optional selective recovery is not the normal
   pyramid path.
-* The historical GPU-IO and WebGL2 reports are not current supported-backend
+* Historical GPU-IO and WebGL2 reports are retained only as archived evidence;
+  those implementations have been removed and are not supported-backend
   performance claims.
 
 See :doc:`../explanation/backend-selection` for the complete decision table.

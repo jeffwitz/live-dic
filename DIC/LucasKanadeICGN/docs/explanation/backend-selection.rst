@@ -47,6 +47,7 @@ Current recommendation
      - two full-pyramid levels
      - Use when browser/native source identity is more important than the
        specialized Three.js subgroup path. The process-copy cost remains.
+
 The phrase *two-level default* therefore applies to
 ``ICGNWGPUFullPyramid`` and ``webgpu-wgsl``.  The phrase *one-scale default*
 applies only to ``ICGNWGPU`` and Three.js/TSL.  It must not be interpreted as

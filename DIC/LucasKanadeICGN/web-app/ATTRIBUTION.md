@@ -1,13 +1,15 @@
 # Attribution and scope
 
-live-dic would not exist without Pierre Margerit's foundational tests_gpuio
-work, GPU-IO experiments and WebGL groundwork:
+live-dic builds on Pierre Margerit's foundational work. His
+`tests_gpuio` project established the original DIC prototype:
 https://github.com/MargeritPierre/tests_gpuio
+His later `Strobox` repository contains a Three.js/WebGPU camera prototype that
+informed the browser execution path:
 https://github.com/MargeritPierre/Strobox
 
-This standalone application uses the live-dic portable WGSL solver and the
-project's contributors' Python/JavaScript development. It does not distribute
-Three.js, GPU-IO, Tweakpane or a third-party JavaScript runtime.
+This standalone application uses the live-dic portable WGSL solver. It does
+not use GPU-IO, Three.js or Tweakpane; pinned browser codecs and their licences
+are listed in `../THIRD_PARTY.md`.
 
 The tensile demonstration is derived from the archived synthetic native-UHD
 fixtures under `DIC/LucasKanadeICGN/assets/uhd_tensile`. Its manifest records

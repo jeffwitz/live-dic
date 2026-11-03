@@ -166,10 +166,11 @@ the API does not silently map an arbitrary 12/16-bit range.
 
 `ICGNWebGL()` selects Three.js/TSL and requires WebGPU; there is no WebGL2
 fallback. `backend="webgpu-wgsl"` selects the shared WGSL full pyramid.
-The old GPU-IO runtime is no longer a Python backend. Browser targets use
-binary transport, but images and full fields still cross between Python and Chromium. A separate
-standalone PWA supplies a JavaScript supervisor for the shared raw-WebGPU
-core. It consumes browser-local frames and keeps the field on GPU for display.
+The retired GPU-IO runtime and demonstration have been removed from the
+repository. Browser targets use binary transport, but images and full fields
+still cross between Python and Chromium. A separate standalone PWA supplies a
+JavaScript supervisor for the shared raw-WebGPU core. It consumes
+browser-local frames and keeps the field on GPU for display.
 
 The one-shot `register_pair()` and existing `icgn-webgl` CLI retain their
 browser defaults. Native applications should use the persistent classes.

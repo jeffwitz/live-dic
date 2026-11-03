@@ -2,7 +2,7 @@
 
 > **Built on Pierre Margerit's foundational work.** His original
 > [`tests_gpuio`](https://github.com/MargeritPierre/tests_gpuio) project
-> established the GPU-IO/WebGL DIC prototype. His later
+> established the original DIC prototype. His later
 > [`Strobox`](https://github.com/MargeritPierre/Strobox) repository contains
 > a Three.js/WebGPU camera prototype that informed this browser path.
 

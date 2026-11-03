@@ -52,6 +52,7 @@ def check_wheel(path: Path) -> list[str]:
     errors = []
     with ZipFile(path) as wheel:
         names = set(wheel.namelist())
+        expected_package_files = set()
         metadata = [name for name in names if name.endswith(".dist-info/WHEEL")]
         if len(metadata) != 1:
             return [f"{path}: expected exactly one WHEEL metadata file"]
@@ -63,11 +64,15 @@ def check_wheel(path: Path) -> list[str]:
             if not source.is_file() or "__pycache__" in source.parts:
                 continue
             name = f"lucas_kanade_icgn/{source.relative_to(PACKAGE).as_posix()}"
+            expected_package_files.add(name)
             checked += 1
             if name not in names:
                 errors.append(f"{path}: missing package file {name}")
             elif wheel.read(name) != source.read_bytes():
                 errors.append(f"{path}: packaged file differs from its source: {name}")
+        packaged_files = {name for name in names if name.startswith("lucas_kanade_icgn/")}
+        for name in sorted(packaged_files - expected_package_files):
+            errors.append(f"{path}: unexpected packaged file {name}")
         for name in names:
             if name.endswith((".so", ".pyd", ".dll", ".dylib", ".spv", ".exe")):
                 errors.append(f"{path}: unexpected compiled project artifact {name}")

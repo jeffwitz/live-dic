@@ -32,9 +32,9 @@ subgroup-specialized TSL solver is optimized for browser execution. It requires
 WebGPU and has no WebGL2 fallback. The recommended native coarse-to-fine entry
 point is instead ``ICGNWGPUFullPyramid``. Three.js shares browser reference
 preparation and the same result contract, but keeps an independent TSL
-implementation. The historical GPU-IO solver is no longer part of the
-maintained Python package; its standalone demonstration remains outside the
-package for provenance.
+implementation. The former GPU-IO solver and its standalone demonstration
+have been removed; historical attribution is recorded in
+:doc:`acknowledgements`.
 
 This source-sharing policy is independent of supervision. The current product
 supervisor is Python, so native wgpu is the low-latency NumPy path. Exploiting

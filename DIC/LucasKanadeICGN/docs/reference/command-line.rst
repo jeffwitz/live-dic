@@ -129,7 +129,6 @@ Runtime options
 ``--backend {three-tsl,webgpu-wgsl}``
    Select the Three.js/TSL WebGPU implementation or the canonical shared WGSL
    browser implementation. Both require WebGPU. Default: ``three-tsl``.
-   The historical GPU-IO demonstration is outside the Python CLI.
 
 ``--repo-root PATH``
    Override automatic repository discovery.

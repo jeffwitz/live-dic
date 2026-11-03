@@ -2,7 +2,7 @@
 
 > **Foundational work by [Pierre Margerit](https://github.com/MargeritPierre).**
 > His [`tests_gpuio`](https://github.com/MargeritPierre/tests_gpuio) project
-> established the original GPU-IO/WebGL DIC prototype. His later
+> established the original DIC prototype. His later
 > [`Strobox`](https://github.com/MargeritPierre/Strobox) repository contains
 > the Three.js/WebGPU camera prototype that informed this browser path.
 > live-dic continues that work with a substantially expanded numerical engine.
@@ -84,7 +84,6 @@ as displacement measurements.
 | `python/src/lucas_kanade_icgn/web/` | Packaged shared JS core, compatibility adapters and local vendor modules |
 | `web-app/` | Standalone camera/demo PWA; assembled with the canonical core and WGSL |
 | `three/` | Checkout entry point delegating to the packaged Three.js source |
-| `LucasKanadeICGN.js`, `headless.html` | Standalone historical GPU-IO demo, outside the Python package |
 | `python/tests/` | Portable, GPU and analytic-UHD regression tests |
 | `assets/` | Traceable fixtures, masks, analytical truth and hashes |
 | `benchmarks/` | Active measurement tools |
@@ -104,7 +103,9 @@ unrelated to subset size, stream depth or pyramid levels.
 available explicitly. `ICGNWebGL` retains Three.js as its browser default and
 requires WebGPU; it has no WebGL2 fallback. Raw browser WGSL has a full pyramid;
 Three.js is single-scale. Raw WGSL supports full ROI; Three.js rejects masks.
-The old GPU-IO demo remains standalone and is not an available Python backend.
+The retired GPU-IO/WebGL implementation and its standalone demonstration have
+been removed. See the [migration guide](docs/how-to/migrate-from-gpuio.rst)
+for replacements.
 
 The browser adapter transports raw target bytes and packed fields, but still
 crosses the Python/Chromium process boundary. The standalone PWA supplies a

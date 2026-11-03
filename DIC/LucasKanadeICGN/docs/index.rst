@@ -58,9 +58,9 @@ One slot minimizes result age; the API default of two prioritizes throughput.
 
 ``ICGNWebGL()`` retains Three.js/TSL as its browser default and requires
 WebGPU; no WebGL2 fallback is provided. Raw browser ``webgpu-wgsl`` loads the
-common WGSL full pyramid. The historical GPU-IO demonstration is not a Python
-backend. Full ROI is supported by the raw WGSL core; Three.js still rejects
-ROI requests.
+common WGSL full pyramid. The retired GPU-IO runtime and standalone demo have
+been removed. Full ROI is supported by the raw WGSL core; Three.js still
+rejects ROI requests.
 The existing CLI and one-shot helper remain browser interfaces; their defaults
 have not changed. See :doc:`explanation/backend-selection`.
 

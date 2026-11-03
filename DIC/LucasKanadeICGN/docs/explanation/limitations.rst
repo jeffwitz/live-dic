@@ -30,12 +30,10 @@ image-to-field timing boundary on the intended deployment configuration.
 Backend lifecycle
 -----------------
 
-The maintained Python package supports native wgpu-py, Three.js/TSL WebGPU,
-and raw shared-WGSL WebGPU. The old GPU-IO and WebGL2 solver paths have been
-removed from the package and CLI to reduce duplicated implementations. The
-original standalone GPU-IO browser demonstration remains in the repository as
-historical material; it is not supported by the Python API. Three.js requires
-WebGPU and does not fall back to WebGL2.
+The maintained project supports native wgpu-py, Three.js/TSL WebGPU, and raw
+shared-WGSL WebGPU. The former GPU-IO runtime and WebGL2 solver have been
+removed from the repository. Three.js requires WebGPU and does not fall back
+to WebGL2.
 
 Python remains the primary supervisor for NumPy acquisition and complete NumPy
 fields. The standalone PWA now supplies a JavaScript supervisor for raw WebGPU

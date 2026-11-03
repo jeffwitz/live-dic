@@ -47,10 +47,9 @@ and ``subgroup_validation`` is ``"validated"`` or ``"mismatch"``. A mismatch
 automatically selects ``portable-workgroup-subgroup-mismatch`` and does not
 enter the per-frame critical path.
 
-The historical ``gpuio`` backend keyword is no longer accepted. The original
-standalone demonstration remains in the source repository but is not included
-in the Python package. Existing code should select ``three-tsl`` or
-``webgpu-wgsl``; see :doc:`../how-to/migrate-from-gpuio`.
+The retired ``gpuio`` backend keyword is no longer accepted, and its runtime
+and standalone demonstration have been removed. Existing code should select
+``three-tsl`` or ``webgpu-wgsl``; see :doc:`../how-to/migrate-from-gpuio`.
 
 All active engines accept ``interpolation="bspline"``, ``"linear"``, or
 ``"cubic"`` at construction. ``bspline`` is the historical default. The two

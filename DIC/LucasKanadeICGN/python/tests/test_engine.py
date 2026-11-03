@@ -25,9 +25,9 @@ from lucas_kanade_icgn.engine import (
     RegistrationResult,
     _array_data_url,
     _as_uint8_gray,
-    _chromium_webgpu_arguments,
     _chromium_base_arguments,
     _chromium_candidates,
+    _chromium_webgpu_arguments,
     _cleanup_browser_profile,
     _find_chromium,
     _find_runtime_assets,
@@ -625,20 +625,6 @@ class RuntimeAssetTests(unittest.TestCase):
         source = entry_point.read_text(encoding="utf-8")
         self.assertIn("python/src/lucas_kanade_icgn/web/three", source)
         self.assertEqual(source.count("import "), 1)
-
-    def test_browser_demo_uses_local_script_dependencies(self) -> None:
-        module_root = Path(__file__).resolve().parents[2]
-        page = (module_root / "index.html").read_text(encoding="utf-8")
-        self.assertNotIn('<script src="http://', page)
-        self.assertNotIn('<script src="https://', page)
-        for relative in (
-            "../../gpu-io.js",
-            "../../tweakpane.js",
-            "./vendor/tweakpane-plugin-essentials-0.1.0.min.js",
-            "./LucasKanadeICGN.js",
-        ):
-            self.assertIn(f'src="{relative}"', page)
-            self.assertTrue((module_root / relative).resolve().is_file(), relative)
 
 
 if __name__ == "__main__":

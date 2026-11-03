@@ -375,9 +375,8 @@ Scaling consequences
 At 512 x 512 there are 1,024 subsets; at 3840 x 2160 there are 32,400. The
 maintained WebGPU implementations expose parallelism both *between* subsets
 and *within* each subset, with workgroup and subgroup organizations described
-above. The standalone GPU-IO demonstration is historical and is not part of
-current backend recommendations. See :doc:`../reference/performance` for the
-exact timing boundaries and campaign results.
+above. See :doc:`../reference/performance` for the exact timing boundaries and
+campaign results.
 
 Neither strategy removes image upload, output readback, Python transport, or
 camera latency. Those stages must be measured separately before claiming the

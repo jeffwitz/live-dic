@@ -5,8 +5,9 @@ Pierre Margerit's foundational contribution
 --------------------------------------------
 
 Pierre Margerit's `tests_gpuio project
-<https://github.com/MargeritPierre/tests_gpuio>`_ established the original
-GPU-IO/WebGL DIC prototype. His later `Strobox project
+<https://github.com/MargeritPierre/tests_gpuio>`_ established the original DIC
+prototype, which used GPU-IO and WebGL. That implementation has since been
+removed from this repository. His later `Strobox project
 <https://github.com/MargeritPierre/Strobox>`_ contains a Three.js/WebGPU camera
 prototype that informed the browser path developed here.
 
@@ -14,19 +15,12 @@ The affine IC-GN solver, headless Python interface, benchmarks, and documentatio
 in this repository continue that foundational work. Presentations and reuse
 should credit Pierre and distinguish both project stages.
 
-GPU-IO
-------
-
-The standalone historical browser demo uses `GPU-IO
-<https://github.com/amandaghassaei/gpu-io>`_, created by Amanda Ghassaei, as
-its WebGL computation framework. The maintained Python package no longer
-includes or exposes GPU-IO as a backend.
-
 Implementation provenance
 -------------------------
 
 The affine inverse-compositional formulation is ported from the associated SYCL
-DIC prototype into Pierre's original GPU-IO framework. His later Three.js/WebGPU
+DIC prototype and was first integrated into Pierre's GPU-IO implementation.
+The current solver no longer includes GPU-IO. His later Three.js/WebGPU
 experiments in Strobox informed the browser execution direction. The supplied
 validation images are direct luma-frame extractions from the recorded raw YUV test sequence; their
 source path, format, hashes, and analytical motion are stored in

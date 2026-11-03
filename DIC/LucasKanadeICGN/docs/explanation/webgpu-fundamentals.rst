@@ -70,8 +70,7 @@ Which technology does what?
        from the canonical WGSL
    * - WebGL2 / GLSL
      - Graphics API and its shader language
-     - Legacy technology used by the standalone GPU-IO demonstration; not an
-       active solver path in the maintained Python package
+     - Older browser graphics API; not used by a live-dic solver
    * - CUDA
      - NVIDIA-specific GPU programming platform
      - A useful comparison, but not the execution API used by this project

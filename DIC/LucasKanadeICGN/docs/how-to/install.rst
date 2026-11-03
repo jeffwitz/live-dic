@@ -20,8 +20,8 @@ explicit CPU/GPU selection.
 
 The package embeds Three.js r186, the raw WebGPU adapter, the shared JavaScript
 core, WGSL shaders, and their headless pages. It does not require a repository
-checkout or a network connection at runtime. GPU-IO is not part of the Python
-package.
+checkout or a network connection at runtime. The retired GPU-IO runtime and
+demo are no longer maintained in this repository.
 
 Install the package
 -------------------
@@ -96,8 +96,8 @@ Confirm that ``engine.info().device`` names the physical adapter rather than
 ``swiftshader`` before reporting performance.
 
 Both Python-controlled browser backends require WebGPU. Three.js does not
-silently switch to WebGL2, and ``backend="gpuio"`` is no longer accepted.
-Existing users of the old option should follow :doc:`migrate-from-gpuio`.
+silently switch to WebGL2. The retired GPU-IO backend and standalone demo have
+been removed; existing users should follow :doc:`migrate-from-gpuio`.
 
 Install and select native WebGPU
 ---------------------------------

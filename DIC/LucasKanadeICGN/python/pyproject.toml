@@ -38,7 +38,7 @@ where = ["src"]
 lucas_kanade_icgn = [
   "py.typed",
   "shaders/*.wgsl",
-  "web/common/*.js", "web/core/*.js",
+  "web/common/*.js", "web/core/*.js", "web/core/**/*.js",
   "web/three/*.html",
   "web/three/*.js",
   "web/three/vendor/*.js",

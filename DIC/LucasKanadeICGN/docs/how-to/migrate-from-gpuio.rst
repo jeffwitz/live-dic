@@ -1,11 +1,9 @@
 Move from the historical GPU-IO backend
 ========================================
 
-The maintained Python package no longer exposes or packages GPU-IO. Its
-duplicated WebGL solver and the Three.js WebGL2 compatibility solver were
-removed to keep one supported browser implementation. The original standalone
-GPU-IO demonstration remains in the repository for historical reference; it
-is not installed with the Python package.
+The retired GPU-IO backend, its WebGL solver and the standalone demonstration
+have been removed from this repository. This page maps older calls to the
+maintained WebGPU and native wgpu-py implementations.
 
 Choose a supported path
 -----------------------
@@ -65,9 +63,10 @@ The command-line equivalent is:
 Review numerical compatibility
 -------------------------------
 
-The historical GPU-IO path, Three.js/TSL, raw browser WGSL and native wgpu-py
-are distinct execution implementations. Requalify any saved comparison or
-measurement workflow against the selected maintained engine. Compare accepted
+Historical GPU-IO measurements and the maintained Three.js/TSL, raw browser
+WGSL and native wgpu-py paths describe distinct execution implementations.
+Requalify any saved comparison or measurement workflow against the selected
+maintained engine. Compare accepted
 points, displacement error against known motion, all requested model
 parameters, and complete image-to-field timings on representative inputs.
 Do not treat an old GPU-IO timing or result as a current backend guarantee.

@@ -2,9 +2,8 @@ Pipeline architecture
 =====================
 
 The Python API controls an optimized Three.js/TSL WebGPU backend, a raw WebGPU
-adapter using the canonical WGSL, or the native wgpu-py backend. GPU-IO and the
-Three.js WebGL2 fallback are not part of the maintained Python package. The
-original GPU-IO demonstration is kept separately as historical material.
+adapter using the canonical WGSL, or the native wgpu-py backend. The retired
+GPU-IO runtime and WebGL2 solver have been removed from the repository.
 Chromium is an execution environment for the two browser adapters, not a user interface:
 each headless page loads only its numerical runtime, creates no controls, and
 never attaches a canvas to the visible document. The native path does not

@@ -49,8 +49,8 @@ see the browser guide for the complete command and timing boundaries. The
 Pages workflow is prepared; enabling publication is a repository-owner action.
 
 For changed JavaScript, run `node --check` on each affected module. At minimum,
-check the packaged GPU-IO, Three.js and raw-WebGPU entry modules when changing
-shared browser resources. Do not rewrite vendor bundles to satisfy local style.
+check the Three.js and raw-WebGPU entry modules when changing shared browser
+resources. Do not rewrite vendor bundles to satisfy local style.
 
 The root Ruff configuration extends the package configuration to active
 benchmarks, tools and documentation examples. Archived `benchmarks/results/`

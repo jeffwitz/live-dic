@@ -2,8 +2,8 @@
 
 > **Foundational work by [Pierre Margerit](https://github.com/MargeritPierre).**
 > His [`tests_gpuio`](https://github.com/MargeritPierre/tests_gpuio) project
-> established the original GPU-IO/WebGL DIC prototype, and
-> [`Strobox`](https://github.com/MargeritPierre/Strobox) contains the later
+> established the original DIC prototype. His later
+> [`Strobox`](https://github.com/MargeritPierre/Strobox) repository contains a
 > Three.js/WebGPU camera prototype that informed this browser path. live-dic
 > continues this work with a substantially expanded numerical engine.
 
@@ -167,9 +167,9 @@ and [result contract](DIC/LucasKanadeICGN/docs/reference/result-layout.rst).
 | Browser compatibility | `ICGNWebGL()` | Three.js/TSL on WebGPU; no WebGL2 fallback |
 | Shared-WGSL browser qualification | `ICGNWebGL(backend="webgpu-wgsl")` | Two-level full pyramid |
 
-The original GPU-IO/WebGL demonstration remains in the repository as a
-historical reference, but it is no longer included in the Python package or
-available through the maintained API.
+The retired GPU-IO/WebGL backend and standalone demonstration have been removed
+from the repository. See the [migration guide](DIC/LucasKanadeICGN/docs/how-to/migrate-from-gpuio.rst)
+for replacements.
 
 The **CLI `icgn-webgl` and one-shot `register_pair()` retain their browser
 behavior**. For native production streams use the classes above. The Python
