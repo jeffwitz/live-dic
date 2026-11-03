@@ -343,7 +343,8 @@ class BrowserCoreExecutionTests(unittest.TestCase):
                     const engine=await DICEngine.create({width,height,motionModel,initialization:'global-affine',pyramidLevels:2,
                       iterationsPerLevel:[8,16],outlierPolicy:'disabled'});
                     try{
-                      await engine.setReference(referenceFrame,{roiMask:mask});
+                      await engine.setReference(referenceFrame,
+                        motionModel==='quadratic'?{}:{roiMask:mask});
                       const result=await engine.register(targetFrame,{sourceKind:'images'});
                       let cameraMessage='';
                       if(motionModel==='affine'){
@@ -351,15 +352,19 @@ class BrowserCoreExecutionTests(unittest.TestCase):
                         try{await engine.register(cameraFrame,{sourceKind:'camera'});}catch(error){cameraMessage=error.message;}
                         finally{cameraFrame.close();}
                       }
-                      let truthRmse=null,maxLocalGradient=null;
-                      if(motionModel==='translation'){
+                      let truthRmse=null,maxLocalGradient=null,maxCurvature=null;
+                      if(motionModel==='translation'||motionModel==='quadratic'){
                         let squaredError=0,count=0;maxLocalGradient=0;
+                        if(motionModel==='quadratic')maxCurvature=0;
+                        const parameterStride=motionModel==='quadratic'?12:6;
                         for(let index=0;index<result.status.length;index++){
-                          const offset=index*6;
+                          const offset=index*parameterStride;
                           maxLocalGradient=Math.max(maxLocalGradient,Math.abs(result.parameters[offset+1]),
                             Math.abs(result.parameters[offset+2]),Math.abs(result.parameters[offset+4]),
                             Math.abs(result.parameters[offset+5]));
                           if(result.status[index]<.5)continue;
+                          if(motionModel==='quadratic')for(let k=6;k<12;k++)
+                            maxCurvature=Math.max(maxCurvature,Math.abs(result.parameters[offset+k]));
                           const gx=index%result.grid[0],gy=Math.floor(index/result.grid[0]);
                           const x=gx*16+8,y=gy*16+8,X=x-cx,Y=y-cy;
                           const expectedU=dx+(a-1)*X+b*Y,expectedV=dy+c*X+(d-1)*Y;
@@ -369,13 +374,13 @@ class BrowserCoreExecutionTests(unittest.TestCase):
                         truthRmse=Math.sqrt(squaredError/(2*count));
                       }
                       return {model:result.config.motionModel,fit:result.config.globalAffineEstimate,accepted:result.accepted,
-                        finite:result.parameters.every(Number.isFinite),timing:result.timing,cameraMessage,truthRmse,maxLocalGradient};
+                        finite:result.parameters.every(Number.isFinite),timing:result.timing,cameraMessage,truthRmse,maxLocalGradient,maxCurvature};
                     }finally{engine.destroy();referenceFrame.close();targetFrame.close();}
                   };
-                  return {affine:await run('affine'),translation:await run('translation')};
+                  return {affine:await run('affine'),translation:await run('translation'),quadratic:await run('quadratic')};
                 })()"""
             )
-        for model in ("affine", "translation"):
+        for model in ("affine", "translation", "quadratic"):
             with self.subTest(model=model):
                 result = actual[model]
                 self.assertEqual(result["model"], model)
@@ -387,6 +392,9 @@ class BrowserCoreExecutionTests(unittest.TestCase):
         self.assertIn("loaded image or video file", actual["affine"]["cameraMessage"])
         self.assertLess(actual["translation"]["truthRmse"], 0.15)
         self.assertLess(actual["translation"]["maxLocalGradient"], 1e-8)
+        self.assertGreater(actual["quadratic"]["accepted"], 1000)
+        self.assertLess(actual["quadratic"]["truthRmse"], 0.15)
+        self.assertLess(actual["quadratic"]["maxCurvature"], 0.02)
 
     def test_global_affine_initialization_seeds_uhd_translation_solver(self):
         from lucas_kanade_icgn import ICGNWebGL

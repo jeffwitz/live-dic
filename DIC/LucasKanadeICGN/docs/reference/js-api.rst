@@ -546,7 +546,10 @@ experimental large-motion options and have no general capture-range or
 performance guarantee.
 
 The shared core also accepts ``initialization: 'global-affine'`` with the
-``translation`` or ``affine`` local motion model. ``globalAffineLevels``
+``translation``, ``affine``, or ``quadratic`` local motion model. The
+quadratic model is currently available without an ROI mask and receives the
+affine seed with zero curvature terms.
+``globalAffineLevels``
 selects 5–8 coarse-to-fine CPU scales (default: 5). It performs a robust
 sampled fit over the masked reference domain, then supplies a seed per local
 subset. With the translation model, the global affine displacement is evaluated

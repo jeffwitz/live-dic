@@ -1162,7 +1162,8 @@ export function createPyramidHost(options = {}) {
       }
     }
     if(configuration.initialization==='global-affine'&&roiPlans[0]?.count!==0){
-      const coarse=levels.at(-1),scale=2**coarse.index,stride=8;
+      const coarse=levels.at(-1),scale=2**coarse.index;
+      const stride=configuration.motionModel==='quadratic'?16:8;
       for(const slot of slots){
         slot.globalAffineSeed=new Float32Array(coarse.gridCount*stride);
         const selected=coarse.roi?Uint32Array.from(coarse.roi.selected):new Uint32Array(coarse.gridCount).fill(1);
@@ -1227,7 +1228,8 @@ export function createPyramidHost(options = {}) {
     if (!globalAffine || roiPlans[0]?.count === 0) return;
     if (!(pixels instanceof Uint8Array)) throw new Error('Global affine initialization needs decoded grayscale target pixels; use image-pair input rather than a camera stream');
     const started=performance.now(),estimate=globalAffine.estimate(pixels);
-    const coarse=slot.levels.at(-1),scale=2**coarse.index,stride=8;
+    const coarse=slot.levels.at(-1),scale=2**coarse.index;
+    const stride=configuration.motionModel==='quadratic'?16:8;
     const fullCenterX=(FRAME_WIDTH-1)*0.5,fullCenterY=(FRAME_HEIGHT-1)*0.5;
     for(let y=0;y<coarse.gridHeight;y++)for(let x=0;x<coarse.gridWidth;x++){
       const index=y*coarse.gridWidth+x;
@@ -1244,6 +1246,8 @@ export function createPyramidHost(options = {}) {
       slot.globalAffineSeed[offset+3]=dy/scale;
       slot.globalAffineSeed[offset+4]=estimate.linear[2];
       slot.globalAffineSeed[offset+5]=estimate.linear[3];
+      // Quadratic state stores six additional coefficients after the affine terms.
+      // The global affine estimate has no curvature, so the zero-initialized tail is correct.
     }
     device.queue.writeBuffer(coarse.buffers.seedState,0,slot.globalAffineSeed);
     estimate.wallMs=performance.now()-started;

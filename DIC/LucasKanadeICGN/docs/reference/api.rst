@@ -157,8 +157,11 @@ Three.js/GPU-IO refuse it. See :doc:`../how-to/register-large-shifts`.
 
 The Python-supervised raw browser backend additionally accepts
 ``initialization="global-affine"`` with ``backend="webgpu-wgsl"`` and the
-translation or affine local motion model. It fits one mask-aware affine transform from
-sampled image pixels on five CPU pyramid scales by default. Set
+translation, affine, or quadratic local motion model. The quadratic model is
+currently available without an ROI mask; it receives the affine seed with all
+six curvature terms set to zero. For translation and affine, the initializer
+can fit over a supplied mask. It samples image pixels on five CPU pyramid
+scales by default. Set
 ``global_affine_levels`` to an integer from 5 to 8 to control the scale count;
 six to eight are experimental wider-capture settings. Pass the option to
 ``ICGNWebGL`` or ``register_pair``. The selected fit seeds each local subset;

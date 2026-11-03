@@ -86,6 +86,10 @@ Enabling global affine initialization does not change the selected local model
 or disable its selector. The global fit is evaluated at each subset centre and
 supplies the starting displacement. Translation mode still solves only the
 two displacement components; affine mode estimates its six local parameters.
+Through the Python-supervised shared core, quadratic mode without an ROI mask
+also accepts this seed: it starts with the six affine coefficients from that
+fit and zero curvature, then estimates its full local quadratic model. The
+workbench currently offers translation and affine local models.
 The global-fit scale count is independent of the local optical-flow pyramid
 depth. Six global-fit scales can extend the coarse capture range on large
 images; seven and eight are experimental. A loaded image or video file is

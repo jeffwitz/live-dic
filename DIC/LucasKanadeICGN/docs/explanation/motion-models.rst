@@ -155,6 +155,11 @@ when subset deformation itself must be estimated. A good global fit is only a
 seed: it does not guarantee that every local subset has valid texture or
 remains inside the target image.
 
+The same initializer can seed affine and quadratic local solves. In quadratic
+mode without an ROI mask, it fills the six affine coefficients and starts all
+six curvature coefficients at zero; the local solve can then estimate
+curvature from each subset.
+
 In the browser workbench, enable **Use custom settings** and choose **Motion
 model: Translation** to request translation-only local solves. Then enable
 **Global affine initialization** in Solve. The initializer checkbox leaves
