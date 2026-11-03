@@ -20,7 +20,8 @@ A separate [browser application](https://github.com/jeffwitz/live-dic/blob/main/
 now supervises camera/demo frames locally in JavaScript, using the same
 portable WGSL core. It provides worker backpressure, full ROI and GPU display;
 its UI/demo assets are assembled separately from this Python wheel. It does
-not change the native Python defaults or qualify phone metrology.
+not change the native Python defaults or qualify phone metrology. Try it at
+[jeffwitz.github.io/live-dic](https://jeffwitz.github.io/live-dic/).
 
 ## Installation and stable names
 
@@ -87,6 +88,11 @@ Use a context manager or call `close()`. Native close permanently releases
 the owning device and GPU references; repeated close is harmless. Create a
 new engine after close. Result arrays are CPU data and remain usable.
 
+A complete [file-sequence example](../docs/examples/register_sequence.py) supports
+ROI, translation/affine/quadratic, custom subset/stride, median width and
+ordered streaming. It exports complete NPZ fields and a CSV index; see the
+[sequence tutorial](../docs/tutorials/realtime-sequence.rst) for a UHD command.
+
 ## Persistent NumPy streams
 
 ```python
@@ -135,6 +141,10 @@ include mask data, selection and strict `config_json`, readable with
 | `flag` | Detect the same outliers; retain raw coefficients with status 2 |
 | `disabled` | Omit the spatial pass |
 | `median` | Explicitly smooth each valid state; preserve solver status |
+
+Use `median_filter_size=3`, `5`, `7` or `9` with `outlier_policy="median"`
+to choose the grid neighbourhood (3 by 3 by default). This width is independent
+of the image subset width.
 
 The median mode is smoothing, not an outlier detector. Status 2 therefore
 means detection, not necessarily replacement. `result.flagged` and

@@ -157,8 +157,41 @@ target pyramid, mutable solver states, seeds, and readback; immutable reference
 data remain shared. Contiguous grayscale ``uint8`` arrays are uploaded directly
 to the native texture and never pass through PNG, Chromium, DevTools, or JSON.
 
-On the validation machine, two slots sustained 95.51 FPS in affine mode and
-104.09 FPS in translation mode on the changing UHD sequence. Median result age
-was 21.008 and 19.131 ms, respectively. Depth one reduced those ages to 11.354
-and 10.496 ms. Throughput and result age are different engineering quantities;
-choose the slot count from the needs of the measurement loop.
+Measured throughput and result age depend on the configuration and hardware.
+Use :doc:`../reference/performance` for archived campaigns and their exact
+boundaries; the file/export examples here are not FPS benchmarks.
+
+Run a complete file-to-fields example
+-------------------------------------
+
+Download :download:`register_sequence.py <../examples/register_sequence.py>`
+or run the checked-in copy from the repository root:
+
+.. code-block:: console
+
+   $ .venv-icgn/bin/python DIC/LucasKanadeICGN/docs/examples/register_sequence.py \
+       DIC/LucasKanadeICGN/assets/uhd_tensile/reference.png \
+       DIC/LucasKanadeICGN/assets/uhd_tensile/frame_040.png \
+       --output /tmp/live-dic-fields --device gpu --outlier-policy median
+
+The output directory must be new. The example preserves one fixed reference,
+uses the two-level B-spline engine and writes each complete field immediately.
+It supports ``--model translation``, custom ``--subset-size`` and
+``--subset-stride``, ``--median-size 5`` with ``--outlier-policy median``,
+``--initialization temporal`` for chronological targets and ``--roi mask.npy``
+for a reference-sized boolean mask. Use ``--help`` for all choices.
+A ROI is supported for translation and affine; quadratic with a mask is refused.
+
+The tensile frame above requires the affine model. To try translation, use
+``assets/frame_000.png`` as reference and ``assets/frame_010.png`` as target;
+the expected displacement is ``(2, -1)`` pixels. The archived UHD frames 100
+and 199 are not qualified for full recovery from zero initialization with the
+default two levels.
+
+Choose ``--device cpu`` only when a software WebGPU adapter is installed;
+``auto`` can select hardware or software and records the actual adapter.
+``--pipeline-depth 2`` enables the throughput-oriented ordered stream. The CSV
+records available result-age timings, while the printed sequence elapsed time
+also includes file decoding, NPZ compression and disk writes. Neither measures
+camera exposure latency. An interrupted run retains its manifest and completed
+NPZ files; this example has no automatic resume or asynchronous disk writer.

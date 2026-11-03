@@ -325,12 +325,16 @@ The small JS analytical helper is scoring-only and tested against the NumPy
 complex-potential/strain oracle. Both plate loads are image pairs, not a stream.
 Only this static scoring path maps the full field automatically.
 
-Equivalent strain is evaluated in the render fragment shader. Instanced arrow
-triangles fetch valid displacement vectors from the same field buffer in the
-vertex shader. Neither operation writes the field or adds a numerical kernel,
-mask upload or complete-field readback to the camera path. Arrow density and
-gain are explicit. A synthetic constant-field GPU test verifies the VM colour,
-visible arrows, unchanged source values and no arrows at invalid origins.
+Live monitoring draws the current image and sparse norm-coloured displacement
+vectors directly from the GPU field. It does not run saved-field interpolation
+or strain post-processing. Preview rate and raster size are independent of the
+full-resolution numerical field and recording. Results analysis derives strain
+and other selected quantities from saved fields in its analysis Worker, with a
+bounded cache. Palette and colour-limit changes reuse those component arrays.
+The older fragment-shader scalar renderer remains a diagnostic oracle, not the
+ordinary live presentation. See :doc:`../tutorials/browser-experiment` for
+quantity selection, replay, measurement histories and exports.
+
 Real DevTools pointer events qualify drawing, moving, numeric resizing,
 deletion/undo and applying a multi-hole UHD mask. These tests do not replace
 phone/touch-hardware qualification or renew the historical FPS measurements.

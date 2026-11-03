@@ -124,6 +124,13 @@ and pyramid depth are independent. Native `close()` permanently releases the
 owning GPU resources; repeated close is harmless, and returned NumPy fields
 remain usable.
 
+For an executable file-to-fields workflow with a mask, custom window/stride,
+median width and ordered streaming, use the
+[sequence example](DIC/LucasKanadeICGN/docs/examples/register_sequence.py).
+The [tutorial](DIC/LucasKanadeICGN/docs/tutorials/realtime-sequence.rst) includes
+a command for the archived UHD tensile pair. Each NPZ retains the complete
+field and ROI; a CSV index and JSON manifest describe the sequence.
+
 ## Models, ROI and result policies
 
 - **Motion:** translation, six-parameter affine (default), or twelve-parameter

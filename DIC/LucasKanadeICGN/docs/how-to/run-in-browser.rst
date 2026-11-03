@@ -871,7 +871,7 @@ it does not measure camera exposure-to-screen latency.
 Large translations in separated images
 ---------------------------------------
 
-In Solve, enable **Fourier initialization · up to 1024 × 1024**, then prepare
+In Analysis / Solve, select **Fourier** in the **Initialization** group, then prepare
 the reference again. It supplies a global translation seed for each target;
 the regular pyramid still refines the field. It adds CPU/readback latency and
 refuses ambiguous matches. See :doc:`register-large-shifts`.
@@ -891,3 +891,25 @@ first temporal estimate has no prior motion to predict. Larger windows (for
 example 32/16) may help noisy/fine textures, at the cost of spatial resolution
 and processing time; acceptance alone does not establish metrological accuracy.
 See :doc:`register-large-shifts`.
+
+
+Troubleshoot canvas presentation
+--------------------------------
+
+A browser can expose ``navigator.gpu`` and select a hardware adapter while
+canvas presentation still fails. ``GPUCanvasContext.getCurrentTexture: Canvas
+not configured`` concerns the drawing surface; adapter detection alone does
+not establish that rendering works. The application configures the WebGPU
+canvas after a size change before acquiring its next texture.
+
+Check the build identifier in the downloaded device report and reload the
+latest application. Include the browser version, adapter/driver and browser
+console messages when reporting a failure. Vulkan image-allocation or swapchain
+errors in Firefox's ``about:support`` are useful driver/presentation evidence;
+changing solver tolerances cannot repair that stage. Firefox and mobile
+hardware coverage remain unqualified in :doc:`../explanation/browser-portability`.
+
+The Python launcher's ``BrokenPipeError`` means a browser closed an HTTP
+connection while a resource was being sent, for example during a reload. It
+is distinct from a WebGPU validation error; retain the browser console's first
+GPU error when diagnosing presentation failures.

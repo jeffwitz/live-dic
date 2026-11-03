@@ -36,13 +36,13 @@ Browser workbench
 -----------------
 
 1. Load the images and open **Solve**.
-2. Check **Fourier initialization · up to 1024 × 1024**.
+2. In Analysis, select **Fourier** in the **Initialization** radio group.
 3. Press **Start calculation**. Pending settings are applied to the retained
    reference before solving; no reference recapture is needed.
 4. The last-pair summary shows the seed and
    its correlation. Results playback remains separate from calculation.
 
-The checkbox works with the normal two-level preset and custom settings.
+The selection works with the normal two-level preset and custom settings.
 It disables temporal warm start for this preparation. The separate **Try 6
 levels for large shifts** button selects six local scales, 20 iterations at
 the coarsest scale, and no temporal warm start. Five and six levels are now

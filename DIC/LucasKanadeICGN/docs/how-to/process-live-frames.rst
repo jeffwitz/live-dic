@@ -18,7 +18,7 @@ data plane browser-native; see :doc:`../explanation/supervision`.
 Frame contract
 --------------
 
-With the default Three.js backend, frame dimensions are established by the
+For native and browser engines, frame dimensions are established by the
 reference image and every target must match them. Accepted inputs are:
 
 * a two-dimensional grayscale array;
@@ -27,7 +27,10 @@ reference image and every target must match them. Accepted inputs are:
 * ``uint8`` or another numeric dtype convertible to ``uint8``.
 
 Floating-point arrays with maximum value at or below 1 are treated as normalized
-images and scaled to 8-bit grayscale.
+images and scaled to 8-bit grayscale. This decision is made per image; for
+scientific streams, convert reference and targets to contiguous grayscale
+``uint8`` using one explicit, fixed intensity range before calling the engine.
+Do not rely on automatic scaling for noisy normalized floats or 12/16-bit data.
 
 Maximum dimensions depend on the WebGPU buffer and texture limits of the
 selected adapter. The native engines report limit failures before dispatching
