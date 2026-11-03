@@ -19,8 +19,7 @@ NumPy arrays and downstream code consumes NumPy fields, the GPU runtime should
 therefore remain in the Python process. This is the product boundary for which
 the native backend exists.
 
-The browser backends preserve the original GPU-IO implementation and provide
-portable WebGPU execution, but a Python frame crosses several representation
+The browser backends provide two WebGPU execution paths, but a Python frame crosses several representation
 boundaries: NumPy, a binary loopback response, a Chromium ``Uint8Array``, and
 finally a GPU resource. The binary browser path no longer encodes each target
 as PNG or carries the field through DevTools/JSON, but the inter-process copies

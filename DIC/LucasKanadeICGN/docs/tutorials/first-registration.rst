@@ -72,8 +72,8 @@ Optional browser compatibility
 -------------------------------
 
 If the deployment requires a browser, install Chromium separately and use
-``ICGNWebGL`` instead. Three.js selects WebGPU or its WebGL2 fallback; its
-algorithmic and ROI coverage differ from the native full pyramid. See
+``ICGNWebGL`` instead. Its Three.js solver requires WebGPU; its algorithmic and
+ROI coverage differ from the native full pyramid. See
 :doc:`../explanation/backend-selection` before comparing results or timings.
 
 Continue with :doc:`realtime-sequence` to process a persistent sequence, or

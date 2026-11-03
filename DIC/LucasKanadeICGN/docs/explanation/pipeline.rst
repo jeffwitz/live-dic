@@ -1,12 +1,11 @@
 Pipeline architecture
 =====================
 
-The Python API controls an optimized Three.js/TSL backend that selects WebGPU
-or falls back to WebGL2, a raw WebGPU adapter using the canonical WGSL, or the
-native wgpu-py backend. The deprecated GPU-IO/WebGL2 backend is
-retained only for historical comparison and migration qualification.
-Chromium is an execution environment
-for the first three, not a user interface:
+The Python API controls an optimized Three.js/TSL WebGPU backend, a raw WebGPU
+adapter using the canonical WGSL, or the native wgpu-py backend. GPU-IO and the
+Three.js WebGL2 fallback are not part of the maintained Python package. The
+original GPU-IO demonstration is kept separately as historical material.
+Chromium is an execution environment for the two browser adapters, not a user interface:
 each headless page loads only its numerical runtime, creates no controls, and
 never attaches a canvas to the visible document. The native path does not
 start Chromium.
@@ -99,9 +98,8 @@ mode filters it into cubic B-spline coefficients; ``linear`` and ``cubic``
 sample the uploaded target directly and skip both FIR passes. Three.js runs up
 to 30 IC-GN iterations inside
 one compute dispatch and fills the measured subgroup when available (32 lanes
-on the validation GPU); its portable fallback uses 16 lanes. GPU-IO fuses the
-same iteration loop into one fragment per subset and scans the selected square
-serially. Raw browser WebGPU and native wgpu-py load the same WGSL solver and
+on the validation GPU); its portable fallback uses 16 lanes. Raw browser
+WebGPU and native wgpu-py load the same WGSL solver and
 fused iteration structure. Native callers can select 16, 32, or experimental
 128 portable lanes; the browser host uses 16. In every case, converged or rejected subsets stop
 expensive target sampling. A
@@ -139,8 +137,7 @@ Raw WebGPU writes the received bytes directly to its ``r8unorm`` texture.
 Three.js keeps four input pixels in each ``uint32`` upload word, then a small
 compute pass expands them into its float source buffer. This avoids a UHD-sized
 JavaScript scalar conversion and reduces the Three.js upload from about 33 MB
-to about 8.3 MB. WebGL2 cannot use that WebGPU unpack pass and retains the
-scalar conversion after the binary transfer.
+to about 8.3 MB.
 
 The browser still runs in another process: the input crosses the loopback
 boundary, a CPU-to-GPU upload remains, and the result crosses back. Binary

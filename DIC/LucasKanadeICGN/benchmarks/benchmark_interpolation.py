@@ -20,7 +20,7 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--levels", type=int, default=1, choices=(1, 2, 3))
     parser.add_argument(
         "--backend",
-        choices=("native", "webgpu-wgsl", "three-tsl", "three-webgl"),
+        choices=("native", "webgpu-wgsl", "three-tsl"),
         default="native",
     )
     parser.add_argument("--warmups", type=int, default=3)
@@ -147,10 +147,7 @@ def main() -> int:
             else:
                 if args.levels != 1:
                     raise ValueError("The Three.js backend currently supports one scale")
-                options.update(
-                    backend="three-tsl",
-                    force_three_webgl=args.backend == "three-webgl",
-                )
+                options.update(backend="three-tsl")
                 if args.iterations_per_level is not None:
                     reference_options["iterations"] = args.iterations_per_level[0]
                 if args.tolerance_per_level is not None:

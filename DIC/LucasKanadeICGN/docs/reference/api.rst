@@ -7,7 +7,8 @@ translation and affine models. Results expose ``roi_selected``,
 ``reference_valid``, ``populations`` and ``save_npz(path)``. See
 :doc:`../how-to/use-roi` for selection, pyramid, filtering and export contracts.
 The optional ``partial`` policy and ``roi_truncation="visibility"`` are described
-in :doc:`../how-to/use-partial-roi`. Raw ``webgpu-wgsl`` supports full ROI; Three.js and GPU-IO reject ROI.
+in :doc:`../how-to/use-partial-roi`. Raw ``webgpu-wgsl`` supports full ROI;
+Three.js rejects ROI.
 Browser partial supports and truncation remain unsupported.
 
 Supervision contract
@@ -36,28 +37,25 @@ and defaults to two. Five and six levels are experimental options for sparse
 pairs with large motion; they have no general capture-range or performance
 guarantee. ``iterations_per_level`` and ``tolerance_per_level`` are
 coarse-to-fine tuples with exactly one value per level. Pyramid options are
-rejected by the independent Three.js/TSL and GPU-IO implementations.
+rejected by the independent Three.js/TSL implementation.
 
-``backend="three-tsl"`` selects WebGPU when available and otherwise falls back
-to Three.js' WebGL2 transform-feedback backend. Set ``force_three_webgl=True``
-to test that compatibility path explicitly. ``EngineInfo.solver`` then reports
-``serial-webgl2`` instead of ``subgroup`` or ``portable-workgroup``.
-For WebGPU, ``subgroup_probe_width`` records the lightweight discovery result,
+``backend="three-tsl"`` requires WebGPU and has no WebGL2 fallback.
+``EngineInfo.solver`` reports the selected ``subgroup`` or
+``portable-workgroup`` implementation. ``subgroup_probe_width`` records the discovery result,
 ``subgroup_solver_width`` records the value observed in the production solver,
 and ``subgroup_validation`` is ``"validated"`` or ``"mismatch"``. A mismatch
 automatically selects ``portable-workgroup-subgroup-mismatch`` and does not
 enter the per-frame critical path.
 
-``backend="gpuio"`` is deprecated. It remains callable for historical
-reproducibility and cross-backend regression tests, but new applications
-that require a browser should use ``three-tsl``. The Three.js fallback provides
-WebGL2 compatibility without changing the public result schema.
+The historical ``gpuio`` backend keyword is no longer accepted. The original
+standalone demonstration remains in the source repository but is not included
+in the Python package. Existing code should select ``three-tsl`` or
+``webgpu-wgsl``; see :doc:`../how-to/migrate-from-gpuio`.
 
 All active engines accept ``interpolation="bspline"``, ``"linear"``, or
 ``"cubic"`` at construction. ``bspline`` is the historical default. The two
 direct modes skip per-target FIR coefficient construction and require matching
-raw-sample reference preparation. The deprecated GPU-IO backend accepts only
-``bspline``. See :doc:`../explanation/interpolation`.
+raw-sample reference preparation. See :doc:`../explanation/interpolation`.
 
 The shared-WGSL engines also accept ``motion_model="quadratic"`` in addition
 to ``"affine"`` and ``"translation"``. Affine remains the six-parameter
@@ -65,7 +63,7 @@ default. Translation estimates only ``tx`` and ``ty`` while retaining the
 six-component layout. Quadratic returns twelve components: the affine terms
 followed by six second derivatives. Native wgpu and browser
 ``webgpu-wgsl`` support all three models; Three.js supports translation and
-affine, and deprecated GPU-IO is affine-only. See
+affine. See
 :doc:`../explanation/motion-models`.
 
 Every engine accepts ``outlier_policy="replace"`` (the default), ``"flag"``,
@@ -78,8 +76,8 @@ component median to every valid state and preserves its solver status.
 ``median_filter_size`` / ``medianFilterSize`` values 3, 5, 7, or 9, measured
 in subset-grid cells. The default remains 3. Values above 3 require the
 ``median`` policy; the Python Chromium wrapper requires
-``backend="webgpu-wgsl"`` for these larger sizes. Three.js and GPU-IO retain
-their 3 by 3 filter. See
+``backend="webgpu-wgsl"`` for these larger sizes. Three.js retains its 3 by 3
+filter. See
 :doc:`../explanation/displacement-outliers` for the equations, validation
 contracts, and limits.
 
@@ -153,7 +151,7 @@ reference crop of at most 1024² pixels before every target. It supports
 translation/affine and leaves the local solve equations unchanged. It adds CPU
 FFT latency; results retain ``config["globalTranslation"]`` and
 ``timing["fourierWallMs"]``. The raw browser wrapper accepts this same option;
-Three.js/GPU-IO refuse it. See :doc:`../how-to/register-large-shifts`.
+Three.js refuses it. See :doc:`../how-to/register-large-shifts`.
 
 The Python-supervised raw browser backend additionally accepts
 ``initialization="global-affine"`` with ``backend="webgpu-wgsl"`` and the
@@ -173,7 +171,7 @@ In the browser workbench, loaded image and video files are supported
 through a grayscale readback from the external GPU image. It is experimental
 and intended for sparse image pairs, not camera-rate streaming; live camera
 streams are rejected. It is not implemented by native
-``ICGNWGPUFullPyramid``, Three.js, or GPU-IO. See
+``ICGNWGPUFullPyramid`` or Three.js. See
 :doc:`../how-to/register-large-shifts` for its cost and diagnostics.
 
 ``initialization="zero"`` preserves historical initialization.

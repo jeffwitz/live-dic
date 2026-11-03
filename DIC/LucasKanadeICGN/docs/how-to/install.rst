@@ -13,14 +13,15 @@ Native processing requires:
 The standard package includes ``wgpu-py`` and supports native processing on
 platforms supported by that library. Native processing does not require
 Chromium. Browser compatibility additionally requires Chromium or Chrome with
-WebGL2 support; WebGPU is preferred for those paths. It is not installed by pip.
+WebGPU enabled; WebGPU is not installed by pip.
 Both native engines accept ``device_type="cpu"`` when an installed software
 adapter is available. See :doc:`run-on-cpu` for driver requirements and
 explicit CPU/GPU selection.
 
-The package embeds GPU-IO, Three.js r186, the raw WebGPU adapter, all IC-GN
-shaders, and their headless pages. It does not require a repository checkout
-or a network connection at runtime.
+The package embeds Three.js r186, the raw WebGPU adapter, the shared JavaScript
+core, WGSL shaders, and their headless pages. It does not require a repository
+checkout or a network connection at runtime. GPU-IO is not part of the Python
+package.
 
 Install the package
 -------------------
@@ -94,17 +95,9 @@ driver supplies the native headless Vulkan flags required by Chromium.
 Confirm that ``engine.info().device`` names the physical adapter rather than
 ``swiftshader`` before reporting performance.
 
-If WebGPU is unavailable, Three.js automatically uses its WebGL2
-transform-feedback solver. Force this path during qualification with:
-
-.. code-block:: python
-
-   engine = ICGNWebGL(backend="three-tsl", force_three_webgl=True)
-
-The historical ``backend="gpuio"`` is deprecated. It remains available while
-the Three.js fallback is validated across the supported browser and GPU
-matrix, but new applications should not select it. Follow
-:doc:`migrate-from-gpuio` when updating existing code.
+Both Python-controlled browser backends require WebGPU. Three.js does not
+silently switch to WebGL2, and ``backend="gpuio"`` is no longer accepted.
+Existing users of the old option should follow :doc:`migrate-from-gpuio`.
 
 Install and select native WebGPU
 ---------------------------------

@@ -1,9 +1,11 @@
 # live-dic — Python-supervised DIC toward 4K60
 
 > **Foundational work by [Pierre Margerit](https://github.com/MargeritPierre).**
-> live-dic would not exist without his original
-> [`tests_gpuio`](https://github.com/MargeritPierre/tests_gpuio) project,
-> GPU-IO experiments and WebGL groundwork. This project continues that work.
+> His [`tests_gpuio`](https://github.com/MargeritPierre/tests_gpuio) project
+> established the original GPU-IO/WebGL DIC prototype, and
+> [`Strobox`](https://github.com/MargeritPierre/Strobox) contains the later
+> Three.js/WebGPU camera prototype that informed this browser path. live-dic
+> continues this work with a substantially expanded numerical engine.
 
 [![Python tests](https://github.com/jeffwitz/live-dic/actions/workflows/python-tests.yml/badge.svg)](https://github.com/jeffwitz/live-dic/actions/workflows/python-tests.yml)
 [![Documentation](https://github.com/jeffwitz/live-dic/actions/workflows/docs.yml/badge.svg)](https://github.com/jeffwitz/live-dic/actions/workflows/docs.yml)
@@ -129,12 +131,12 @@ remain usable.
 - **Sampling:** B-spline (default), bilinear or Keys cubic interpolation.
 - **Geometry:** native wgpu-py and raw shared-WGSL accept any square width from
   4 through 64, with independent stride and uniform or Gaussian integration.
-  The Three.js, WebGL2 and GPU-IO compatibility paths remain limited to 8, 16
-  and 32. The default width remains 16.
+  The Three.js/TSL WebGPU compatibility path supports widths 8, 16 and 32.
+  The default width remains 16.
 - **ROI:** native translation and affine accept a reference-sized boolean
   mask. `True` means retain. Default `roi_policy="full"` selects only complete
   nominal windows; explicit `"partial"` uses qualified connected boundary
-  supports. Raw browser WGSL also supports full ROI; Three.js/GPU-IO reject it.
+  supports. Raw browser WGSL also supports full ROI; Three.js rejects it.
 - **Spatial policy:** default `outlier_policy="replace"` detects displacement
   outliers and replaces the complete local state. `"flag"` preserves raw
   values, `"disabled"` omits the pass, and `"median"` explicitly smooths every
@@ -162,9 +164,12 @@ and [result contract](DIC/LucasKanadeICGN/docs/reference/result-layout.rst).
 |---|---|---|
 | Python NumPy images and full fields | **`ICGNWGPUFullPyramid()`** | Native WebGPU, two fixed levels |
 | Native single-scale studies | `ICGNWGPU()` | Single scale; optional selective recovery |
-| Browser compatibility | `ICGNWebGL()` | Three.js/TSL, WebGPU with WebGL2 fallback |
+| Browser compatibility | `ICGNWebGL()` | Three.js/TSL on WebGPU; no WebGL2 fallback |
 | Shared-WGSL browser qualification | `ICGNWebGL(backend="webgpu-wgsl")` | Two-level full pyramid |
-| Historical reproduction | `ICGNWebGL(backend="gpuio")` | Deprecated GPU-IO |
+
+The original GPU-IO/WebGL demonstration remains in the repository as a
+historical reference, but it is no longer included in the Python package or
+available through the maintained API.
 
 The **CLI `icgn-webgl` and one-shot `register_pair()` retain their browser
 behavior**. For native production streams use the classes above. The Python

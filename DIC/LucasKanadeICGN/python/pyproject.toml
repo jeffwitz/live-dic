@@ -23,6 +23,7 @@ icgn-webgl = "lucas_kanade_icgn.cli:main"
 
 [project.urls]
 "Original tests_gpuio project by Pierre Margerit" = "https://github.com/MargeritPierre/tests_gpuio"
+"Pierre Margerit's Strobox Three.js/WebGPU prototype" = "https://github.com/MargeritPierre/Strobox"
 "Source" = "https://github.com/jeffwitz/live-dic"
 "Documentation" = "https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/docs"
 "Issues" = "https://github.com/jeffwitz/live-dic/issues"
@@ -37,9 +38,6 @@ where = ["src"]
 lucas_kanade_icgn = [
   "py.typed",
   "shaders/*.wgsl",
-  "web/*.html",
-  "web/*.js",
-  "web/LICENSES/*.txt",
   "web/common/*.js", "web/core/*.js",
   "web/three/*.html",
   "web/three/*.js",

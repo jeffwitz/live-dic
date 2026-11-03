@@ -1,8 +1,10 @@
 # live-dic Python package
 
-> **Built on Pierre Margerit's foundational work.** His original
-> [`tests_gpuio`](https://github.com/MargeritPierre/tests_gpuio) project,
-> GPU-IO experiments and WebGL groundwork made this implementation possible.
+> **Built on Pierre Margerit's foundational work.** His
+> [`tests_gpuio`](https://github.com/MargeritPierre/tests_gpuio) project
+> established the original GPU-IO/WebGL DIC prototype, and his later
+> [`Strobox`](https://github.com/MargeritPierre/Strobox) repository contains
+> the Three.js/WebGPU camera prototype that informed this browser path.
 
 live-dic provides Python-supervised digital image correlation on NumPy images.
 The recommended engine, `ICGNWGPUFullPyramid`, uses **native wgpu-py**, keeps
@@ -120,7 +122,7 @@ with ICGNWGPUFullPyramid() as engine:
 `True` retains pixels. The default `full` policy selects a subset only when
 all pixels of its nominal square are allowed. Explicit `partial` uses fixed
 connected boundary supports. Raw `webgpu-wgsl` also accepts full ROI;
-Three.js/GPU-IO reject it, and browser partial ROI is unsupported.
+Three.js rejects it, and browser partial ROI is unsupported.
 `roi_selected`, `reference_valid` and `accepted_mask` represent different
 populations; excluded points are not measurements of zero motion. NPZ exports
 include mask data, selection and strict `config_json`, readable with
@@ -143,7 +145,7 @@ means detection, not necessarily replacement. `result.flagged` and
 - `interpolation`: `bspline` (default), `linear`, `cubic`.
 - Native `subset_size`: any integer from 4 through 64 (default: 16), with an
   independent `subset_stride` that defaults to size. Raw browser shared-WGSL
-  supports the same range; Three.js and GPU-IO remain limited to 8, 16 and 32.
+  supports the same range; Three.js remains limited to 8, 16 and 32.
   Spatial integration is uniform by default, with optional Gaussian weighting.
 - `device_type`: `auto` (default), `gpu`, `cpu`. CPU requires an installed
   software WebGPU adapter; no driver is downloaded at runtime.
@@ -162,10 +164,10 @@ the API does not silently map an arbitrary 12/16-bit range.
 
 ## Browser compatibility and CLI
 
-`ICGNWebGL()` selects Three.js/TSL with WebGPU and automatic WebGL2 fallback.
-`backend="webgpu-wgsl"` selects the shared WGSL full pyramid. Historical
-`backend="gpuio"` is deprecated. Browser targets use binary transport, but
-images and full fields still cross between Python and Chromium. A separate
+`ICGNWebGL()` selects Three.js/TSL and requires WebGPU; there is no WebGL2
+fallback. `backend="webgpu-wgsl"` selects the shared WGSL full pyramid.
+The old GPU-IO runtime is no longer a Python backend. Browser targets use
+binary transport, but images and full fields still cross between Python and Chromium. A separate
 standalone PWA supplies a JavaScript supervisor for the shared raw-WebGPU
 core. It consumes browser-local frames and keeps the field on GPU for display.
 

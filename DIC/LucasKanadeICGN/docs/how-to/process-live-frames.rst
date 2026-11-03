@@ -5,8 +5,8 @@ Use one processing thread and one persistent engine instance. The engines are
 intentionally not thread-safe. For NumPy camera frames and a normal
 coarse-to-fine solve, prefer
 :class:`~lucas_kanade_icgn.ICGNWGPUFullPyramid`; use
-:class:`~lucas_kanade_icgn.ICGNWebGL` when browser or WebGL2 compatibility is
-the deployment requirement.
+:class:`~lucas_kanade_icgn.ICGNWebGL` when a Python-controlled browser WebGPU
+backend is the deployment requirement.
 
 This loop is the Python supervisor: it owns frame timestamps, backpressure,
 reference lifetime, engine errors, and result consumption. If frames originate
@@ -29,10 +29,9 @@ reference image and every target must match them. Accepted inputs are:
 Floating-point arrays with maximum value at or below 1 are treated as normalized
 images and scaled to 8-bit grayscale.
 
-The optional GPU-IO backend also derives its allocation from the reference;
-its width and height must be multiples of 16. Changing dimensions rebuilds its
-private runtime page. Maximum dimensions depend on the WebGPU storage-buffer
-or WebGL2 texture limits of the selected adapter.
+Maximum dimensions depend on the WebGPU buffer and texture limits of the
+selected adapter. The native engines report limit failures before dispatching
+the affected image work.
 
 Use a frame iterator
 --------------------

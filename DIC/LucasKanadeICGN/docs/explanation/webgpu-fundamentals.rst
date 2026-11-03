@@ -63,14 +63,15 @@ Which technology does what?
        runtime, platform, and driver
    * - Three.js
      - JavaScript GPU library
-     - Hosts the supported browser implementation and its WebGL2 fallback
+     - Hosts the separate Three.js/TSL WebGPU browser implementation
    * - TSL, Three.js Shading Language
      - JavaScript functions and nodes describing shader operations
      - Generates GPU programs; the LK expressions remain a separate source
        from the canonical WGSL
    * - WebGL2 / GLSL
      - Graphics API and its shader language
-     - Compatibility execution with different cooperation mechanisms
+     - Legacy technology used by the standalone GPU-IO demonstration; not an
+       active solver path in the maintained Python package
    * - CUDA
      - NVIDIA-specific GPU programming platform
      - A useful comparison, but not the execution API used by this project

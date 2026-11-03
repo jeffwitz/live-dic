@@ -3,9 +3,11 @@ live-dic: real-time DIC from Python
 
 .. important:: Foundational work by Pierre Margerit
 
-   live-dic would not exist without `Pierre Margerit's original tests_gpuio
-   project <https://github.com/MargeritPierre/tests_gpuio>`_, its GPU-IO
-   experiments and WebGL groundwork. This project continues that foundation.
+   `tests_gpuio <https://github.com/MargeritPierre/tests_gpuio>`_ established
+   Pierre's original GPU-IO/WebGL DIC prototype. His later
+   `Strobox <https://github.com/MargeritPierre/Strobox>`_ repository contains
+   a Three.js/WebGPU camera prototype that informed this browser path. live-dic
+   continues this work with a substantially expanded numerical engine.
 
 live-dic is a numerical engine for Python measurement applications. A
 persistent Python supervisor provides NumPy images, manages references and
@@ -54,10 +56,11 @@ are the default; every configured level runs for every target. Native
 retained as a separate compatibility strategy. Both support bounded streaming.
 One slot minimizes result age; the API default of two prioritizes throughput.
 
-``ICGNWebGL()`` retains Three.js/TSL as its browser default, with WebGPU and
-WebGL2 fallback. Raw browser ``webgpu-wgsl`` loads the common WGSL full
-pyramid. GPU-IO is deprecated. Full ROI is supported by the raw WGSL core;
-Three.js and GPU-IO still reject ROI requests.
+``ICGNWebGL()`` retains Three.js/TSL as its browser default and requires
+WebGPU; no WebGL2 fallback is provided. Raw browser ``webgpu-wgsl`` loads the
+common WGSL full pyramid. The historical GPU-IO demonstration is not a Python
+backend. Full ROI is supported by the raw WGSL core; Three.js still rejects
+ROI requests.
 The existing CLI and one-shot helper remain browser interfaces; their defaults
 have not changed. See :doc:`explanation/backend-selection`.
 

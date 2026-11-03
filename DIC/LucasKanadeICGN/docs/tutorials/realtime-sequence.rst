@@ -66,8 +66,8 @@ ordered one-frame-at-a-time behavior as a convenience method; its default
 two-slot configuration instead improves sustained throughput. An explicit
 loop remains useful when frames arrive interactively over time.
 
-``ICGNWebGL`` can replace the native class when browser or WebGL2
-compatibility is the deployment requirement. Its binary transport is suitable
+``ICGNWebGL`` can replace the native class when a browser-controlled WebGPU
+deployment is the requirement. Its binary transport is suitable
 for qualification, but every frame and field still crosses the
 Python/Chromium boundary. A high-throughput Three.js deployment needs the
 JavaScript supervision model described in :doc:`../explanation/supervision`.

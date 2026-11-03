@@ -28,15 +28,13 @@ returns complete-state neighbour medians after a ``tx`` or ``ty`` trigger;
 solver state directly.
 
 Three.js remains the default *browser entry point* because its
-subgroup-specialized TSL solver is optimized for browser execution and it supplies
-the automatic WebGL2 fallback. The recommended native coarse-to-fine entry
+subgroup-specialized TSL solver is optimized for browser execution. It requires
+WebGPU and has no WebGL2 fallback. The recommended native coarse-to-fine entry
 point is instead ``ICGNWGPUFullPyramid``. Three.js shares browser reference
-preparation and the same result contract, but keeps an optimized TSL
-implementation. TSL now also
-compiles a serial solver to GLSL transform feedback when Three.js falls back to
-WebGL2. The deprecated GPU-IO backend remains a separate historical
-implementation because WebGL cannot execute the canonical WGSL compute
-shaders directly. It is not a target for further kernel development.
+preparation and the same result contract, but keeps an independent TSL
+implementation. The historical GPU-IO solver is no longer part of the
+maintained Python package; its standalone demonstration remains outside the
+package for provenance.
 
 This source-sharing policy is independent of supervision. The current product
 supervisor is Python, so native wgpu is the low-latency NumPy path. Exploiting
@@ -247,14 +245,14 @@ Change policy
 
 A formula change that preserves the buffer contract belongs in the canonical
 WGSL and, while Three.js remains specialized, in its corresponding named TSL
-helper. The Three.js WebGPU and WebGL2 solvers call those same TSL helpers but
-keep different accumulation organizations. The native subgroup solver is also
-a specialized implementation: its ``icgn_subgroup.wgsl`` source must be
+helper. The Three.js WebGPU solver calls those same TSL helpers but keeps a
+different accumulation organization. The native subgroup solver is also a
+specialized implementation: its ``icgn_subgroup.wgsl`` source must be
 updated and qualified whenever an LK formula changes. A buffer-layout change
 must update both WebGPU hosts and the contract tests.
 Transfer, allocation, browser, and NumPy conversion changes remain local to
-their adapters. GPU-IO changes remain independently qualified against the same
-image pairs until its retirement.
+their adapters. The standalone legacy demo is not an active implementation
+target.
 
 The comparison scripts report status equality, jointly accepted subsets,
 translation RMSE, and maximum absolute disagreement. Matching output types is

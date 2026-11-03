@@ -6,8 +6,8 @@ If these terms are new to you, start with :doc:`webgpu-fundamentals` and
 mapping. :doc:`../how-to/optimize-webgpu` explains how to choose and measure
 such strategies, and :doc:`../reference/gpu-vocabulary` defines the terms.
 
-All active backends evaluate the same selected IC-GN motion model, but WebGPU and WebGL2
-offer different synchronization models. This page distinguishes three notions
+All maintained backends evaluate the selected IC-GN motion model on WebGPU.
+This page distinguishes three notions
 that older descriptions sometimes conflated: the configurable *numerical subset*,
 the rectangular *FIR output tile*, and the one-dimensional *solver workgroup*.
 They are independent scheduling choices.
@@ -95,7 +95,7 @@ The shared WGSL evaluates the central 25 taps. The six omitted outer weights
 have a combined absolute magnitude below ``7e-8``; even for a 255-valued input,
 their worst-case contribution is below ``1.8e-5`` grayscale unit per pass. The
 opt-in GPU regression compares the resulting coefficients with an independent
-CPU convolution. Three.js and its WebGL2 fallback retain all 31 taps.
+CPU convolution. Three.js TSL retains all 31 taps.
 
 The shared WGSL also stages each pass in workgroup memory. The horizontal pass
 produces a 32 x 8 output tile from a 56 x 8 halo, while the vertical pass uses
@@ -118,9 +118,7 @@ reads instead of 6,400 uncached reads for a 25-tap pass.
                                            +--------+
 
 The TSL path uses a conservative 16 x 16 output tile: 46 x 16 source values
-for the horizontal pass and 16 x 46 for the vertical pass. WebGL2 keeps its
-serial prefilter because workgroup memory and barriers are not available
-through that fallback.
+for the horizontal pass and 16 x 46 for the vertical pass.
 
 Partial edge workgroups still execute every halo load before their barrier,
 including a few cells that no valid output consumes. After applying the mirror
@@ -371,103 +369,15 @@ still be qualified against accepted subsets and displacement error. Reduction,
 prefilter, seed-transfer, and dispatch work remains fixed even when iteration
 ceilings are reduced.
 
-Three.js/WebGL2: serial TSL through transform feedback
-------------------------------------------------------
-
-When WebGPU is unavailable, Three.js compiles a separate TSL solver to a
-WebGL2 vertex program and captures its outputs with transform feedback. One
-invocation owns one subset and performs the complete selected-square accumulation and
-iteration loop serially. It calls the same TSL interpolation, Hessian solve,
-inverse composition, convergence, and UOD helpers as the WebGPU variants,
-but contains no workgroup arrays, barriers, or subgroup operations.
-
-.. code-block:: text
-
-   one transform-feedback invocation / subset
-              |
-              +--> serial S x S accumulation
-              +--> affine inverse-compositional update
-              +--> repeat until convergence or iteration ceiling
-              |
-              v
-   translation + linear terms + status buffers
-
-Three.js PBO-backed storage nodes provide indexed reads for the target
-coefficients, reference fields, Hessians, and neighbouring subset states. The
-horizontal prefilter, vertical prefilter, solver, and UOD kernels are grouped
-in one ordered ``computeAsync`` call so buffer ping-pong remains visible between
-passes without a JavaScript synchronization after each kernel.
-
-This path exists for compatibility, not for 4K60. It avoids maintaining another
-set of equations and is materially faster than the historical GPU-IO backend
-on the validation machine, but it still exposes parallelism only between
-subsets.
-
-GPU-IO/WebGL2: one fused fragment per subset
---------------------------------------------
-
-WebGL2 fragment shaders do not expose WebGPU workgroups, shared workgroup
-memory, subgroup collectives, or a barrier between neighbouring fragments.
-GPU-IO therefore maps one output fragment to one subset. That fragment scans
-all selected columns and rows serially, while the GPU still processes many
-independent subsets in parallel.
-
-.. code-block:: text
-
-   fragment (gx, gy)
-          |
-          +--> scan row 0:  pixels 0 ... S-1
-          +--> scan row 1:  pixels 0 ... S-1
-          |          ...
-          +--> scan row S-1: pixels 0 ... S-1
-          |
-          +--> update six affine parameters
-          +--> repeat in the same fragment until convergence
-          |
-          +--> one final MRT write: translation, linear part, status
-
-The current implementation applies four WebGL-specific optimizations:
-
-* all IC-GN iterations are fused into one draw call, so the warp stays in
-  registers and intermediate state is not written to textures every iteration;
-* the nine inverse-Hessian blocks and four metadata blocks are fetched once per
-  subset and retained across iterations;
-* cubic interpolation is evaluated as four horizontal dot products followed by
-  one vertical combination;
-* image statistics and all six ``J^T g`` terms are accumulated during the same
-  square scan.
-
-The solver writes three multiple-render-target attachments only after the
-subset converges, is rejected, or reaches the iteration limit. The following
-UOD pass remains separate because it needs the completed neighbouring
-subset field.
-
-Why GPU-IO does not emulate WebGPU lanes
-----------------------------------------
-
-A WebGL2 emulation could render 16 fragments per subset, store nine partial
-sums in several textures, then launch another draw to reduce and update the
-warp. It would require at least two draws per IC-GN iteration and repeated
-partial-sum/state traffic. There is no portable cross-fragment synchronization
-that can keep the reduction and the next iteration inside one draw.
-
-For these small square subsets the extra render-target bandwidth and roughly 60 draw
-submissions at the 30-iteration limit are a worse fit than the fused serial
-fragment. The implementation therefore chooses fewer submissions and less
-global memory traffic over artificial lane-level parallelism. This is the main
-architectural reason the WebGL2 backend scales less effectively than WebGPU at
-UHD.
-
 Scaling consequences
 --------------------
 
 At 512 x 512 there are 1,024 subsets; at 3840 x 2160 there are 32,400. The
-WebGPU backend exposes parallelism both *between* subsets and *within* each
-subset. Both WebGL2 paths expose only the first level. The measured results on
-the validation machine reflect that distinction: Three.js/WebGL2 and GPU-IO
-remain compatibility paths at UHD, while cooperative Three.js/WebGPU is the
-default performance path. See :doc:`../reference/performance` for the exact
-timing boundaries and campaign results.
+maintained WebGPU implementations expose parallelism both *between* subsets
+and *within* each subset, with workgroup and subgroup organizations described
+above. The standalone GPU-IO demonstration is historical and is not part of
+current backend recommendations. See :doc:`../reference/performance` for the
+exact timing boundaries and campaign results.
 
 Neither strategy removes image upload, output readback, Python transport, or
 camera latency. Those stages must be measured separately before claiming the

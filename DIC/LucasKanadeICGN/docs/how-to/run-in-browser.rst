@@ -810,7 +810,7 @@ profiles.
 An adapter can satisfy the binding limits and still lack memory for UHD.
 Choose a lower resolution after allocation/device-loss errors. Missing WebGPU
 produces an unsupported-browser message; this application has no WebGL fallback.
-The separate Python Three.js backend retains its existing WebGL2 fallback.
+The separate Python Three.js backend requires WebGPU and has no WebGL2 fallback.
 
 Export and offline use
 ----------------------

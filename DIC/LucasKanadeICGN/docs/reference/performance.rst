@@ -129,12 +129,13 @@ Current backend policy
 * ``ICGNWebGL(backend="webgpu-wgsl")`` executes the same two-level
   full-pyramid WGSL graph in Chromium.
 * ``ICGNWebGL()`` is the Python-controlled browser compatibility entry point
-  and selects the optimized Three.js/TSL single-scale solver with automatic
-  WebGL2 fallback. It is not the low-latency NumPy recommendation.
+  and selects the optimized Three.js/TSL single-scale WebGPU solver. It is not
+  the low-latency NumPy recommendation and has no WebGL fallback.
 * Both native engines expose bounded sequence execution. ``ICGNWGPU()`` is
   the single-scale engine; its optional selective recovery is not the normal
   pyramid path.
-* GPU-IO is deprecated and has no current performance claim.
+* The historical GPU-IO and WebGL2 reports are not current supported-backend
+  performance claims.
 
 See :doc:`../explanation/backend-selection` for the complete decision table.
 

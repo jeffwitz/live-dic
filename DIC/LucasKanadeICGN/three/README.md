@@ -1,8 +1,10 @@
 # Three.js/TSL browser compatibility backend
 
 > **Built on Pierre Margerit's foundational work.** His original
-> [`tests_gpuio`](https://github.com/MargeritPierre/tests_gpuio) project,
-> GPU-IO experiments and repository structure made this work possible.
+> [`tests_gpuio`](https://github.com/MargeritPierre/tests_gpuio) project
+> established the GPU-IO/WebGL DIC prototype. His later
+> [`Strobox`](https://github.com/MargeritPierre/Strobox) repository contains
+> a Three.js/WebGPU camera prototype that informed this browser path.
 
 This directory is a checkout entry point for live-dic's browser backend.
 The canonical implementation is packaged at
@@ -25,11 +27,11 @@ A mismatch selects the portable fallback. Solver diagnostics report the
 observed mapping. Native `solver_workgroup_size` choices do not configure
 this independent browser solver.
 
-Without WebGPU, Three.js selects a serial WebGL2 transform-feedback solver.
-It shares the TSL mathematical helpers and result layout, but does not emulate
-workgroup barriers and is not qualified as a 4K60 path. The GPU target
-prefilter and optional UOD/median pass remain separate from the local fused
-IC-GN iteration kernel. Direct interpolators omit target prefiltering.
+Three.js requires WebGPU; there is no WebGL2 fallback. On WebGPU it uses a
+subgroup solver when qualified, otherwise a portable workgroup-memory solver.
+The GPU target prefilter and optional UOD/median pass remain separate from the
+local fused IC-GN iteration kernel. Direct interpolators omit target
+prefiltering.
 
 ## Python compatibility entry point
 
@@ -40,12 +42,10 @@ with ICGNWebGL() as engine:
     result = engine.register_pair(reference, target)
 ```
 
-The application supplies `reference` and `target`. Force WebGL2 with
-`ICGNWebGL(force_three_webgl=True)` when qualifying that compatibility path.
-Chromium runs headlessly. Targets and packed fields use binary transport,
-but Python and Chromium still have separate memory. For resident NumPy
-streams use the native full-pyramid engine; a JavaScript streaming supervisor
-is not provided here.
+The application supplies `reference` and `target`. Chromium runs headlessly.
+Targets and packed fields use binary transport, but Python and Chromium still
+have separate memory. For resident NumPy streams use the native full-pyramid
+engine; a JavaScript streaming supervisor is not provided here.
 
 Three.js r186 and its MIT license are vendored under `vendor/` for offline
 use. Other notices are in [THIRD_PARTY.md](../THIRD_PARTY.md).

@@ -159,17 +159,16 @@ Independent stride is implemented by the shared WGSL family:
 * ``ICGNWebGL(backend="webgpu-wgsl")`` in Chromium.
 
 It works with one to six pyramid levels and with translation, affine, and
-quadratic motion models. Three.js/TSL, its WebGL2 fallback, and deprecated
-GPU-IO currently require ``subset_stride == subset_size`` and reject a
-non-default stride instead of silently changing its geometry.
+quadratic motion models. Three.js/TSL currently requires
+``subset_stride == subset_size`` and rejects a non-default stride instead of
+silently changing its geometry.
 
 Every integer width from 4 through 64 is available in native wgpu and the raw
 browser ``webgpu-wgsl`` path. The specialized native subgroup solver remains
 restricted to affine B-spline, uniform integration, and size/stride 16; all
 other combinations use the portable workgroup solver. Centred Gaussian
 integration is currently exposed by the native engines; browser engines retain
-uniform integration. Three.js/TSL, WebGL2, and GPU-IO remain limited to widths
-8, 16, and 32.
+uniform integration. Three.js/TSL remains limited to widths 8, 16, and 32.
 
 The specialized native WGSL subgroup solver requires both size and
 stride to be 16. Other configurations select the portable shared-WGSL solver.

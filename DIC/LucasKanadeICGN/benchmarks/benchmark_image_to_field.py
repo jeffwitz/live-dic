@@ -90,7 +90,7 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument(
         "--backend",
         action="append",
-        choices=("native-pyramid", "webgpu-wgsl", "three-tsl", "three-webgl"),
+        choices=("native-pyramid", "webgpu-wgsl", "three-tsl"),
         dest="backends",
         help="backend to run; repeat the option to run several",
     )
@@ -221,7 +221,6 @@ def _engine(
     return ICGNWebGL(
         backend="webgpu-wgsl" if backend == "webgpu-wgsl" else "three-tsl",
         pyramid_levels=pyramid_levels if backend == "webgpu-wgsl" else None,
-        force_three_webgl=backend == "three-webgl",
         interpolation=interpolation,
         motion_model=motion_model,
         outlier_policy=outlier_policy,

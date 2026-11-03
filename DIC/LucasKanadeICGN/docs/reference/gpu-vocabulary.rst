@@ -208,7 +208,7 @@ They identify source responsibilities, not additional public Python APIs.
      - Resource creation and dispatch encoding
    * - ``web/three/LucasKanadeICGNThree.js``
      - Separate Three.js/TSL implementation
-     - Workgroup/subgroup solver construction and WebGL2 fallback
+     - Workgroup/subgroup solver construction for WebGPU
    * - ``engine.py``
      - Python browser process and binary transport adapter
      - Engine lifecycle and frame/result transport

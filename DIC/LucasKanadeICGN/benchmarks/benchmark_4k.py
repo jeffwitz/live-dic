@@ -44,7 +44,7 @@ def _arguments() -> argparse.Namespace:
     )
     parser.add_argument(
         "--backend",
-        choices=("three-tsl", "webgpu-wgsl", "gpuio", "wgpu-native"),
+        choices=("three-tsl", "webgpu-wgsl", "wgpu-native"),
         default="three-tsl",
         help="GPU implementation to measure",
     )
@@ -61,11 +61,6 @@ def _arguments() -> argparse.Namespace:
         help="full-pyramid depth for the webgpu-wgsl browser backend",
     )
     parser.add_argument(
-        "--force-three-webgl",
-        action="store_true",
-        help="force Three.js to use its WebGL2 compatibility backend",
-    )
-    parser.add_argument(
         "--motion-model",
         choices=("affine", "translation", "quadratic"),
         default="affine",
@@ -73,8 +68,6 @@ def _arguments() -> argparse.Namespace:
     args = parser.parse_args()
     if args.pyramid_levels is not None and args.backend != "webgpu-wgsl":
         parser.error("--pyramid-levels requires --backend webgpu-wgsl")
-    if args.force_three_webgl and args.backend != "three-tsl":
-        parser.error("--force-three-webgl requires --backend three-tsl")
     return args
 
 
@@ -95,14 +88,12 @@ def _browser_report(
     repeats: int,
     warmups: int,
     pyramid_levels: int | None,
-    force_three_webgl: bool,
     truth: tuple[int, int],
     motion_model: str,
 ) -> dict[str, Any]:
     with ICGNWebGL(
         backend=backend,
         pyramid_levels=pyramid_levels,
-        force_three_webgl=force_three_webgl,
         startup_timeout=120,
         call_timeout=600,
         motion_model=motion_model,
@@ -235,7 +226,6 @@ def main() -> int:
             args.repeats,
             args.warmups,
             args.pyramid_levels,
-            args.force_three_webgl,
             truth,
             args.motion_model,
         )

@@ -57,8 +57,8 @@ The JavaScript API uses ``DICEngine.create({initialization:'fourier', ...})``.
 Both CPU and experimental GPU reference preparation support it, including
 ``registerPair``. For Python browser supervision, use
 ``ICGNWebGL(backend="webgpu-wgsl", initialization="fourier")``; the browser
-CLI accepts ``--backend webgpu-wgsl --initialization fourier``. Three.js and
-GPU-IO explicitly refuse this option.
+CLI accepts ``--backend webgpu-wgsl --initialization fourier``. Three.js
+explicitly refuses this option.
 
 Global affine initialization
 ----------------------------
@@ -108,8 +108,7 @@ motion_model="translation", global_affine_levels=6)``. Use
 deformation. The ``webgpu-wgsl`` CLI accepts
 ``--initialization global-affine --motion-model translation
 --global-affine-levels 6``. The Python API and CLI accept values from 5 to 8.
-Three.js/GPU-IO and
-the native ``ICGNWGPUFullPyramid`` do not implement this initializer.
+Three.js and the native ``ICGNWGPUFullPyramid`` do not implement this initializer.
 
 This is not a camera-rate initialization path. It builds the selected
 multiscale CPU reference representation once and performs a robust, sampled affine fit for

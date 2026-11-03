@@ -125,8 +125,8 @@ Three layers, one solver source
 ``web/core`` is a dependency-free ES-module library. ``web-app`` owns camera
 permissions, controls, worker admission, rendering and downloads. The Python
 ``webgpu-wgsl`` page is a thin compatibility shim around that same core;
-BinaryTransport remains outside it. Three.js/TSL and historical GPU-IO are
-separate backends and are not dependencies of the application.
+BinaryTransport remains outside it. Three.js/TSL is a separate WebGPU backend
+and is not a dependency of the standalone application.
 
 An engineer can think of a shader as a function run many times on the GPU.
 The CPU host prepares arrays and records the ordered calls. The solver

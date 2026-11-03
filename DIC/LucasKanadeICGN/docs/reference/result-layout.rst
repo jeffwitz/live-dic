@@ -164,8 +164,8 @@ A normal Three.js ``register`` call reports these timing keys:
    * - ``pythonCallWallMs``
      - complete Python ``register`` call, including transport and readback
 
-GPU-IO returns its more detailed legacy stage keys. In all browser backends,
-inspect the reported boundary before comparing values.
+Browser result timing keys share the same Python return schema. Inspect the
+reported timing boundary before comparing values.
 
 The native ``ICGNWGPU`` engine reports:
 

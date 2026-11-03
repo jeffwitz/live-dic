@@ -582,9 +582,7 @@ class _RuntimeAssets:
 def _direct_runtime_assets(root: Path, backend: str = "three-tsl") -> _RuntimeAssets | None:
     """Return a runtime layout rooted directly at one browser backend."""
 
-    if backend == "gpuio":
-        required = ("headless.html", "gpu-io.js", "LucasKanadeICGN.js")
-    elif backend == "three-tsl":
+    if backend == "three-tsl":
         required = (
             "headless.html",
             "LucasKanadeICGNThree.js",
@@ -621,15 +619,7 @@ def _checkout_runtime_assets(root: Path, backend: str = "three-tsl") -> _Runtime
     """Return a source-checkout runtime layout for the selected backend."""
 
     relative = Path("DIC/LucasKanadeICGN")
-    if backend == "gpuio":
-        required = (
-            root / "gpu-io.js",
-            root / relative / "headless.html",
-            root / relative / "LucasKanadeICGN.js",
-        )
-        if all(path.is_file() for path in required):
-            return _RuntimeAssets(root=root, headless_path=str(relative / "headless.html"))
-    elif backend == "three-tsl":
+    if backend == "three-tsl":
         relative /= "three"
         if _direct_runtime_assets(root / relative, backend) is not None:
             return _RuntimeAssets(root=root, headless_path=str(relative / "headless.html"))
@@ -663,8 +653,7 @@ def _find_runtime_assets(
     package_root = Path(__file__).resolve().parent
     packaged_base = package_root / "web"
     packaged_root = packaged_base
-    if backend in {"three-tsl", "webgpu-wgsl"}:
-        packaged_root /= "three" if backend == "three-tsl" else "webgpu"
+    packaged_root /= "three" if backend == "three-tsl" else "webgpu"
     packaged = _direct_runtime_assets(packaged_root, backend)
     if packaged is not None:
         if backend == "three-tsl":
@@ -709,15 +698,9 @@ def _chromium_base_arguments(platform: str) -> tuple[str, ...]:
     return ("--ignore-gpu-blocklist",)
 
 
-def _chromium_backend_arguments(
-    platform: str,
-    backend: str,
-    force_three_webgl: bool,
-) -> tuple[str, ...]:
-    """Return browser switches needed by the selected GPU implementation."""
+def _chromium_webgpu_arguments(platform: str) -> tuple[str, ...]:
+    """Return Chromium switches needed to enable WebGPU."""
 
-    if backend not in {"three-tsl", "webgpu-wgsl"} or force_three_webgl:
-        return ()
     if platform.startswith("linux"):
         # New-headless Chromium otherwise tends to select SwiftShader instead
         # of the native Vulkan adapter on Linux. Other systems must retain
@@ -885,10 +868,10 @@ class ICGNWebGL:
     ``False`` when Chromium's sandbox is available in the execution environment.
 
     ``interpolation`` selects ``"bspline"`` (historical default), direct
-    ``"linear"``, or direct Keys ``"cubic"`` reconstruction. The deprecated
-    GPU-IO backend supports only ``"bspline"``. The shared-WGSL backend accepts
-    every integer subset width from 4 to 64; Three.js and GPU-IO remain limited
-    to 8, 16, or 32. ``subset_stride`` independently selects field spacing.
+    ``"linear"``, or direct Keys ``"cubic"`` reconstruction. The shared-WGSL
+    backend accepts every integer subset width from 4 to 64; Three.js is
+    limited to 8, 16, or 32. ``subset_stride`` independently selects field
+    spacing.
     """
 
     def __init__(
@@ -901,7 +884,6 @@ class ICGNWebGL:
         no_sandbox: bool = True,
         chromium_args: Iterable[str] = (),
         backend: str = "three-tsl",
-        force_three_webgl: bool = False,
         pyramid_levels: int | None = None,
         iterations_per_level: Iterable[int] | None = None,
         tolerance_per_level: Iterable[float] | None = None,
@@ -918,10 +900,8 @@ class ICGNWebGL:
             raise ValueError("startup_timeout must be greater than zero")
         if call_timeout <= 0:
             raise ValueError("call_timeout must be greater than zero")
-        if backend not in {"gpuio", "three-tsl", "webgpu-wgsl"}:
-            raise ValueError("backend must be 'gpuio', 'three-tsl', or 'webgpu-wgsl'")
-        if force_three_webgl and backend != "three-tsl":
-            raise ValueError("force_three_webgl is supported only by the 'three-tsl' backend")
+        if backend not in {"three-tsl", "webgpu-wgsl"}:
+            raise ValueError("backend must be 'three-tsl' or 'webgpu-wgsl'")
         if not isinstance(initialization, str) or initialization not in {
             "zero",
             "fourier",
@@ -958,18 +938,14 @@ class ICGNWebGL:
         if self.subset_size not in {8, 16, 32} and backend != "webgpu-wgsl":
             raise ValueError(
                 "Subset sizes other than 8, 16, or 32 require backend='webgpu-wgsl'; "
-                "Three.js and GPU-IO support subset_size=8, 16, or 32"
+                "Three.js supports subset_size=8, 16, or 32"
             )
-        if backend == "gpuio" and self.interpolation != "bspline":
-            raise ValueError("The deprecated 'gpuio' backend supports only interpolation='bspline'")
-        if backend == "gpuio" and self.motion_model != "affine":
-            raise ValueError("The deprecated 'gpuio' backend supports only motion_model='affine'")
         if self.motion_model == "quadratic" and backend != "webgpu-wgsl":
             raise ValueError("motion_model='quadratic' currently requires backend='webgpu-wgsl'")
         if self.subset_stride != self.subset_size and backend != "webgpu-wgsl":
             raise ValueError(
                 "Overlapping subsets currently require backend='webgpu-wgsl'; "
-                "Three.js and GPU-IO require subset_stride=subset_size"
+                "Three.js requires subset_stride=subset_size"
             )
         pyramid_options = (pyramid_levels, iterations_per_level, tolerance_per_level)
         if backend != "webgpu-wgsl" and any(value is not None for value in pyramid_options):
@@ -1018,7 +994,6 @@ class ICGNWebGL:
         self.repo_root = assets.root
         self._headless_path = assets.headless_path
         self.backend = backend
-        self.force_three_webgl = bool(force_three_webgl)
         self.pyramid_levels = level_count if backend == "webgpu-wgsl" else 1
         self.iterations_per_level = iteration_schedule
         self.tolerance_per_level = tolerance_schedule
@@ -1028,12 +1003,7 @@ class ICGNWebGL:
         self.startup_timeout = float(startup_timeout)
         self.call_timeout = float(call_timeout)
         self.no_sandbox = bool(no_sandbox)
-        backend_arguments = _chromium_backend_arguments(
-            sys.platform,
-            backend,
-            self.force_three_webgl,
-        )
-        self.chromium_args = (*backend_arguments, *tuple(chromium_args))
+        self.chromium_args = (*_chromium_webgpu_arguments(sys.platform), *tuple(chromium_args))
         self._server: _StaticServer | None = None
         self._process: subprocess.Popen[bytes] | None = None
         self._temporary: tempfile.TemporaryDirectory[str] | None = None
@@ -1043,8 +1013,6 @@ class ICGNWebGL:
         self._reference_ready = False
         self.roi = None
         self.reference_valid = None
-        self._requested_dimensions: tuple[int, int] | None = None
-        self._runtime_dimensions: tuple[int, int] | None = None
 
     def start(self) -> ICGNWebGL:
         """Start Chromium and wait until the JavaScript headless API is ready."""
@@ -1067,13 +1035,7 @@ class ICGNWebGL:
         page_url = f"http://127.0.0.1:{self._server.port}/{self._headless_path}?headless=1"
         page_url += f"&subsetSize={self.subset_size}"
         page_url += f"&subsetStride={self.subset_stride}"
-        if self.backend != "gpuio":
-            page_url += f"&binaryToken={self._server.transport_token}"
-        if self.force_three_webgl:
-            page_url += "&forceWebGL=1"
-        if self.backend == "gpuio" and self._requested_dimensions is not None:
-            width, height = self._requested_dimensions
-            page_url += f"&width={width}&height={height}"
+        page_url += f"&binaryToken={self._server.transport_token}"
         command = [
             chromium,
             "--headless=new",
@@ -1113,8 +1075,6 @@ class ICGNWebGL:
                 )
                 self._websocket_url = str(page["webSocketDebuggerUrl"])
                 if self._wait_until_ready(deadline):
-                    if self.backend == "gpuio":
-                        self._runtime_dimensions = self._requested_dimensions or (512, 512)
                     return self
             except (
                 json.JSONDecodeError,
@@ -1135,11 +1095,7 @@ class ICGNWebGL:
         )
 
     def _wait_until_ready(self, deadline: float) -> bool:
-        expression = (
-            "Boolean(window.ICGNHeadless)"
-            if self.backend == "gpuio"
-            else "Boolean(window.ICGNHeadless && window.ICGNBinaryTransport)"
-        )
+        expression = "Boolean(window.ICGNHeadless && window.ICGNBinaryTransport)"
         while time.monotonic() < deadline:
             try:
                 if self._evaluate(expression):
@@ -1277,7 +1233,6 @@ class ICGNWebGL:
         total_start = time.perf_counter()
         encoding_start = time.perf_counter()
         array = _as_uint8_gray(image)
-        height, width = array.shape
         mask = None
         if self.backend == "webgpu-wgsl":
             if roi_policy != "full" or roi_truncation != "none":
@@ -1286,19 +1241,6 @@ class ICGNWebGL:
                 )
             mask = validate_roi(roi_mask, roi_policy, array.shape, self.motion_model)
         plan = prepare_roi(mask, self.subset_size, self.subset_stride)
-        if self.backend == "gpuio":
-            dimensions = (width, height)
-            if width % 16 or height % 16:
-                raise ValueError(
-                    "The GPU-IO backend requires width and height to be multiples of 16; "
-                    f"received {width}x{height}."
-                )
-            if self._runtime_dimensions is not None and self._runtime_dimensions != dimensions:
-                # GPU-IO allocates all textures at page creation. Reopening the
-                # private headless page is the only dimension change required;
-                # the public engine instance and API remain unchanged.
-                self.close()
-            self._requested_dimensions = dimensions
         data_url = _array_data_url(array)
         encoding_wall_ms = (time.perf_counter() - encoding_start) * 1_000.0
         options = self._options(iterations=iterations, tolerance=tolerance, zncc_min=zncc_min)
@@ -1350,27 +1292,12 @@ class ICGNWebGL:
 
         if not self._reference_ready:
             raise ICGNError("Call set_reference() before register().")
-        if self.backend != "gpuio":
-            return self._register_binary(
-                target,
-                iterations=iterations,
-                tolerance=tolerance,
-                zncc_min=zncc_min,
-            )
-        total_start = time.perf_counter()
-        encoding_start = time.perf_counter()
-        data_url = _data_url(target)
-        encoding_wall_ms = (time.perf_counter() - encoding_start) * 1_000.0
-        options = self._options(iterations=iterations, tolerance=tolerance, zncc_min=zncc_min)
-        expression = f"window.ICGNHeadless.register({json.dumps(data_url)}, {json.dumps(options)})"
-        result = RegistrationResult.from_payload(self._evaluate(expression))
-        total_wall_ms = (time.perf_counter() - total_start) * 1_000.0
-        result.timing = {
-            **result.timing,
-            "encodingWallMs": encoding_wall_ms,
-            "pythonCallWallMs": total_wall_ms,
-        }
-        return result
+        return self._register_binary(
+            target,
+            iterations=iterations,
+            tolerance=tolerance,
+            zncc_min=zncc_min,
+        )
 
     def _register_binary(
         self,
@@ -1561,7 +1488,6 @@ class ICGNWebGL:
         self._websocket_url = None
         self._devtools_origin = None
         self._reference_ready = False
-        self._runtime_dimensions = None
 
     def __enter__(self) -> ICGNWebGL:
         return self.start()
@@ -1582,7 +1508,6 @@ def register_pair(
     repo_root: str | os.PathLike[str] | None = None,
     chromium: str | os.PathLike[str] | None = None,
     backend: str = "three-tsl",
-    force_three_webgl: bool = False,
     pyramid_levels: int | None = None,
     iterations_per_level: Iterable[int] | None = None,
     tolerance_per_level: Iterable[float] | None = None,
@@ -1610,7 +1535,6 @@ def register_pair(
         repo_root=repo_root,
         chromium=chromium,
         backend=backend,
-        force_three_webgl=force_three_webgl,
         pyramid_levels=pyramid_levels,
         iterations_per_level=iterations_per_level,
         tolerance_per_level=tolerance_per_level,

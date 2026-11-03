@@ -20,8 +20,7 @@ Positional arguments
 
 ``reference``
    One reference image. Its dimensions define the subset grid for every
-   backend; GPU-IO requires both dimensions to be multiples of the selected
-   subset size.
+   backend.
 
 ``targets``
    One or more target images with the same dimensions as the reference.
@@ -50,8 +49,8 @@ Solver options
    translation model with an analytic 2 by 2 Hessian inverse, or the
    twelve-parameter second-order model. Quadratic mode adds the three
    second-order Lagrange terms for each displacement component and is supported
-   by ``webgpu-wgsl``; the independent Three.js and deprecated GPU-IO browser
-   backends reject it. Default: ``affine``.
+   by ``webgpu-wgsl``; the independent Three.js browser backend rejects it.
+   Default: ``affine``.
 
 ``--outlier-policy {replace,flag,disabled,median}``
    Control the displacement UOD post-pass. ``replace`` detects inconsistent
@@ -68,8 +67,8 @@ Solver options
 
 ``--subset-size PIXELS``
    Select a square numerical subset width from 4 through 64. Default: ``16``.
-   Arbitrary widths require ``--backend webgpu-wgsl``; Three.js and GPU-IO
-   accept only 8, 16, or 32.
+   Arbitrary widths require ``--backend webgpu-wgsl``; Three.js accepts only
+   8, 16, or 32.
 
 ``--subset-stride PIXELS``
    Select the distance between adjacent subset centres. It must be an integer
@@ -127,14 +126,10 @@ Benchmark and output options
 Runtime options
 ---------------
 
-``--backend {three-tsl,webgpu-wgsl,gpuio}``
-   Select the optimized Three.js WebGPU path, the canonical shared WGSL in raw
-   browser WebGPU, or the deprecated historical GPU-IO path. Default:
-   ``three-tsl``. Use ``gpuio`` only to reproduce or compare legacy results.
-
-``--force-three-webgl``
-   Force ``three-tsl`` to use its serial WebGL2 transform-feedback solver. Use
-   this for compatibility qualification on a WebGPU-capable machine.
+``--backend {three-tsl,webgpu-wgsl}``
+   Select the Three.js/TSL WebGPU implementation or the canonical shared WGSL
+   browser implementation. Both require WebGPU. Default: ``three-tsl``.
+   The historical GPU-IO demonstration is outside the Python CLI.
 
 ``--repo-root PATH``
    Override automatic repository discovery.

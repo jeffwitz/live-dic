@@ -1,86 +1,76 @@
-Migrate from GPU-IO to Three.js
-===============================
+Move from the historical GPU-IO backend
+========================================
 
-GPU-IO is deprecated as an application backend. Three.js is now the supported
-browser path because it uses WebGPU when available and retains compatibility
-through its own WebGL2 transform-feedback solver. GPU-IO remains packaged
-temporarily for historical reproducibility and replacement qualification.
+The maintained Python package no longer exposes or packages GPU-IO. Its
+duplicated WebGL solver and the Three.js WebGL2 compatibility solver were
+removed to keep one supported browser implementation. The original standalone
+GPU-IO demonstration remains in the repository for historical reference; it
+is not installed with the Python package.
 
-This guide concerns browser compatibility only. For the intended
-Python-supervised NumPy pipeline, ``ICGNWGPUFullPyramid`` remains the
-recommended execution path. A performance-oriented browser-native stream
-uses the standalone raw-WebGPU supervisor described in
-:doc:`../explanation/supervision`. Three.js remains the compatibility backend.
+Choose a supported path
+-----------------------
 
-Update Python code
-------------------
-
-Remove the explicit backend selection:
+For Python-supervised NumPy input and output, use the native wgpu-py engine:
 
 .. code-block:: python
 
-   # Before
-   engine = ICGNWebGL(backend="gpuio")
+   from lucas_kanade_icgn import ICGNWGPUFullPyramid
 
-   # After: WebGPU first, Three.js/WebGL2 fallback automatically
-   engine = ICGNWebGL()
-
-No changes are required for ``set_reference``, ``register``, ``register_many``,
-``benchmark``, or the returned ``ReferenceInfo`` and ``RegistrationResult``
-objects. Parameter order, status values, grid orientation, and NumPy array
-shapes are unchanged.
-
-Update command lines
---------------------
-
-Replace ``--backend gpuio`` with ``--backend three-tsl`` or omit ``--backend``
-because Three.js is the default:
-
-.. code-block:: console
-
-   $ icgn-webgl reference.png target.png
-
-Force WebGL2 only for qualification
-------------------------------------
-
-Normal applications should allow automatic backend selection. To verify a
-machine that must operate without WebGPU, force the Three.js compatibility
-path explicitly:
-
-.. code-block:: python
-
-   with ICGNWebGL(force_three_webgl=True) as engine:
-       info = engine.info()
+   with ICGNWGPUFullPyramid() as engine:
        engine.set_reference(reference)
        result = engine.register(target)
 
-   assert info.backend == "WebGLBackend"
-   assert info.solver == "serial-webgl2"
+For the Python-controlled browser compatibility API, select one of its two
+WebGPU implementations:
 
-The equivalent command-line option is ``--force-three-webgl``.
+.. code-block:: python
 
-Check numerical compatibility
------------------------------
+   from lucas_kanade_icgn import ICGNWebGL
 
-Before removing GPU-IO from a deployment, run representative images through
-both implementations and compare:
+   # Independent Three.js/TSL WebGPU solver
+   with ICGNWebGL(backend="three-tsl") as engine:
+       engine.set_reference(reference)
+       result = engine.register(target)
 
-* status and accepted masks;
-* displacement RMSE against known motion, when available;
-* maximum and mean absolute affine-parameter differences;
-* warmed GPU and complete browser-wall timings.
+   # Browser adapter using the shared WGSL kernel
+   with ICGNWebGL(backend="webgpu-wgsl") as engine:
+       engine.set_reference(reference)
+       result = engine.register(target)
 
-Small floating-point differences are expected because the execution mappings
-and accumulation orders differ. On the validation machine, the 512 x 512
-campaign produced identical status arrays, a maximum absolute parameter
-difference of ``1.4913e-4``, and approximately ``3.9e-5`` pixel translation
-RMSE for both implementations. See :doc:`../reference/performance` for the
-complete timing boundaries.
+Both browser choices require WebGPU. Three.js has no WebGL2 fallback. When
+WebGPU is unavailable, use the native Python engine with a compatible software
+adapter if one is installed; the browser API does not silently switch to a
+different solver.
 
-Retain GPU-IO only when necessary
----------------------------------
+Update older calls
+------------------
 
-Continue to select ``backend="gpuio"`` only when reproducing an historical
-result or diagnosing a replacement regression. Report such use explicitly;
-GPU-IO no longer represents the recommended WebGL2 execution path and will
-not receive new algorithmic features.
+Remove ``backend="gpuio"`` from ``ICGNWebGL`` and the CLI. The default
+``ICGNWebGL()`` remains the Three.js/TSL WebGPU implementation:
+
+.. code-block:: python
+
+   # Before: no longer supported
+   engine = ICGNWebGL(backend="gpuio")
+
+   # After: WebGPU required
+   engine = ICGNWebGL(backend="three-tsl")
+
+The command-line equivalent is:
+
+.. code-block:: console
+
+   $ icgn-webgl --backend three-tsl reference.png target.png
+
+Review numerical compatibility
+-------------------------------
+
+The historical GPU-IO path, Three.js/TSL, raw browser WGSL and native wgpu-py
+are distinct execution implementations. Requalify any saved comparison or
+measurement workflow against the selected maintained engine. Compare accepted
+points, displacement error against known motion, all requested model
+parameters, and complete image-to-field timings on representative inputs.
+Do not treat an old GPU-IO timing or result as a current backend guarantee.
+
+See :doc:`../explanation/backend-selection`, :doc:`../reference/api`, and
+:doc:`install` for the supported interfaces and setup requirements.

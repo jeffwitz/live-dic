@@ -25,7 +25,7 @@ from lucas_kanade_icgn.engine import (
     RegistrationResult,
     _array_data_url,
     _as_uint8_gray,
-    _chromium_backend_arguments,
+    _chromium_webgpu_arguments,
     _chromium_base_arguments,
     _chromium_candidates,
     _cleanup_browser_profile,
@@ -361,13 +361,13 @@ class RuntimeAssetTests(unittest.TestCase):
     def test_browser_gpu_arguments_do_not_force_vulkan_off_linux(self) -> None:
         for platform in ("win32", "darwin"):
             with self.subTest(platform=platform):
-                arguments = _chromium_backend_arguments(platform, "webgpu-wgsl", False)
+                arguments = _chromium_webgpu_arguments(platform)
                 self.assertIn("--enable-unsafe-webgpu", arguments)
                 self.assertFalse(any("vulkan" in argument.lower() for argument in arguments))
                 self.assertNotIn("--use-angle=gl", _chromium_base_arguments(platform))
 
     def test_linux_browser_gpu_arguments_keep_native_vulkan_path(self) -> None:
-        arguments = _chromium_backend_arguments("linux", "webgpu-wgsl", False)
+        arguments = _chromium_webgpu_arguments("linux")
         self.assertIn("--use-angle=vulkan", arguments)
         self.assertIn("--use-angle=gl", _chromium_base_arguments("linux"))
 
@@ -430,7 +430,7 @@ class RuntimeAssetTests(unittest.TestCase):
                 )
         with self.assertRaisesRegex(ValueError, "interpolation"):
             ICGNWebGL(interpolation="nearest")
-        with self.assertRaisesRegex(ValueError, "supports only"):
+        with self.assertRaisesRegex(ValueError, "backend must be"):
             ICGNWebGL(backend="gpuio", interpolation="linear")
 
     def test_browser_pyramid_options_are_validated(self) -> None:
@@ -501,7 +501,7 @@ class RuntimeAssetTests(unittest.TestCase):
     def test_browser_motion_model_is_validated_and_forwarded(self) -> None:
         with self.assertRaisesRegex(ValueError, "motion_model"):
             ICGNWebGL(motion_model="rigid")
-        with self.assertRaisesRegex(ValueError, "supports only"):
+        with self.assertRaisesRegex(ValueError, "backend must be"):
             ICGNWebGL(backend="gpuio", motion_model="translation")
 
         engine = ICGNWebGL(backend="three-tsl", motion_model="translation")
@@ -531,30 +531,36 @@ class RuntimeAssetTests(unittest.TestCase):
             ICGNWebGL(outlier_policy="all")
         self.assertIn("outlier_policy", inspect.signature(register_pair).parameters)
 
-    def test_three_webgl_fallback_is_explicitly_testable(self) -> None:
-        engine = ICGNWebGL(backend="three-tsl", force_three_webgl=True)
-        self.assertTrue(engine.force_three_webgl)
-        self.assertFalse(any("webgpu" in argument.lower() for argument in engine.chromium_args))
-        with self.assertRaisesRegex(ValueError, "only.*three-tsl"):
-            ICGNWebGL(backend="gpuio", force_three_webgl=True)
+    def test_three_tsl_no_longer_exposes_a_webgl_fallback(self) -> None:
+        engine = ICGNWebGL(backend="three-tsl")
+        self.assertFalse(hasattr(engine, "force_three_webgl"))
+        with self.assertRaises(TypeError):
+            ICGNWebGL(backend="three-tsl", force_three_webgl=True)
 
-    def test_packaged_runtime_is_complete(self) -> None:
-        assets = _find_runtime_assets(None, "gpuio")
-        self.assertEqual(assets.headless_path, "headless.html")
-        for filename in ("headless.html", "gpu-io.js", "LucasKanadeICGN.js"):
-            self.assertTrue((assets.root / filename).is_file(), filename)
-        page = (assets.root / "headless.html").read_text(encoding="utf-8")
-        self.assertNotIn("https://", page)
-        self.assertNotIn("http://", page)
+    def test_gpuio_backend_is_not_available(self) -> None:
+        with self.assertRaisesRegex(ValueError, "backend must be"):
+            ICGNWebGL(backend="gpuio")
 
     def test_explicit_direct_asset_directory_is_supported(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            for filename in ("headless.html", "gpu-io.js", "LucasKanadeICGN.js"):
-                (root / filename).touch()
-            assets = _find_runtime_assets(root, "gpuio")
-            self.assertTrue(assets.root.samefile(root))
-        self.assertEqual(assets.headless_path, "headless.html")
+            three_root = root / "three"
+            for filename in (
+                "headless.html",
+                "LucasKanadeICGNThree.js",
+                "vendor/three.webgpu.js",
+                "vendor/three.tsl.js",
+                "vendor/three.core.js",
+            ):
+                path = three_root / filename
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.touch()
+            common = root / "common/ReferencePreparation.js"
+            common.parent.mkdir(parents=True)
+            common.touch()
+            assets = _find_runtime_assets(three_root, "three-tsl")
+            self.assertEqual(assets.root, root)
+            self.assertEqual(assets.headless_path, "three/headless.html")
 
     def test_packaged_three_tsl_runtime_is_complete_and_offline(self) -> None:
         assets = _find_runtime_assets(None, "three-tsl")
@@ -571,8 +577,9 @@ class RuntimeAssetTests(unittest.TestCase):
         ):
             self.assertTrue((assets.root / filename).is_file(), filename)
         implementation = (assets.root / "three/LucasKanadeICGNThree.js").read_text(encoding="utf-8")
-        self.assertIn("makeSerialSolverKernel", implementation)
-        self.assertIn("forceWebGL", implementation)
+        self.assertNotIn("makeSerialSolverKernel", implementation)
+        self.assertNotIn("forceWebGL", implementation)
+        self.assertIn("WebGL2 fallback is disabled", implementation)
         self.assertIn("reflected.clamp(0, size - 1)", implementation)
         self.assertIn("validateSubgroupSolver", implementation)
         self.assertIn("portable-workgroup-subgroup-mismatch", implementation)

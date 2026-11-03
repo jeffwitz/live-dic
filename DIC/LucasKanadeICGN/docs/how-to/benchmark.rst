@@ -91,7 +91,7 @@ Interpret the timers
 --------------------
 
 ``gpu_times_ms``
-   WebGL timer-query or WebGPU timestamp duration for target prefiltering plus
+   WebGPU timestamp duration for target prefiltering plus
    IC-GN and the optional UOD pass. It excludes Python transport and result
    readback.
 
@@ -105,9 +105,7 @@ Interpret the timers
    graph construction. ``reference_build_wall_ms`` measures gradients,
    Hessians, and metadata derived from the reference. ``preparation_wall_ms``
    covers both in the browser, while ``total_wall_ms`` is the complete Python
-   preparation call. GPU-IO allocates textures while its private page starts,
-   so it reports zero runtime-build time; if dimensions change, the page restart
-   remains visible in ``total_wall_ms``.
+   preparation call.
 
 Complete Python call
    Measure ``engine.register(frame)`` with ``time.perf_counter``. This includes
@@ -186,8 +184,6 @@ Use ``--backend webgpu-wgsl`` for the canonical portable shaders and default
 two-level pyramid in Chromium. Add
 ``--pyramid-levels 1`` for a comparable single-scale campaign, or
 ``--pyramid-levels 3`` to measure the larger-capture-range graph.
-Use ``--backend three-tsl --force-three-webgl`` to measure the Three.js WebGL2
-fallback separately from its normal WebGPU path.
 Use ``--backend wgpu-native`` for the browser-free complete Python-call path.
 Add ``--native-solver portable`` or ``--native-solver subgroup`` to bypass
 automatic selection during a diagnostic campaign.

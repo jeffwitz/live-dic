@@ -30,14 +30,12 @@ image-to-field timing boundary on the intended deployment configuration.
 Backend lifecycle
 -----------------
 
-GPU-IO is deprecated as an application backend. It is still packaged so that
-historical measurements can be reproduced and the Three.js/WebGL2 replacement
-can be tested on additional adapters. No removal release is scheduled until
-that compatibility matrix has been exercised. New numerical features are not
-planned for GPU-IO.
-
-Three.js/TSL is the supported browser path. Its automatic WebGL2 fallback
-removes the need to select GPU-IO merely because WebGPU is unavailable.
+The maintained Python package supports native wgpu-py, Three.js/TSL WebGPU,
+and raw shared-WGSL WebGPU. The old GPU-IO and WebGL2 solver paths have been
+removed from the package and CLI to reduce duplicated implementations. The
+original standalone GPU-IO browser demonstration remains in the repository as
+historical material; it is not supported by the Python API. Three.js requires
+WebGPU and does not fall back to WebGL2.
 
 Python remains the primary supervisor for NumPy acquisition and complete NumPy
 fields. The standalone PWA now supplies a JavaScript supervisor for raw WebGPU
@@ -51,20 +49,17 @@ Geometry and input
 
 * All current backends support dynamic frame dimensions and have been validated
   at 3840 x 2160. Reference and target dimensions must match.
-* GPU-IO dimensions must be exact multiples of the selected subset size because its texture grid is
-  allocated when the private headless page starts. A dimension change rebuilds
-  that page automatically.
 * Native and raw browser shared-WGSL support subset widths from 4 through 64.
   ``subset_stride`` defaults to the selected size and can be
-  reduced to create overlapping subsets. Three.js/TSL, WebGL2, and GPU-IO
-  support widths 8, 16, and 32 and still require stride equal to size.
+  reduced to create overlapping subsets. Three.js/TSL supports widths 8, 16,
+  and 32 and requires stride equal to size.
 * Centred Gaussian subset integration is currently exposed by the native
   engines. Browser hosts use uniform integration.
 * Solver-time median smoothing defaults to 3 by 3 subset-grid cells. The
   shared-WGSL native and raw-browser paths accept 5, 7, or 9; the largest
   stencil is bounded at 81 samples. These larger variants have not received a
-  general performance or metrology qualification. Three.js and GPU-IO retain
-  a fixed 3 by 3 solver filter. This is separate from saved-field display
+  general performance or metrology qualification. Three.js retains a fixed
+  3 by 3 solver filter. This is separate from saved-field display
   smoothing.
 * Grid dimensions are ``1 + floor((width - subset_size) / subset_stride)`` by
   ``1 + floor((height - subset_size) / subset_stride)``; only fully contained
@@ -90,8 +85,8 @@ returns 900 accepted subsets at 512 x 512. Native users should select
 defaults to two levels. ``ICGNWGPU(pyramid_levels=2 or 3)`` remains an older
 optional selective-retry mode for exceptional failures, not the recommended
 native pyramid. The raw ``webgpu-wgsl`` browser backend runs the same
-full-pyramid WGSL graph and defaults to two levels. Three.js/TSL and GPU-IO
-remain single-scale.
+full-pyramid WGSL graph and defaults to two levels. Three.js/TSL remains
+single-scale.
 
 ``ICGNWGPUFullPyramid(initialization="temporal")`` projects the last accepted
 fine field onto the coarsest grid, then solves every configured level on every
@@ -119,8 +114,8 @@ It can initialize local translation, affine, or quadratic solves. With
 translation, each subset receives only the fitted displacement at its centre,
 so local deformation is not estimated. Quadratic solves receive the affine
 seed with zero curvature coefficients; quadratic mode currently requires no
-ROI mask. It is not implemented by the native engine,
-Three.js, or GPU-IO. A single global affine model cannot represent strongly
+ROI mask. It is not implemented by the native engine or Three.js. A single
+global affine model cannot represent strongly
 non-affine specimen deformation; the following local solve may still reject
 subsets. See :doc:`../how-to/register-large-shifts`.
 
@@ -155,7 +150,7 @@ failure; the report includes fixed-pyramid and interpolation-only controls.
 Runtime
 -------
 
-* Browser backends require Chromium as their WebGL2 or WebGPU execution
+* Browser backends require Chromium as their WebGPU execution
   environment. Chromium is a system dependency and is not distributed in the
   Python wheel.
 * Chromium is not required by ``ICGNWGPU``, but that native backend requires
@@ -177,15 +172,14 @@ Runtime
   preparation confirms the width inside the actual solver pipeline and selects
   the validated 16-lane workgroup-memory fallback if it differs from the
   discovery probe. This validation is performed for each rebuilt runtime, not
-  in the per-target loop. Other adapters use the portable fallback directly.
-  Browsers without WebGPU use the serial Three.js/WebGL2 transform-feedback
-  solver instead; this compatibility path is not a 4K60 implementation.
+  in the per-target loop. Other adapters use the portable workgroup solver
+  directly. There is no Three.js WebGL fallback.
 * The raw ``webgpu-wgsl`` browser backend prioritizes source sharing and uses
   the portable workgroup solver at every pyramid level. It is slower than the
   specialized Three.js subgroup solver for the comparable single-scale case.
   Its default two-level graph requires an adapter exposing at least ten storage
   buffers per compute stage.
-* Maximum image size depends on the adapter's WebGPU storage-buffer or WebGL2
+* Maximum image size depends on the adapter's WebGPU storage-buffer and
   texture limits.
 * Python ``register`` calls materialize complete parameter/status fields.
   The standalone JS API separately offers full, decimated or small-summary
@@ -466,7 +460,7 @@ performance qualification. Available local pyramid depths differ by host:
    * - Native ``ICGNWGPU`` selective-recovery engine
      - 1–3 levels
      - Not implemented
-   * - Three.js and GPU-IO browser engines
+   * - Three.js browser engine
      - Backend-specific; no global-affine initializer
      - Not implemented
 

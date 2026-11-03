@@ -50,7 +50,7 @@ adapter; skipped GPU tests do not validate numerical execution.
   `ICGNWGPU` is single-scale by default; selective retry is a distinct optional
   compatibility path. Do not silently substitute one policy for another.
 - `ICGNWebGL` and the existing CLI retain their browser defaults. Raw
-  `webgpu-wgsl` supports full ROI; Three.js/GPU-IO reject masks. Browser partial
+  `webgpu-wgsl` supports full ROI; Three.js rejects masks. Browser partial
   supports/truncation/Gaussian integration remain unsupported. The standalone
   PWA implements a JavaScript supervisor around `web/core`; it does not add a
   Three.js stream layer or WebGL fallback. Keep both the Python shim and PWA
@@ -411,7 +411,7 @@ qualification rather than infer mobile coverage from desktop results.
   Temporal history/velocity/fine correction, bounded slots, GPU input,
   full ROI and small/decimated/full readback are implemented. Partial ROI,
   truncation, Gaussian integration and adaptive browser pyramids reject
-  explicitly. Three.js and its WebGL fallback remain independent and unchanged.
+  explicitly. Three.js remains an independent WebGPU implementation.
 - Hardware and software browser parity each cover 240 frame rows, with no
   predeclared-tolerance exceedance. Actual UHD tensile/plate-hole full-ROI
   checks and external-image conversion are recorded. The native defaults and

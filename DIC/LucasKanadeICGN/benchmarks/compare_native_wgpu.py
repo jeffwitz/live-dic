@@ -194,7 +194,7 @@ def main() -> int:
 
     if not args.native_only:
         browser_results: dict[str, RegistrationResult] = {}
-        for backend in ("three-tsl", "webgpu-wgsl", "gpuio"):
+        for backend in ("three-tsl", "webgpu-wgsl"):
             backend_options = (
                 {"pyramid_levels": args.webgpu_wgsl_pyramid_levels}
                 if backend == "webgpu-wgsl"
@@ -223,7 +223,6 @@ def main() -> int:
         report["native_vs_shared_wgsl_agreement"] = _agreement(
             native, browser_results["webgpu-wgsl"]
         )
-        report["native_vs_gpuio_agreement"] = _agreement(native, browser_results["gpuio"])
 
     serialized = json.dumps(report, indent=2, allow_nan=False)
     if args.output is not None:

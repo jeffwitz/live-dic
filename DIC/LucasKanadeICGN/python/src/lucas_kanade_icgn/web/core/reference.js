@@ -2,8 +2,8 @@
  * Shared CPU preparation for the browser WebGPU adapters.
  *
  * This module owns the reference-image convention used by both the Three.js
- * adapter and the raw WGSL adapter. GPU-IO remains an independently validated
- * compatibility implementation.
+ * adapter and the raw WGSL adapter. The historical GPU-IO implementation is
+ * kept only in the standalone browser demonstration outside this package.
  */
 
 const mirror = (coordinate, size) => {

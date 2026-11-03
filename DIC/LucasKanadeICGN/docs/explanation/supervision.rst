@@ -108,10 +108,6 @@ Decision rule
      - Python + ``ICGNWebGL``
      - Functional and useful for qualification, but the binary process copies
        remain in the complete latency.
-   * - Historical GPU-IO reproduction
-     - Python + explicit ``gpuio`` backend
-     - Retained only for reproducibility and migration checks.
-
 No choice removes the required CPU-to-GPU resource transfer unless acquisition
 already produces a GPU resource that the selected runtime can consume. The
 important optimization is to avoid unnecessary representation and process

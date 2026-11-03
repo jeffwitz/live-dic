@@ -5,8 +5,7 @@
  * inverse-compositional Gauss-Newton algorithm used by DIC-RT.
  *
  * This module deliberately contains no camera, video-codec, or graphical UI
- * code. It exposes the same headless contract as the GPU-IO implementation so
- * both backends can be driven from Python with identical inputs.
+ * code. It exposes the headless contract used by the Python browser adapter.
  */
 
 import * as THREE from 'three/webgpu';
@@ -59,7 +58,6 @@ const FIR_RADIUS = 15;
 const PREFILTER_TILE_SIZE = 16;
 const PREFILTER_TILE_STRIDE = PREFILTER_TILE_SIZE + 2 * FIR_RADIUS;
 const PREFILTER_TILE_PIXELS = PREFILTER_TILE_SIZE * PREFILTER_TILE_STRIDE;
-const FORCE_WEBGL = URL_PARAMETERS.get('forceWebGL') === '1';
 
 const configuration = {
   iterations: DEFAULT_MAX_ITERATIONS,
@@ -106,7 +104,6 @@ let solverKind = 'uninitialized';
 let runtimeInterpolation = null;
 let runtimeMotionModel = null;
 let runtimeOutlierPolicy = null;
-let targetUsesPackedBytes = false;
 
 /** Allocate all resolution-dependent storage and rebuild the TSL compute graph. */
 const initializeRuntime = (width, height) => {
@@ -126,33 +123,26 @@ const initializeRuntime = (width, height) => {
   GRID_HEIGHT = Math.floor(FRAME_HEIGHT / SUBSET_SIZE);
   GRID_COUNT = GRID_WIDTH * GRID_HEIGHT;
 
-  if (renderer.backend.isWebGPUBackend === true) {
-    const largestBufferBytes = PIXEL_COUNT * 4 * Float32Array.BYTES_PER_ELEMENT;
-    const { limits } = renderer.backend.device;
-    if (largestBufferBytes > limits.maxStorageBufferBindingSize) {
-      throw new Error(
-        `The ${FRAME_WIDTH}x${FRAME_HEIGHT} reference buffer needs ${largestBufferBytes} bytes, `
-        + `but this WebGPU adapter allows ${limits.maxStorageBufferBindingSize}`,
-      );
-    }
-    if (largestBufferBytes > limits.maxBufferSize) {
-      throw new Error(
-        `The ${FRAME_WIDTH}x${FRAME_HEIGHT} reference buffer exceeds the adapter's maximum buffer size`,
-      );
-    }
+  const largestBufferBytes = PIXEL_COUNT * 4 * Float32Array.BYTES_PER_ELEMENT;
+  const { limits } = renderer.backend.device;
+  if (largestBufferBytes > limits.maxStorageBufferBindingSize) {
+    throw new Error(
+      `The ${FRAME_WIDTH}x${FRAME_HEIGHT} reference buffer needs ${largestBufferBytes} bytes, `
+      + `but this WebGPU adapter allows ${limits.maxStorageBufferBindingSize}`,
+    );
+  }
+  if (largestBufferBytes > limits.maxBufferSize) {
+    throw new Error(
+      `The ${FRAME_WIDTH}x${FRAME_HEIGHT} reference buffer exceeds the adapter's maximum buffer size`,
+    );
   }
 
-  const StorageAttribute = renderer.backend.isWebGPUBackend === true
-    ? THREE.StorageBufferAttribute
-    : THREE.StorageInstancedBufferAttribute;
-  const storageAttribute = (length, itemSize, ArrayType = Float32Array) => new StorageAttribute(
+  const storageAttribute = (length, itemSize, ArrayType = Float32Array) => new THREE.StorageBufferAttribute(
     new ArrayType(length),
     itemSize,
   );
   attributes = {
-    sourcePacked: renderer.backend.isWebGPUBackend === true
-      ? storageAttribute(Math.ceil(PIXEL_COUNT / 4), 1, Uint32Array)
-      : null,
+    sourcePacked: storageAttribute(Math.ceil(PIXEL_COUNT / 4), 1, Uint32Array),
     source: storageAttribute(PIXEL_COUNT, 1),
     temporary: storageAttribute(PIXEL_COUNT, 1),
     coefficients: storageAttribute(PIXEL_COUNT, 1),
@@ -168,9 +158,11 @@ const initializeRuntime = (width, height) => {
     subgroupDiagnostic: storageAttribute(1, 1),
   };
 
-  sourcePackedNode = attributes.sourcePacked
-    ? storage(attributes.sourcePacked, 'uint', Math.ceil(PIXEL_COUNT / 4)).toReadOnly()
-    : null;
+  sourcePackedNode = storage(
+    attributes.sourcePacked,
+    'uint',
+    Math.ceil(PIXEL_COUNT / 4),
+  ).toReadOnly();
   sourceNode = storage(attributes.source, 'float', PIXEL_COUNT);
   temporaryNode = storage(attributes.temporary, 'float', PIXEL_COUNT);
   coefficientsNode = storage(attributes.coefficients, 'float', PIXEL_COUNT);
@@ -184,21 +176,7 @@ const initializeRuntime = (width, height) => {
   filteredLinearNode = storage(attributes.filteredLinear, 'vec4', GRID_COUNT);
   filteredStatusNode = storage(attributes.filteredStatus, 'vec2', GRID_COUNT);
   subgroupDiagnosticNode = storage(attributes.subgroupDiagnostic, 'float', 1);
-  if (renderer.backend.isWebGPUBackend !== true) {
-    [
-      sourceNode,
-      temporaryNode,
-      coefficientsNode,
-      referenceNode,
-      hessianInverseNode,
-      metadataNode,
-      translationNode,
-      linearNode,
-      statusNode,
-    ].forEach((node) => node.setPBO(true));
-  }
-  useSubgroupSolver = renderer.backend.isWebGPUBackend === true
-    && subgroupProbeWidth >= SOLVER_LANES;
+  useSubgroupSolver = subgroupProbeWidth >= SOLVER_LANES;
   subgroupSolverWidth = 0;
   subgroupValidation = useSubgroupSolver ? 'pending' : 'unavailable';
   kernels = buildKernels();
@@ -206,7 +184,6 @@ const initializeRuntime = (width, height) => {
   runtimeMotionModel = configuration.motionModel;
   runtimeOutlierPolicy = configuration.outlierPolicy;
   referenceReady = false;
-  targetUsesPackedBytes = false;
   return true;
 };
 
@@ -245,22 +222,6 @@ const mirrorNode = (coordinate, size) => {
 };
 
 const makePrefilterKernel = (input, output, horizontal) => {
-  if (renderer.backend.isWebGPUBackend !== true) {
-    return Fn(() => {
-      const index = instanceIndex;
-      const x = int(index.mod(uint(FRAME_WIDTH)));
-      const y = int(index.div(uint(FRAME_WIDTH)));
-      const result = float(0).toVar();
-      for (let tap = -FIR_RADIUS; tap <= FIR_RADIUS; ++tap) {
-        const sx = horizontal ? mirrorNode(x.add(tap), FRAME_WIDTH) : x;
-        const sy = horizontal ? y : mirrorNode(y.add(tap), FRAME_HEIGHT);
-        const sampleIndex = uint(sy.mul(FRAME_WIDTH).add(sx));
-        result.addAssign(input.element(sampleIndex).mul(FIR_WEIGHTS[tap + FIR_RADIUS]));
-      }
-      output.element(index).assign(result);
-    })().compute(PIXEL_COUNT, [256])
-      .setName(horizontal ? 'DIC-RT WebGL2 prefilter X' : 'DIC-RT WebGL2 prefilter Y');
-  }
   const tileColumns = Math.ceil(FRAME_WIDTH / PREFILTER_TILE_SIZE);
   const tileRows = Math.ceil(FRAME_HEIGHT / PREFILTER_TILE_SIZE);
   return Fn(() => {
@@ -516,139 +477,7 @@ const convergenceStatus = (change, zncc) => select(
   0,
 );
 
-/**
- * Build the WebGL2 transform-feedback solver.
- *
- * WebGL2 has no workgroups, shared memory, or subgroup reductions. One
- * invocation therefore owns one complete subset and accumulates its 256
- * pixels serially. Numerical helpers and the packed result layout remain
- * common with the cooperative WebGPU solvers.
- */
-const makeSerialSolverKernel = () => Fn(() => {
-  const subsetIndex = uint(instanceIndex);
-  const currentTranslation = translationNode.element(subsetIndex).toVar();
-  const currentLinear = linearNode.element(subsetIndex).toVar();
-  const initialStatus = statusNode.element(subsetIndex).toVar();
-  const currentStatus = float(select(
-    metadataValue(subsetIndex, 1).greaterThanEqual(0.5),
-    initialStatus.x,
-    -1,
-  )).toVar();
-  const currentIterations = float(initialStatus.y).toVar();
-  const gridX = int(subsetIndex.mod(uint(GRID_WIDTH)));
-  const gridY = int(subsetIndex.div(uint(GRID_WIDTH)));
-  const center = vec2(float(gridX).add(0.5), float(gridY).add(0.5)).mul(SUBSET_SIZE);
-
-  Loop({
-    start: int(0),
-    end: iterationCountNode,
-    type: 'int',
-    condition: '<',
-    name: 'iteration',
-  }, ({ iteration }) => {
-    If(currentStatus.abs().greaterThan(0.5), () => Break());
-
-    const inside = float(1).toVar();
-    for (let corner = 0; corner < 4; ++corner) {
-      const localX = corner === 1 || corner === 3
-        ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
-      const localY = corner >= 2 ? SUBSET_HALF_EXTENT : -SUBSET_HALF_EXTENT;
-      const position = center.sub(0.5).add(vec2(localX, localY))
-        .add(displacementAt(currentTranslation, currentLinear, localX, localY));
-      const valid = position.x.greaterThanEqual(2).and(position.y.greaterThanEqual(2))
-        .and(position.x.lessThanEqual(FRAME_WIDTH - 3))
-        .and(position.y.lessThanEqual(FRAME_HEIGHT - 3));
-      inside.mulAssign(select(valid, 1, 0));
-    }
-    If(inside.lessThan(0.5), () => {
-      currentStatus.assign(-1);
-      Break();
-    });
-
-    const sumCurrent = float(0).toVar();
-    const sumCurrent2 = float(0).toVar();
-    const sumReferenceCurrent = float(0).toVar();
-    const sumJCurrent = Array.from({ length: 6 }, () => float(0).toVar());
-    Loop({
-      start: int(0),
-      end: int(SUBSET_SIZE),
-      type: 'int',
-      condition: '<',
-      name: 'row',
-    }, ({ row }) => {
-      Loop({
-        start: int(0),
-        end: int(SUBSET_SIZE),
-        type: 'int',
-        condition: '<',
-        name: 'column',
-      }, ({ column }) => {
-        const localX = float(column).sub(SUBSET_HALF_EXTENT);
-        const localY = float(row).sub(SUBSET_HALF_EXTENT);
-        const displacement = displacementAt(currentTranslation, currentLinear, localX, localY);
-        const current = sampleTarget(
-          center.sub(0.5).add(vec2(localX, localY)).add(displacement),
-        );
-        const templateIndex = uint(gridY.mul(SUBSET_SIZE).add(row).mul(FRAME_WIDTH)
-          .add(gridX.mul(SUBSET_SIZE)).add(column));
-        const reference = referenceNode.element(templateIndex);
-        const jacobian = [
-          reference.y,
-          reference.y.mul(localX),
-          reference.y.mul(localY),
-          reference.z,
-          reference.z.mul(localX),
-          reference.z.mul(localY),
-        ];
-        sumCurrent.addAssign(current);
-        sumCurrent2.addAssign(current.mul(current));
-        sumReferenceCurrent.addAssign(reference.x.mul(current));
-        for (const component of activeMotionComponents()) {
-          sumJCurrent[component].addAssign(jacobian[component].mul(current));
-        }
-      });
-    });
-
-    const currentMean = sumCurrent.div(SUBSET_PIXELS);
-    const currentNorm = sumCurrent2.sub(sumCurrent.mul(currentMean)).max(0).sqrt();
-    const referenceNorm = metadataValue(subsetIndex, 0);
-    currentIterations.assign(float(iteration).add(1));
-    If(currentNorm.lessThan(1e-9).or(referenceNorm.lessThan(1e-9)), () => {
-      currentStatus.assign(-2);
-    }).Else(() => {
-      const ratio = referenceNorm.div(currentNorm);
-      const delta = solveIncrement(subsetIndex, sumJCurrent, currentMean, ratio);
-      const determinant = incrementDeterminant(delta);
-      If(determinant.abs().lessThan(1e-8), () => {
-        currentStatus.assign(-1);
-      }).Else(() => {
-        const update = composeInverseUpdate(
-          currentTranslation,
-          currentLinear,
-          delta,
-          determinant,
-        );
-        currentTranslation.assign(update.translation);
-        currentLinear.assign(update.linear);
-        const zncc = sumReferenceCurrent.div(referenceNorm.mul(currentNorm));
-        currentStatus.assign(convergenceStatus(update.cornerChange, zncc));
-      });
-    });
-  });
-
-  translationNode.element(subsetIndex).assign(currentTranslation);
-  linearNode.element(subsetIndex).assign(currentLinear);
-  statusNode.element(subsetIndex).assign(vec2(currentStatus, currentIterations));
-})().compute(GRID_COUNT, [64]).setName('DIC-RT serial WebGL2 affine IC-GN solver');
-
-
-/**
- * Build the complete affine IC-GN solve as one cooperative dispatch.
- *
- * Keeping the warp in workgroup memory avoids global state round-trips between
- * iterations. Converged subsets skip interpolation and updates while all lanes
- * continue through the barriers required by portable WGSL.
- */
+/** Build the portable workgroup-memory solver used when subgroups are unavailable. */
 const makeFusedCooperativeSolverKernel = () => Fn(() => {
   const subsetIndex = uint(workgroupId.y.mul(GRID_WIDTH).add(workgroupId.x));
   const lane = int(localId.x);
@@ -1088,27 +917,21 @@ const makeMedianKernel = () => Fn(() => {
 );
 
 const buildKernels = () => {
-  const webgpu = renderer.backend.isWebGPUBackend === true;
-  solverKind = webgpu
-    ? (useSubgroupSolver ? 'subgroup-pending-validation' : 'portable-workgroup')
-    : 'serial-webgl2';
+  solverKind = useSubgroupSolver ? 'subgroup-pending-validation' : 'portable-workgroup';
   return {
-    unpack: webgpu ? makeUnpackKernel() : null,
+    unpack: makeUnpackKernel(),
     prefilterX: makePrefilterKernel(sourceNode, temporaryNode, true),
     prefilterY: makePrefilterKernel(temporaryNode, coefficientsNode, false),
-    solver: webgpu
-      ? (useSubgroupSolver
-        ? makeSubgroupSolverKernel()
-        : makeFusedCooperativeSolverKernel())
-      : makeSerialSolverKernel(),
+    solver: useSubgroupSolver
+      ? makeSubgroupSolverKernel()
+      : makeFusedCooperativeSolverKernel(),
     median: makeMedianKernel(),
   };
 };
 
 /** Return the subgroup width selected for a 16-invocation compute workgroup. */
 const measureSubgroupWidth = async () => {
-  if (renderer.backend.isWebGPUBackend !== true
-      || !renderer.backend.device.features.has('subgroups')) return 0;
+  if (!renderer.backend.device.features.has('subgroups')) return 0;
   const attribute = new THREE.StorageBufferAttribute(new Float32Array(1), 1);
   const output = storage(attribute, 'float', 1);
   const probe = Fn(() => {
@@ -1122,18 +945,23 @@ const measureSubgroupWidth = async () => {
 const ensureRenderer = async () => {
   if (rendererPromise) return rendererPromise;
   rendererPromise = (async () => {
+    if (!navigator.gpu) {
+      throw new Error('The Three.js backend requires WebGPU; WebGL2 fallback is disabled.');
+    }
     renderer = new THREE.WebGPURenderer({
       antialias: false,
       powerPreference: 'high-performance',
       trackTimestamp: true,
-      forceWebGL: FORCE_WEBGL,
     });
     await renderer.init();
+    if (renderer.backend.isWebGPUBackend !== true) {
+      renderer.dispose();
+      renderer = null;
+      throw new Error('The Three.js backend requires WebGPU; WebGL2 fallback is disabled.');
+    }
     subgroupProbeWidth = await measureSubgroupWidth();
     useSubgroupSolver = subgroupProbeWidth >= SOLVER_LANES;
-    solverKind = renderer.backend.isWebGPUBackend === true
-      ? (useSubgroupSolver ? 'subgroup-pending-validation' : 'portable-workgroup')
-      : 'serial-webgl2';
+    solverKind = useSubgroupSolver ? 'subgroup-pending-validation' : 'portable-workgroup';
     return renderer;
   })();
   return rendererPromise;
@@ -1150,7 +978,6 @@ const setTarget = (image) => {
   const gray = imageToGray(image, FRAME_WIDTH, FRAME_HEIGHT);
   for (let index = 0; index < PIXEL_COUNT; ++index) attributes.source.array[index] = gray[index];
   attributes.source.needsUpdate = true;
-  targetUsesPackedBytes = false;
 };
 
 /** Upload an already-grayscale frame without decoding an intermediate image. */
@@ -1164,15 +991,8 @@ const setTargetBytes = (pixels, width, height) => {
   if (!(pixels instanceof Uint8Array) || pixels.byteLength !== PIXEL_COUNT) {
     throw new Error(`Expected ${PIXEL_COUNT} grayscale bytes`);
   }
-  if (renderer.backend.isWebGPUBackend === true) {
-    new Uint8Array(attributes.sourcePacked.array.buffer).set(pixels);
-    attributes.sourcePacked.needsUpdate = true;
-    targetUsesPackedBytes = true;
-    return;
-  }
-  for (let index = 0; index < PIXEL_COUNT; ++index) attributes.source.array[index] = pixels[index] / 255;
-  attributes.source.needsUpdate = true;
-  targetUsesPackedBytes = false;
+  new Uint8Array(attributes.sourcePacked.array.buffer).set(pixels);
+  attributes.sourcePacked.needsUpdate = true;
 };
 
 const resetSolver = () => {
@@ -1185,16 +1005,12 @@ const resetSolver = () => {
 };
 
 const synchronize = async () => {
-  if (renderer.backend.isWebGPUBackend === true) {
-    await renderer.backend.device.queue.onSubmittedWorkDone();
-  } else {
-    renderer.backend.gl.finish();
-  }
+  await renderer.backend.device.queue.onSubmittedWorkDone();
 };
 
 /** Validate the subgroup size selected for the production solver pipeline. */
 const validateSubgroupSolver = async () => {
-  if (!useSubgroupSolver || renderer.backend.isWebGPUBackend !== true) return;
+  if (!useSubgroupSolver) return;
   attributes.subgroupDiagnostic.array[0] = 0;
   attributes.subgroupDiagnostic.needsUpdate = true;
   resetSolver();
@@ -1221,17 +1037,11 @@ const resolveGpuTimestamp = async () => {
 
 const executePipeline = async ({ measureGpu = false } = {}) => {
   resetSolver();
-  const inputKernels = targetUsesPackedBytes ? [kernels.unpack] : [];
+  const inputKernels = [kernels.unpack];
   const outlierKernels = configuration.outlierPolicy === 'disabled' ? [] : [kernels.median];
   const computeKernels = configuration.interpolation === 'bspline'
     ? [...inputKernels, kernels.prefilterX, kernels.prefilterY, kernels.solver, ...outlierKernels]
     : [...inputKernels, kernels.solver, ...outlierKernels];
-  if (renderer.backend.isWebGPUBackend !== true) {
-    await renderer.computeAsync(computeKernels);
-    if (measureGpu) return resolveGpuTimestamp();
-    await synchronize();
-    return null;
-  }
   computeKernels.forEach((kernel) => renderer.compute(kernel));
   if (measureGpu) {
     const gpuMs = await resolveGpuTimestamp();
@@ -1456,11 +1266,8 @@ const setReference = async (dataUrl, options = {}) => {
 
 const info = async () => {
   await ensureRenderer();
-  const adapterInfo = renderer.backend.device?.adapterInfo || {};
-  const isWebGPU = renderer.backend.isWebGPUBackend === true;
-  const timerQuery = isWebGPU
-    ? Boolean(renderer.backend.trackTimestamp)
-    : Boolean(renderer.backend.hasTimestamp);
+  const adapterInfo = renderer.backend.device.adapterInfo || {};
+  const timerQuery = Boolean(renderer.backend.trackTimestamp);
   const identity = [adapterInfo.vendor, adapterInfo.architecture, adapterInfo.device]
     .filter(Boolean).join(' ');
   return {
@@ -1477,7 +1284,7 @@ const info = async () => {
     architecture: adapterInfo.architecture || null,
     adapterDevice: adapterInfo.device || null,
     description: adapterInfo.description || null,
-    subgroups: isWebGPU && renderer.backend.device.features.has('subgroups'),
+    subgroups: renderer.backend.device.features.has('subgroups'),
     subgroupWidth: subgroupSolverWidth || subgroupProbeWidth,
     subgroupProbeWidth,
     subgroupSolverWidth,

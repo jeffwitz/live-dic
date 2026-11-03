@@ -115,12 +115,8 @@ Backend coverage
      - yes
      - yes
      - yes
-   * - Three.js WebGPU and WebGL2 fallback
+   * - Three.js WebGPU
      - yes
-     - yes
-     - no
-   * - Deprecated GPU-IO
-     - no
      - yes
      - no
 

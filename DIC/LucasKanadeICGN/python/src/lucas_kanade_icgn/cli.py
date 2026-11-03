@@ -76,7 +76,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--chromium", type=Path, help="Chromium or Chrome executable")
     parser.add_argument(
         "--backend",
-        choices=("gpuio", "three-tsl", "webgpu-wgsl"),
+        choices=("three-tsl", "webgpu-wgsl"),
         default="three-tsl",
         help="browser compute backend",
     )
@@ -123,11 +123,6 @@ def _parser() -> argparse.ArgumentParser:
         "--subset-stride",
         type=int,
         help="subset-centre spacing in pixels (defaults to --subset-size)",
-    )
-    parser.add_argument(
-        "--force-three-webgl",
-        action="store_true",
-        help="force the Three.js backend to use its WebGL2 compatibility path",
     )
     parser.add_argument(
         "--initialization",
@@ -410,7 +405,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             no_sandbox=not args.enable_chromium_sandbox,
             chromium_args=args.chromium_arg,
             backend=args.backend,
-            force_three_webgl=args.force_three_webgl,
             pyramid_levels=args.pyramid_levels,
             iterations_per_level=args.iterations_per_level,
             tolerance_per_level=args.tolerance_per_level,

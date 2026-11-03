@@ -69,12 +69,6 @@ Backend coverage
    * - Three.js/TSL WebGPU
      - TSL workgroup or subgroup solver
      - Same TSL solver families with direct sampling
-   * - Three.js WebGL2 fallback
-     - Serial TSL solver
-     - Serial TSL solver with direct sampling
-   * - Deprecated GPU-IO
-     - Supported for historical reproduction
-     - Not supported
 
 The native specialized WGSL source encodes the historical coefficient sampler.
 Consequently ``ICGNWGPU(interpolation="linear")`` and ``"cubic"`` deliberately

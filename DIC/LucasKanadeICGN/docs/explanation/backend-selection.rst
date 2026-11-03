@@ -40,19 +40,13 @@ Current recommendation
    * - Python-controlled browser compatibility
      - ``ICGNWebGL()``
      - one scale
-     - Selects Three.js/WebGPU and falls back to Three.js/WebGL2. Useful for
-       compatibility and qualification, but not the recommended low-latency
-       NumPy data plane.
+     - Selects Three.js/TSL and requires WebGPU. Useful for compatibility and
+       qualification, but not the recommended low-latency NumPy data plane.
    * - Python-controlled canonical WGSL in Chromium
      - ``ICGNWebGL(backend="webgpu-wgsl")``
      - two full-pyramid levels
      - Use when browser/native source identity is more important than the
        specialized Three.js subgroup path. The process-copy cost remains.
-   * - Historical GPU-IO reproduction
-     - ``ICGNWebGL(backend="gpuio")``
-     - one scale
-     - Deprecated; retained only for regression and historical comparison.
-
 The phrase *two-level default* therefore applies to
 ``ICGNWGPUFullPyramid`` and ``webgpu-wgsl``.  The phrase *one-scale default*
 applies only to ``ICGNWGPU`` and Three.js/TSL.  It must not be interpreted as

@@ -74,7 +74,7 @@ copy a colour frame for presentation, but does not launch correlation.
 The optional ``partial`` policy retains connected local supports at boundaries;
 see :doc:`use-partial-roi` for its separate numerical and geometric contracts.
 A ROI with the quadratic model is rejected; quadratic
-processing without a ROI is preserved. Three.js/GPU-IO explicitly reject ROI.
+processing without a ROI is preserved. Three.js explicitly rejects ROI.
 The browser-only ``register_pair`` helper retains its Three.js default; choose
 ``backend="webgpu-wgsl"`` explicitly to use a full mask.
 
@@ -166,4 +166,4 @@ ROI plan. The standalone JavaScript engine accepts row-major 0/1 Uint8Array
 masks; its UI builds these from a polygon or rectangle. Both use the canonical
 ROI-enabled WGSL, conservative reduction and prepared link permissions.
 Partial supports, Gaussian weighting and truncation remain native features.
-Three.js and GPU-IO continue to reject ROI explicitly.
+Three.js continues to reject ROI explicitly.

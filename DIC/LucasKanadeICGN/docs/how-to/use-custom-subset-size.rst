@@ -30,8 +30,8 @@ individual solve cheaper. For image width ``W``, subset width ``S`` and stride
 
 Both ``ICGNWGPU`` and ``ICGNWGPUFullPyramid`` support custom widths. The
 ``ICGNWebGL(backend="webgpu-wgsl")`` adapter and the standalone WebGPU
-workbench use the same portable kernel family. Three.js/TSL, its WebGL2 path,
-and GPU-IO retain their existing 8, 16 and 32 pixel limits; the Python wrapper
+workbench use the same portable kernel family. Three.js/TSL retains its 8, 16
+and 32 pixel limits; the Python wrapper
 rejects a custom width for those backends instead of silently substituting a
 different size.
 
@@ -70,6 +70,6 @@ The same ``median_filter_size`` argument is available on ``ICGNWGPU``.
 is ``--median-filter-size 5 --outlier-policy median``. In the PWA, select the
 width under Solve before starting the calculation. Changing the width requires
 reference preparation again because it specializes the GPU pipeline. Three.js
-and GPU-IO continue to use a fixed 3 by 3 neighbourhood. Larger filters can
+continues to use a fixed 3 by 3 neighbourhood. Larger filters can
 remove real local gradients or curvature; compare raw and smoothed fields on
 the specimen before using them for metrology.

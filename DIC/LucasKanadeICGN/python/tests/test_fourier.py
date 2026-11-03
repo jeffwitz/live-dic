@@ -70,7 +70,7 @@ class FourierTests(unittest.TestCase):
         self.assertEqual((actual["dx"], actual["dy"]), (64, 32))
 
     def test_public_modes_validate_before_acquiring_gpu_or_browser(self):
-        for backend in ["three-tsl", "gpuio"]:
+        for backend in ["three-tsl"]:
             with self.assertRaisesRegex(ValueError, "webgpu-wgsl"):
                 ICGNWebGL(backend=backend, initialization="fourier")
         with self.assertRaisesRegex(ValueError, "translation and affine"):

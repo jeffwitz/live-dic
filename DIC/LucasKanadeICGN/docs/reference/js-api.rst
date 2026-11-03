@@ -77,7 +77,7 @@ Options and native correspondence
      - Notes
    * - ``subsetSize``, ``subsetStride``
      - ``subset_size=16``, stride defaults to size
-     - Raw WGSL widths 4..64; Three.js and WebGL2 widths 8, 16, 32. Integer stride 1..size on raw WGSL.
+     - Raw WGSL widths 4..64; Three.js WebGPU widths 8, 16, 32. Integer stride 1..size on raw WGSL.
    * - ``motionModel``
      - ``motion_model="affine"``
      - Translation, affine and existing quadratic preparation/solver. ROI is translation/affine only.
@@ -199,8 +199,8 @@ wall measurements are not GPU timestamps.
 
 Translation/affine, the three interpolators, and full ROI are supported. The
 raw shared-WGSL browser backend accepts integer subset widths from 4 through
-64 with strides from 1 through the width. The Three.js and WebGL2 paths remain
-limited to widths 8, 16 and 32 with non-overlapping subsets. Quadratic and
+64 with strides from 1 through the width. The Three.js path remains limited to
+widths 8, 16 and 32 with non-overlapping subsets. Quadratic and
 depth greater than one are rejected.
 ``registerPair`` on a CPU-preparation engine is rejected. Input dimensions are
 validated before mutation. A later execution failure invalidates the reference;
