@@ -36,7 +36,9 @@ class LiveVectorTests(unittest.TestCase):
           console.log(JSON.stringify({{firstCalls,stableCalls,finalCalls:configureCalls,configured}}));
         """
         value = self.node(script)
-        self.assertEqual(value, {"firstCalls": 2, "stableCalls": 2, "finalCalls": 3, "configured": True})
+        self.assertEqual(
+            value, {"firstCalls": 2, "stableCalls": 2, "finalCalls": 3, "configured": True}
+        )
 
     def test_norm_scale_and_preview_do_not_change_field_geometry(self):
         script = f"""

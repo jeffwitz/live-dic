@@ -407,7 +407,7 @@ class UHDRegistrationRegressionTests(unittest.TestCase):
                     interpolation="bspline",
                     outlier_policy="median",
                     median_filter_size=filter_size,
-                    device_type="gpu",
+                    device_type="auto",
                 ) as engine,
             ):
                 info = engine.set_reference(reference)

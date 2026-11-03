@@ -559,7 +559,7 @@ class RuntimeAssetTests(unittest.TestCase):
             common.parent.mkdir(parents=True)
             common.touch()
             assets = _find_runtime_assets(three_root, "three-tsl")
-            self.assertEqual(assets.root, root)
+            self.assertTrue(assets.root.samefile(root))
             self.assertEqual(assets.headless_path, "three/headless.html")
 
     def test_packaged_three_tsl_runtime_is_complete_and_offline(self) -> None:

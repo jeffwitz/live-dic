@@ -79,43 +79,49 @@ class GpuReferenceExecutionTests(unittest.TestCase):
         )
 
     def test_reference_quantities_match_cpu_for_models_interpolators_and_grids(self):
-        actual = self.evaluate("""
-          let cases=0,maxReferenceError=0,maxInverseError=0;
-          for(const motionModel of ['translation','affine'])for(const interpolation of ['bspline','linear','cubic']) {
-            for(const [subsetSize,subsetStride,pyramidLevels] of [[4,4,1],[7,7,1],[8,8,3],[10,5,1],[15,15,1],[16,16,2],[17,8,1],[24,12,1],[31,16,1],[32,16,1],[33,33,1],[48,24,1],[64,64,1]]) {
-              if(subsetSize<8&&motionModel==='affine')continue;
-              const width=99,height=97,pixels=texture(width,height), options={width,height,motionModel,interpolation,subsetSize,subsetStride,pyramidLevels};
-              const engine=await DICEngine.create({...options,referencePreparation:'gpu'});
-              try {
-                await engine.setReference(pixels);let level={values:pixels,width,height};
-                for(let i=0;i<pyramidLevels;i++) {
-                  const expected=prepareReferenceGray(level.values,{...options,width:level.width,height:level.height});
-                  const actual=await engine.exportReference(i);
-                  check(actual.reference.length===expected.reference.length,'reference shape');
-                  for(let k=0;k<actual.reference.length;k++) {
-                    const error=Math.abs(actual.reference[k]-expected.reference[k]);maxReferenceError=Math.max(maxReferenceError,error);
-                    check(error<=3e-4+3e-6*Math.abs(expected.reference[k]),`reference ${motionModel}/${interpolation}/${subsetSize}/${i}/${k}: ${error}`);
-                  }
-                  for(let k=0;k<actual.metadata.length;k++) {
-                    const component=k%16,a=actual.metadata[k],b=expected.metadata[k];
-                    const tolerance=component>=2&&component<8?0.1+1e-4*Math.abs(b):component>=8&&component<14?.003+1e-4*Math.abs(b):.001+1e-5*Math.abs(b);
-                    check(Math.abs(a-b)<=tolerance,`metadata ${component}: ${a} versus ${b}`);
-                  }
-                  for(let k=0;k<actual.inverseHessian.length;k++) {
-                    const a=actual.inverseHessian[k],b=expected.inverseHessian[k],error=Math.abs(a-b);
-                    maxInverseError=Math.max(maxInverseError,error);check(error<=5e-9+5e-4*Math.abs(b),`inverse ${error}`);
-                  }
-                  check(actual.referenceValid.every((v,k)=>v===+(expected.metadata[k*16+1]>0)),'validity differs');
-                  level=reduceHalfGray(level.values,level.width,level.height);
-                }
-                cases++;
-              } finally {engine.destroy();}
-            }
-          }
-          return {cases,maxReferenceError,maxInverseError};
-        """)
-        self.assertEqual(actual["cases"], 72)
-        self.assertLess(actual["maxReferenceError"], 0.001)
+        # Bound each RPC independently: the complete 72-case compilation matrix
+        # can exceed one call's deadline on SwiftShader. Keep all cases/tolerances.
+        for model in ("translation", "affine"):
+            for interpolation in ("bspline", "linear", "cubic"):
+                with self.subTest(model=model, interpolation=interpolation):
+                    actual = self.evaluate(
+                        f"const motionModel={json.dumps(model)}, interpolation={json.dumps(interpolation)};"
+                        + """
+                      let cases=0,maxReferenceError=0,maxInverseError=0;
+                        for(const [subsetSize,subsetStride,pyramidLevels] of [[4,4,1],[7,7,1],[8,8,3],[10,5,1],[15,15,1],[16,16,2],[17,8,1],[24,12,1],[31,16,1],[32,16,1],[33,33,1],[48,24,1],[64,64,1]]) {
+                          if(subsetSize<8&&motionModel==='affine')continue;
+                          const width=99,height=97,pixels=texture(width,height), options={width,height,motionModel,interpolation,subsetSize,subsetStride,pyramidLevels};
+                          const engine=await DICEngine.create({...options,referencePreparation:'gpu'});
+                          try {
+                            await engine.setReference(pixels);let level={values:pixels,width,height};
+                            for(let i=0;i<pyramidLevels;i++) {
+                              const expected=prepareReferenceGray(level.values,{...options,width:level.width,height:level.height});
+                              const actual=await engine.exportReference(i);
+                              check(actual.reference.length===expected.reference.length,'reference shape');
+                              for(let k=0;k<actual.reference.length;k++) {
+                                const error=Math.abs(actual.reference[k]-expected.reference[k]);maxReferenceError=Math.max(maxReferenceError,error);
+                                check(error<=3e-4+3e-6*Math.abs(expected.reference[k]),`reference ${motionModel}/${interpolation}/${subsetSize}/${i}/${k}: ${error}`);
+                              }
+                              for(let k=0;k<actual.metadata.length;k++) {
+                                const component=k%16,a=actual.metadata[k],b=expected.metadata[k];
+                                const tolerance=component>=2&&component<8?0.1+1e-4*Math.abs(b):component>=8&&component<14?.003+1e-4*Math.abs(b):.001+1e-5*Math.abs(b);
+                                check(Math.abs(a-b)<=tolerance,`metadata ${component}: ${a} versus ${b}`);
+                              }
+                              for(let k=0;k<actual.inverseHessian.length;k++) {
+                                const a=actual.inverseHessian[k],b=expected.inverseHessian[k],error=Math.abs(a-b);
+                                maxInverseError=Math.max(maxInverseError,error);check(error<=5e-9+5e-4*Math.abs(b),`inverse ${error}`);
+                              }
+                              check(actual.referenceValid.every((v,k)=>v===+(expected.metadata[k*16+1]>0)),'validity differs');
+                              level=reduceHalfGray(level.values,level.width,level.height);
+                            }
+                            cases++;
+                          } finally {engine.destroy();}
+                        }
+                      return {cases,maxReferenceError,maxInverseError};
+                    """
+                    )
+                    self.assertEqual(actual["cases"], 13 if model == "translation" else 11)
+                    self.assertLess(actual["maxReferenceError"], 0.001)
 
     def test_custom_subset_size_runs_shared_browser_solver(self):
         actual = self.evaluate("""

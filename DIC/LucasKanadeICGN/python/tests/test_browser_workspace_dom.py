@@ -14,7 +14,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 CHROMIUM = (
-    shutil.which("chromium")
+    shutil.which("google-chrome")
+    or shutil.which("chromium")
     or shutil.which("chromium-browser")
     or next(
         (
@@ -30,6 +31,13 @@ CHROMIUM = (
 class QuietHandler(SimpleHTTPRequestHandler):
     def log_message(self, format: str, *args: object) -> None:
         pass
+
+    def do_POST(self) -> None:
+        length = int(self.headers["Content-Length"])
+        self.server.result = json.loads(self.rfile.read(length))
+        self.send_response(204)
+        self.end_headers()
+        self.server.completed.set()
 
 
 @unittest.skipUnless(CHROMIUM, "Chromium is required for the real-DOM workspace test")
@@ -83,10 +91,11 @@ class WorkspaceDomTests(unittest.TestCase):
       analysisControlsHidden: document.getElementById('analysis-only').hidden,
     };
     document.getElementById('background').click();
-    document.getElementById('result').textContent = JSON.stringify({
+    const result = {
       initialCalls, initialVisibility, afterBackground, afterLiveButton,
       afterSecondBackground: { mode: workspace.mode, calls: modeCalls.slice() },
-    });
+    };
+    await fetch('/result', { method: 'POST', body: JSON.stringify(result) });
   </script>
 </body></html>
 """,
@@ -95,34 +104,48 @@ class WorkspaceDomTests(unittest.TestCase):
 
             handler = partial(QuietHandler, directory=str(root))
             server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+            server.completed = threading.Event()
+            server.result = None
             thread = threading.Thread(target=server.serve_forever, daemon=True)
             thread.start()
             try:
                 url = f"http://127.0.0.1:{server.server_port}/"
-                completed = subprocess.run(
-                    [
-                        CHROMIUM,
-                        "--headless",
-                        "--no-sandbox",
-                        "--disable-gpu",
-                        "--disable-dev-shm-usage",
-                        f"--user-data-dir={root / 'profile'}",
-                        "--virtual-time-budget=1000",
-                        "--dump-dom",
-                        url,
-                    ],
-                    check=True,
-                    capture_output=True,
-                    text=True,
-                    timeout=30,
-                )
+                # Completion comes from the page, independent of Chromium's
+                # --dump-dom virtual-time and shutdown behaviour on CI runners.
+                with tempfile.TemporaryFile(mode="w+b") as log:
+                    browser = subprocess.Popen(
+                        [
+                            CHROMIUM,
+                            "--headless",
+                            "--no-sandbox",
+                            "--disable-gpu",
+                            "--disable-dev-shm-usage",
+                            "--no-first-run",
+                            "--disable-background-networking",
+                            f"--user-data-dir={root / 'profile'}",
+                            url,
+                        ],
+                        stdout=log,
+                        stderr=log,
+                    )
+                    try:
+                        finished = server.completed.wait(timeout=30)
+                    finally:
+                        browser.terminate()
+                        try:
+                            browser.wait(timeout=5)
+                        except subprocess.TimeoutExpired:
+                            browser.kill()
+                            browser.wait(timeout=5)
+                    log.seek(0)
+                    diagnostic = log.read().decode("utf-8", errors="replace")[-3000:]
+                    self.assertTrue(finished, f"Workspace page did not finish: {diagnostic}")
+                    actual = server.result
             finally:
                 server.shutdown()
                 server.server_close()
                 thread.join(timeout=2)
 
-        output = completed.stdout.split('<output id="result">', 1)[1].split("</output>", 1)[0]
-        actual = json.loads(output)
         self.assertEqual(actual["initialCalls"], ["analysis"])
         self.assertEqual(actual["afterBackground"], {"mode": "analysis", "calls": ["analysis"]})
         self.assertEqual(
