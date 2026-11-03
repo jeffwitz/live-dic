@@ -59,6 +59,8 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
         self.sample_step = sample_step
         self.failed_only = failed_only
         self.min_gain = min_gain
+        self.capture_counts = False
+        self._counts_ready = False
         super().__init__(motion_model="translation", outlier_policy="disabled", **kwargs)
 
     def prepare_research(self, reference, *, roi_mask=None, affine=None):
@@ -199,7 +201,7 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
                     self._buffer_resource(k, v)
                     for k, v in (
                         (2, config),
-                        (3, snapshot),
+                        (3, slot.buffers["state"] if self.failed_only else snapshot),
                         (4, link_buffer),
                         (5, slot.buffers["seed_state"]),
                         (6, work),
@@ -317,6 +319,7 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
 
     def _encode_slot(self, slot):
         started = time.perf_counter()
+        self._counts_ready = False
         encoder = self.device.create_command_encoder(label="GPU spatial seed research")
         for level_slot in slot.level_slots:
             encoder.clear_buffer(level_slot.buffers["state"])
@@ -357,9 +360,10 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
             compute.end()
             if self.strategy in ("spatial", "spatial-median", "median-candidate"):
                 for step in range(self.passes):
-                    encoder.copy_buffer_to_buffer(
-                        level_slot.buffers["state"], 0, r["snapshot"], 0, r["snapshot"].size
-                    )
+                    if not self.failed_only:
+                        encoder.copy_buffer_to_buffer(
+                            level_slot.buffers["state"], 0, r["snapshot"], 0, r["snapshot"].size
+                        )
                     encoder.clear_buffer(r["work"])
                     compute = encoder.begin_compute_pass()
                     compute.set_pipeline(r["choose"])
@@ -371,11 +375,16 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
                     compute.set_pipeline(r["compact"])
                     compute.set_bind_group(0, r["compact_group"])
                     compute.dispatch_workgroups_indirect(r["work"], 4)
-                    compute.set_pipeline(r["merge"])
-                    compute.set_bind_group(0, r["merge_group"])
-                    compute.dispatch_workgroups((level.grid_width * level.grid_height + 255) // 256)
+                    if not self.failed_only:
+                        compute.set_pipeline(r["merge"])
+                        compute.set_bind_group(0, r["merge_group"])
+                        compute.dispatch_workgroups(
+                            (level.grid_width * level.grid_height + 255) // 256
+                        )
                     compute.end()
-                    encoder.copy_buffer_to_buffer(r["work"], 0, r["diagnostics"], step * 16, 16)
+                    if self.capture_counts:
+                        encoder.copy_buffer_to_buffer(r["work"], 0, r["diagnostics"], step * 16, 16)
+                        self._counts_ready = True
             if index > 0 and self.strategy == "seed-median":
                 encoder.copy_buffer_to_buffer(
                     level_slot.buffers["state"], 0, r["snapshot"], 0, r["snapshot"].size
@@ -400,12 +409,33 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
         """Cold explicit readback, never called by register or the timed loop."""
         if self.strategy in ("baseline", "median", "seed-median"):
             return []
+        if not self._counts_ready:
+            raise ValueError("Run an explicit capture_counts registration before diagnostics")
         return [
             np.frombuffer(self.device.queue.read_buffer(r["diagnostics"]), np.uint32)
             .reshape(-1, 4)[: self.passes]
             .tolist()
             for r in self.research
         ]
+
+    def register(self, target):
+        result = super().register(target)
+        result.config = {
+            **result.config,
+            "spatialSeedResearch": {
+                "strategy": self.strategy,
+                "extraPassesPerLevel": self.passes
+                if self.strategy in ("spatial", "spatial-median", "median-candidate")
+                else 0,
+                "sampleStep": self.sample_step,
+                "failedOnly": self.failed_only,
+                "minimumScoreGain": self.min_gain,
+                "minimumSeedDisplacementPx": 1e-3,
+                "finalFieldRaw": True,
+                "notPublicApi": True,
+            },
+        }
+        return result
 
     def close(self):
         for resource in self.research_resources:

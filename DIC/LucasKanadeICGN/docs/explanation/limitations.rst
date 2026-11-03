@@ -488,4 +488,3 @@ median controls initialize the fine solve and do not validate an interpolated
 or filled point as a final measurement. See :doc:`spatial-initialization` and
 :doc:`../reference/performance`; timing on one analytic UHD pair does not
 qualify camera capture, recording, discontinuities or general 4K60 recovery.
-

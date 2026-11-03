@@ -5,6 +5,7 @@ import os
 import unittest
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 
@@ -238,3 +239,41 @@ class GpuSpatialSeedTests(unittest.TestCase):
         second = engine.register(g)
         np.testing.assert_array_equal(first.parameters, second.parameters)
         np.testing.assert_array_equal(first.status, second.status)
+
+    def test_failed_only_reads_current_state_and_registration_needs_no_queue_readback(self):
+        f = np.random.default_rng(36).integers(0, 256, (128, 128), dtype=np.uint8)
+        g = np.roll(f, (-1, 2), axis=(0, 1))
+        mask = np.zeros(f.shape, bool)
+        mask[32:96, 32:96] = True
+        engine = self.engine(strategy="spatial", failed_only=True)
+        engine.prepare_research(f, roi_mask=mask)
+        with patch.object(
+            engine.device.queue, "read_buffer", side_effect=AssertionError("Intermediate readback")
+        ):
+            engine.register(g)
+        r = engine.research[0]
+        slot = engine._full_slots[0].level_slots[0]
+        states = np.zeros((8, 8, 8), np.float32)
+        states[..., 0] = 2
+        states[..., 3] = -1
+        states[..., 6] = 1
+        states[3, 3, [0, 3, 6]] = [0, 0, -1]
+        engine.device.queue.write_buffer(slot.buffers["state"], 0, states)
+        engine.device.queue.write_buffer(r["snapshot"], 0, np.full_like(states, 999))
+        encoder = engine.device.create_command_encoder()
+        encoder.clear_buffer(r["work"])
+        compute = encoder.begin_compute_pass()
+        compute.set_pipeline(r["choose"])
+        compute.set_bind_group(0, r["choose_group"])
+        compute.dispatch_workgroups(8, 8)
+        compute.set_pipeline(r["finalize"])
+        compute.set_bind_group(0, r["finalize_group"])
+        compute.dispatch_workgroups(1)
+        compute.end()
+        engine.device.queue.submit([encoder.finish()])
+        work = np.frombuffer(engine.device.queue.read_buffer(r["work"]), np.uint32)
+        np.testing.assert_array_equal(work[:5], [1, 1, 1, 1, 27])
+        after = np.frombuffer(
+            engine.device.queue.read_buffer(slot.buffers["state"]), np.float32
+        ).reshape(8, 8, 8)
+        np.testing.assert_array_equal(after, states)

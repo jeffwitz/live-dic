@@ -155,6 +155,12 @@ def main():
                     np.testing.assert_array_equal(result.parameters, original.parameters)
                     np.testing.assert_array_equal(result.status, original.status)
                     np.testing.assert_array_equal(result.iterations, original.iterations)
+                counts = []
+                if strategy == "spatial":
+                    engine.capture_counts = True
+                    engine.register(target)
+                    counts = engine.read_diagnostics()
+                    engine.capture_counts = False
                 q = quality(result)
                 criteria = report["criteria"]
                 if (
@@ -172,7 +178,7 @@ def main():
                         preparationWallMs=preparation,
                         quality=q,
                         samplesByRoundMs=[],
-                        diagnosticCounts=engine.read_diagnostics() if strategy == "spatial" else [],
+                        diagnosticCounts=counts,
                     )
                 )
             for round_index in range(args.rounds):

@@ -144,6 +144,11 @@ The normal readback remains the finest field. Explicit cold diagnostics can read
 the work counts separately; they are outside the timing loop. The research host
 rejects streaming because only its first slot has been instrumented.
 
+In rejected-point-only mode, the current state remains immutable throughout
+candidate selection and can be read directly. This avoids a snapshot copy and
+the accepted-point restoration pass. Per-pass count copies are also disabled
+unless a diagnostic registration is explicitly requested.
+
 The benchmark distinguishes scoring every admissible window from scoring only
 current rejections. Compaction saves IC-GN work but does not save the cost of
 scoring every window. Restricting candidate search to rejected windows is a
