@@ -68,4 +68,6 @@ export function installViewNavigation({ getElement, updateVectorLengthLegend }) 
       if (pendingFrame !== null) cancelAnimationFrame(pendingFrame);
     });
   }
+
+  return reset;
 }

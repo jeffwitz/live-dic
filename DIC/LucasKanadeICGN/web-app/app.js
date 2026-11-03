@@ -616,7 +616,7 @@ const roi = installRoi($('roi'), $('shape'), (state) => {
   if(state.editing&&!editorWasActive&&matchMedia('(max-width:760px)').matches)requestAnimationFrame(()=>document.querySelector('.viewer').scrollIntoView({block:'start'})); editorWasActive=state.editing;
   $('apply-roi').disabled = !roiEditing; $('mask-toolbar').hidden=!roiEditing; $('apply-mask-top').disabled=!roiEditing;
 });
-installViewNavigation({ getElement: $, updateVectorLengthLegend });
+const resetImageView = installViewNavigation({ getElement: $, updateVectorLengthLegend });
 $('regions').onchange = () => roi.select($('regions').value);
 $('delete-roi').onclick = () => roi.remove();
 $('undo-roi').onclick = () => roi.undo();

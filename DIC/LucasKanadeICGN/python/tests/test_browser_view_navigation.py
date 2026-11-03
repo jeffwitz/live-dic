@@ -25,7 +25,7 @@ class BrowserViewNavigationTests(unittest.TestCase):
           }};
           globalThis.requestAnimationFrame = callback => {{ callback(); return 1; }};
           globalThis.ResizeObserver = undefined;
-          installViewNavigation({{getElement: element, updateVectorLengthLegend() {{}}}});
+          const resetImageView = installViewNavigation({{getElement: element, updateVectorLengthLegend() {{}}}});
           element('view-zoom-in').onclick();
           element('view-pan-right').onclick();
           const zoomed = {{width: element('scene').style.width, label: element('view-zoom-label').textContent}};
@@ -33,6 +33,8 @@ class BrowserViewNavigationTests(unittest.TestCase):
           element('view-reset').onclick();
           console.log(JSON.stringify({{
             zoomed, panned,
+            resetHandlerReturned: typeof resetImageView === 'function',
+            resetHandlerInstalled: resetImageView === element('view-reset').onclick,
             fitted: {{width: element('scene').style.width, label: element('view-zoom-label').textContent,
               scroll: element('image-viewport').lastScrollTo}},
           }}));
@@ -43,6 +45,8 @@ class BrowserViewNavigationTests(unittest.TestCase):
 
         self.assertEqual(result["zoomed"], {"width": "150%", "label": "150%"})
         self.assertEqual(result["panned"]["left"], 195)
+        self.assertTrue(result["resetHandlerReturned"])
+        self.assertTrue(result["resetHandlerInstalled"])
         self.assertEqual(result["fitted"]["width"], "100%")
         self.assertEqual(result["fitted"]["label"], "100%")
         self.assertEqual(result["fitted"]["scroll"]["left"], 150)
