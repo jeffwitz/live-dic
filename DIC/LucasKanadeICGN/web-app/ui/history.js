@@ -66,7 +66,7 @@ export async function extractHistory(entries, { recipe, component, points, tool,
           worker.onerror=event=>{pendingReject=null;reject(new Error(event.message));};
           worker.postMessage({id:index,extractMeasurements:true,field:entry.field,...(index===0?{mask:entry.mask}:{}),recipe,component,measurements});
         });
-        else {await new Promise(resolve=>setTimeout(resolve,0));aborted();const analysis=analyzeField(entry.field,recipe,entry.mask);samples=measurements.flatMap(measurement=>sampleMeasurement(analysis,measurement,component));}
+        else {await new Promise(resolve => { setTimeout(resolve,0); });aborted();const analysis=analyzeField(entry.field,recipe,entry.mask);samples=measurements.flatMap(measurement=>sampleMeasurement(analysis,measurement,component));}
         aborted();
         const metadata=entry.metadata,sourceIndex=metadata.comparison?.target?.index??metadata.frameIndex??null,mediaTimeSeconds=metadata.comparison?.target?.timeSeconds??null;
         for(const sample of samples)rows.push({order:index+1,fieldId:entry.id,sourceIndex,mediaTimeSeconds,...sample});
@@ -93,7 +93,7 @@ export async function extractHistory(entries, { recipe, component, points, tool,
         worker.postMessage({id:index,extract:true,field:entry.field,...(index===0?{mask:entry.mask}:{}),recipe,component,points,tool});
       });
       else {
-        await new Promise(resolve=>setTimeout(resolve,0));aborted();const analysis=analyzeField(entry.field,recipe,entry.mask);
+        await new Promise(resolve => { setTimeout(resolve,0); });aborted();const analysis=analyzeField(entry.field,recipe,entry.mask);
         const position=nearestIndex(entry.field,...points[0]),values=componentValues(analysis,component);
         const region=tool==='region'?regionSummary(analysis,component,...points):null;
         result={count:region?.count??null,total:region?.total??null,value:tool==='region'?region?.mean??null:tool==='gauge'?extensometer(analysis,...points)?.engineeringStrain??null:position>=0&&values.valid[position]?values.values[position]:null,

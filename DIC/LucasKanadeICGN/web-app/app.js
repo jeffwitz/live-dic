@@ -80,7 +80,7 @@ function updateSessionIndicator() {
 }
 function send(type, data = {}, transfer = []) {
   const id = ++requests;
-  const result = new Promise((resolve, reject) => pending.set(id, { resolve, reject }));
+  const result = new Promise((resolve, reject) => { pending.set(id, { resolve, reject }); });
   transport.postMessage({ type, id, ...data }, transfer);
   return result;
 }
@@ -293,7 +293,7 @@ async function init() {
   }
 }
 async function drain() {
-  while (inFlight) await new Promise((resolve) => setTimeout(resolve, 10));
+  while (inFlight) await new Promise((resolve) => { setTimeout(resolve, 10); });
   await recordingQueue.drain();
   await workbench.flush();
   if ((supervision.displayRate || !supervision.previewEnabled) && transport && referencePrepared) await send('flush');

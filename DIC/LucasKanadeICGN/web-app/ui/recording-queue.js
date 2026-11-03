@@ -32,7 +32,7 @@ export class RecordingQueue {
     }
     return null;
   }
-  changed() { return new Promise(resolve => this.waiters.add(resolve)); }
+  changed() { return new Promise(resolve => { this.waiters.add(resolve); }); }
   signal() { for (const resolve of this.waiters) resolve(); this.waiters.clear(); }
   release(ticket) {
     const entry = this.entries.get(ticket);

@@ -45,10 +45,24 @@ export async function decodeMaskImage(file, width, height, options = {}) {
 }
 
 export async function maskPng(mask, width, height) {
-  if(mask&&mask.length!==width*height)throw new Error('Mask dimensions differ');
-  const canvas=typeof OffscreenCanvas==='function'?new OffscreenCanvas(width,height):Object.assign(document.createElement('canvas'),{width,height});
-  const context=canvas.getContext('2d'),image=context.createImageData(width,height);
-  for(let i=0;i<width*height;i++){const value=mask&&!mask[i]?0:255;const k=i*4;image.data[k]=image.data[k+1]=image.data[k+2]=value;image.data[k+3]=255;}
-  context.putImageData(image,0,0);
-  return canvas.convertToBlob?canvas.convertToBlob({type:'image/png'}):new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('Mask PNG encoding failed')),'image/png'));
+  if (mask && mask.length !== width * height) throw new Error('Mask dimensions differ');
+  const canvas = typeof OffscreenCanvas === 'function'
+    ? new OffscreenCanvas(width, height)
+    : Object.assign(document.createElement('canvas'), { width, height });
+  const context = canvas.getContext('2d');
+  const image = context.createImageData(width, height);
+  for (let i = 0; i < width * height; i++) {
+    const value = mask && !mask[i] ? 0 : 255;
+    const k = i * 4;
+    image.data[k] = image.data[k + 1] = image.data[k + 2] = value;
+    image.data[k + 3] = 255;
+  }
+  context.putImageData(image, 0, 0);
+  if (canvas.convertToBlob) return canvas.convertToBlob({ type: 'image/png' });
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => {
+      if (blob) resolve(blob);
+      else reject(new Error('Mask PNG encoding failed'));
+    }, 'image/png');
+  });
 }

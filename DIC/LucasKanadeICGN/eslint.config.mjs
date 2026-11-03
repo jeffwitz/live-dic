@@ -24,7 +24,17 @@ export default [
         GPUTextureUsage: "readonly",
       },
     },
+    linterOptions: { reportUnusedDisableDirectives: "error" },
     rules: {
+      "no-async-promise-executor": "error",
+      "no-promise-executor-return": "error",
+      "no-unsafe-finally": "error",
+      "no-dupe-args": "error",
+      "no-dupe-class-members": "error",
+      "no-constant-condition": "error",
+      "no-unexpected-multiline": "error",
+      "no-unsafe-negation": "error",
+      "no-constant-binary-expression": "error",
       "no-dupe-keys": "error",
       "no-undef": "error",
       "no-unreachable": "error",
@@ -33,6 +43,13 @@ export default [
         { args: "none", caughtErrors: "none", varsIgnorePattern: "^_" },
       ],
       "valid-typeof": "error",
+    },
+  },
+  {
+    files: ["python/src/lucas_kanade_icgn/web/core/**/*.js"],
+    rules: {
+      // The same core runs in a page and in a dedicated Worker.
+      "no-restricted-globals": ["error", "window", "document"],
     },
   },
   {

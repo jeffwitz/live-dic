@@ -69,7 +69,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     if(seeking)return;
     seeking=true;
     try {while(pendingSeek!==null){
-      if(selectionBusy){await new Promise(resolve=>setTimeout(resolve,25));continue;}
+      if(selectionBusy){await new Promise(resolve => { setTimeout(resolve,25); });continue;}
       const next=pendingSeek;pendingSeek=null;await selectEntry(next,{preserveView:true});
     }}
     finally {seeking=false;}
@@ -617,7 +617,23 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     }catch(e){error(e.message);}
   }
   $('refresh-sessions').onclick=refreshSessions;
-  $('save-session').onclick=async()=>{try{await beforeProjectExport();while(selectionBusy||workerBusy||pendingAnalysis)await new Promise(resolve=>setTimeout(resolve,20));rememberView();if(await storage.saveSettings(entries,selected)){downloadedRevision=projectRevision;$('project-state').textContent='Fields and analysis settings saved in this browser profile. Export parts for an independent backup.';}updateLibrary();await refreshSessions();}catch(e){error(e.message);}};
+  $('save-session').onclick = async () => {
+    try {
+      await beforeProjectExport();
+      while (selectionBusy || workerBusy || pendingAnalysis) {
+        await new Promise(resolve => { setTimeout(resolve, 20); });
+      }
+      rememberView();
+      if (await storage.saveSettings(entries, selected)) {
+        downloadedRevision = projectRevision;
+        $('project-state').textContent = 'Fields and analysis settings saved in this browser profile. Export parts for an independent backup.';
+      }
+      updateLibrary();
+      await refreshSessions();
+    } catch (e) {
+      error(e.message);
+    }
+  };
   $('open-session').onclick=async()=>{
     const id=$('stored-sessions').value;if(!id)return;
     try{await beforeProjectExport();await recordChange(false);$('record-fields').checked=false;const candidate=new FieldStorage({memoryLimit:storage.memoryLimit});const saved=await candidate.openSession(id);
@@ -661,7 +677,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     if(exportBusy)return;stopReplay();try{
       await beforeProjectExport();
       // Snapshot the applied recipe after the last requested analysis, never its previous value.
-      while(reviewing&&(workerBusy||pendingAnalysis||selectionBusy))await new Promise(resolve=>setTimeout(resolve,20));
+      while(reviewing&&(workerBusy||pendingAnalysis||selectionBusy))await new Promise(resolve => { setTimeout(resolve,20); });
       rememberView();
       const snapshot=[...entries];
       if(archiveEstimate(snapshot)>Math.min(128*MiB,storage.memoryLimit/2)||snapshot.length>512){partExport={entries:snapshot,offset:0,files:[],revision:projectRevision};$('export-parts-state').textContent=`${snapshot.length} fields. Export parts up to ${(Math.min(64*MiB,storage.memoryLimit/4)/MiB).toFixed(0)} MiB without loading the entire sequence.`;$('download-next-part').disabled=false;$('download-parts-index').hidden=true;$('export-parts').showModal();return;}
@@ -752,7 +768,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
       details.push(`Measurement: ${tool} · reference pixel indices ${centres}. ${$('probe-value').textContent}`);
     }
     const figure=resultFigure({field:canvas,annotations:overlay,title:$('review-component').selectedOptions[0].textContent,label:activeEntry().label,legend:figureLegend,details});
-    const blob=await new Promise(resolve=>figure.toBlob(resolve,'image/png'));
+    const blob=await new Promise(resolve => { figure.toBlob(resolve,'image/png'); });
     if(blob)download('live-dic-field.png',blob,'image/png');else error('The browser could not encode the figure; computed values remain available.');
   };
   updateLibrary();

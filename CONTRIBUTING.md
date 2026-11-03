@@ -52,14 +52,18 @@ and slot depth, then exercises the assembled demo under a subpath.
 Build the static companion with `python3 tools/build_pages.py --output _site`.
 `tools/smoke_browser_app.py` checks it through the existing Chromium harness;
 see the browser guide for the complete command and timing boundaries. The
-Pages workflow is prepared; enabling publication is a repository-owner action.
+Pages workflow publishes [the workbench](https://jeffwitz.github.io/live-dic/).
 
 For changed JavaScript, run `node --check` on each affected module. At minimum,
 check the Three.js and raw-WebGPU entry modules when changing shared browser
 resources. The ESLint command checks first-party browser modules, shared
 JavaScript core, and the maintained Three.js entry. It excludes vendor bundles
 and archived benchmark scripts. Do not rewrite vendor bundles to satisfy local
-style.
+style. The rules cover undefined names, unused variables, duplicate definitions,
+unreachable code, unsafe control flow and Promise executors. Treat returned
+Promise-executor values as mistakes: resolve/reject explicitly and use a block
+for side effects. Unused suppression comments also fail lint. The shared ``web/core`` also
+forbids ``window`` and ``document`` so host code stays usable in Workers.
 
 The root Ruff configuration extends the package configuration to active
 benchmarks, tools and documentation examples. Archived `benchmarks/results/`
