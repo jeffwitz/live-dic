@@ -476,3 +476,16 @@ spatial seeds to the unchanged native solver. It is not a live backend or a
 browser option. Its extra readbacks and scoring costs are not qualified for
 real-time use; no optical-flow smoothing or candidate is returned as a measured
 state without IC-GN re-estimation and its existing validity checks.
+GPU seed-selection research
+--------------------------
+
+The development-only ``benchmarks/gpu_spatial_seed.py`` host implements
+GPU-resident candidate scoring and compact indirect translation re-solves.
+It supports one synchronous slot, fixed reference, uniform full subsets and
+B-spline. It is not a public engine or browser setting. Failed-point-only
+selection cannot correct a bad basin already accepted by the solver. Coarse
+median controls initialize the fine solve and do not validate an interpolated
+or filled point as a final measurement. See :doc:`spatial-initialization` and
+:doc:`../reference/performance`; timing on one analytic UHD pair does not
+qualify camera capture, recording, discontinuities or general 4K60 recovery.
+

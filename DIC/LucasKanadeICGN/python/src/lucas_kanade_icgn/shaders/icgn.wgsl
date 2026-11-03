@@ -1013,6 +1013,24 @@ fn retry_seeded(
     solve_from_seed(subset_index, local_id.x, true);
 }
 
+// Research entry point: a GPU-built list, followed by an indirect dispatch.
+// Layout in active_mask: count, dispatch_x, dispatch_y, dispatch_z, indices...
+// All lanes take the same guard before touching the list or joining IC-GN.
+// This entry point is translation-only and is never used by default hosts.
+@compute @workgroup_size(SOLVER_WORKGROUP_SIZE)
+fn solve_compact_translation(
+    @builtin(workgroup_id) group: vec3<u32>,
+    @builtin(local_invocation_id) local: vec3<u32>,
+) {
+    let ordinal = group.y * 65535u + group.x;
+    if MOTION_MODEL != 1u || ordinal >= active_mask.values[0] { return; }
+    let index = active_mask.values[4u + ordinal];
+    if index >= config.grid_count { return; }
+    let seed = seed_state.values[index * 2u];
+    solve_subset(index, local.x, seed.xw, vec4<f32>(0.0),
+        array<f32, 6>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0), true, true);
+}
+
 // Compact partial dispatches preserve the dense public grid. All lanes load
 // the same chosen subset and join every barrier, including the final group.
 fn load_partial_support(ordinal: u32, lane: u32) -> u32 {

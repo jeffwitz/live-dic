@@ -110,3 +110,81 @@ must preserve the final scientific rejection criteria. Photometric coverage on
 private images without ground truth does not prove displacement accuracy.
 See :doc:`../reference/performance` for qualified performance boundaries and
 :doc:`displacement-outliers` for the distinct post-filter policies.
+
+GPU research prototype
+----------------------
+
+``benchmarks/gpu_spatial_seed.py`` now provides an experimental, synchronous,
+single-slot host around the native full pyramid. It is not a public engine
+option and is not connected to the browser interface. Numerical defaults remain
+unchanged. It supports translation, uniform full subsets and B-spline only.
+The fixed reference, reference ROI, Hessians and all pipelines are prepared once.
+
+The shared ``spatial_seed.wgsl`` scores the current displacement, original prior
+and permitted direct neighbours on the destination reference window. Each
+candidate is a hypothesis, never a copied final measurement. Workgroups read
+an immutable snapshot, so a parallel pass is Jacobi propagation; it does not
+reproduce OpenCV's directional sequential sweeps. Scoring uses bilinear raw
+intensities and normalized correlation; final refinement uses the existing
+B-spline IC-GN solver with its unchanged acceptance criteria.
+
+An improvement of more than 0.0001 in score and 0.001 px in displacement is
+required to enqueue a new seed. ROI permissions and numerical reference validity
+restrict both destinations and sources. An atomic counter appends work indices;
+no global sort is required because each re-solve owns one output cell. A small
+finalization dispatch writes indirect dispatch dimensions. The opt-in
+``solve_compact_translation`` entry point runs the existing IC-GN equations on
+that list, preserving the dense output grid. A uniform guard before all barriers
+handles unused workgroups, including the final row of a two-dimensional dispatch.
+If an accepted original point's trial fails, its original state is retained.
+
+All reduction, scoring, list construction and re-solves are encoded before one
+queue submission. There is no intermediate host readback or per-image compilation.
+The normal readback remains the finest field. Explicit cold diagnostics can read
+the work counts separately; they are outside the timing loop. The research host
+rejects streaming because only its first slot has been instrumented.
+
+The benchmark distinguishes scoring every admissible window from scoring only
+current rejections. Compaction saves IC-GN work but does not save the cost of
+scoring every window. Restricting candidate search to rejected windows is a
+different opt-in policy: it cannot escape a wrong basin already marked accepted.
+A sampled-score control also exists; it changes only candidate evaluation, not
+the final IC-GN window or equations, and must be qualified separately.
+
+Median measurements and median seeds
+------------------------------------
+
+The original CPU propagation experiment explicitly disabled all median passes.
+It did not establish that median filtering is ineffective in a pyramid.
+The GPU controls now distinguish three operations:
+
+* ``median`` applies the existing centred 3 x 3 component median to accepted
+  coarse measurements only. Statuses and iteration counts are retained; an
+  invalid own point is not filled. The filtered coarse buffer is actually used
+  for coarse-to-fine transfer. The final fine field remains raw.
+* ``seed-median`` is a separate initialization-only control. Numerically
+  admissible status-0 coarse estimates also contribute. With at least four
+  permitted sources, an unavailable coarse seed can receive a median seed.
+  Availability is recorded only in the private transfer buffer, never in the
+  raw coarse measurement or the final field. Fine IC-GN still has to converge.
+* ``median-candidate`` tests a neighbourhood median photometrically before
+  selectively running another local solve. This differs from unconditionally
+  overwriting an initialization or smoothing the final measurements.
+
+Independent GPU tests compare the first two medians with NumPy, verify that the
+filtered buffer is transferred rather than ignored, preserve raw measurements,
+and check selective work and indirect dispatch counts. These tests establish
+implementation correctness, not a universal robustness improvement. A median
+suppresses isolated errors; it cannot generally resolve a whole neighbourhood
+that has converged to the same incorrect basin.
+
+Reproduce the original-UHD numerical/timing controls with an installed native
+environment, from the repository root:
+
+.. code-block:: console
+
+   python3 DIC/LucasKanadeICGN/benchmarks/benchmark_gpu_spatial_seed.py \
+     --output /tmp/gpu-seed-campaign
+
+The output directory must be new. See :doc:`../reference/performance` for the
+measured costs, evaluated populations and remaining real-time limitations.
