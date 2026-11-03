@@ -1812,3 +1812,15 @@ raw samples and reproduction commands are retained in
 fixed reference interior, whereas larger Fourier cases require an interior
 common to both images; do not treat their coverage rates as a paired comparison.
 See :doc:`../how-to/register-large-shifts` for activation and limits.
+
+
+Spatial seed candidate research
+-------------------------------
+
+:doc:`../explanation/spatial-initialization` describes a CPU research oracle
+for scored spatial hypotheses followed by unchanged native IC-GN solves. The
+`public UHD control report
+<https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/spatial-seed-candidates-20261104>`_
+retains both spatial and equal-re-solve continuation cases, analytic errors,
+input/script hashes and actual adapter. This is correctness evidence for that
+experiment; it does not qualify live throughput or add a GPU pipeline option.

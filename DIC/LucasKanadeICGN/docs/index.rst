@@ -161,6 +161,7 @@ when exporting a measurement with :doc:`how-to/export-results`.
    explanation/interpolation
    explanation/motion-models
    explanation/displacement-outliers
+   explanation/spatial-initialization
    explanation/subset-size
    explanation/gpu-reference-preparation
    explanation/gpu-optimization

@@ -1,0 +1,296 @@
+{
+  "environment": {
+    "platform": "Linux-7.0.0-38-generic-x86_64-with-glibc2.39",
+    "numpy": "2.4.6",
+    "opencv": "5.0.0",
+    "wgpu": "0.32.0"
+  },
+  "configurations": {
+    "spatial": {
+      "command": [
+        "DIC/LucasKanadeICGN/benchmarks/benchmark_spatial_seed_candidates.py",
+        "DIC/LucasKanadeICGN/assets/uhd_tensile/reference.png",
+        "DIC/LucasKanadeICGN/assets/uhd_tensile/frame_040.png",
+        "--output",
+        "/tmp/live-dic-dis-study/uhd-final-spatial",
+        "--mode",
+        "spatial"
+      ],
+      "sourceCommit": "db3372799711f5f66a7f14d662551d86cd9c6f8d",
+      "sourceDirty": true,
+      "inputSha256": {
+        "DIC/LucasKanadeICGN/assets/uhd_tensile/reference.png": "7cadf6032d7c5ac2de74ae542573a3b38069dc8c1c075ef9576641601996aeec",
+        "DIC/LucasKanadeICGN/assets/uhd_tensile/frame_040.png": "7477178b00acb669b34aeb2084b895076cf74475f472bc25f3af2696b2719e30"
+      },
+      "scriptSha256": {
+        "benchmark_spatial_seed_candidates.py": "57644b3d0150f032638d3a4a8b063cd617eb5e231a90b578110cdeab0bb238ad",
+        "spatial_seed_reference.py": "ae182a250300d23bbe1f5d7f63cfadc7f5eff86ccd17aa3c8aee927d8a01a76f"
+      },
+      "shape": [
+        2160,
+        3840
+      ],
+      "initialAffine": {
+        "dx": 0.0,
+        "dy": 0.0,
+        "linear": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "diagnosticCpuHost": true,
+      "iterations": [
+        8,
+        16
+      ],
+      "tolerance": 0.005,
+      "znccMin": 0.8,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    },
+    "continue": {
+      "command": [
+        "DIC/LucasKanadeICGN/benchmarks/benchmark_spatial_seed_candidates.py",
+        "DIC/LucasKanadeICGN/assets/uhd_tensile/reference.png",
+        "DIC/LucasKanadeICGN/assets/uhd_tensile/frame_040.png",
+        "--output",
+        "/tmp/live-dic-dis-study/uhd-final-continue",
+        "--mode",
+        "continue"
+      ],
+      "sourceCommit": "db3372799711f5f66a7f14d662551d86cd9c6f8d",
+      "sourceDirty": true,
+      "inputSha256": {
+        "DIC/LucasKanadeICGN/assets/uhd_tensile/reference.png": "7cadf6032d7c5ac2de74ae542573a3b38069dc8c1c075ef9576641601996aeec",
+        "DIC/LucasKanadeICGN/assets/uhd_tensile/frame_040.png": "7477178b00acb669b34aeb2084b895076cf74475f472bc25f3af2696b2719e30"
+      },
+      "scriptSha256": {
+        "benchmark_spatial_seed_candidates.py": "57644b3d0150f032638d3a4a8b063cd617eb5e231a90b578110cdeab0bb238ad",
+        "spatial_seed_reference.py": "ae182a250300d23bbe1f5d7f63cfadc7f5eff86ccd17aa3c8aee927d8a01a76f"
+      },
+      "shape": [
+        2160,
+        3840
+      ],
+      "initialAffine": {
+        "dx": 0.0,
+        "dy": 0.0,
+        "linear": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "diagnosticCpuHost": true,
+      "iterations": [
+        8,
+        16
+      ],
+      "tolerance": 0.005,
+      "znccMin": 0.8,
+      "adapter": {
+        "vendor": "Intel open-source Mesa driver",
+        "architecture": "",
+        "device": "Intel(R) Graphics (LNL)",
+        "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+        "stackgroup_min_size": 4,
+        "stackgroup_max_size": 128,
+        "vendor_id": 32902,
+        "device_id": 25760,
+        "adapter_type": "IntegratedGPU",
+        "backend_type": "Vulkan"
+      }
+    }
+  },
+  "population": {
+    "definition": "full-size 32/16 grid centres inside the archived interior margin",
+    "margin": 32
+  },
+  "criteria": {
+    "minimumCoverageRelativeToBaseline": -0.005,
+    "maximumAddedRmse": 0.005,
+    "maximumAddedP95": 0.01
+  },
+  "rows": [
+    {
+      "mode": "spatial",
+      "field": "spatial-C0-F0",
+      "population": 30916,
+      "accepted": 30916,
+      "coverage": 1.0,
+      "rmse": 0.01018230373115895,
+      "p95": 0.01722860762111737
+    },
+    {
+      "mode": "spatial",
+      "field": "spatial-C0-F1",
+      "population": 30916,
+      "accepted": 30916,
+      "coverage": 1.0,
+      "rmse": 0.010195657358324423,
+      "p95": 0.017235493443430828
+    },
+    {
+      "mode": "spatial",
+      "field": "spatial-C0-F2",
+      "population": 30916,
+      "accepted": 30916,
+      "coverage": 1.0,
+      "rmse": 0.010195461372357245,
+      "p95": 0.01722131453950459
+    },
+    {
+      "mode": "spatial",
+      "field": "spatial-C1-F0",
+      "population": 30916,
+      "accepted": 30916,
+      "coverage": 1.0,
+      "rmse": 0.010181985555362729,
+      "p95": 0.017220581860221715
+    },
+    {
+      "mode": "spatial",
+      "field": "spatial-C1-F1",
+      "population": 30916,
+      "accepted": 30916,
+      "coverage": 1.0,
+      "rmse": 0.010195092365831557,
+      "p95": 0.01723204886033314
+    },
+    {
+      "mode": "spatial",
+      "field": "spatial-C1-F2",
+      "population": 30916,
+      "accepted": 30916,
+      "coverage": 1.0,
+      "rmse": 0.01019520452511027,
+      "p95": 0.017237852267939613
+    },
+    {
+      "mode": "spatial",
+      "field": "spatial-C2-F0",
+      "population": 30916,
+      "accepted": 30916,
+      "coverage": 1.0,
+      "rmse": 0.010182523420277527,
+      "p95": 0.017219458475604826
+    },
+    {
+      "mode": "spatial",
+      "field": "spatial-C2-F1",
+      "population": 30916,
+      "accepted": 30916,
+      "coverage": 1.0,
+      "rmse": 0.010195537893551902,
+      "p95": 0.017228521205871806
+    },
+    {
+      "mode": "spatial",
+      "field": "spatial-C2-F2",
+      "population": 30916,
+      "accepted": 30916,
+      "coverage": 1.0,
+      "rmse": 0.010195390812043317,
+      "p95": 0.017228935638433245
+    },
+    {
+      "mode": "continue",
+      "field": "continue-C0-F0",
+      "population": 30916,
+      "accepted": 30916,
+      "coverage": 1.0,
+      "rmse": 0.01018230373115895,
+      "p95": 0.01722860762111737
+    },
+    {
+      "mode": "continue",
+      "field": "continue-C0-F1",
+      "population": 30916,
+      "accepted": 30916,
+      "coverage": 1.0,
+      "rmse": 0.010187959956762256,
+      "p95": 0.017222727510977608
+    },
+    {
+      "mode": "continue",
+      "field": "continue-C0-F2",
+      "population": 30916,
+      "accepted": 30916,
+      "coverage": 1.0,
+      "rmse": 0.010188233731583056,
+      "p95": 0.017227014976667503
+    },
+    {
+      "mode": "continue",
+      "field": "continue-C1-F0",
+      "population": 30916,
+      "accepted": 30916,
+      "coverage": 1.0,
+      "rmse": 0.01018233026920738,
+      "p95": 0.017223358806647354
+    },
+    {
+      "mode": "continue",
+      "field": "continue-C1-F1",
+      "population": 30916,
+      "accepted": 30916,
+      "coverage": 1.0,
+      "rmse": 0.010188160455836115,
+      "p95": 0.017223542969192183
+    },
+    {
+      "mode": "continue",
+      "field": "continue-C1-F2",
+      "population": 30916,
+      "accepted": 30916,
+      "coverage": 1.0,
+      "rmse": 0.010188006606410605,
+      "p95": 0.017233028077011957
+    },
+    {
+      "mode": "continue",
+      "field": "continue-C2-F0",
+      "population": 30916,
+      "accepted": 30916,
+      "coverage": 1.0,
+      "rmse": 0.010182223115356758,
+      "p95": 0.017220948741867356
+    },
+    {
+      "mode": "continue",
+      "field": "continue-C2-F1",
+      "population": 30916,
+      "accepted": 30916,
+      "coverage": 1.0,
+      "rmse": 0.010188281154805601,
+      "p95": 0.017233735704354654
+    },
+    {
+      "mode": "continue",
+      "field": "continue-C2-F2",
+      "population": 30916,
+      "accepted": 30916,
+      "coverage": 1.0,
+      "rmse": 0.010188089068165852,
+      "p95": 0.0172314681570598
+    }
+  ],
+  "passed": true,
+  "notes": [
+    "CPU research oracle with full readbacks; no live performance claim.",
+    "No variational refinement or median filtering. Final native translation solver is unchanged."
+  ]
+}

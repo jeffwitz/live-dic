@@ -466,3 +466,13 @@ These are implementation limits, not a claim of numerical or performance
 parity. The global-affine initializer is browser-core-only and is not intended
 for camera-rate streaming. See :doc:`../how-to/register-large-shifts` for its
 scope and current qualification.
+
+
+Spatial candidate research
+--------------------------
+
+:doc:`spatial-initialization` describes a CPU diagnostic oracle for proposing
+spatial seeds to the unchanged native solver. It is not a live backend or a
+browser option. Its extra readbacks and scoring costs are not qualified for
+real-time use; no optical-flow smoothing or candidate is returned as a measured
+state without IC-GN re-estimation and its existing validity checks.
