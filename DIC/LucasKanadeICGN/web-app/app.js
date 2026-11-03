@@ -8,14 +8,14 @@ import { installWorkspace, solverOptions, solverPreparationKey } from './ui/work
 import { installRoi } from './ui/roi.js';
 import { bounds, platePreset } from './ui/roi-geometry.js';
 import { imageFiles, fileInfo, decodeImage, waitForMedia, seekVideo } from './ui/local-media.js';
+import { createImageSequenceController } from './ui/image-sequence.js';
 import { createDeviceReport } from './ui/device-report.js';
+import { installViewNavigation } from './ui/view-navigation.js';
 const $ = (id) => document.getElementById(id);
 const query = new URLSearchParams(location.search), smoke = query.has('smoke');
 let transport, stream, reader, manifest, source = null, paused = true, inFlight = 0, dropped = 0;
 const sourceButtons = ['demo','plate','camera','open-video','open-folder','open-images'];
 let loadingSource = false, sourceAbort = new AbortController(), localVideoUrl = null;
-let localImages = [], imageIndex = 0, imageTask = null, imageLoop = null, seekSerial = 0;
-let imageDelay = null, imageWake = null;
 let previousCapture = null, captureBusy = false, receivedOrdinal = 0;
 let roiEditing = false, appliedShapes = [], plateManifest = null;
 let draftMaskSource = null, appliedMaskSource = null, appliedEditorState = null, editorWasActive = false;
@@ -27,6 +27,35 @@ const synchronousAdmissions = [];
 let recordingQueue = null, supervision = supervisionOptions(), lastPresentation = null, lastHudAt = -Infinity, pipelineStateUpdatedAt = -Infinity;
 let lastVectorLegend = null, viewingInput = false, returnToInputAfterMask = false, startingCalculation = false, finishingCalculation = null, calculationStartIndex = 0;
 const pending = new Map(), video = $('video');
+const imageSequence = createImageSequenceController({
+  $,
+  context: () => ({
+    source,
+    generation,
+    signal: sourceAbort.signal,
+    referenceInfo,
+    sourceSettings,
+    paused,
+    video,
+  }),
+  setPaused: value => { paused = value; },
+  pauseSource: () => pauseSource(),
+  drain: () => drain(),
+  decodeImage,
+  fileInfo,
+  processFrame: (...args) => processFrame(...args),
+  captureReference: (...args) => captureReference(...args),
+  showInputPreview: (...args) => showInputPreview(...args),
+  frameFromVideo: (...args) => frameFromVideo(...args),
+  seekVideo,
+  details: () => details(),
+  message: (...args) => message(...args),
+});
+const runImage = (...args) => imageSequence.runImage(...args);
+const setImageReference = (...args) => imageSequence.setImageReference(...args);
+const playImages = (...args) => imageSequence.playImages(...args);
+const localSeek = (...args) => imageSequence.localSeek(...args);
+const updateLocalPosition = (...args) => imageSequence.updateLocalPosition(...args);
 sourceButtons.forEach(id => $(id).disabled = true);
 const status = globalThis.liveDicStatus = { ready: false, completed: 0, errors: [], results: [] };
 function message(text, error = false) { $('message').textContent = text; $('message').classList.toggle('error', error); }
@@ -244,34 +273,34 @@ async function drain() {
   await workbench.flush();
   if ((supervision.displayRate || !supervision.previewEnabled) && transport && referencePrepared) await send('flush');
   updatePipelineState(true);
-  if (imageTask) await imageTask.catch(() => {});
-  if (supervision.overlapRecording && imageLoop) await imageLoop.catch(() => {});
+  if (imageSequence.task) await imageSequence.task.catch(() => {});
+  if (supervision.overlapRecording && imageSequence.loop) await imageSequence.loop.catch(() => {});
 }
 function clearPreviousCapture() { previousCapture?.frame.close(); previousCapture = null; }
 function clearPendingReference() { pendingReferenceFrame?.close(); pendingReferenceFrame = null; }
 async function duplicateFrame(frame) {
   return typeof frame.clone === 'function' ? frame.clone() : createImageBitmap(frame);
 }
-function pauseSource() { paused = true; clearTimeout(imageDelay); imageWake?.(); imageWake=null; if (source === 'video-file') video.pause(); clearPreviousCapture(); }
+function pauseSource() { paused = true; imageSequence.wakePlayback(); if (source === 'video-file') video.pause(); clearPreviousCapture(); }
 async function sourceChange(operation, {propagate = false} = {}) {
   if (loadingSource) return;
   loadingSource = true; document.querySelector('.workspace').inert=true; sourceButtons.forEach(id => $(id).disabled = true);
   const busyText = 'Loading input…'; message(busyText);
-  try { seekSerial++; pauseSource(); await drain(); await operation(); if($('message').textContent===busyText)message('Input loaded. Solver preparation waits for Start calculation.'); }
+  try { imageSequence.invalidateSeek(); pauseSource(); await drain(); await operation(); if($('message').textContent===busyText)message('Input loaded. Solver preparation waits for Start calculation.'); }
   catch (error) { if (error.name !== 'AbortError') message(error.message, true); if(propagate)throw error; }
   finally { loadingSource = false; document.querySelector('.workspace').inert=false; sourceButtons.forEach(id => $(id).disabled = !capabilities?.supported); updateSolverSettingsStatus(); }
 }
 async function stop() {
   workbench.returnLive(); workbench.stopRecording({preserveSelection:true});
-  pauseSource(); generation++; seekSerial++; sourceAbort.abort();
-  await drain(); await imageTask?.catch(() => {}); await imageLoop?.catch(() => {}); sourceAbort = new AbortController();
+  pauseSource(); generation++; imageSequence.invalidateSeek(); sourceAbort.abort();
+  await drain(); await imageSequence.task?.catch(() => {}); await imageSequence.loop?.catch(() => {}); sourceAbort = new AbortController();
   workbench.setReady(false); workbench.setMask(null);appliedEditorState=null;roiEditing=false;roi.stop({discardDraft:true});
   await reader?.cancel(); reader = null;
   stream?.getTracks().forEach(track => track.stop()); stream = null;
   clearPendingReference(); referencePrepared = false;
   video.pause(); video.srcObject = null; video.removeAttribute('src'); video.load();
   if (localVideoUrl) URL.revokeObjectURL(localVideoUrl); localVideoUrl = null;
-  localImages = []; imageIndex = 0; receivedOrdinal = 0;sourceSettings={};
+  imageSequence.reset(); receivedOrdinal = 0;sourceSettings={};
   dropped=0;$('drops').textContent='0';clearLiveMetrics();
   $('run-state').textContent='No source selected';$('applied-solver-summary').textContent='No reference prepared.';$('last-reference-summary').textContent='';$('placeholder').hidden=false;$('camera-summary').hidden=true;
   referenceInfo = null; appliedSolverKey = null; updateSolverSettingsStatus(); workbench.setSourceReady(false);viewingInput=false;$('input-field').hidden=true;$('input-field').width=$('input-field').height=1; ['reference','pause','reset','draw','clear-roi','export','import-mask','create-mask','save-mask'].forEach(id => $(id).disabled = true);
@@ -425,91 +454,17 @@ function scheduleVideo(token) {
   if (video.requestVideoFrameCallback) video.requestVideoFrameCallback(callback);
   else requestAnimationFrame((time) => callback(time, null));
 }
-function updateLocalPosition(input = null) {
-  if (source === 'images') {
-    const index = input?.index ?? imageIndex;
-    $('local-seek').value = index;
-    $('local-position').textContent = `${index + 1} / ${localImages.length} · ${input?.name ?? fileInfo(localImages[index]).name}`;
-  } else if (source === 'video-file') {
-    const time = input?.timeSeconds ?? video.currentTime;
-    $('local-seek').value = time;
-    $('local-position').textContent = `${time.toFixed(3)} / ${Number.isFinite(video.duration) ? video.duration.toFixed(3) : '?'} s`;
-  }
-}
-function localControls(images) {
-  $('solve-range-label').hidden=false;
-  $('local-controls').hidden = false; $('image-reference-controls').hidden = !images || $('comparison').value === 'consecutive';
-  $('image-step-controls').hidden = !images; $('image-rate-label').hidden = !images; $('video-rate-label').hidden = images;
-  $('resolution').disabled = true;
-}
-async function runImage(index, reset = false, playback = false) {
-  if (!Number.isInteger(index) || index < 0 || index >= localImages.length) return false;
-  const token = generation, signal = sourceAbort.signal;
-  await imageTask?.catch(() => {});
-  if (token !== generation) return false;
-  const work = (async () => {
-    let frame, prior;
-    try {
-      frame = await decodeImage(localImages[index], [referenceInfo.width,referenceInfo.height], signal);
-      if ($('comparison').value === 'consecutive') {
-        if (index === 0) { frame.close(); frame = null; imageIndex = 0; updateLocalPosition(); $('export').disabled = true; message('The first image has no predecessor. Choose the next image.'); return false; }
-        prior = await decodeImage(localImages[index - 1], [referenceInfo.width,referenceInfo.height], signal);
-      }
-      if (token !== generation) return false;
-      const input = { kind:'images',index,...fileInfo(localImages[index]) };
-      const referenceInput = prior ? { kind:'images',index:index-1,...fileInfo(localImages[index-1]) } : null;
-      const target = frame, reference = prior; frame = prior = null;
-      const ok = await processFrame(target,index,{force:true,reset,input,referenceFrame:reference,referenceInput,playback});
-      if (ok) { imageIndex = index; updateLocalPosition(input); }
-      return ok;
-    } finally { frame?.close(); prior?.close(); }
-  })();
-  imageTask = work;
-  try { return await work; }
-  finally { if (imageTask === work) imageTask = null; }
-}
-async function setImageReference(index) {
-  pauseSource(); await imageTask?.catch(() => {}); await imageLoop?.catch(() => {}); await drain();
-  const bitmap = await decodeImage(localImages[index],null,sourceAbort.signal);
-  sourceSettings.reference = { kind:'images',index,...fileInfo(localImages[index]) };
-  await captureReference(bitmap);
-  $('image-reference').value = index; $('pause').textContent = 'Start calculation';
-  if($('comparison').value==='fixed'&&localImages.length>1&&imageIndex===index)imageIndex=index+1<localImages.length?index+1:index-1;
-  await localSeek(imageIndex); details();
-}
 async function startImages(files) {
   const choice = imageFiles(files);
-  await stop(); source = 'images'; manifest = null; localImages = choice.images;
-  sourceSettings = { source:'local image files',ordering:'natural relative filename, lexical tie-break',files:localImages.map(fileInfo),ignored:choice.ignored };
+  await stop(); source = 'images'; manifest = null; imageSequence.setImages(choice.images);
+  sourceSettings = { source:'local image files',ordering:'natural relative filename, lexical tie-break',files:imageSequence.images.map(fileInfo),ignored:choice.ignored };
   const select = $('image-reference'); select.replaceChildren();
-  localImages.forEach((file,i) => { const option=document.createElement('option');option.value=i;option.textContent=fileInfo(file).name;select.append(option); });
-  $('local-name').textContent = `${localImages.length} image(s) · ${choice.ignored.length} unsupported/non-image file(s) ignored`;
-  $('local-seek').min=0; $('local-seek').max=localImages.length-1; $('local-seek').step=1;
-  localControls(true); imageIndex = localImages.length>1 ? 1 : 0;
+  imageSequence.images.forEach((file,i) => { const option=document.createElement('option');option.value=i;option.textContent=fileInfo(file).name;select.append(option); });
+  $('local-name').textContent = `${imageSequence.images.length} image(s) · ${choice.ignored.length} unsupported/non-image file(s) ignored`;
+  $('local-seek').min=0; $('local-seek').max=imageSequence.images.length-1; $('local-seek').step=1;
+  imageSequence.localControls(true); imageSequence.index = imageSequence.images.length>1 ? 1 : 0;
   await setImageReference(0);
-  message(`Loaded ${localImages.length} local image(s). ${localImages.some(file=>/\.tiff?$/i.test(file.name))?'TIFF: unsigned 16-bit values use their high byte (fixed 0–65535 → 0–255); no automatic contrast adjustment. ':''}${choice.ignored.length ? 'Ignored files are listed in the details. ' : ''}Choose a reference and mask, then open Solve to calculate and save the sequence.`);
-}
-async function playImages(includeCurrent = false) {
-  if (imageLoop) { await imageLoop; if (imageLoop) return; }
-  // Include the target currently shown in the input preview.
-  if(includeCurrent)imageIndex--;
-  paused = false; $('pause').textContent = 'Pause calculation';
-  const token = generation;
-  const operation = (async () => {
-    while (!paused && token === generation) {
-      const index = imageIndex + 1;
-      if (index >= localImages.length) break;
-      const start = performance.now();
-      if (!await runImage(index, index === 0, true)) { if (index === 0 && $('comparison').value === 'consecutive') continue; break; }
-      const rate = Number($('image-rate').value);
-      if (!Number.isFinite(rate) || rate < 0 || rate > 240) throw new Error('Image rate must be between 0 and 240 (0 = uncapped)');
-      if (rate) await new Promise(resolve => { imageWake=resolve;imageDelay=setTimeout(()=>{imageWake=null;resolve();},Math.max(0,1000/rate-(performance.now()-start))); });
-    }
-  })();
-  imageLoop=operation;
-  try { await operation; }
-  catch(error) { if (error.name !== 'AbortError') message(error.message,true); }
-  finally { if (imageLoop===operation) { imageLoop=null; if(token===generation){paused=true; $('pause').textContent='Start calculation';} } }
+  message(`Loaded ${imageSequence.images.length} local image(s). ${imageSequence.images.some(file=>/\.tiff?$/i.test(file.name))?'TIFF: unsigned 16-bit values use their high byte (fixed 0–65535 → 0–255); no automatic contrast adjustment. ':''}${choice.ignored.length ? 'Ignored files are listed in the details. ' : ''}Choose a reference and mask, then open Solve to calculate and save the sequence.`);
 }
 async function startLocalVideo(file) {
   await stop(); source='video-file'; manifest=null;
@@ -517,7 +472,7 @@ async function startLocalVideo(file) {
   const ready=waitForMedia(video,'loadeddata',sourceAbort.signal);video.playbackRate=Number($('video-rate').value);video.loop=false;video.preload='auto';video.src=localVideoUrl;video.load();await ready;
   sourceSettings={source:'local video',file:fileInfo(file),outputSize:[video.videoWidth,video.videoHeight],durationSeconds:Number.isFinite(video.duration)?video.duration:null,
     reference:{kind:'video-file',file:fileInfo(file),timeSeconds:video.currentTime}};
-  localControls(false); $('local-name').textContent=file.name;
+  imageSequence.localControls(false); $('local-name').textContent=file.name;
   $('local-seek').min=0;$('local-seek').max=Number.isFinite(video.duration)?video.duration:0;$('local-seek').step=.001;$('local-seek').disabled=!Number.isFinite(video.duration);
   await captureReference();
   showInputPreview(await frameFromVideo());
@@ -544,25 +499,6 @@ async function previewPlateTarget() {
   const frame=Number($('plate-load').value),record=plateManifest.images.find(r=>r.frame===frame);
   const bitmap=await createImageBitmap(await fetch(new URL(`./demo/plate/${record.file}`,import.meta.url)).then(r=>r.blob()));
   showInputPreview(bitmap);$('pause').textContent='Start calculation';
-}
-async function localSeek(value) {
-  const serial=++seekSerial,token=generation;pauseSource();$('pause').textContent='Start calculation';
-  await imageTask?.catch(()=>{});await drain();
-  if (serial!==seekSerial || token!==generation) return;
-  try {
-    if (source==='images') {
-      const index=Number(value),frame=await decodeImage(localImages[index],[referenceInfo.width,referenceInfo.height],sourceAbort.signal);
-      if(serial!==seekSerial||token!==generation){frame.close();return;}
-      imageIndex=index;showInputPreview(frame);updateLocalPosition();
-    } else if (source==='video-file') {
-      await seekVideo(video,Number(value),sourceAbort.signal);
-      if(serial!==seekSerial||token!==generation)return;
-      const frame=await frameFromVideo();
-      if(serial!==seekSerial||token!==generation){frame.close();return;}
-      showInputPreview(frame);updateLocalPosition();
-    }
-    details();
-  } catch(error) {if(error.name!=='AbortError')message(error.message,true);updateLocalPosition();}
 }
 async function startDemo() {
   await stop(); source = 'demo'; $('resolution').disabled = true;
@@ -680,49 +616,7 @@ const roi = installRoi($('roi'), $('shape'), (state) => {
   if(state.editing&&!editorWasActive&&matchMedia('(max-width:760px)').matches)requestAnimationFrame(()=>document.querySelector('.viewer').scrollIntoView({block:'start'})); editorWasActive=state.editing;
   $('apply-roi').disabled = !roiEditing; $('mask-toolbar').hidden=!roiEditing; $('apply-mask-top').disabled=!roiEditing;
 });
-let viewZoom = 1;
-const viewZoomStops = [1, 1.5, 2, 3, 4, 6, 8];
-function setViewZoom(value) {
-  const view=$('image-viewport'),scene=$('scene');
-  const previousWidth=Math.max(1,scene.scrollWidth),previousHeight=Math.max(1,scene.scrollHeight);
-  const centreX=(view.scrollLeft+view.clientWidth/2)/previousWidth;
-  const centreY=(view.scrollTop+view.clientHeight/2)/previousHeight;
-  viewZoom=Math.max(1,Math.min(8,value));
-  scene.style.width=`${viewZoom*100}%`;
-  $('view-zoom-label').textContent=`${Math.round(viewZoom*100)}%`;
-  requestAnimationFrame(()=>{
-    view.scrollLeft=centreX*view.scrollWidth-view.clientWidth/2;
-    view.scrollTop=centreY*view.scrollHeight-view.clientHeight/2;
-    updateVectorLengthLegend();
-  });
-}
-function stepViewZoom(direction) {
-  const next=viewZoomStops.find(value=>direction>0?value>viewZoom+1e-6:value<viewZoom-1e-6);
-  setViewZoom(next??(direction>0?8:1));
-}
-function panImage(dx,dy) {
-  const view=$('image-viewport'),step=Math.max(80,Math.round(Math.min(view.clientWidth,view.clientHeight)*.65));
-  view.scrollBy({left:dx*step,top:dy*step,behavior:'smooth'});
-}
-$('view-zoom-out').onclick=()=>stepViewZoom(-1);
-$('view-zoom-in').onclick=()=>stepViewZoom(1);
-$('view-pan-up').onclick=()=>panImage(0,-1);
-$('view-pan-left').onclick=()=>panImage(-1,0);
-$('view-pan-down').onclick=()=>panImage(0,1);
-$('view-pan-right').onclick=()=>panImage(1,0);
-function resetImageView() {
-  viewZoom=1;$('scene').style.width='100%';$('view-zoom-label').textContent='100%';
-  const view=$('image-viewport');
-  requestAnimationFrame(()=>view.scrollTo({left:Math.max(0,(view.scrollWidth-view.clientWidth)/2),
-    top:Math.max(0,(view.scrollHeight-view.clientHeight)/2),behavior:'smooth'}));
-}
-$('view-reset').onclick=resetImageView;
-if(typeof ResizeObserver==='function'){
-  let pendingLegendFrame=null;
-  const observer=new ResizeObserver(()=>{if(pendingLegendFrame===null)pendingLegendFrame=requestAnimationFrame(()=>{pendingLegendFrame=null;updateVectorLengthLegend();});});
-  observer.observe($('image-viewport'));
-  window.addEventListener('pagehide',()=>{observer.disconnect();cancelAnimationFrame(pendingLegendFrame);});
-}
+installViewNavigation({ getElement: $, updateVectorLengthLegend });
 $('regions').onchange = () => roi.select($('regions').value);
 $('delete-roi').onclick = () => roi.remove();
 $('undo-roi').onclick = () => roi.undo();
@@ -734,7 +628,7 @@ $('cancel-roi').onclick = () => sourceChange(async()=>{
   if(!appliedEditorState)return;
   roiEditing=false;roi.reset(appliedEditorState.width,appliedEditorState.height,appliedEditorState.shapes,appliedEditorState.baseMask,{empty:appliedEditorState.empty});draftMaskSource=appliedMaskSource;
   $('roi-editor').hidden=true;$('mask-import-summary').textContent=appliedMaskSource?`${appliedMaskSource.name} · applied base restored.`:'No imported image base. White pixels are kept; black pixels are excluded.';
-  if(returnToInputAfterMask){if(source==='plate')await previewPlateTarget();else if(source==='images')await localSeek(imageIndex);else if(source==='video-file')showInputPreview(await frameFromVideo());}
+  if(returnToInputAfterMask){if(source==='plate')await previewPlateTarget();else if(source==='images')await localSeek(imageSequence.index);else if(source==='video-file')showInputPreview(await frameFromVideo());}
   else await showPendingReferencePreview();
   message('Unapplied mask edits discarded. The existing numerical field and applied ROI are unchanged.');
 });
@@ -747,17 +641,17 @@ $('open-images').onclick = () => $('image-files').click();
 $('video-file').onchange = () => { const file=$('video-file').files[0];$('video-file').value='';if(file)sourceChange(()=>startLocalVideo(file)); };
 for (const id of ['image-folder','image-files']) $(id).onchange = () => {const files=[...$(id).files];$(id).value='';if(files.length)sourceChange(()=>startImages(files));};
 $('use-image-reference').onclick = () => sourceChange(()=>setImageReference(Number($('image-reference').value)));
-$('previous-image').onclick = () => localSeek(Math.max(0,imageIndex-1));
-$('next-image').onclick = () => localSeek(Math.min(localImages.length-1,imageIndex+1));
+$('previous-image').onclick = () => localSeek(Math.max(0,imageSequence.index-1));
+$('next-image').onclick = () => localSeek(Math.min(imageSequence.images.length-1,imageSequence.index+1));
 $('local-seek').onchange = () => localSeek($('local-seek').value);
 $('image-rate').onchange = () => { sourceSettings.replayRateCapHz = Number($('image-rate').value); };
 $('video-rate').onchange = () => {video.playbackRate=Number($('video-rate').value);sourceSettings.playbackRate=video.playbackRate;};
 $('comparison').onchange = () => sourceChange(async () => {
-  pauseSource();await imageTask?.catch(()=>{});await drain();$('export').disabled=true;workbench.setReady(false);clearLiveMetrics();$('run-state').textContent='Comparison changed · awaiting a target field';$('pause').textContent='Start calculation';
+  pauseSource();await imageSequence.task?.catch(()=>{});await drain();$('export').disabled=true;workbench.setReady(false);clearLiveMetrics();$('run-state').textContent='Comparison changed · awaiting a target field';$('pause').textContent='Start calculation';
   sourceSettings.requestedComparison=$('comparison').value;
   if(source==='images')$('image-reference-controls').hidden=$('comparison').value==='consecutive';
   invalidatePreparedReference(true);
-  if(source==='images')await localSeek($('comparison').value==='consecutive'?Math.max(1,imageIndex):imageIndex);
+  if(source==='images')await localSeek($('comparison').value==='consecutive'?Math.max(1,imageSequence.index):imageSequence.index);
   message($('comparison').value==='consecutive'?'Consecutive received-image pairs selected. Start calculation will prepare the current reference and mask.':'Fixed-reference comparison selected. Start calculation will restore the staged reference and mask.');
 });
 video.addEventListener('ended',()=>{if(source==='video-file'&&!paused&&!loadingSource)finishCalculation().catch(e=>message(e.message,true));});
@@ -767,7 +661,7 @@ $('demo').onclick = () => sourceChange(startDemo);
 $('camera').onclick = () => sourceChange(startCamera);
 $('reference').onclick = () => sourceChange(async () => {
   if (source === 'plate') return startPlate();
-  if (source === 'images') return setImageReference(imageIndex);
+  if (source === 'images') return setImageReference(imageSequence.index);
   pauseSource(); await drain();
   await captureReference();
   if(source!=='camera')sourceSettings.reference = { kind:source, file:sourceSettings.file, timeSeconds:source === 'video-file' ? video.currentTime : null };
@@ -819,7 +713,7 @@ async function startCalculation() {
     }
     paused=false;$('pause').textContent='Pause calculation';startingCalculation=false;
     if(source==='images'){
-      if($('solve-range').value==='single'){paused=true;await runImage(imageIndex,true);}
+      if($('solve-range').value==='single'){paused=true;await runImage(imageSequence.index,true);}
       else await playImages(includeCurrent);
       if(token===generation)await finishCalculation();
     }
@@ -870,7 +764,7 @@ $('apply-roi').onclick = () => sourceChange(async () => {
     roiEditing = false; roi.stop(); $('roi-editor').hidden = true; $('apply-roi').disabled = true;
     message('Mask applied locally. Start calculation prepares the reference with this mask; all complete selected subsets are used.'); details();
     if (source === 'plate') await previewPlateTarget();
-    else if (source === 'images') await localSeek(imageIndex);
+    else if (source === 'images') await localSeek(imageSequence.index);
     workspace.showPane('solve');
   } catch (error) { message(error.message, true); }
 });
@@ -913,7 +807,7 @@ $('profile').onchange = () => invalidatePreparedReference();
 window.addEventListener('pagehide', () => { workbench.destroy(); sourceAbort.abort(); clearPreviousCapture();clearPendingReference(); if (localVideoUrl) URL.revokeObjectURL(localVideoUrl); stream?.getTracks().forEach((t) => t.stop()); transport?.postMessage({ type: 'destroy' }); });
 window.addEventListener('error', (event) => { status.errors.push(event.message); message(event.message, true); });
 window.addEventListener('unhandledrejection', (event) => { const text = String(event.reason); status.errors.push(text); message(text, true); });
-if (smoke) { globalThis.liveDicReport = () => send('report'); globalThis.liveDicPipelineReport = () => ({settings:supervision,recording:recordingQueue.report(),synchronousAdmissions:synchronousAdmissions.slice(),presentation:lastPresentation}); globalThis.liveDicWorkbench = workbench; globalThis.liveDicRoi = roi; globalThis.liveDicSourceState = () => ({source,paused,viewingInput,pane:workspace.pane,loadingSource,inFlight,index:imageIndex,fileCount:localImages.length,localBusy:!!imageTask,loop:!!imageLoop,settings:sourceSettings,comparison:$('comparison').value,videoTime:video.currentTime,videoPaused:video.paused}); }
+if (smoke) { globalThis.liveDicReport = () => send('report'); globalThis.liveDicPipelineReport = () => ({settings:supervision,recording:recordingQueue.report(),synchronousAdmissions:synchronousAdmissions.slice(),presentation:lastPresentation}); globalThis.liveDicWorkbench = workbench; globalThis.liveDicRoi = roi; globalThis.liveDicSourceState = () => ({source,paused,viewingInput,pane:workspace.pane,loadingSource,inFlight,index:imageSequence.index,fileCount:imageSequence.images.length,localBusy:!!imageSequence.task,loop:!!imageSequence.loop,settings:sourceSettings,comparison:$('comparison').value,videoTime:video.currentTime,videoPaused:video.paused}); }
 for(const id of ['display-rate','preview-width'])$(id).onchange=()=>{
   if(!transport||!referencePrepared)return;
   const options={displayRate:$('display-rate').value==='off'?0:Number($('display-rate').value),previewEnabled:$('display-rate').value!=='off',previewMaxWidth:Number($('preview-width').value)};

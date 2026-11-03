@@ -1,12 +1,19 @@
 import { acquireDevice, imageRequirements, assertImageLimits } from './device.js';
 import { createTargetSlot, attachExternalInput } from './ring.js';
-import { createTemporalGraph, validateTemporal } from './temporal.js';
+import { createTemporalGraph } from './temporal.js';
 import { validateMask, planRoi, reduceMask, seedPermissions, hashMask } from './roi.js';
 import { decodePacked, createResultReader, decodeCounters } from './result.js';
 import { loadShader } from './shaders.js';
 import { createGpuReferenceGraph } from './reference-gpu.js';
 import { FourierInitializer } from './fourier.js';
 import { GlobalAffineInitializer } from './global-affine.js';
+import {
+  createInitialConfiguration,
+  resolveConfiguration,
+  INTERPOLATION_CONSTANTS,
+  MOTION_MODEL_CONSTANTS,
+  OUTLIER_POLICY_CONSTANTS,
+} from './pyramid/configuration.js';
 /*
  * Raw browser WebGPU adapter for the same portable WGSL used by wgpu-py.
  *
@@ -24,69 +31,10 @@ import {
 
 export function createPyramidHost(options = {}) {
   const hostOptions = options;
-  validateTemporal(options);
-  const SUBSET_SIZE = Number(options.subsetSize ?? 16);
-  if (!Number.isInteger(SUBSET_SIZE) || SUBSET_SIZE < 4 || SUBSET_SIZE > 64) {
-    throw new Error('subsetSize must be an integer from 4 to 64');
-  }
-  const SUBSET_STRIDE = Number(options.subsetStride ?? SUBSET_SIZE);
-  if (!Number.isInteger(SUBSET_STRIDE) || SUBSET_STRIDE < 1 || SUBSET_STRIDE > SUBSET_SIZE) {
-    throw new Error('subsetStride must be an integer between 1 and subsetSize');
-  }
-  const DEFAULT_MAX_ITERATIONS = 30;
-  const DEFAULT_TOLERANCE = 1e-3;
-  const DEFAULT_ZNCC_MIN = 0.8;
   const FIR_RADIUS = 15;
-  const DEFAULT_PYRAMID_LEVELS = 2;
-  const ITERATION_SCHEDULES = {
-    1: [30],
-    2: [8, 16],
-    3: [6, 8, 16],
-    4: [12, 8, 8, 16],
-    5: [12, 8, 8, 8, 16],
-    6: [12, 8, 8, 8, 8, 16],
-  };
-  const TOLERANCE_SCHEDULES = {
-    1: [1e-3],
-    2: [5e-3, 5e-3],
-    3: [1e-2, 5e-3, 5e-3],
-    4: [1e-2, 1e-2, 5e-3, 5e-3],
-    5: [1e-2, 1e-2, 5e-3, 5e-3, 5e-3],
-    6: [1e-2, 1e-2, 1e-2, 5e-3, 5e-3, 5e-3],
-  };
-  const INTERPOLATION_CONSTANTS = {
-    bspline: 0,
-    linear: 1,
-    cubic: 2,
-  };
-  const MOTION_MODEL_CONSTANTS = { affine: 0, translation: 1, quadratic: 2 };
-  const OUTLIER_POLICY_CONSTANTS = { flag: 0, replace: 1, disabled: 2, median: 3 };
-
-  const configuration = {
-    ...(options.referencePreparation==='gpu'?{referencePreparation:'gpu'}:{}),
-    subsetSize: SUBSET_SIZE,
-    subsetStride: SUBSET_STRIDE,
-    initialization: options.initialization ?? 'zero',
-    temporalPrediction: options.temporalPrediction ?? 'none',
-    temporalFineCorrection: options.temporalFineCorrection ?? false,
-    temporalMaxAge: options.temporalMaxAge ?? null,
-    divergencePatience: options.divergencePatience ?? null,
-    divergenceMinIterations: options.divergenceMinIterations ?? 4,
-    pyramidPolicy: 'fixed', spatialWeighting: 'uniform', solverWorkgroupSize: 16,
-    pipelineDepth: options.pipelineDepth ?? 1,
-    iterations: DEFAULT_MAX_ITERATIONS,
-    tolerance: DEFAULT_TOLERANCE,
-    znccMin: DEFAULT_ZNCC_MIN,
-    pyramidLevels: DEFAULT_PYRAMID_LEVELS,
-    iterationsPerLevel: [...ITERATION_SCHEDULES[DEFAULT_PYRAMID_LEVELS]],
-    tolerancePerLevel: [...TOLERANCE_SCHEDULES[DEFAULT_PYRAMID_LEVELS]],
-    interpolation: 'bspline',
-    motionModel: 'affine',
-    outlierPolicy: 'replace',
-    medianFilterSize: 3,
-    ...(options.initialization === 'global-affine'
-      ? { globalAffineLevels: Number(options.globalAffineLevels ?? 5) } : {}),
-  };
+  const configuration = createInitialConfiguration(options);
+  const SUBSET_SIZE = configuration.subsetSize;
+  const SUBSET_STRIDE = configuration.subsetStride;
 
   let roiMask = null;
   let roiPlans = [];
@@ -637,126 +585,14 @@ export function createPyramidHost(options = {}) {
 
   const configure = (options = {}, allowPyramidRebuild = false) => {
     if (Object.keys(options).length === 0) return { ...configuration };
-    const initialization=options.initialization??configuration.initialization;
-    validateTemporal({...hostOptions,...configuration,...options,initialization});
-    if(!allowPyramidRebuild&&referenceReady&&initialization!==configuration.initialization)throw new Error('Changing initialization requires setReference()');
-    if(initialization==='fourier'&&(options.motionModel??configuration.motionModel)==='quadratic')throw new Error('Fourier initialization currently supports translation and affine models');
-    const globalAffineLevels = options.globalAffineLevels === undefined
-      ? Number(configuration.globalAffineLevels ?? 5) : Number(options.globalAffineLevels);
-    if (!Number.isInteger(globalAffineLevels) || globalAffineLevels < 5 || globalAffineLevels > 8) {
-      throw new Error('globalAffineLevels must be an integer between 5 and 8');
-    }
-    if (initialization !== 'global-affine' && options.globalAffineLevels !== undefined
-        && globalAffineLevels !== 5) {
-      throw new Error('globalAffineLevels requires initialization="global-affine"');
-    }
-    if (!allowPyramidRebuild && referenceReady && initialization === 'global-affine'
-        && globalAffineLevels !== configuration.globalAffineLevels) {
-      throw new Error('Changing globalAffineLevels requires setReference()');
-    }
-    const pyramidLevels = options.pyramidLevels === undefined
-      ? configuration.pyramidLevels : Number(options.pyramidLevels);
-    if (!Number.isInteger(pyramidLevels) || pyramidLevels < 1 || pyramidLevels > 6) {
-      throw new Error('pyramidLevels must be an integer between 1 and 6');
-    }
-    if (!allowPyramidRebuild && levels.length && pyramidLevels !== runtimePyramidLevels) {
-      throw new Error('Changing pyramidLevels requires setReference() to rebuild the runtime');
-    }
-    const interpolation = options.interpolation === undefined
-      ? configuration.interpolation : String(options.interpolation).toLowerCase();
-    if (!(interpolation in INTERPOLATION_CONSTANTS)) {
-      throw new Error("interpolation must be 'bspline', 'linear', or 'cubic'");
-    }
-    if (!allowPyramidRebuild && referenceReady
-        && interpolation !== configuration.interpolation) {
-      throw new Error('Changing interpolation requires setReference()');
-    }
-    const motionModel = options.motionModel === undefined
-      ? configuration.motionModel : String(options.motionModel).toLowerCase();
-    if (!(motionModel in MOTION_MODEL_CONSTANTS)) {
-      throw new Error("motionModel must be 'affine', 'translation', or 'quadratic'");
-    }
-    if (!allowPyramidRebuild && referenceReady && motionModel !== configuration.motionModel) {
-      throw new Error('Changing motionModel requires setReference()');
-    }
-    const outlierPolicy = options.outlierPolicy === undefined
-      ? configuration.outlierPolicy : String(options.outlierPolicy).toLowerCase();
-    if (!(outlierPolicy in OUTLIER_POLICY_CONSTANTS)) {
-      throw new Error("outlierPolicy must be 'replace', 'flag', 'disabled', or 'median'");
-    }
-    if (!allowPyramidRebuild && referenceReady
-        && outlierPolicy !== configuration.outlierPolicy) {
-      throw new Error('Changing outlierPolicy requires setReference()');
-    }
-    const medianFilterSize = options.medianFilterSize === undefined
-      ? configuration.medianFilterSize : Number(options.medianFilterSize);
-    if (![3, 5, 7, 9].includes(medianFilterSize)) {
-      throw new Error('medianFilterSize must be 3, 5, 7, or 9 subsets');
-    }
-    if (medianFilterSize > 3 && outlierPolicy !== 'median') {
-      throw new Error("medianFilterSize greater than 3 requires outlierPolicy='median'");
-    }
-    if (!allowPyramidRebuild && referenceReady
-        && medianFilterSize !== configuration.medianFilterSize) {
-      throw new Error('Changing medianFilterSize requires setReference()');
-    }
-    const changedLevels = pyramidLevels !== configuration.pyramidLevels;
-    const iterationsPerLevel = options.iterationsPerLevel === undefined
-      ? (changedLevels
-        ? [...ITERATION_SCHEDULES[pyramidLevels]]
-        : [...configuration.iterationsPerLevel])
-      : Array.from(options.iterationsPerLevel, Number);
-    const tolerancePerLevel = options.tolerancePerLevel === undefined
-      ? (changedLevels
-        ? [...TOLERANCE_SCHEDULES[pyramidLevels]]
-        : [...configuration.tolerancePerLevel])
-      : Array.from(options.tolerancePerLevel, Number);
-    if (iterationsPerLevel.length !== pyramidLevels
-        || tolerancePerLevel.length !== pyramidLevels) {
-      throw new Error('Per-level schedules must contain one value per pyramid level');
-    }
-    const next = {
-      initialization,
-      iterations: options.iterations === undefined
-        ? iterationsPerLevel[pyramidLevels - 1] : Number(options.iterations),
-      tolerance: options.tolerance === undefined
-        ? tolerancePerLevel[pyramidLevels - 1] : Number(options.tolerance),
-      znccMin: options.znccMin === undefined
-        ? configuration.znccMin : Number(options.znccMin),
-      pyramidLevels,
-      iterationsPerLevel,
-      tolerancePerLevel,
-      interpolation,
-      motionModel,
-      outlierPolicy,
-      medianFilterSize,
-      ...(initialization === 'global-affine' ? { globalAffineLevels } : {}),
-    };
-    next.iterationsPerLevel[pyramidLevels - 1] = next.iterations;
-    next.tolerancePerLevel[pyramidLevels - 1] = next.tolerance;
-    if (!Number.isInteger(next.iterations) || next.iterations < 1 || next.iterations > 30) {
-      throw new Error('iterations must be an integer between 1 and 30');
-    }
-    if (!Number.isFinite(next.tolerance) || next.tolerance <= 0) {
-      throw new Error('tolerance must be greater than zero');
-    }
-    if (!Number.isFinite(next.znccMin) || next.znccMin < 0 || next.znccMin > 1) {
-      throw new Error('znccMin must be between 0 and 1');
-    }
-    next.iterationsPerLevel.forEach((value) => {
-      if (!Number.isInteger(value) || value < 1 || value > 30) {
-        throw new Error('Each per-level iteration count must be between 1 and 30');
-      }
+    const { next, changed } = resolveConfiguration(configuration, options, {
+      hostOptions,
+      allowPyramidRebuild,
+      referenceReady,
+      runtimePyramidLevels: levels.length ? runtimePyramidLevels : 0,
     });
-    next.tolerancePerLevel.forEach((value) => {
-      if (!Number.isFinite(value) || value <= 0) {
-        throw new Error('Each per-level tolerance must be greater than zero');
-      }
-    });
-    const changed = Object.entries(next).some(([key, value]) => Array.isArray(value)
-      ? value.some((entry, index) => entry !== configuration[key]?.[index]) || value.length !== configuration[key]?.length
-      : value !== configuration[key]);
     Object.assign(configuration, next);
+    const initialization = next.initialization;
     if (initialization !== 'global-affine') delete configuration.globalAffineLevels;
     if (changed) updateConfig();
     return { ...configuration };

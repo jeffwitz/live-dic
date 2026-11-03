@@ -4,36 +4,17 @@ import { extractHistory, sameAnalysis } from './history.js';
 import { resultFigure } from './figure.js';
 import { FieldStorage, defaultCacheBytes, fieldArrayBytes, MiB } from './field-storage.js';
 import { createViewCache, createAnalysisCache } from './view-cache.js';
-import { sequentialColour } from '../render/colormaps.js';
+import { fieldColour, percentileBounds, renderFieldRaster } from './field-rendering.js';
 
 const $ = id => document.getElementById(id);
 const number = value => value == null || !Number.isFinite(value) ? 'unavailable' : value.toPrecision(5);
 const STRAIN_COMPONENTS = new Set(['exx','eyy','exy','vonMises','principal1','principal2']);
-const PERCEPTUAL_SEQUENTIAL_MAPS = new Set(['viridis','cividis','plasma','inferno','magma']);
 const ARCHIVE_IMPORT_BYTES = 256 * MiB;
 const encoderBytes = value => new TextEncoder().encode(JSON.stringify(value)).byteLength;
 const STATUS = { '-3': 'Excluded by ROI', '-2': 'Rejected correlation', '-1': 'Unavailable reference / bounds',
   0: 'Not converged', 1: 'Accepted', 2: 'Flagged / replaced by solver policy' };
 const STATUS_COLOURS = { '-3':[160,170,178],'-2':[202,51,64],'-1':[71,86,96],0:[240,193,52],1:[36,151,110],2:[238,135,45] };
 const STATUS_ORDER = [-3,-2,-1,0,1,2];
-const percentileCache = new WeakMap();
-
-function percentileBounds(analysis, component, values, valid, minimum, maximum) {
-  let components = percentileCache.get(analysis);
-  if (!components) { components = new Map(); percentileCache.set(analysis, components); }
-  let sorted = components.get(component);
-  if (!sorted) {
-    sorted = Array.from(values).filter((value, index) => valid[index] && Number.isFinite(value)).sort((a, b) => a - b);
-    components.set(component, sorted);
-  }
-  if (!sorted.length) return [null, null];
-  const quantile = percentile => {
-    const position = (sorted.length - 1) * percentile / 100, index = Math.floor(position);
-    return sorted[index] + (position - index) * (sorted[Math.min(sorted.length - 1, index + 1)] - sorted[index]);
-  };
-  return [quantile(minimum), quantile(maximum)];
-}
-
 function download(name, content, type) {
   const url = URL.createObjectURL(new Blob([content], { type }));
   const link = document.createElement('a'); link.href = url; link.download = name; link.click();
@@ -98,7 +79,6 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   const changed=()=>{projectRevision++;};
   const beforeUnload=event=>{rememberView();if(hasUnsaved()||hasPendingResults()){event.preventDefault();event.returnValue='';}};
   window.addEventListener('beforeunload',beforeUnload);
-  const contours = new WeakMap();
   let worker = typeof Worker === 'function' ? new Worker(new URL('./analysis-worker.js', import.meta.url), { type: 'module' }) : null;
   const recording = () => $('record-fields').checked;
   const activeEntry = () => entries.find(entry => entry.id === selected);
@@ -336,7 +316,7 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
       ?'Grey: ROI excluded or no solver estimate · masked estimates are diagnostic only'
       :'Grey: unavailable / rejected';
     $('quantity-source').hidden=!source;$('quantity-source').textContent=source?`Computed coefficient (${unit}). Workbench displacement smoothing and VSG do not change these values. The solver's original spatial policy still applies.`:'';
-    const field = analysis.field, [gw,gh] = field.grid;
+    const field = analysis.field;
     const nonnegative = ['magnitude','vonMises','iterations'].includes(component);
     const scaleMode=$('review-scale').value,factor=STRAIN_COMPONENTS.has(component)?1e6:1;
     const lowPercentile=Number($('review-low-percentile').value),highPercentile=Number($('review-high-percentile').value);
@@ -357,60 +337,25 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
     } else {$('review-min').value=Number((low*factor).toPrecision(6));$('review-max').value=Number((high*factor).toPrecision(6));}
     if(high-low<Math.max(1e-14,Math.abs(high)*1e-12)){const pad=Math.max(1e-12,Math.abs(high)*.01);low-=pad;high+=pad;}
     const palette=$('review-palette').value==='auto'?(nonnegative?'sequential':'diverging'):$('review-palette').value;
-    function colour(value){
-      const t=Math.max(0,Math.min(1,(value-low)/(high-low)));
-      if(PERCEPTUAL_SEQUENTIAL_MAPS.has(palette))return sequentialColour(palette,t);
-      if(palette==='gray')return Array(3).fill(Math.round(24+220*t));
-      if(palette==='sequential'){
-        const stops=[[21,57,99],[31,132,138],[241,206,95]],position=t*2,index=Math.min(1,Math.floor(position)),f=position-index;
-        return stops[index].map((v,k)=>Math.round(v+(stops[index+1][k]-v)*f));
-      }
-      const f=Math.max(0,Math.min(1,value<0?-value/Math.max(1e-12,-low):value/Math.max(1e-12,high))),endpoint=value<0?[39,91,171]:[187,56,54];
-      return endpoint.map(v=>Math.round(247+(v-247)*f));
-    }
-    const small = typeof OffscreenCanvas==='function'?new OffscreenCanvas(gw,gh):Object.assign(document.createElement('canvas'),{width:gw,height:gh});
-    const context = small.getContext('2d'), image = context.createImageData(gw, gh);
-    for (let i=0;i<values.length;i++) {
-      let rgb = [71,86,96];
-      if (component === 'status') rgb = STATUS_COLOURS[Math.round(values[i])] ?? rgb;
-      else if (valid[i]) rgb=colour(values[i]);
-      else if (diagnostic?.valid[i]) rgb=colour(diagnostic.values[i]);
-      image.data.set([...rgb,255],i*4);
-    }
-    context.putImageData(image,0,0);
-    // Publish only a completed analysis. Resizing clears a canvas, so keep the
-    // previous raster throughout disk/worker waits and resize in this draw task.
-    if(canvas.width!==field.width||canvas.height!==field.height){canvas.width=field.width;canvas.height=field.height;}
-    if(overlay.width!==field.width||overlay.height!==field.height){overlay.width=field.width;overlay.height=field.height;}
-    const ctx = canvas.getContext('2d'); ctx.fillStyle = '#263b47'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.imageSmoothingEnabled = false;
-    // Samples occupy a stride-sized cell centred on the actual reference subset centre.
-    const offset = (field.subsetSize-field.subsetStride)/2;
-    ctx.drawImage(small,offset,offset,gw*field.subsetStride,gh*field.subsetStride);
-    if($('review-contour').checked){
-      const mask=activeEntry().mask;
-      if(mask){
-        if(!contours.has(mask)){
-          const path=new Path2D(),w=field.width,h=field.height;
-          for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;if(!mask[i])continue;
-            if(x===0||!mask[i-1]){path.moveTo(x,y);path.lineTo(x,y+1);}
-            if(x===w-1||!mask[i+1]){path.moveTo(x+1,y);path.lineTo(x+1,y+1);}
-            if(y===0||!mask[i-w]){path.moveTo(x,y);path.lineTo(x+1,y);}
-            if(y===h-1||!mask[i+w]){path.moveTo(x,y+1);path.lineTo(x+1,y+1);}
-          }contours.set(mask,path);
-        }
-        ctx.strokeStyle='#ffffff';ctx.lineWidth=Math.max(1,field.width/1200);ctx.stroke(contours.get(mask));
-      }
-    }
-    if($('review-vectors').checked){
-      const step=Number($('review-vector-step').value),gain=Number($('review-vector-gain').value),path=new Path2D();
-      for(let y=0;y<gh;y+=step)for(let x=0;x<gw;x+=step){const i=y*gw+x;if(!analysis.valid[i])continue;
-        const ax=x*field.subsetStride+field.subsetSize/2,ay=y*field.subsetStride+field.subsetSize/2;
-        const dx=analysis.fields.u[i]/analysis.recipe.unitsPerPixel*gain,dy=analysis.fields.v[i]/analysis.recipe.unitsPerPixel*gain,length=Math.hypot(dx,dy);if(length<.01)continue;
-        const bx=ax+dx,by=ay+dy,head=Math.min(length*.4,field.width/300),ux=dx/length,uy=dy/length;
-        path.moveTo(ax,ay);path.lineTo(bx,by);path.moveTo(bx-head*ux+head*.45*uy,by-head*uy-head*.45*ux);path.lineTo(bx,by);path.lineTo(bx-head*ux-head*.45*uy,by-head*uy+head*.45*ux);
-      }
-      ctx.strokeStyle='#173b4c';ctx.lineWidth=Math.max(3,field.width/700);ctx.stroke(path);ctx.strokeStyle='#fff';ctx.lineWidth=Math.max(1,field.width/1800);ctx.stroke(path);
-    }
+    const colour = value => fieldColour(value, low, high, palette);
+    renderFieldRaster({
+      canvas,
+      overlay,
+      analysis,
+      values,
+      valid,
+      diagnostic,
+      component,
+      low,
+      high,
+      palette,
+      statusColours: STATUS_COLOURS,
+      showContour: $('review-contour').checked,
+      mask: $('review-contour').checked ? activeEntry().mask : null,
+      showVectors: $('review-vectors').checked,
+      vectorStep: Number($('review-vector-step').value),
+      vectorGain: Number($('review-vector-gain').value),
+    });
     $('low').textContent = component==='status' ? 'Excluded / failed' : format(low,unit);
     $('high').textContent = component==='status' ? 'Accepted / flagged' : format(high,unit);
     document.querySelector('.legend').classList.toggle('status',component==='status');
