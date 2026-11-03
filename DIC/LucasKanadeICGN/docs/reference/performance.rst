@@ -1824,3 +1824,46 @@ for scored spatial hypotheses followed by unchanged native IC-GN solves. The
 retains both spatial and equal-re-solve continuation cases, analytic errors,
 input/script hashes and actual adapter. This is correctness evidence for that
 experiment; it does not qualify live throughput or add a GPU pipeline option.
+
+The subsequent `CPU prototype timing campaign
+<https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/spatial-seed-performance-20261104>`_
+measures resident NumPy image to materialized field/statistics on the original
+UHD reference/frame-40 pair. Intel LNL/Vulkan, Mesa 25.2.8, CPU governor
+``powersave``; translation 32/16, B-spline, two levels, caps 8/16, tolerance
+0.005, ZNCC 0.8, no filtering, one slot and fixed reference. Preparation,
+decoding, display and disk I/O are excluded; CPU scoring, target reduction,
+seed transfers, repeated uploads/solves and intermediate readbacks are included.
+
+.. list-table:: UHD spatial-seed prototype, sequential Python calls
+   :header-rows: 1
+
+   * - Case
+     - Median / p95 (ms)
+     - Completed fields/s
+   * - Production GPU-resident pyramid
+     - 14.397 / 16.110
+     - 68.714
+   * - Independent-level control, no extra solves
+     - 63.812 / 76.103
+     - 15.129
+   * - Two extra solves per level, no candidate scoring
+     - 90.271 / 97.650
+     - 11.005
+   * - CPU spatial selection, one extra pass per level
+     - 3351.324 / 3402.432
+     - 0.2983
+   * - CPU spatial selection, two extra passes per level
+     - 6535.071 / 6743.773
+     - 0.1518
+
+Three rounds alternate case order after one warm-up per case: 60 production
+samples and six per research case. Fields/s uses total completed calls divided
+by their total measured duration. The small research sample count makes p95
+descriptive, not a latency guarantee. All cases preserve 100 percent interior
+coverage and displacement RMSE below 0.01020 px on this analytic pair.
+
+The two-pass prototype spends about 6.40 s in CPU candidate scoring and 92 ms
+in coarse/fine solve stages. It is about 454 times slower in median than the
+production pyramid. This is a measured limitation of the CPU oracle and its
+orchestration, not an estimate of a GPU-resident propagation implementation.
+No camera-stream, disk-recording or live propagation performance is qualified.

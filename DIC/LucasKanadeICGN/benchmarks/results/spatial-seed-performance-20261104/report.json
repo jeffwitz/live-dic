@@ -1,0 +1,1110 @@
+{
+  "command": [
+    "DIC/LucasKanadeICGN/benchmarks/benchmark_spatial_seed_performance.py",
+    "--output",
+    "/tmp/live-dic-spatial-perf-final-20261104"
+  ],
+  "sourceCommit": "d73df899ec491abc6bfb46f1eefff58c27b23bc9",
+  "sourceDirty": false,
+  "scriptSha256": {
+    "benchmark_spatial_seed_performance.py": "86cac1fe8adc029e87ca4da090c5426675aece62b97fa731e476f9cef382ac09",
+    "spatial_seed_reference.py": "ae182a250300d23bbe1f5d7f63cfadc7f5eff86ccd17aa3c8aee927d8a01a76f"
+  },
+  "inputSha256": {
+    "reference.png": "7cadf6032d7c5ac2de74ae542573a3b38069dc8c1c075ef9576641601996aeec",
+    "frame_040.png": "7477178b00acb669b34aeb2084b895076cf74475f472bc25f3af2696b2719e30"
+  },
+  "shape": [
+    2160,
+    3840
+  ],
+  "options": {
+    "motion_model": "translation",
+    "subset_size": 32,
+    "subset_stride": 16,
+    "outlier_policy": "disabled",
+    "device_type": "gpu"
+  },
+  "iterations": [
+    8,
+    16
+  ],
+  "tolerance": [
+    0.005,
+    0.005
+  ],
+  "znccMin": 0.8,
+  "pipelineDepth": 1,
+  "opencvThreads": 8,
+  "opencl": false,
+  "warmupCallsPerCase": 1,
+  "platform": "Linux-7.0.0-38-generic-x86_64-with-glibc2.39",
+  "versions": {
+    "numpy": "2.4.6",
+    "wgpu": "0.32.0",
+    "opencv-python-headless": "5.0.0.93"
+  },
+  "cpuGovernor": "powersave",
+  "boundary": "resident NumPy target -> materialized NumPy field and statistics; no disk I/O, decode or display",
+  "notes": [
+    "CPU research oracle, not a production GPU propagation implementation.",
+    "Target reduction, scoring, uploads, all re-solves/readbacks and statistics are timed.",
+    "The independent-level control also transfers seeds on CPU; native full pyramid keeps them on GPU.",
+    "Repeated frame-40 pair, zero seeds each call, no temporal reuse.",
+    "Short campaign; tail quantiles with few samples are descriptive, not latency guarantees."
+  ],
+  "preparationWallMs": {
+    "nativeFullPyramid": 1653.9706429466605,
+    "independentLevelsAndCpuPlans": 1326.5750000136904
+  },
+  "samples": [
+    {
+      "case": "native",
+      "round": 0,
+      "repeat": 0,
+      "wallMs": 17.878468031995,
+      "stages": {
+        "nativeSolve": 17.87290204083547
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 0,
+      "repeat": 1,
+      "wallMs": 14.910685014910996,
+      "stages": {
+        "nativeSolve": 14.905701973475516
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 0,
+      "repeat": 2,
+      "wallMs": 14.071257959585637,
+      "stages": {
+        "nativeSolve": 14.06647899420932
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 0,
+      "repeat": 3,
+      "wallMs": 14.453470008447766,
+      "stages": {
+        "nativeSolve": 14.447733003180474
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 0,
+      "repeat": 4,
+      "wallMs": 14.195151976309717,
+      "stages": {
+        "nativeSolve": 14.185773965436965
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 0,
+      "repeat": 5,
+      "wallMs": 16.23809599550441,
+      "stages": {
+        "nativeSolve": 16.224015969783068
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 0,
+      "repeat": 6,
+      "wallMs": 16.093679005280137,
+      "stages": {
+        "nativeSolve": 16.084436036180705
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 0,
+      "repeat": 7,
+      "wallMs": 14.741663995664567,
+      "stages": {
+        "nativeSolve": 14.734501019120216
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 0,
+      "repeat": 8,
+      "wallMs": 14.746230037417263,
+      "stages": {
+        "nativeSolve": 14.736002951394767
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 0,
+      "repeat": 9,
+      "wallMs": 15.9518729778938,
+      "stages": {
+        "nativeSolve": 15.944756974931806
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 0,
+      "repeat": 10,
+      "wallMs": 16.10336801968515,
+      "stages": {
+        "nativeSolve": 16.095916973426938
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 0,
+      "repeat": 11,
+      "wallMs": 14.207897998858243,
+      "stages": {
+        "nativeSolve": 14.200681005604565
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 0,
+      "repeat": 12,
+      "wallMs": 14.937558968085796,
+      "stages": {
+        "nativeSolve": 14.929116994608194
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 0,
+      "repeat": 13,
+      "wallMs": 14.814247959293425,
+      "stages": {
+        "nativeSolve": 14.807483996264637
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 0,
+      "repeat": 14,
+      "wallMs": 14.757041994016618,
+      "stages": {
+        "nativeSolve": 14.749502995982766
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 0,
+      "repeat": 15,
+      "wallMs": 14.858347014524043,
+      "stages": {
+        "nativeSolve": 14.850220002699643
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 0,
+      "repeat": 16,
+      "wallMs": 15.327244997024536,
+      "stages": {
+        "nativeSolve": 15.319080965127796
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 0,
+      "repeat": 17,
+      "wallMs": 14.372749952599406,
+      "stages": {
+        "nativeSolve": 14.364813978318125
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 0,
+      "repeat": 18,
+      "wallMs": 14.494714967440814,
+      "stages": {
+        "nativeSolve": 14.485307969152927
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 0,
+      "repeat": 19,
+      "wallMs": 14.157858968246728,
+      "stages": {
+        "nativeSolve": 14.149795984849334
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "continue-0",
+      "round": 0,
+      "repeat": 0,
+      "wallMs": 78.8482939824462,
+      "stages": {
+        "targetReductionCpu": 55.335995042696595,
+        "coarseSolves": 5.059359013102949,
+        "seedTransferCpu": 6.201744021382183,
+        "fineSolves": 12.220959994010627
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "continue-0",
+      "round": 0,
+      "repeat": 1,
+      "wallMs": 67.86681897938251,
+      "stages": {
+        "targetReductionCpu": 39.98061298625544,
+        "coarseSolves": 5.756865022704005,
+        "seedTransferCpu": 6.488376995548606,
+        "fineSolves": 15.617885976098478
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "continue-2",
+      "round": 0,
+      "repeat": 0,
+      "wallMs": 96.92898800130934,
+      "stages": {
+        "targetReductionCpu": 39.27247895626351,
+        "coarseSolves": 13.230607961304486,
+        "seedTransferCpu": 6.555101950652897,
+        "fineSolves": 37.48432797146961
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "continue-2",
+      "round": 0,
+      "repeat": 1,
+      "wallMs": 90.44976398581639,
+      "stages": {
+        "targetReductionCpu": 39.110064040869474,
+        "coarseSolves": 12.908797012642026,
+        "seedTransferCpu": 6.18559296708554,
+        "fineSolves": 31.80041303858161
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "spatial-1",
+      "round": 0,
+      "repeat": 0,
+      "wallMs": 3356.478989007883,
+      "stages": {
+        "targetReductionCpu": 37.565644015558064,
+        "coarseSolves": 11.101918993517756,
+        "coarseScoringCpu": 629.7917970223352,
+        "seedTransferCpu": 6.227126985322684,
+        "fineSolves": 42.105694010388106,
+        "fineScoringCpu": 2629.637190955691
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "spatial-1",
+      "round": 0,
+      "repeat": 1,
+      "wallMs": 3282.0796959567815,
+      "stages": {
+        "targetReductionCpu": 38.10934000648558,
+        "coarseSolves": 14.516426948830485,
+        "coarseScoringCpu": 632.9795439960435,
+        "seedTransferCpu": 6.594726990442723,
+        "fineSolves": 45.60712701641023,
+        "fineScoringCpu": 2544.2229329491965
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "spatial-2",
+      "round": 0,
+      "repeat": 0,
+      "wallMs": 6530.291614995804,
+      "stages": {
+        "targetReductionCpu": 37.953796971123666,
+        "coarseSolves": 20.80744906561449,
+        "coarseScoringCpu": 1259.7529900376685,
+        "seedTransferCpu": 6.486908008810133,
+        "fineSolves": 70.73501194827259,
+        "fineScoringCpu": 5134.483296016697
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "spatial-2",
+      "round": 0,
+      "repeat": 1,
+      "wallMs": 6523.6622910015285,
+      "stages": {
+        "targetReductionCpu": 40.83908803295344,
+        "coarseSolves": 22.504483931697905,
+        "coarseScoringCpu": 1267.2066559898667,
+        "seedTransferCpu": 5.970894009806216,
+        "fineSolves": 67.52718309871852,
+        "fineScoringCpu": 5119.541856925935
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "spatial-2",
+      "round": 1,
+      "repeat": 0,
+      "wallMs": 6482.8470760257915,
+      "stages": {
+        "targetReductionCpu": 39.86277902731672,
+        "coarseSolves": 20.61422704719007,
+        "coarseScoringCpu": 1272.435927996412,
+        "seedTransferCpu": 6.551405997015536,
+        "fineSolves": 70.83255297038704,
+        "fineScoringCpu": 5072.479636990465
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "spatial-2",
+      "round": 1,
+      "repeat": 1,
+      "wallMs": 6539.850027009379,
+      "stages": {
+        "targetReductionCpu": 41.159057000186294,
+        "coarseSolves": 20.60798794263974,
+        "coarseScoringCpu": 1254.0547330863774,
+        "seedTransferCpu": 6.303365982603282,
+        "fineSolves": 72.45051395148039,
+        "fineScoringCpu": 5145.202354993671
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "spatial-1",
+      "round": 1,
+      "repeat": 0,
+      "wallMs": 3411.140201962553,
+      "stages": {
+        "targetReductionCpu": 38.79618999781087,
+        "coarseSolves": 13.985486992169172,
+        "coarseScoringCpu": 645.6723189912736,
+        "seedTransferCpu": 7.077976013533771,
+        "fineSolves": 45.99033802514896,
+        "fineScoringCpu": 2659.5663059852086
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "spatial-1",
+      "round": 1,
+      "repeat": 1,
+      "wallMs": 3376.3059170451015,
+      "stages": {
+        "targetReductionCpu": 39.01072998996824,
+        "coarseSolves": 15.618034987710416,
+        "coarseScoringCpu": 643.0607179645449,
+        "seedTransferCpu": 6.115037016570568,
+        "fineSolves": 45.87378300493583,
+        "fineScoringCpu": 2626.5789410099387
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "continue-2",
+      "round": 1,
+      "repeat": 0,
+      "wallMs": 97.89056598674506,
+      "stages": {
+        "targetReductionCpu": 39.158410974778235,
+        "coarseSolves": 16.231380926910788,
+        "seedTransferCpu": 6.29705999745056,
+        "fineSolves": 35.818212025333196
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "continue-2",
+      "round": 1,
+      "repeat": 1,
+      "wallMs": 90.09303798666224,
+      "stages": {
+        "targetReductionCpu": 39.13042298518121,
+        "coarseSolves": 11.936583963688463,
+        "seedTransferCpu": 6.478813011199236,
+        "fineSolves": 32.09828701801598
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "continue-0",
+      "round": 1,
+      "repeat": 0,
+      "wallMs": 64.8101219558157,
+      "stages": {
+        "targetReductionCpu": 39.08193303504959,
+        "coarseSolves": 5.426042014732957,
+        "seedTransferCpu": 6.419820012524724,
+        "fineSolves": 13.861425977665931
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "continue-0",
+      "round": 1,
+      "repeat": 1,
+      "wallMs": 62.814418983180076,
+      "stages": {
+        "targetReductionCpu": 37.698448984883726,
+        "coarseSolves": 5.074541957583278,
+        "seedTransferCpu": 6.635099009145051,
+        "fineSolves": 13.383117970079184
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 1,
+      "repeat": 0,
+      "wallMs": 15.2995620155707,
+      "stages": {
+        "nativeSolve": 15.294320997782052
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 1,
+      "repeat": 1,
+      "wallMs": 15.221456997096539,
+      "stages": {
+        "nativeSolve": 15.216750965919346
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 1,
+      "repeat": 2,
+      "wallMs": 15.804337977897376,
+      "stages": {
+        "nativeSolve": 15.799355984199792
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 1,
+      "repeat": 3,
+      "wallMs": 15.47506800852716,
+      "stages": {
+        "nativeSolve": 15.470771992113441
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 1,
+      "repeat": 4,
+      "wallMs": 15.082846977747977,
+      "stages": {
+        "nativeSolve": 15.078411961439997
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 1,
+      "repeat": 5,
+      "wallMs": 15.612442046403885,
+      "stages": {
+        "nativeSolve": 15.60704899020493
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 1,
+      "repeat": 6,
+      "wallMs": 15.072121983394027,
+      "stages": {
+        "nativeSolve": 15.067984000779688
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 1,
+      "repeat": 7,
+      "wallMs": 17.24981499137357,
+      "stages": {
+        "nativeSolve": 17.244875023607165
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 1,
+      "repeat": 8,
+      "wallMs": 15.578819962684065,
+      "stages": {
+        "nativeSolve": 15.574267017655075
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 1,
+      "repeat": 9,
+      "wallMs": 14.439271995797753,
+      "stages": {
+        "nativeSolve": 14.43525799550116
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 1,
+      "repeat": 10,
+      "wallMs": 14.165480039082468,
+      "stages": {
+        "nativeSolve": 14.161670987959951
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 1,
+      "repeat": 11,
+      "wallMs": 14.422069012653083,
+      "stages": {
+        "nativeSolve": 14.417950995266438
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 1,
+      "repeat": 12,
+      "wallMs": 14.10224795108661,
+      "stages": {
+        "nativeSolve": 14.098867017310113
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 1,
+      "repeat": 13,
+      "wallMs": 14.80223098769784,
+      "stages": {
+        "nativeSolve": 14.79758700588718
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 1,
+      "repeat": 14,
+      "wallMs": 14.312369981780648,
+      "stages": {
+        "nativeSolve": 14.308421988971531
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 1,
+      "repeat": 15,
+      "wallMs": 14.026482996996492,
+      "stages": {
+        "nativeSolve": 14.02307505486533
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 1,
+      "repeat": 16,
+      "wallMs": 13.538860017433763,
+      "stages": {
+        "nativeSolve": 13.534809986595064
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 1,
+      "repeat": 17,
+      "wallMs": 13.756457017734647,
+      "stages": {
+        "nativeSolve": 13.752275030128658
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 1,
+      "repeat": 18,
+      "wallMs": 13.637370022479445,
+      "stages": {
+        "nativeSolve": 13.633537048008293
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 1,
+      "repeat": 19,
+      "wallMs": 14.109487005043775,
+      "stages": {
+        "nativeSolve": 14.104941044934094
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 2,
+      "repeat": 0,
+      "wallMs": 14.25221498357132,
+      "stages": {
+        "nativeSolve": 14.248417050112039
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 2,
+      "repeat": 1,
+      "wallMs": 13.486023002769798,
+      "stages": {
+        "nativeSolve": 13.482286012731493
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 2,
+      "repeat": 2,
+      "wallMs": 13.893997005652636,
+      "stages": {
+        "nativeSolve": 13.890500005800277
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 2,
+      "repeat": 3,
+      "wallMs": 13.44409998273477,
+      "stages": {
+        "nativeSolve": 13.440182025078684
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 2,
+      "repeat": 4,
+      "wallMs": 13.14272900344804,
+      "stages": {
+        "nativeSolve": 13.139295973815024
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 2,
+      "repeat": 5,
+      "wallMs": 13.050821959041059,
+      "stages": {
+        "nativeSolve": 13.046944048255682
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 2,
+      "repeat": 6,
+      "wallMs": 13.596444041468203,
+      "stages": {
+        "nativeSolve": 13.591686030849814
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 2,
+      "repeat": 7,
+      "wallMs": 13.541119988076389,
+      "stages": {
+        "nativeSolve": 13.536748010665178
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 2,
+      "repeat": 8,
+      "wallMs": 13.016682991292328,
+      "stages": {
+        "nativeSolve": 13.012582960072905
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 2,
+      "repeat": 9,
+      "wallMs": 13.696183043066412,
+      "stages": {
+        "nativeSolve": 13.691850996110588
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 2,
+      "repeat": 10,
+      "wallMs": 13.70097795734182,
+      "stages": {
+        "nativeSolve": 13.697170012164861
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 2,
+      "repeat": 11,
+      "wallMs": 13.348179985769093,
+      "stages": {
+        "nativeSolve": 13.344320002943277
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 2,
+      "repeat": 12,
+      "wallMs": 13.806772010866553,
+      "stages": {
+        "nativeSolve": 13.803031004499644
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 2,
+      "repeat": 13,
+      "wallMs": 13.509214972145855,
+      "stages": {
+        "nativeSolve": 13.504870992619544
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 2,
+      "repeat": 14,
+      "wallMs": 15.78085805522278,
+      "stages": {
+        "nativeSolve": 15.776459011249244
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 2,
+      "repeat": 15,
+      "wallMs": 14.115336001850665,
+      "stages": {
+        "nativeSolve": 14.110866992268711
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 2,
+      "repeat": 16,
+      "wallMs": 13.681126991286874,
+      "stages": {
+        "nativeSolve": 13.677794951945543
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 2,
+      "repeat": 17,
+      "wallMs": 14.857086003758013,
+      "stages": {
+        "nativeSolve": 14.852499007247388
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 2,
+      "repeat": 18,
+      "wallMs": 14.710279006976634,
+      "stages": {
+        "nativeSolve": 14.705726993270218
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "native",
+      "round": 2,
+      "repeat": 19,
+      "wallMs": 13.532322947867215,
+      "stages": {
+        "nativeSolve": 13.526797003578395
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "continue-0",
+      "round": 2,
+      "repeat": 0,
+      "wallMs": 61.44852697616443,
+      "stages": {
+        "targetReductionCpu": 37.22273901803419,
+        "coarseSolves": 4.907411988824606,
+        "seedTransferCpu": 6.633640034124255,
+        "fineSolves": 12.66173500334844
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "continue-0",
+      "round": 2,
+      "repeat": 1,
+      "wallMs": 60.80275500426069,
+      "stages": {
+        "targetReductionCpu": 36.97083500446752,
+        "coarseSolves": 5.085713986773044,
+        "seedTransferCpu": 6.37281802482903,
+        "fineSolves": 12.348684947937727
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "continue-2",
+      "round": 2,
+      "repeat": 0,
+      "wallMs": 85.59906500158831,
+      "stages": {
+        "targetReductionCpu": 36.57491796184331,
+        "coarseSolves": 11.970175022725016,
+        "seedTransferCpu": 6.3165860483422875,
+        "fineSolves": 29.675574915017933
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "continue-2",
+      "round": 2,
+      "repeat": 1,
+      "wallMs": 84.25408700713888,
+      "stages": {
+        "targetReductionCpu": 37.39136201329529,
+        "coarseSolves": 11.6509820218198,
+        "seedTransferCpu": 6.130028981715441,
+        "fineSolves": 28.690517006907612
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "spatial-1",
+      "round": 2,
+      "repeat": 0,
+      "wallMs": 3341.1512869643047,
+      "stages": {
+        "targetReductionCpu": 37.01215301407501,
+        "coarseSolves": 9.553562966175377,
+        "coarseScoringCpu": 641.6705860174261,
+        "seedTransferCpu": 6.042019987944514,
+        "fineSolves": 44.77220703847706,
+        "fineScoringCpu": 2602.054552990012
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "spatial-1",
+      "round": 2,
+      "repeat": 1,
+      "wallMs": 3346.16829600418,
+      "stages": {
+        "targetReductionCpu": 39.56043103244156,
+        "coarseSolves": 15.416076988913119,
+        "coarseScoringCpu": 642.4741150112823,
+        "seedTransferCpu": 6.738676980603486,
+        "fineSolves": 45.07212800672278,
+        "fineScoringCpu": 2596.852441027295
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "spatial-2",
+      "round": 2,
+      "repeat": 0,
+      "wallMs": 6676.793567021377,
+      "stages": {
+        "targetReductionCpu": 40.19003902794793,
+        "coarseSolves": 23.480158008169383,
+        "coarseScoringCpu": 1258.2820359966718,
+        "seedTransferCpu": 7.1033029817044735,
+        "fineSolves": 71.57989701954648,
+        "fineScoringCpu": 5276.0945110348985
+      },
+      "accepted": 31284
+    },
+    {
+      "case": "spatial-2",
+      "round": 2,
+      "repeat": 1,
+      "wallMs": 6766.098830965348,
+      "stages": {
+        "targetReductionCpu": 37.935430998913944,
+        "coarseSolves": 21.26671507721767,
+        "coarseScoringCpu": 1332.4453240493312,
+        "seedTransferCpu": 6.7193040158599615,
+        "fineSolves": 67.43737997021526,
+        "fineScoringCpu": 5300.227562955115
+      },
+      "accepted": 31284
+    }
+  ],
+  "quality": {
+    "native": {
+      "accepted": 31284,
+      "population": 30916,
+      "interiorCoverage": 1.0,
+      "vectorRmse": 0.010168396570294525,
+      "p95Error": 0.017227586244966918
+    },
+    "continue-0": {
+      "accepted": 31284,
+      "population": 30916,
+      "interiorCoverage": 1.0,
+      "vectorRmse": 0.01018230373115895,
+      "p95Error": 0.01722860762111737
+    },
+    "continue-2": {
+      "accepted": 31284,
+      "population": 30916,
+      "interiorCoverage": 1.0,
+      "vectorRmse": 0.010188089068165852,
+      "p95Error": 0.0172314681570598
+    },
+    "spatial-1": {
+      "accepted": 31284,
+      "population": 30916,
+      "interiorCoverage": 1.0,
+      "vectorRmse": 0.010195092365831557,
+      "p95Error": 0.01723204886033314
+    },
+    "spatial-2": {
+      "accepted": 31284,
+      "population": 30916,
+      "interiorCoverage": 1.0,
+      "vectorRmse": 0.010195390812043317,
+      "p95Error": 0.017228935638433245
+    }
+  },
+  "adapter": {
+    "vendor": "Intel open-source Mesa driver",
+    "architecture": "",
+    "device": "Intel(R) Graphics (LNL)",
+    "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+    "stackgroup_min_size": 4,
+    "stackgroup_max_size": 128,
+    "vendor_id": 32902,
+    "device_id": 25760,
+    "adapter_type": "IntegratedGPU",
+    "backend_type": "Vulkan"
+  },
+  "summary": {
+    "native": {
+      "count": 60,
+      "medianMs": 14.397409482626244,
+      "p95Ms": 16.110104418476112,
+      "fps": 68.71412828020647,
+      "stageMedianMs": {
+        "nativeSolve": 14.391382486792281
+      }
+    },
+    "continue-0": {
+      "count": 6,
+      "medianMs": 63.81227046949789,
+      "p95Ms": 76.10292523168027,
+      "fps": 15.128938806096587,
+      "stageMedianMs": {
+        "targetReductionCpu": 38.39019100996666,
+        "coarseSolves": 5.080127972178161,
+        "seedTransferCpu": 6.454098504036665,
+        "fineSolves": 13.022426486713812
+      }
+    },
+    "continue-2": {
+      "count": 6,
+      "medianMs": 90.27140098623931,
+      "p95Ms": 97.65017149038613,
+      "fps": 11.004822702765612,
+      "stageMedianMs": {
+        "targetReductionCpu": 39.12024351302534,
+        "coarseSolves": 12.439486017683521,
+        "seedTransferCpu": 6.306823022896424,
+        "fineSolves": 31.949350028298795
+      }
+    },
+    "spatial-1": {
+      "count": 6,
+      "medianMs": 3351.3236425060313,
+      "p95Ms": 3402.43163073319,
+      "fps": 0.29830971173992926,
+      "stageMedianMs": {
+        "targetReductionCpu": 38.452765002148226,
+        "coarseSolves": 14.250956970499828,
+        "coarseScoringCpu": 642.0723505143542,
+        "seedTransferCpu": 6.4109269878827035,
+        "fineSolves": 45.339627511566505,
+        "fineScoringCpu": 2614.3167469999753
+      }
+    },
+    "spatial-2": {
+      "count": 6,
+      "medianMs": 6535.070821002591,
+      "p95Ms": 6743.772514979355,
+      "fps": 0.15182361643718575,
+      "stageMedianMs": {
+        "targetReductionCpu": 40.026409027632326,
+        "coarseSolves": 21.03708207141608,
+        "coarseScoringCpu": 1263.4798230137676,
+        "seedTransferCpu": 6.519157002912834,
+        "fineSolves": 70.78378245932981,
+        "fineScoringCpu": 5139.842825505184
+      }
+    }
+  }
+}

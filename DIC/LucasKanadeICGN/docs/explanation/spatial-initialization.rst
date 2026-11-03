@@ -97,6 +97,12 @@ or general metrology qualification.
 Before production integration
 -----------------------------
 
+The :doc:`../reference/performance` timing campaign measures the current
+two-pass CPU oracle at about 6.54 seconds per UHD field, compared with 14.4 ms
+for the production GPU-resident pyramid in the same campaign. Candidate scoring
+on CPU dominates. This prototype is unsuitable for live acquisition; its
+robustness result does not establish an affordable production implementation.
+
 A production stage must retain data on the GPU, share its WGSL between hosts,
 keep ROI exclusions and geometry, and qualify translations, spatially varying
 analytic fields, discontinuities, noise and false candidates. Re-estimation
