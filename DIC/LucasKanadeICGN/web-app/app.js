@@ -11,6 +11,7 @@ import { imageFiles, fileInfo, decodeImage, waitForMedia, seekVideo } from './ui
 import { createImageSequenceController } from './ui/image-sequence.js';
 import { createDeviceReport } from './ui/device-report.js';
 import { installViewNavigation } from './ui/view-navigation.js';
+import { createCalculationProgress, imageSequenceTargetCount } from './ui/calculation-progress.js';
 const $ = (id) => document.getElementById(id);
 const query = new URLSearchParams(location.search), smoke = query.has('smoke');
 let transport, stream, reader, manifest, source = null, paused = true, inFlight = 0, dropped = 0;
@@ -70,6 +71,7 @@ if (smoke) {
   console.error = (...args) => { status.errors.push(args.map(String).join(' ')); original(...args); };
 }
 const options = solverOptions;
+const calculationProgress = createCalculationProgress({ getElement: $ });
 let workbench;
 const workspace = installWorkspace({ onModeChange: mode => {
   if (mode === 'live' && workbench?.reviewing) workbench.returnLive(true);
@@ -286,11 +288,12 @@ async function sourceChange(operation, {propagate = false} = {}) {
   if (loadingSource) return;
   loadingSource = true; document.querySelector('.workspace').inert=true; sourceButtons.forEach(id => $(id).disabled = true);
   const busyText = 'Loading input…'; message(busyText);
-  try { imageSequence.invalidateSeek(); pauseSource(); await drain(); await operation(); if($('message').textContent===busyText)message('Input loaded. Solver preparation waits for Start calculation.'); }
+  try { imageSequence.invalidateSeek(); pauseSource(); await drain(); calculationProgress.finish(); await operation(); if($('message').textContent===busyText)message('Input loaded. Solver preparation waits for Start calculation.'); }
   catch (error) { if (error.name !== 'AbortError') message(error.message, true); if(propagate)throw error; }
   finally { loadingSource = false; document.querySelector('.workspace').inert=false; sourceButtons.forEach(id => $(id).disabled = !capabilities?.supported); updateSolverSettingsStatus(); }
 }
 async function stop() {
+  calculationProgress.reset();
   workbench.returnLive(); workbench.stopRecording({preserveSelection:true});
   pauseSource(); generation++; imageSequence.invalidateSeek(); sourceAbort.abort();
   await drain(); await imageSequence.task?.catch(() => {}); await imageSequence.loop?.catch(() => {}); sourceAbort = new AbortController();
@@ -341,7 +344,7 @@ async function prepareCalculation(requested) {
   if(requested.initialization==='global-affine'&&!['images','video-file','demo','plate'].includes(source))
     throw new Error('Global affine initialization needs loaded image or video files; select another initialization for a live camera.');
   workbench.returnLive();workbench.setReady(false);$('export').disabled=true;
-  clearLiveMetrics();$('solve-progress').textContent='Preparing the reference, mask and solver on the GPU…';
+  clearLiveMetrics();$('solve-progress').textContent='Preparing the reference, mask and solver on the GPU…';calculationProgress.setPhase('Preparing reference and GPU solver…');
   const frame=await duplicateFrame(pendingReferenceFrame);
   const mask=appliedShapes.length||appliedMaskSource||appliedEditorState?.empty?roi.mask():null;
   const ownedMask=mask?.slice()??null;
@@ -423,8 +426,14 @@ async function processFrame(frame, frameIndex = null, { force = false, reset = f
     const reply = await send('frame', { frame, frameIndex, reset: historyReset, referenceFrame, comparison,
       ...(supervision.overlapRecording?{recordRequested:wantsRecord,...(recordTicket!==null?{recordTicket}:{})}:{}),
       truth: source === 'demo' && mode === 'fixed' && stretch ? [stretch[0] - 1, stretch[1] - 1] : null }, referenceFrame ? [referenceFrame, frame] : [frame]);
-    return reply.type === 'result';
-  } catch (error) { pauseSource(); message(error.message, true); return false; }
+    const completed = reply.type === 'result';
+    if (completed) calculationProgress.advance();
+    return completed;
+  } catch (error) {
+    pauseSource(); message(error.message, true);
+    if (calculationProgress.isActive()) setTimeout(() => finishCalculation().catch(e => message(e.message, true)), 0);
+    return false;
+  }
   finally { inFlight--; if(recordTicket!==null)recordingQueue.release(recordTicket); }
 }
 function scheduleVideo(token) {
@@ -446,7 +455,10 @@ function scheduleVideo(token) {
         const index = source === 'demo' ? Math.min(manifest.frames - 1, Math.round((metadata?.mediaTime ?? video.currentTime) * manifest.frame_rate)) : null;
         const input = source === 'video-file' ? {kind:source, file:sourceSettings.file, timeSeconds:metadata?.mediaTime ?? video.currentTime, presentedFrames:metadata?.presentedFrames ?? null} : null;
         processFrame(frame, index, {input}).catch(error => { pauseSource(); message(error.message, true); });
-      } catch (error) { inFlight--; pauseSource(); message(error.message, true); }
+      } catch (error) {
+        inFlight--; pauseSource(); message(error.message, true);
+        if (calculationProgress.isActive()) setTimeout(() => finishCalculation().catch(e => message(e.message, true)), 0);
+      }
     } else if (!paused) { dropped++; $('drops').textContent = dropped; }
     if (video.requestVideoFrameCallback) video.requestVideoFrameCallback(callback);
     else requestAnimationFrame((time) => callback(time, null));
@@ -536,7 +548,8 @@ async function runPlateTarget() {
   const frame = Number($('plate-load').value), record = plateManifest.images.find(r => r.frame === frame);
   const bitmap = await createImageBitmap(await fetch(new URL(`./demo/plate/${record.file}`, import.meta.url)).then(r => r.blob()));
   sourceSettings.load = { frame, primary: record.primary_MPa, secondary: record.secondary_MPa };
-  await send('frame', { frame: bitmap, frameIndex: frame, reset: true, plate: sourceSettings.load, comparison:{mode:'fixed',reference:sourceSettings.reference,target:{kind:'plate',...sourceSettings.load}} }, [bitmap]);
+  const reply=await send('frame', { frame: bitmap, frameIndex: frame, reset: true, plate: sourceSettings.load, comparison:{mode:'fixed',reference:sourceSettings.reference,target:{kind:'plate',...sourceSettings.load}} }, [bitmap]);
+  if(reply.type==='result')calculationProgress.advance();
   $('pause').textContent = 'Start calculation'; details();
 }
 async function lockCamera(track) {
@@ -673,12 +686,24 @@ async function finishCalculation() {
   const operation=(async()=>{
     pauseSource();$('pause').textContent='Start calculation';await drain();
     if(token!==generation||loadingSource)return;
+    calculationProgress.finish();
     const count=workbench.report().count;
     $('solve-progress').textContent=count?`${count} saved field(s). Choose Results to select a quantity and replay.`:'No saved fields. Enable saving before calculation, or import results.';
     if(count&&!$('message').classList.contains('error'))message(`${count} saved field(s) available. Choose a quantity and use Play results or the slider; correlation is paused.`);
     if(count)await workbench.openFirst({index:calculationStartIndex});
   })();finishingCalculation=operation;
   try{await operation;}finally{if(finishingCalculation===operation)finishingCalculation=null;}
+}
+function calculationFrameTotal(includeCurrent) {
+  if(source==='plate'||source==='video-file'&&$('solve-range').value==='single')return 1;
+  if(source!=='images')return null;
+  return imageSequenceTargetCount({
+    imageCount:imageSequence.images.length,
+    currentIndex:imageSequence.index,
+    includeCurrent,
+    range:$('solve-range').value,
+    comparison:$('comparison').value,
+  });
 }
 async function startCalculation() {
   if(!referenceInfo||!pendingReferenceFrame||startingCalculation||loadingSource)return;
@@ -688,6 +713,7 @@ async function startCalculation() {
   if(roiEditing){message('Apply the mask before calculation.');return;}
   if(source==='camera'&&sourceSettings.deliveryState==='stopped')return sourceChange(startCamera);
   startingCalculation=true;
+  calculationProgress.begin('Preparing reference and GPU solver…');
   const token=generation;
   const includeCurrent=viewingInput;
   try {
@@ -701,6 +727,7 @@ async function startCalculation() {
     await workbench.startRecording();await send('show-reference',{show:false});
     viewingInput=false;$('input-field').hidden=true;$('field').hidden=false;
     $('solve-progress').textContent=workbench.recording?'Calculating and saving full fields. Stop to inspect Results.':'Preview calculation only: fields are not saved. Enable saving for replay.';
+    calculationProgress.setTargets(calculationFrameTotal(includeCurrent));
     if(source==='plate'){await runPlateTarget();startingCalculation=false;if(token===generation)await finishCalculation();return;}
     if(source==='video-file'&&$('solve-range').value==='single'){
       if($('comparison').value!=='fixed')throw new Error('A single video target needs fixed-reference comparison; use a sequence for consecutive pairs.');
@@ -717,7 +744,7 @@ async function startCalculation() {
       else await playImages(includeCurrent);
       if(token===generation)await finishCalculation();
     }
-  } catch(error){pauseSource();message(error.message,true);}
+  } catch(error){pauseSource();calculationProgress.finish();message(error.message,true);}
   finally{startingCalculation=false;}
 }
 $('pause').onclick = () => !paused?finishCalculation():startCalculation();
