@@ -32,6 +32,8 @@ cd DIC/LucasKanadeICGN/python
 ICGN_RUN_GPU_TESTS=1 .venv/bin/python -m unittest discover -s tests   # + GPU tests
 .venv/bin/ruff check . ../benchmarks ../../../tools ../docs
 .venv/bin/ruff format --check . ../benchmarks ../../../tools ../docs
+npm ci --prefix ..
+npm run lint --prefix ..
 cd ../../.. && python3 -m sphinx -W --keep-going -b html \
   DIC/LucasKanadeICGN/docs DIC/LucasKanadeICGN/docs/_build/html
 ```
@@ -348,8 +350,11 @@ engine.destroy();                                  // idempotent
 - App smoke test: headless Chromium loads the built site from a local static
   server under a subpath, runs demo mode for N frames, and asserts finite
   results, acceptance above a threshold and zero console errors.
-- Lint the JS with whatever the repo already uses. If nothing exists, do not
-  add a toolchain without asking; keep code ES2022 and dependency-free.
+- Lint first-party browser JavaScript with the repository-local, development-only
+  ESLint setup. Keep runtime JavaScript ES2022 and dependency-free; the linter,
+  its dependencies and configuration must not enter the Python wheel or app.
+- Exclude vendored bundles and archived benchmark scripts from linting. Do not
+  reformat them or add a formatter/type checker as part of routine lint setup.
 - Manual matrix to report (do not claim untested devices): desktop Chrome,
   Android Chrome, iOS/iPadOS Safari, desktop Safari, Firefox. Record, for each
   device: browser version, adapter, limits, chosen profile, resolution, FPS,

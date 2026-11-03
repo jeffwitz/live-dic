@@ -1,0 +1,15 @@
+{
+  "name": "live-dic-development-tools",
+  "private": true,
+  "version": "0.0.0",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "lint": "eslint web-app python/src/lucas_kanade_icgn/web three/LucasKanadeICGNThree.js"
+  },
+  "devDependencies": {
+    "eslint": "^10.14.0",
+    "globals": "^17.14.0"
+  }
+}

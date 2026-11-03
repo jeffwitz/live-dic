@@ -226,7 +226,7 @@ export class GlobalAffineInitializer {
     let params = [0, 0, 0, 0, 0, 0], final = null;
     const diagnostics = [];
     for (let index = this.levels.length - 1; index >= 0; index--) {
-      const { image } = this.levels[index], targetLevel = targets[index];
+      const targetLevel = targets[index];
       if (index !== this.levels.length - 1) { params[0] *= 2; params[1] *= 2; }
       const points = this.levels[index].samples;
       final = fitLevel(points, targetLevel.values, targetLevel.width, targetLevel.height, params);

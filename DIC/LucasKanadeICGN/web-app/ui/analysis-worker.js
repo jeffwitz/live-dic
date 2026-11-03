@@ -23,7 +23,7 @@ self.onmessage = ({ data }) => {
       self.postMessage({ id: data.id, rows, processingWallMs: analysis.processingWallMs }); return;
     }
     if (data.field) { field = data.field; mask = data.mask; }
-    const { field: source, ...analysis } = analyzeField(field, data.recipe, mask);
+    const { field: _source, ...analysis } = analyzeField(field, data.recipe, mask);
     const transfer = [...Object.values(analysis.fields), analysis.valid, analysis.strainValid].map(v => v.buffer);
     self.postMessage({ id: data.id, analysis }, transfer);
   } catch (error) { self.postMessage({ id: data.id, error: error.message }); }

@@ -29,7 +29,12 @@ const frameResult = (result, inputWallMs) => {
   const packingStarted = performance.now();
   const { packed, stateStride } = packState(result);
   const packingWallMs = performance.now() - packingStarted;
-  const { parameters, status, iterations, ...metadata } = result;
+  const {
+    parameters: _parameters,
+    status: _status,
+    iterations: _iterations,
+    ...metadata
+  } = result;
   metadata.stateStride = stateStride;
   metadata.timing = {
     ...metadata.timing,

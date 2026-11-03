@@ -39,7 +39,7 @@ export function createAnalysisCache({ maxBytes = 32 * 1024 * 1024, maxEntries = 
     },
     set(key, result) {
       remove(key);
-      const { field, ...value } = result;
+      const { field: _field, ...value } = result;
       const buffers = new Set([...Object.values(value.fields), value.valid, value.strainValid].map(array => array.buffer));
       const size = [...buffers].reduce((sum, buffer) => sum + buffer.byteLength, 0);
       if (size > maxBytes || maxEntries < 1) return;

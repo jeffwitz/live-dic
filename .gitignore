@@ -7,6 +7,7 @@ __pycache__/
 .venv*/
 wheelhouse/
 wheel-dist/
+node_modules/
 
 # Platform/editor state, never scientific fixtures or benchmark reports.
 .DS_Store

@@ -6,6 +6,9 @@ on:
       - main
     paths:
       - ".github/workflows/python-tests.yml"
+      - "DIC/LucasKanadeICGN/package.json"
+      - "DIC/LucasKanadeICGN/package-lock.json"
+      - "DIC/LucasKanadeICGN/eslint.config.mjs"
       - ".ruff.toml"
       - "tools/**"
       - "README.md"
@@ -14,9 +17,13 @@ on:
       - "DIC/LucasKanadeICGN/benchmarks/*.py"
       - "DIC/LucasKanadeICGN/assets/**"
       - "DIC/LucasKanadeICGN/web-app/**"
+      - "DIC/LucasKanadeICGN/three/**"
   pull_request:
     paths:
       - ".github/workflows/python-tests.yml"
+      - "DIC/LucasKanadeICGN/package.json"
+      - "DIC/LucasKanadeICGN/package-lock.json"
+      - "DIC/LucasKanadeICGN/eslint.config.mjs"
       - ".ruff.toml"
       - "tools/**"
       - "README.md"
@@ -25,6 +32,7 @@ on:
       - "DIC/LucasKanadeICGN/benchmarks/*.py"
       - "DIC/LucasKanadeICGN/assets/**"
       - "DIC/LucasKanadeICGN/web-app/**"
+      - "DIC/LucasKanadeICGN/three/**"
   workflow_dispatch:
 
 permissions:
@@ -83,6 +91,30 @@ jobs:
         run: |
           ruff check DIC/LucasKanadeICGN/python DIC/LucasKanadeICGN/benchmarks tools DIC/LucasKanadeICGN/docs
           ruff format --check DIC/LucasKanadeICGN/python DIC/LucasKanadeICGN/benchmarks tools DIC/LucasKanadeICGN/docs
+
+  javascript-lint:
+    name: JavaScript / ESLint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: DIC/LucasKanadeICGN/package-lock.json
+
+      - name: Install JavaScript development tools
+        run: npm ci
+        working-directory: DIC/LucasKanadeICGN
+
+      - name: Lint first-party JavaScript
+        run: npm run lint
+        working-directory: DIC/LucasKanadeICGN
 
   gpu-lavapipe:
     name: Linux / lavapipe GPU regressions

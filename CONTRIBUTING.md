@@ -20,7 +20,9 @@ The examples below use `python3`, `ruff` and `node` from the intended environmen
 Activate it or use the corresponding executable paths. On Windows, activate
 `.venv-icgn\Scripts\Activate.ps1` and use `python` instead of `python3`.
 Native execution needs a GPU/software-adapter driver; only browser integration
-needs Chromium. Node is needed for JavaScript syntax and CPU geometry/queue contract tests.
+needs Chromium. Node 22.13 or newer is needed for JavaScript syntax and CPU
+geometry/queue contract tests. The repository-local ESLint setup is a
+development-only tool; it is not included in the Python wheel or browser app.
 
 ## Required local checks
 
@@ -31,6 +33,8 @@ ruff check DIC/LucasKanadeICGN/python DIC/LucasKanadeICGN/benchmarks tools DIC/L
 ruff format --check DIC/LucasKanadeICGN/python DIC/LucasKanadeICGN/benchmarks tools DIC/LucasKanadeICGN/docs
 python3 tools/check_repository.py
 python3 -m sphinx -W --keep-going -b html DIC/LucasKanadeICGN/docs DIC/LucasKanadeICGN/docs/_build/html
+npm ci --prefix DIC/LucasKanadeICGN
+npm run lint --prefix DIC/LucasKanadeICGN
 ```
 
 In PowerShell set `$env:ICGN_RUN_GPU_TESTS = "1"` before the GPU command, and
@@ -52,7 +56,10 @@ Pages workflow is prepared; enabling publication is a repository-owner action.
 
 For changed JavaScript, run `node --check` on each affected module. At minimum,
 check the Three.js and raw-WebGPU entry modules when changing shared browser
-resources. Do not rewrite vendor bundles to satisfy local style.
+resources. The ESLint command checks first-party browser modules, shared
+JavaScript core, and the maintained Three.js entry. It excludes vendor bundles
+and archived benchmark scripts. Do not rewrite vendor bundles to satisfy local
+style.
 
 The root Ruff configuration extends the package configuration to active
 benchmarks, tools and documentation examples. Archived `benchmarks/results/`

@@ -56,7 +56,6 @@ export function createPyramidHost(options = {}) {
   let reduceXBindGroupLayout = null;
   let reduceYBindGroupLayout = null;
   let seedTransferBindGroupLayout = null;
-  let bindGroup = null;
   let sourceTexture = null;
   let buffers = null;
   let querySet = null;
@@ -121,7 +120,6 @@ export function createPyramidHost(options = {}) {
     buffers = null;
     querySet = null;
     queryResolveBuffer = null;
-    bindGroup = null;
     bindGroupLayout = null;
     seededBindGroupLayout = null;
     reduceXBindGroupLayout = null;
@@ -544,7 +542,6 @@ export function createPyramidHost(options = {}) {
 
     sourceTexture = levels[0].sourceTexture;
     buffers = levels[0].buffers;
-    bindGroup = levels[0].bindGroup;
     runtimePyramidLevels = levelCount;
     runtimeMotionModel = configuration.motionModel;
     runtimeOutlierPolicy = configuration.outlierPolicy;
@@ -791,7 +788,6 @@ export function createPyramidHost(options = {}) {
     if (!forceFull && slot.resultReader && (options.readback ?? 'full') !== 'full') return readDisplayResult(timing, slot);
     const { temporal } = slot;
     const buffers = slot.levels[0].buffers;
-    const parameterCount = configuration.motionModel === 'quadratic' ? 12 : 6;
     const stateStride = configuration.motionModel === 'quadratic' ? 16 : 8;
     const size = GRID_COUNT * stateStride * 4;
     const readback = slot.readback;
@@ -998,7 +994,7 @@ export function createPyramidHost(options = {}) {
       }
     }
     if(configuration.initialization==='global-affine'&&roiPlans[0]?.count!==0){
-      const coarse=levels.at(-1),scale=2**coarse.index;
+      const coarse=levels.at(-1);
       const stride=configuration.motionModel==='quadratic'?16:8;
       for(const slot of slots){
         slot.globalAffineSeed=new Float32Array(coarse.gridCount*stride);
