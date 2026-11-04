@@ -117,10 +117,12 @@ class BrowserSpatialExecutionTests(unittest.TestCase):
                 let refused=false;try{new DICEngine({solverWorkgroupSize:32,motionModel,referencePreparation});}catch{refused=true;}
                 check(refused,'Unqualified GPU quadratic preparation was accepted');continue;
               }
+              const temporal=motionModel==='translation'&&referencePreparation==='cpu';
               const e=await DICEngine.create({device,width:w,height:h,solverWorkgroupSize:32,motionModel,referencePreparation,
-                spatialPropagationPasses:motionModel==='translation'&&referencePreparation==='cpu'?2:0,outlierPolicy:'disabled'});
+                ...(temporal?{initialization:'temporal',temporalPrediction:'velocity',temporalFineCorrection:true,divergencePatience:3}:{}),
+                spatialPropagationPasses:temporal?2:0,outlierPolicy:'disabled'});
               try{
-                const info=await e.setReference(f),r=await e.register(g);
+                const info=await e.setReference(f);await e.register(g);const r=await e.register(g);
                 check(info.config.solverWorkgroupSize===32&&r.config.solverWorkgroupSize===32,'Missing width provenance');
                 let count=0,maximum=0;const n=motionModel==='quadratic'?12:6;
                 // The rolled fixture has a seam at its boundary. Evaluate
