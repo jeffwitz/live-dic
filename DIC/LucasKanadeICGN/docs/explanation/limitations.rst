@@ -488,6 +488,10 @@ The browser's opt-in ``spatialPropagationPasses`` setting uses the same kernels
 for rejected-point search. It supports translation, B-spline, uniform full
 subsets, CPU reference preparation and one slot; GPU reference preparation is
 currently rejected. It is available in Analysis/Solve, not the fixed Live preset.
+Multi-pass score reuse needs 176 additional GPU bytes per grid position and
+level. It falls back to recomputation if that buffer exceeds device limits;
+no additional GPU feature is required. Reuse is exact and restricted to the
+same frame/level, but its memory cost and speed benefit remain workload-dependent.
 Failed-point-only
 selection cannot correct a bad basin already accepted by the solver. Coarse
 median controls initialize the fine solve and do not validate an interpolated

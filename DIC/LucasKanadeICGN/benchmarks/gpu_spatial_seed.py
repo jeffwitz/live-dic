@@ -25,6 +25,7 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
         sample_step=1,
         failed_only=False,
         stop_when_unchanged=False,
+        cache_scores=False,
         min_gain=1e-4,
         **kwargs,
     ):
@@ -62,6 +63,9 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
         if not isinstance(stop_when_unchanged, bool):
             raise ValueError("stop_when_unchanged must be boolean")
         self.stop_when_unchanged = stop_when_unchanged
+        if not isinstance(cache_scores, bool):
+            raise ValueError("cache_scores must be boolean")
+        self.cache_scores = cache_scores
         self.min_gain = min_gain
         self.capture_counts = False
         self._counts_ready = False
@@ -109,7 +113,12 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
             diagnostics = buffer(
                 self.passes * 16, wgpu.BufferUsage.COPY_DST | wgpu.BufferUsage.COPY_SRC
             )
-            scores = buffer(n * 16, storage)
+            cache_enabled = (
+                self.cache_scores
+                and self.passes > 1
+                and n * 192 <= device.limits["max-storage-buffer-binding-size"]
+            )
+            scores = buffer(n * (192 if cache_enabled else 16), storage)
             prior = buffer(n * 32, storage)
             initial = np.zeros((level.grid_height, level.grid_width, 8), np.float32)
             if affine is not None:
@@ -179,6 +188,7 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
                     "constants": {
                         "FAILED_ONLY": self.failed_only,
                         "CANDIDATE_MODE": 1 if self.strategy == "median-candidate" else 0,
+                        "CACHE_SCORES": cache_enabled,
                     },
                 },
             )
@@ -225,6 +235,44 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
             ]
             choose_group = device.create_bind_group(
                 layout=choose.get_bind_group_layout(0), entries=resources
+            )
+            uncached_choose = (
+                device.create_compute_pipeline(
+                    layout="auto",
+                    compute={
+                        "module": module,
+                        "entry_point": "choose",
+                        "constants": {
+                            "FAILED_ONLY": self.failed_only,
+                            "CANDIDATE_MODE": 1 if self.strategy == "median-candidate" else 0,
+                        },
+                    },
+                )
+                if cache_enabled
+                else choose
+            )
+            uncached_choose_group = device.create_bind_group(
+                layout=uncached_choose.get_bind_group_layout(0), entries=resources
+            )
+            cached_choose = (
+                device.create_compute_pipeline(
+                    layout="auto",
+                    compute={
+                        "module": module,
+                        "entry_point": "choose",
+                        "constants": {
+                            "FAILED_ONLY": self.failed_only,
+                            "CANDIDATE_MODE": 1 if self.strategy == "median-candidate" else 0,
+                            "CACHE_SCORES": True,
+                            "REUSE_SCORES": True,
+                        },
+                    },
+                )
+                if cache_enabled
+                else choose
+            )
+            cached_choose_group = device.create_bind_group(
+                layout=cached_choose.get_bind_group_layout(0), entries=resources
             )
             finalize_group = device.create_bind_group(
                 layout=finalize.get_bind_group_layout(0),
@@ -302,6 +350,11 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
                 dict(
                     choose=choose,
                     choose_group=choose_group,
+                    cached_choose=cached_choose,
+                    cached_choose_group=cached_choose_group,
+                    uncached_choose=uncached_choose,
+                    uncached_choose_group=uncached_choose_group,
+                    cache_enabled=cache_enabled,
                     finalize=finalize,
                     finalize_group=finalize_group,
                     compact=compact,
@@ -386,8 +439,13 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
                         )
                     encoder.clear_buffer(r["work"])
                     compute = encoder.begin_compute_pass()
-                    compute.set_pipeline(r["choose"])
-                    compute.set_bind_group(0, r["choose_group"])
+                    choice = (
+                        ("cached_choose" if step else "choose")
+                        if self.cache_scores and r["cache_enabled"]
+                        else "uncached_choose"
+                    )
+                    compute.set_pipeline(r[choice])
+                    compute.set_bind_group(0, r[choice + "_group"])
                     if self.stop_when_unchanged and step > 0:
                         compute.dispatch_workgroups_indirect(r["continuation"], 0)
                     else:

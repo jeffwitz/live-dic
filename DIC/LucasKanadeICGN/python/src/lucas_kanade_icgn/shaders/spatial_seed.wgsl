@@ -25,12 +25,19 @@ struct Config {
 // while choose writes its new work list in the same dispatch.
 @group(0) @binding(9) var<storage, read_write> continuation: UintBuffer;
 override FAILED_ONLY: bool = false;
+// Optional exact memoization inside one frame/level. The first pass resets
+// every visited cache slot; subsequent passes reuse a score only for the same
+// candidate displacement. Cache records follow the public diagnostic records
+// in scores: count vec4 diagnostics, then 11 vec4 records per subset.
+override CACHE_SCORES: bool = false;
+override REUSE_SCORES: bool = false;
 // 0 neighbours, 1 median hypothesis only, 2 neighbours plus median.
 override CANDIDATE_MODE: u32 = 0u;
 var<workgroup> candidates: array<vec4<f32>, 11>;
 var<workgroup> sums: array<vec4<f32>, 64>;
 var<workgroup> sum_g2: array<f32, 64>;
 var<workgroup> best: vec4<f32>; // dx, dy, rho, own_rho
+var<workgroup> cached_score: vec4<f32>; // dx, dy, rho, initialized
 
 fn median(v: ptr<function, array<f32, 9>>, n: u32) -> f32 {
     for (var i = 1u; i < n; i++) {
@@ -65,7 +72,12 @@ fn choose(@builtin(workgroup_id) group: vec3<u32>,
     if FAILED_ONLY && snapshot.values[2u * index + 1u].z >= 0.5 { return; }
     let own = snapshot.values[2u * index].xw;
     if lane == 0u {
-        for (var k = 0u; k < 11u; k++) { candidates[k] = vec4<f32>(0.0); }
+        for (var k = 0u; k < 11u; k++) {
+            candidates[k] = vec4<f32>(0.0);
+            if CACHE_SCORES && !REUSE_SCORES {
+                scores.values[config.count + index * 11u + k] = vec4<f32>(0.0);
+            }
+        }
         candidates[0] = vec4<f32>(own, 1.0, 0.0);
         candidates[1] = vec4<f32>(prior.values[2u * index].xw, 1.0, 0.0);
         var us: array<f32, 9>;
@@ -117,6 +129,19 @@ fn choose(@builtin(workgroup_id) group: vec3<u32>,
             || any(maximum > vec2<f32>(f32(config.width - 3u), f32(config.height - 3u))) {
             continue;
         }
+        if CACHE_SCORES && REUSE_SCORES {
+            if lane == 0u { cached_score = scores.values[config.count + index * 11u + k]; }
+            let previous = workgroupUniformLoad(&cached_score);
+            if previous.w > 0.5 && all(previous.xy == p) {
+                if lane == 0u {
+                    let rho = previous.z;
+                    if k == 0u { best.w = rho; }
+                    if rho > best.z { best = vec4<f32>(p, rho, best.w); }
+                }
+                workgroupBarrier();
+                continue;
+            }
+        }
         var s = vec4<f32>(0.0);
         var g2 = 0.0;
         for (var pixel = lane; pixel < total; pixel += 64u) {
@@ -138,6 +163,9 @@ fn choose(@builtin(workgroup_id) group: vec3<u32>,
             let vg = max(0.0, sum_g2[0] - t.y * t.y / f32(total));
             var rho = -2.0;
             if vf > 1e-9 && vg > 1e-9 { rho = (t.z - t.x * t.y / f32(total)) / sqrt(vf * vg); }
+            if CACHE_SCORES {
+                scores.values[config.count + index * 11u + k] = vec4<f32>(p, rho, 1.0);
+            }
             if k == 0u { best.w = rho; }
             if rho > best.z { best = vec4<f32>(p, rho, best.w); }
         }

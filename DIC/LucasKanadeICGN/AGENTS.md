@@ -78,6 +78,10 @@ adapter; skipped GPU tests do not validate numerical execution.
   slot. It shares canonical scoring/compact-LK kernels with native research
   tooling; it is not a public native constructor option or a fixed Live preset.
   Preserve the separation from median smoothing and global affine initialization.
+  Multi-pass score caches use exact displacement keys within one frame/level;
+  reset visited records on the first pass of every new target. Budget buffers
+  before allocation and retain recomputation as the fallback. Never reuse a
+  score across target frames or substitute a cached hypothesis for a final solve.
 
 ## Numerical and performance evidence
 

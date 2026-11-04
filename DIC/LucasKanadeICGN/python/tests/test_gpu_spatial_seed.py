@@ -86,6 +86,72 @@ class GpuSpatialSeedTests(unittest.TestCase):
         result = engine.register(np.roll(reference, (-1, 2), axis=(0, 1)))
         self.assertGreater(result.accepted, 20)
 
+    def test_cached_scores_match_fresh_search_when_a_neighbour_candidate_changes(self):
+        f = np.random.default_rng(38).integers(0, 256, (128, 128), dtype=np.uint8)
+        g = np.roll(f, (-1, 2), axis=(0, 1))
+        engine = self.engine(strategy="spatial", failed_only=True, cache_scores=True)
+        engine.prepare_research(f)
+        engine.register(g)
+        stage = engine.research[0]
+        slot = engine._full_slots[0].level_slots[0]
+        states = np.zeros((8, 8, 8), np.float32)
+        states[..., [0, 3, 6]] = [2, -1, 1]
+        states[3, 3, [0, 3, 6]] = [0, 0, -1]
+
+        def search(cached):
+            engine.device.queue.write_buffer(slot.buffers["state"], 0, states)
+            encoder = engine.device.create_command_encoder()
+            encoder.clear_buffer(stage["work"])
+            compute = encoder.begin_compute_pass()
+            name = "cached_choose" if cached else "choose"
+            compute.set_pipeline(stage[name])
+            compute.set_bind_group(0, stage[name + "_group"])
+            compute.dispatch_workgroups(8, 8)
+            compute.end()
+            engine.device.queue.submit([encoder.finish()])
+            return (
+                bytes(engine.device.queue.read_buffer(stage["scores"], 0, 64 * 16)),
+                bytes(engine.device.queue.read_buffer(stage["work"])),
+            )
+
+        search(False)
+        # One proposal changes; the current estimate, prior and other neighbours
+        # retain their exact keys. Compare reuse with an independent full search.
+        states[3, 4, [0, 3]] = [3, -2]
+        reused = search(True)
+        fresh = search(False)
+        self.assertEqual(reused, fresh)
+        self.assertEqual(np.frombuffer(reused[1], np.uint32)[0], 1)
+
+    def test_score_cache_is_invalidated_for_each_new_target_and_odd_overlapping_subsets(self):
+        f = np.random.default_rng(39).integers(0, 256, (256, 256), dtype=np.uint8)
+        for size, stride in ((16, 8), (17, 16), (32, 16)):
+            with self.subTest(size=size, stride=stride):
+                engines = [
+                    MODULE.GpuSpatialPyramid(
+                        strategy="spatial",
+                        failed_only=True,
+                        passes=3,
+                        subset_size=size,
+                        subset_stride=stride,
+                        cache_scores=cache,
+                    )
+                    for cache in (False, True)
+                ]
+                try:
+                    for engine in engines:
+                        engine.prepare_research(f)
+                    for displacement in ((2, -1), (-3, 2), (0, 0), (2, -1)):
+                        g = np.roll(f, displacement[::-1], axis=(0, 1))
+                        results = [engine.register(g) for engine in engines]
+                        for name in ("parameters", "status", "iterations"):
+                            np.testing.assert_array_equal(
+                                getattr(results[0], name), getattr(results[1], name)
+                            )
+                finally:
+                    for engine in engines:
+                        engine.close()
+
     def test_only_improved_seed_is_compacted_and_other_states_are_untouched(self):
         f = np.random.default_rng(31).integers(0, 256, (128, 128), dtype=np.uint8)
         g = np.roll(f, (-1, 2), axis=(0, 1))

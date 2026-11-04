@@ -335,6 +335,41 @@ them is unnecessary. The current field remains stable throughout candidate
 selection and need not be copied just to read it. All-window search instead
 needs an immutable snapshot across the trial/restore sequence.
 
+Avoiding repeated scores without changing the search
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Suppose B tests its neighbour's proposal of (6, -2) px in pass 1. In pass 2
+that neighbour may still propose exactly (6, -2). B's reference pixels and the
+current target have not changed between these passes, so their correlation
+score is identical. It can be reused. If the proposal changes to (6.1, -2),
+the destination pixels must be scored again. No rounding or distance tolerance
+is used to decide whether two proposals are the same.
+
+The browser keeps these records only when the requested budget exceeds one
+pass and the buffer fits the device's limits. Each record contains the two
+displacement components, their score and an initialization marker. The first
+pass resets the records for every visited destination, even when a previous
+frame left an apparently matching proposal. This prevents scores from a
+different target image being reused. Separate levels have separate records.
+
+.. code-block:: text
+
+   first pass of each new frame/level: calculate and remember scores
+   later pass, same destination:
+       same candidate displacement -> reuse its previous score
+       different displacement     -> calculate and remember its new score
+   choose the best candidate and run the normal LK checks as before
+
+This is memoization, meaning storage of an already calculated value. It changes
+neither the candidate set nor the scoring pixels, reduction, thresholds or
+final measurements. Cache records stay on the GPU. Eleven records add
+176 bytes per grid position per level; exceeding a device buffer limit falls
+back to recomputing scores. With propagation disabled no cache is created.
+The native research host exposes ``cache_scores=True`` for controlled
+comparisons; this is not a new native public-engine parameter. Timing benefits
+depend on how many candidates remain unchanged and are measured separately
+from empty-work elimination.
+
 Eligibility does not mean that every rejection is recoverable. A textureless
 reference cannot be repaired by borrowing displacement. An occluded patch may
 have no target match. ROI exclusions are not failed measurements and must

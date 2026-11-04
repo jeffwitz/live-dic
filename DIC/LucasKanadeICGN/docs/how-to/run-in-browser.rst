@@ -585,6 +585,9 @@ In **Analysis → Solve**:
    The menu also permits up to four; more attempts cost more work and are not
    a convergence or frame-rate guarantee. The GPU skips further searches once
    an empty work list proves that the state has not changed.
+   With multiple passes, unchanged candidate scores are reused within that
+   frame/level when GPU buffer limits permit. This uses extra memory, not a
+   smaller scoring window or a relaxed acceptance threshold.
 4. Keep the desired median/UOD spatial policy. It runs after the propagation
    re-solves. Global affine or Fourier initialization can be selected
    independently of this translation-only local stage.
