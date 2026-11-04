@@ -78,12 +78,14 @@ adapter; skipped GPU tests do not validate numerical execution.
   direct interpolation have failed some qualified trajectory cases; do not
   present their speed alone as a successful optimization.
 - Browser Analysis/Solve automatically uses two `spatialPropagationPasses` for
-  compatible local translation/B-spline/uniform full windows with CPU reference
-  preparation and one slot. The UI can disable propagation or select one to
-  four passes; incompatible settings keep it off in automatic mode. The direct
-  JavaScript `DICEngine` and native Python defaults remain zero/unchanged. This
-  is not part of the fixed Live preset. It shares canonical scoring/compact-LK
-  kernels with native research tooling.
+  compatible local Translation or Affine models with B-spline interpolation,
+  uniform full windows, CPU reference preparation and one slot. The UI can
+  disable propagation or select one to four passes; incompatible settings keep
+  it off in automatic mode. The direct JavaScript `DICEngine` and native Python
+  defaults remain zero/unchanged. This is not part of the fixed Live preset. It
+  shares canonical scoring/compact-LK kernels with native research tooling.
+  Affine retries take only neighbour tx/ty as a seed, zero affine derivatives,
+  then solve the full affine state.
   Preserve the separation from median smoothing and global affine initialization.
   Native research score caches use exact displacement keys within one frame/level;
   reset visited records on the first pass of every new target. Budget buffers

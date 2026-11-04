@@ -1016,16 +1016,19 @@ fn retry_seeded(
 // Research entry point: a GPU-built list, followed by an indirect dispatch.
 // Layout in active_mask: count, dispatch_x, dispatch_y, dispatch_z, indices...
 // All lanes take the same guard before touching the list or joining IC-GN.
-// This entry point is translation-only and is never used by default hosts.
+// Spatial recovery seeds translation or affine solves from neighbour tx/ty;
+// affine derivatives restart at zero and are estimated by the local solve.
 @compute @workgroup_size(SOLVER_WORKGROUP_SIZE)
-fn solve_compact_translation(
+fn solve_compact_spatial(
     @builtin(workgroup_id) group: vec3<u32>,
     @builtin(local_invocation_id) local: vec3<u32>,
 ) {
     let ordinal = group.y * 65535u + group.x;
-    if MOTION_MODEL != 1u || ordinal >= active_mask.values[0] { return; }
+    if MOTION_MODEL == 2u || ordinal >= active_mask.values[0] { return; }
     let index = active_mask.values[4u + ordinal];
     if index >= config.grid_count { return; }
+    // Translation and affine states both occupy two vec4 values. In both
+    // layouts xw are tx/ty; solve_subset receives zero affine terms below.
     let seed = seed_state.values[index * 2u];
     solve_subset(index, local.x, seed.xw, vec4<f32>(0.0),
         array<f32, 6>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0), true, true);

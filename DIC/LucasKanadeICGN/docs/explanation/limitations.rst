@@ -498,11 +498,13 @@ reference. These restrictions do not change the public
 ``ICGNWGPUFullPyramid`` streaming or reference-replacement contracts.
 The browser's ``spatialPropagationPasses`` setting uses the same kernels for
 rejected-point search. Analysis/Solve defaults to two passes when the local
-model is Translation and the setup uses B-spline interpolation, uniform full
-subsets, CPU reference preparation and one slot. Automatic mode leaves it off
-for incompatible configurations; explicitly requesting an unsupported setup
-is rejected. It is available in Analysis/Solve, not the fixed Live preset. The
-direct ``DICEngine`` API still defaults to zero.
+model is Translation or Affine and the setup uses B-spline interpolation,
+uniform full subsets, CPU reference preparation and one slot. In affine mode,
+propagation supplies only tx/ty and resets local derivatives before the affine
+IC-GN retry. Automatic mode leaves it off for incompatible configurations;
+explicitly requesting an unsupported setup is rejected. It is available in
+Analysis/Solve, not the fixed Live preset. The direct ``DICEngine`` API still
+defaults to zero.
 Exact score caching remains a native research option; it is not automatically
 activated by the browser. It needs 176 additional GPU bytes per grid position
 and level, and falls back to recomputation at device buffer limits. The UHD

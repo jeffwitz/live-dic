@@ -11,9 +11,11 @@ solution while leaving individual subsets in the wrong attraction basin.
 Adding scales also enlarges the physical support of a fixed-size coarse patch;
 it does not guarantee recovery. Native Python experiments remain research
 harnesses. The raw-WGSL browser core supports failed-point GPU propagation. In
-Analysis/Solve, automatic mode enables two passes for compatible translation
-settings; incompatible settings leave it off. The direct JavaScript API and
-native defaults remain unchanged.
+Analysis/Solve, automatic mode enables two passes for compatible Translation
+or Affine settings; incompatible settings leave it off. Affine retries use only
+neighbour translations, zero local affine derivatives, and rerun the full
+destination solve. The direct JavaScript API and native defaults remain
+unchanged.
 
 What DIS contributes
 --------------------
@@ -141,7 +143,7 @@ required to enqueue a new seed. ROI permissions and numerical reference validity
 restrict both destinations and sources. An atomic counter appends work indices;
 no global sort is required because each re-solve owns one output cell. A small
 finalization dispatch writes indirect dispatch dimensions. The opt-in
-``solve_compact_translation`` entry point runs the existing IC-GN equations on
+``solve_compact_spatial`` entry point runs the existing IC-GN equations on
 that list, preserving the dense output grid. A uniform guard before all barriers
 handles unused workgroups, including the final row of a two-dimensional dispatch.
 If an accepted original point's trial fails, its original state is retained.
@@ -209,15 +211,17 @@ Browser Solve integration
 ``spatialPropagationPasses: 0`` keeps the existing browser graph; positive
 integers up to 4 add failed-point passes before each level's spatial filter.
 The Analysis/Solve selector defaults to automatic mode, which resolves to two
-passes for compatible Translation settings and zero otherwise. The direct
-``DICEngine`` constructor still defaults to zero; the UI's automatic default
-does not change the lower-level API.
-The browser shares ``spatial_seed.wgsl`` and ``solve_compact_translation`` with
+passes for compatible Translation or Affine settings and zero otherwise. The
+direct ``DICEngine`` constructor still defaults to zero; the UI's automatic
+default does not change the lower-level API.
+The browser shares ``spatial_seed.wgsl`` and ``solve_compact_spatial`` with
 the native experiment. Its fallback prior is the level's initial seed, captured
 by a GPU copy before the initial solve; no intermediate CPU transfer is needed.
 
-The option supports CPU-prepared references, translation, B-spline, uniform full
-subsets and one processing slot. It accepts decoded inputs and external image
+The option supports CPU-prepared references, translation or affine, B-spline,
+uniform full subsets and one processing slot. Affine retries copy only tx/ty
+from candidate states and reset all four local affine derivatives before the
+destination subset is solved. It accepts decoded inputs and external image
 textures; Fourier/global-affine/temporal initialization remains independent.
 Unsupported combinations fail explicitly. All resources are built at reference
 preparation, and the option participates in the pending-reference key, saved

@@ -21,11 +21,13 @@ class BrowserSpatialContractTests(unittest.TestCase):
           const engine=new DICEngine(good),before=engine.host.configure();let preserved=false;
           try{{engine.host.configure({{interpolation:'linear'}});}}catch{{preserved=JSON.stringify(before)===JSON.stringify(engine.host.configure());}}
           const configured=engine.host.configure();engine.destroy();
+          const affine=new DICEngine({{motionModel:'affine',spatialPropagationPasses:2}});
+          const affineConfigured=affine.host.configure();affine.destroy();
           const bad=[{{spatialPropagationPasses:null}},{{spatialPropagationPasses:true}},{{spatialPropagationPasses:5}},
-            {{...good,motionModel:'affine'}},{{...good,motionModel:'quadratic'}},
+            {{...good,motionModel:'quadratic'}},
             {{...good,interpolation:'linear'}},{{...good,referencePreparation:'gpu'}},{{...good,pipelineDepth:2}}];
           const errors=bad.map(o=>{{try{{const e=new DICEngine(o);e.destroy();return null;}}catch(e){{return e.message;}}}});
-          console.log(JSON.stringify({{unchanged,preserved,configured,errors}}));
+          console.log(JSON.stringify({{unchanged,preserved,configured,affineConfigured,errors}}));
         """
         result = json.loads(
             subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
@@ -33,12 +35,14 @@ class BrowserSpatialContractTests(unittest.TestCase):
         self.assertTrue(result["unchanged"])
         self.assertTrue(result["preserved"])
         self.assertEqual(result["configured"]["spatialPropagationPasses"], 2)
+        self.assertEqual(result["affineConfigured"]["spatialPropagationPasses"], 2)
         self.assertTrue(all(result["errors"]))
 
     def test_solve_setting_preserves_global_affine_initialization_and_is_cold(self):
         html = (ROOT / "web-app/index.html").read_text(encoding="utf-8")
         self.assertIn(
-            '<option value="auto" selected>Automatic · 2 passes for Translation</option>', html
+            '<option value="auto" selected>Automatic · 2 passes for Translation or Affine</option>',
+            html,
         )
         script = f"""
           import {{solverOptions,solverPreparationKey}} from {json.dumps((ROOT / "web-app/ui/workspace.js").as_uri())};
@@ -53,15 +57,15 @@ class BrowserSpatialContractTests(unittest.TestCase):
           const custom=solverOptions(),live=solverOptions('live');
           values['spatial-propagation'].value='auto';values['gpu-reference-preparation'].checked=true;const gpuPreparation=solverOptions();
           values['gpu-reference-preparation'].checked=false;
-          values['motion-model'].value='affine';values['spatial-propagation'].value='auto';const incompatible=solverOptions();
-          values['spatial-propagation'].value='2';let rejected=false;try{{solverOptions();}}catch{{rejected=true;}}
-          console.log(JSON.stringify({{before,after,custom,live,gpuPreparation,incompatible,rejected,cold:solverPreparationKey(before)!==solverPreparationKey(after)}}));
+          values['motion-model'].value='affine';values['spatial-propagation'].value='auto';const affineAutomatic=solverOptions();
+          values['gpu-reference-preparation'].checked=true;values['spatial-propagation'].value='2';let rejected=false;try{{solverOptions();}}catch{{rejected=true;}}
+          console.log(JSON.stringify({{before,after,custom,live,gpuPreparation,affineAutomatic,rejected,cold:solverPreparationKey(before)!==solverPreparationKey(after)}}));
         """
         result = json.loads(
             subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
         )
         self.assertEqual(result["before"]["spatialPropagationPasses"], 2)
-        self.assertNotIn("spatialPropagationPasses", result["incompatible"])
+        self.assertEqual(result["affineAutomatic"]["spatialPropagationPasses"], 2)
         self.assertNotIn("spatialPropagationPasses", result["gpuPreparation"])
         self.assertEqual(result["after"]["initialization"], "global-affine")
         self.assertEqual(result["after"]["motionModel"], "translation")
@@ -128,12 +132,14 @@ class BrowserSpatialExecutionTests(unittest.TestCase):
                 check(refused,'Unqualified GPU quadratic preparation was accepted');continue;
               }
               const temporal=motionModel==='translation'&&referencePreparation==='cpu';
+              const spatialPropagationPasses=referencePreparation==='cpu'&&motionModel!=='quadratic'?2:0;
               const e=await DICEngine.create({device,width:w,height:h,solverWorkgroupSize:32,motionModel,referencePreparation,
                 ...(temporal?{initialization:'temporal',temporalPrediction:'velocity',temporalFineCorrection:true,divergencePatience:3}:{}),
-                spatialPropagationPasses:temporal?2:0,outlierPolicy:'disabled'});
+                spatialPropagationPasses,outlierPolicy:'disabled'});
               try{
                 const info=await e.setReference(f);await e.register(g);const r=await e.register(g);
                 check(info.config.solverWorkgroupSize===32&&r.config.solverWorkgroupSize===32,'Missing width provenance');
+                check(info.config.spatialPropagationPasses===spatialPropagationPasses,'Missing propagation provenance');
                 let count=0,maximum=0;const n=motionModel==='quadratic'?12:6;
                 // The rolled fixture has a seam at its boundary. Evaluate
                 // the same one-window interior for every model and width.
@@ -143,11 +149,13 @@ class BrowserSpatialExecutionTests(unittest.TestCase):
                   count++;maximum=Math.max(maximum,Math.hypot(r.parameters[i*n]-2,r.parameters[i*n+3]+1));
                 }
                 check(count>20&&maximum<.03,'Width 32 integer translation differs');
-                rows.push({referencePreparation,motionModel,count,maximum});
+                rows.push({referencePreparation,motionModel,spatialPropagationPasses,count,maximum});
               }finally{e.destroy();}
             }
-            const solvers=entries.filter(d=>['solve','solve_seeded','solve_compact_translation'].includes(d.entryPoint));
-            check(solvers.some(d=>d.entryPoint==='solve_compact_translation'),'Compact solver not compiled');
+            const solvers=entries.filter(d=>['solve','solve_seeded','solve_compact_spatial'].includes(d.entryPoint));
+            check(solvers.some(d=>d.entryPoint==='solve_compact_spatial'),'Compact solver not compiled');
+            check(solvers.some(d=>d.entryPoint==='solve_compact_spatial'&&d.constants.MOTION_MODEL===0),
+              'Affine compact solver was not specialized');
             check(solvers.every(d=>d.constants.SOLVER_WORKGROUP_SIZE===32),'A solver ignored the requested width');
             return {rows,pipelines:solvers.length};
           }finally{device.destroy();}
@@ -159,23 +167,33 @@ class BrowserSpatialExecutionTests(unittest.TestCase):
         actual = self.evaluate("""
           const w=128,h=128,f=texture(w,h),g=new Uint8Array(f.length),mask=new Uint8Array(f.length);
           for(let y=0;y<h;y++)for(let x=0;x<w;x++){g[y*w+x]=f[((y+1)%h)*w+(x-2+w)%w];mask[y*w+x]=+(x>=32&&x<96&&y>=32&&y<96);}
-          const outputs=[];for(const solverWorkgroupSize of [16,32]){
-          const e=await DICEngine.create({width:w,height:h,solverWorkgroupSize,motionModel:'translation',spatialPropagationPasses:2,outlierPolicy:'disabled'});
+          const outputs=[];for(const motionModel of ['translation','affine'])for(const solverWorkgroupSize of [16,32]){
+          const e=await DICEngine.create({width:w,height:h,solverWorkgroupSize,motionModel,spatialPropagationPasses:2,outlierPolicy:'disabled'});
           try{
             await e.setReference(f,{roiMask:mask});await e.register(g);
             const slot=e.host.memoryResources().slots[0],buffer=slot.levels[0].buffers.state,states=new Float32Array(64*8);
-            for(let i=0;i<64;i++){states[i*8]=2;states[i*8+3]=-1;states[i*8+6]=1;states[i*8+7]=4;}
+            for(let i=0;i<64;i++){
+              states[i*8]=2;states[i*8+3]=-1;states[i*8+6]=1;states[i*8+7]=4;
+              if(motionModel==='affine'){states[i*8+1]=.02;states[i*8+2]=-.01;states[i*8+4]=.01;states[i*8+5]=-.02;}
+            }
             states[27*8]=0;states[27*8+3]=0;states[27*8+6]=-1;e.device.queue.writeBuffer(buffer,0,states);
             const enc=e.device.createCommandEncoder();slot.spatial.afterLevel(enc,0,false);e.device.queue.submit([enc.finish()]);
             const output=await read(e.device,buffer);
             for(let i=0;i<output.length;i++)if(Math.floor(i/8)!==27)check(output[i]===states[i],'Unqueued point changed');
             check(output[27*8+6]>.5,'Failed point did not converge');
             check(Math.abs(output[27*8]-2)<.03&&Math.abs(output[27*8+3]+1)<.03,'Wrong refined displacement');
-            outputs.push({solverWorkgroupSize,status:output[27*8+6],u:output[27*8],v:output[27*8+3]});
+            if(motionModel==='affine'){
+              check(Math.max(Math.abs(output[27*8+1]),Math.abs(output[27*8+2]),Math.abs(output[27*8+4]),Math.abs(output[27*8+5]))<.03,
+                'Affine retry did not reset and re-estimate its derivatives');
+            }
+            outputs.push({motionModel,solverWorkgroupSize,status:output[27*8+6],u:output[27*8],v:output[27*8+3]});
           }finally{e.destroy();}
           }return outputs;
         """)
-        self.assertEqual([row["solverWorkgroupSize"] for row in actual], [16, 32])
+        self.assertEqual(
+            [(row["motionModel"], row["solverWorkgroupSize"]) for row in actual],
+            [(model, size) for model in ("translation", "affine") for size in (16, 32)],
+        )
         for row in actual:
             self.assertGreater(row["status"], 0.5)
 

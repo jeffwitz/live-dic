@@ -315,7 +315,7 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
                 layout=layout,
                 compute={
                     "module": level._shader,
-                    "entry_point": "solve_compact_translation",
+                    "entry_point": "solve_compact_spatial",
                     "constants": {
                         "MOTION_MODEL": 1,
                         "SUBSET_SIZE": self.subset_size,

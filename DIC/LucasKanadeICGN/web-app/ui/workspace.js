@@ -119,16 +119,16 @@ export function solverOptions(mode = document.body?.dataset.workspaceMode ?? 'an
     ? Number(get('median-filter-size')?.value ?? 3) : 3;
   if (![3, 5, 7, 9].includes(medianFilterSize)) throw new Error('Median neighbourhood must be 3, 5, 7, or 9 subsets');
   const propagationSetting = get('spatial-propagation')?.value ?? 'auto';
-  const propagationCompatible = get('motion-model').value === 'translation'
+  const propagationCompatible = ['translation', 'affine'].includes(get('motion-model').value)
     && get('interpolation').value === 'bspline' && base.referencePreparation !== 'gpu';
   const spatialPropagationPasses = propagationSetting === 'auto'
     ? (propagationCompatible ? 2 : 0) : Number(propagationSetting);
   if (!Number.isInteger(spatialPropagationPasses) || spatialPropagationPasses < 0 || spatialPropagationPasses > 4) {
     throw new Error('GPU propagation must have zero to four passes per level');
   }
-  if (spatialPropagationPasses && (get('motion-model').value !== 'translation'
+  if (spatialPropagationPasses && (!['translation', 'affine'].includes(get('motion-model').value)
       || get('interpolation').value !== 'bspline' || base.referencePreparation === 'gpu')) {
-    throw new Error('GPU propagation needs Translation, B-spline and CPU reference preparation; initialization is independent');
+    throw new Error('GPU propagation needs Translation or Affine, B-spline and CPU reference preparation; initialization is independent');
   }
   return { ...base, subsetSize: size, subsetStride: stride, motionModel: get('motion-model').value,
     ...(spatialPropagationPasses ? { spatialPropagationPasses } : {}),

@@ -41,13 +41,15 @@ Hand-held camera use is
 not qualified for metrology. Python remains the primary NumPy supervisor.
 
 **Analysis → Solve → GPU seed propagation** defaults to automatic mode: it uses
-two recovery passes for compatible local Translation/B-spline settings, uniform
-full windows, CPU reference preparation and one slot. Incompatible settings
-leave it off; you can disable it or select one to four passes. Global affine
-initialization remains independent. The stage scores hypotheses and reruns LK;
-it does not substitute neighbour vectors for measurements. The direct
-JavaScript API and native Python defaults remain unchanged; native propagation
-is still research tooling. See the [illustrated reference](docs/reference/propagation.rst) and
+two recovery passes for compatible local Translation or Affine models with
+B-spline interpolation, uniform full windows, CPU reference preparation and one
+slot. Incompatible settings leave it off; you can disable it or select one to
+four passes. Global affine initialization remains independent. The stage scores
+hypotheses and reruns LK; it does not substitute neighbour vectors for
+measurements. Affine retries use a neighbour's tx/ty, reset local affine
+derivatives to zero, then re-estimate the full affine state on the destination
+subset. The direct JavaScript API and native Python defaults remain unchanged;
+native propagation is still research tooling. See the [illustrated reference](docs/reference/propagation.rst) and
 [backend scope](docs/explanation/backend-selection.rst).
 
 Long recordings use [browser-local disk storage](docs/how-to/store-long-sequences.rst) with a CPU cache

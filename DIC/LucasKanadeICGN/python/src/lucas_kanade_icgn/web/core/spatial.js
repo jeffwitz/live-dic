@@ -7,8 +7,8 @@ export function validateSpatialPropagation(options = {}) {
     throw new Error('spatialPropagationPasses must be an integer from 0 to 4');
   }
   if (!passes) return 0;
-  if ((options.motionModel ?? 'affine') !== 'translation') {
-    throw new Error('GPU spatial propagation currently requires the translation local model');
+  if (!['translation', 'affine'].includes(options.motionModel ?? 'affine')) {
+    throw new Error('GPU spatial propagation currently requires the translation or affine local model');
   }
   if ((options.interpolation ?? 'bspline') !== 'bspline'
       || (options.spatialWeighting ?? 'uniform') !== 'uniform') {
@@ -81,9 +81,12 @@ export async function createSpatialGraph(device, solverModule, levels, seededLay
         entry(6, work), entry(7, scores), entry(8, prior),
       ] });
       const layout = device.createPipelineLayout({ bindGroupLayouts: [seededLayout] });
+      // Affine retries use only candidate tx/ty; solve_subset starts its four
+      // local derivatives at zero and estimates them from this destination.
       const compact = await device.createComputePipelineAsync({ layout, compute: {
-        module: solverModule, entryPoint: 'solve_compact_translation', constants: {
-          MOTION_MODEL: 1, SUBSET_SIZE: options.subsetSize, SUBSET_STRIDE: options.subsetStride,
+        module: solverModule, entryPoint: 'solve_compact_spatial', constants: {
+          MOTION_MODEL: options.motionModel === 'translation' ? 1 : 0,
+          SUBSET_SIZE: options.subsetSize, SUBSET_STRIDE: options.subsetStride,
           SOLVER_WORKGROUP_SIZE: options.solverWorkgroupSize ?? 16, ROI_ENABLED: +(!!level.roi),
           ...(level.index === 0 && options.divergencePatience ? {
             DIVERGENCE_PATIENCE: options.divergencePatience,

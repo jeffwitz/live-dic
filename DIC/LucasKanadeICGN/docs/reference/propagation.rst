@@ -15,14 +15,15 @@ examples, not experimental images or benchmark measurements.
 
 .. important:: Availability
 
-   The browser workbench now exposes experimental failed-point propagation in
+   The browser workbench uses failed-point propagation in
    **Analysis → Solve → custom solver → GPU seed propagation**. Automatic mode
-   uses two passes by default for translation/B-spline with CPU reference
-   preparation, uniform full windows and one slot. Incompatible settings keep
-   it off; explicit unsupported requests are rejected. The direct
-   ``DICEngine`` API still defaults to zero, and ordinary native Python
-   constructors retain their APIs, with propagation available as a Python
-   research host.
+   uses two passes by default for translation or affine with B-spline, CPU
+   reference preparation, uniform full windows and one slot. Incompatible
+   settings keep it off; explicit unsupported requests are rejected. Affine
+   retries seed only tx/ty from a neighbour, reset local gradients to zero and
+   let the destination's full affine IC-GN solve estimate all six parameters.
+   The direct ``DICEngine`` API still defaults to zero. Native propagation
+   remains a separate translation-only research host.
    See :doc:`../how-to/run-in-browser`, :doc:`js-api`, and :doc:`performance` for
    activation, exact scope and the distinction between native and GUI evidence.
 
@@ -117,11 +118,13 @@ can initialize the next target. In fixed-reference operation the reference
 stays the first image; only the initial estimates evolve. See
 :doc:`../explanation/temporal-initialization`.
 
-These are translation examples. Affine gradients and quadratic curvatures have
-different coordinate/scaling rules. A neighbour polynomial must be recentered
-before comparing it at another position; blindly copying its whole coefficient
-vector changes its meaning. This research propagation host rejects those
-models rather than silently applying translation rules to them.
+The examples below use translation hypotheses. The browser also supports affine
+local solves: it copies only a neighbour's tx/ty as the candidate seed, sets the
+destination's four affine derivatives to zero, and then reruns the full affine
+IC-GN solve on that destination. It never copies a neighbour's affine
+polynomial. Quadratic propagation remains unsupported; its curvatures require
+separate coordinate and scaling rules. The native research propagation host
+remains translation-only.
 
 3. How a neighbour becomes a useful seed
 ----------------------------------------

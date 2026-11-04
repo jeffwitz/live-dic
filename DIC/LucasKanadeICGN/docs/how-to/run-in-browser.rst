@@ -587,7 +587,8 @@ GPU seed propagation in Analysis
 
 In **Analysis → Solve**:
 
-1. Enable **Use custom settings** and select the **Translation** local model.
+1. Enable **Use custom settings** and select the **Translation** or **Affine**
+   local model.
 2. Keep **B-spline** interpolation and leave **Experimental GPU reference
    preparation** unchecked. CPU reference preparation is the existing default;
    the subsequent correlation and propagation still run on the GPU.
@@ -598,18 +599,20 @@ In **Analysis → Solve**:
    further searches once an empty work list proves that the state has not
    changed.
 4. Keep the desired median/UOD spatial policy. It runs after the propagation
-   re-solves. Global affine or Fourier initialization can be selected
-   independently of this translation-only local stage.
+   re-solves. In Affine mode each candidate contains only neighbour tx/ty; the
+   retry zeros the four affine derivatives, then estimates the full affine
+   state from the destination patch. Global affine or Fourier initialization
+   can be selected independently of this local stage.
 5. Press **Start calculation**. Editing the option only marks preparation
    pending; it does not start calculation or rebuild immediately.
 
 The GPU tests neighbour hypotheses on rejected subsets and reruns LK only for
 an improved seed, using an indirect work list. It does not replace a measured
-point with a neighbour vector. **Automatic** uses two passes only for
-Translation with B-spline interpolation, CPU reference preparation, uniform
-full windows and one processing slot; incompatible settings keep propagation
-off. Explicitly requesting propagation with an unsupported combination gives
-an error. The fixed Live preset does not use propagation. The direct
+point with a neighbour vector. **Automatic** uses two passes for Translation or
+Affine with B-spline interpolation, CPU reference preparation, uniform full
+windows and one processing slot; incompatible settings keep propagation off.
+Explicitly requesting propagation with an unsupported combination gives an
+error. The fixed Live preset does not use propagation. The direct
 ``DICEngine`` API keeps its default at zero. Changing the option requires a
 new preparation at Start; saved fields and NPZ exports retain their applied
 ``spatialPropagationPasses`` value.
