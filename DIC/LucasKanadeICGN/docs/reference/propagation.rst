@@ -345,8 +345,8 @@ score is identical. It can be reused. If the proposal changes to (6.1, -2),
 the destination pixels must be scored again. No rounding or distance tolerance
 is used to decide whether two proposals are the same.
 
-The browser keeps these records only when the requested budget exceeds one
-pass and the buffer fits the device's limits. Each record contains the two
+The experimental native research host can keep these records when the budget
+exceeds one pass and the buffer fits the device's limits. Each record contains the two
 displacement components, their score and an initialization marker. The first
 pass resets the records for every visited destination, even when a previous
 frame left an apparently matching proposal. This prevents scores from a
@@ -366,7 +366,9 @@ final measurements. Cache records stay on the GPU. Eleven records add
 176 bytes per grid position per level; exceeding a device buffer limit falls
 back to recomputing scores. With propagation disabled no cache is created.
 The native research host exposes ``cache_scores=True`` for controlled
-comparisons; this is not a new native public-engine parameter. Timing benefits
+comparisons; this is not a new native public-engine parameter. The browser
+continues to recompute scores: the UHD controls have not established a useful
+cache speedup, so automatic activation was not retained. Timing benefits
 depend on how many candidates remain unchanged and are measured separately
 from empty-work elimination.
 

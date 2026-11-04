@@ -43,9 +43,6 @@ export async function createSpatialGraph(device, solverModule, levels, seededLay
     const module = await loadShader(device, 'spatial_seed.wgsl');
     const choose = await device.createComputePipelineAsync({ layout: 'auto',
       compute: { module, entryPoint: 'choose', constants: { FAILED_ONLY: true, CANDIDATE_MODE: 0 } } });
-    const scoreCachePipelines = passes > 1 ? await Promise.all([false, true].map(reuse =>
-      device.createComputePipelineAsync({ layout: 'auto', compute: { module, entryPoint: 'choose',
-        constants: { FAILED_ONLY: true, CANDIDATE_MODE: 0, CACHE_SCORES: true, REUSE_SCORES: reuse } } }))) : null;
     const finalize = await device.createComputePipelineAsync({ layout: 'auto',
       compute: { module, entryPoint: 'finalize_chain' } });
     const stages = [];
@@ -77,14 +74,8 @@ export async function createSpatialGraph(device, solverModule, levels, seededLay
       const work = storage('Spatial indirect work list', (gridCount + 4) * 4, GPUBufferUsage.INDIRECT);
       const continuation = storage('Spatial continuation arguments', 12, GPUBufferUsage.INDIRECT);
       const prior = storage('Spatial initial level seeds', gridCount * 32);
-      // First-pass invalidation and exact candidate keys make reuse local to
-      // this frame/level. Fall back before allocation on smaller device limits.
-      const cacheEnabled = passes > 1 && gridCount * 192 <= Math.min(
-        device.limits.maxStorageBufferBindingSize, device.limits.maxBufferSize);
-      const scores = storage('Spatial candidate scores', gridCount * (cacheEnabled ? 192 : 16));
-      const firstChoose = cacheEnabled ? scoreCachePipelines[0] : choose;
-      const laterChoose = cacheEnabled ? scoreCachePipelines[1] : choose;
-      const chooseGroup = (pipeline, texture) => device.createBindGroup({ layout: pipeline.getBindGroupLayout(0), entries: [
+      const scores = storage('Spatial candidate scores', gridCount * 16);
+      const chooseGroup = texture => device.createBindGroup({ layout: choose.getBindGroupLayout(0), entries: [
         { binding: 0, resource: reference.createView() }, { binding: 1, resource: texture.createView() },
         entry(2, config), entry(3, buffers.state), entry(4, permissions), entry(5, buffers.seedState),
         entry(6, work), entry(7, scores), entry(8, prior),
@@ -107,11 +98,8 @@ export async function createSpatialGraph(device, solverModule, levels, seededLay
           resource: { buffer: buffers[name], ...(binding === 2 ? { size: level.pixelCount * 4 } : {}) } })),
         entry(11, work),
       ] });
-      stages.push({ level, work, continuation, prior, firstChoose, laterChoose, cacheEnabled,
-        choose: chooseGroup(firstChoose, level.sourceTexture),
-        cachedChoose: chooseGroup(laterChoose, level.sourceTexture), compact: compactGroup(level.sourceTexture),
-        externalChoose: level.index === 0 && externalTexture ? chooseGroup(firstChoose, externalTexture) : null,
-        externalCachedChoose: level.index === 0 && externalTexture ? chooseGroup(laterChoose, externalTexture) : null,
+      stages.push({ level, work, continuation, prior, choose: chooseGroup(level.sourceTexture), compact: compactGroup(level.sourceTexture),
+        externalChoose: level.index === 0 && externalTexture ? chooseGroup(externalTexture) : null,
         externalCompact: level.index === 0 && externalTexture ? compactGroup(externalTexture) : null,
         compactPipeline: compact,
         finalize: device.createBindGroup({ layout: finalize.getBindGroupLayout(0),
@@ -130,11 +118,7 @@ export async function createSpatialGraph(device, solverModule, levels, seededLay
         for (let step = 0; step < passes; step++) {
           encoder.clearBuffer(stage.work);
           const compute = encoder.beginComputePass();
-          compute.setPipeline(step === 0 ? stage.firstChoose : stage.laterChoose);
-          const group = step === 0
-            ? (external && levelIndex === 0 ? stage.externalChoose : stage.choose)
-            : (external && levelIndex === 0 ? stage.externalCachedChoose : stage.cachedChoose);
-          compute.setBindGroup(0, group);
+          compute.setPipeline(choose); compute.setBindGroup(0, external && levelIndex === 0 ? stage.externalChoose : stage.choose);
           if (step === 0) compute.dispatchWorkgroups(stage.level.gridWidth, stage.level.gridHeight);
           else compute.dispatchWorkgroupsIndirect(stage.continuation, 0);
           compute.setPipeline(finalize); compute.setBindGroup(0, stage.finalize); compute.dispatchWorkgroups(1);

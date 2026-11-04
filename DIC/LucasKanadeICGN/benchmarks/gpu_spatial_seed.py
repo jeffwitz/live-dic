@@ -255,8 +255,12 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
                 if cache_enabled
                 else choose
             )
-            uncached_choose_group = device.create_bind_group(
-                layout=uncached_choose.get_bind_group_layout(0), entries=resources
+            uncached_choose_group = (
+                device.create_bind_group(
+                    layout=uncached_choose.get_bind_group_layout(0), entries=resources
+                )
+                if cache_enabled
+                else choose_group
             )
             cached_choose = (
                 device.create_compute_pipeline(
@@ -275,8 +279,12 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
                 if cache_enabled
                 else choose
             )
-            cached_choose_group = device.create_bind_group(
-                layout=cached_choose.get_bind_group_layout(0), entries=resources
+            cached_choose_group = (
+                device.create_bind_group(
+                    layout=cached_choose.get_bind_group_layout(0), entries=resources
+                )
+                if cache_enabled
+                else choose_group
             )
             finalize_group = device.create_bind_group(
                 layout=finalize.get_bind_group_layout(0),

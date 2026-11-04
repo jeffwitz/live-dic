@@ -109,8 +109,6 @@ Options and native correspondence
      - Integer 0..4. Maximum extra failed-point seed-search passes per level; translation,
        B-spline, uniform full windows, CPU reference preparation and one slot.
        Runs before the selected spatial filter; repeats stop when no seed is queued.
-       Multi-pass budgets cache exactly unchanged scores within each frame/level
-       when device limits permit; disabled propagation allocates no cache.
        See :doc:`propagation` and
        :doc:`../how-to/run-in-browser` for activation and limitations.
    * - ``initialization``

@@ -226,15 +226,14 @@ continuation. This is exact empty-work elimination, not a looser convergence
 tolerance or a photometric early-acceptance threshold. The native research host
 exposes it separately as ``stop_when_unchanged=True`` for controlled comparisons.
 
-Budgets above one pass also reuse scores for exactly unchanged candidate
-displacements, within the same frame and level. The first pass resets visited
-records. Changed candidates are rescored with the same pixels and reductions;
-no search hypothesis is removed. The GPU-only records add 176 bytes per grid
-position per level, with a cold fallback to recomputation if the buffer would
-exceed device limits. No cache exists with propagation disabled. The research
-host's ``cache_scores=True`` permits comparison against recomputation on the
-same prepared resources. See :doc:`../reference/propagation` for the distinction
-between this exact reuse and a change to convergence or filtering.
+An additional native-only research option, ``cache_scores=True``, reuses scores
+for exactly unchanged candidate displacements within one frame/level. The first
+pass resets visited records; changed candidates retain the same scoring pixels
+and reductions. Eleven records add 176 bytes per grid position per level,
+with a cold fallback if device buffer limits would be exceeded. This cache is
+not activated by the browser: controlled UHD measurements did not establish a
+useful gain. See :doc:`../reference/propagation` for the mechanism and
+:doc:`../reference/performance` for the negative controls.
 
 See :doc:`../how-to/run-in-browser` for the Solve controls. Native timing tables
 are not browser end-to-end or recording performance claims.
