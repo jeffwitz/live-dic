@@ -45,9 +45,9 @@ class BrowserSpatialContractTests(unittest.TestCase):
             'outlier-policy':{{value:'median'}},'median-filter-size':{{value:'3'}},'spatial-propagation':{{value:'0'}}}};
           globalThis.document={{body:{{dataset:{{workspaceMode:'analysis'}}}},getElementById:id=>values[id]??null}};
           const before=solverOptions();values['spatial-propagation'].value='2';const after=solverOptions();
-          values['solver-workgroup-size']={{value:'32'}};const wide=solverOptions(),live=solverOptions('live');
+          const custom=solverOptions(),live=solverOptions('live');
           values['motion-model'].value='affine';let rejected=false;try{{solverOptions();}}catch{{rejected=true;}}
-          console.log(JSON.stringify({{before,after,wide,live,rejected,cold:solverPreparationKey(before)!==solverPreparationKey(after)}}));
+          console.log(JSON.stringify({{before,after,custom,live,rejected,cold:solverPreparationKey(before)!==solverPreparationKey(after)}}));
         """
         result = json.loads(
             subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
@@ -58,7 +58,7 @@ class BrowserSpatialContractTests(unittest.TestCase):
         self.assertEqual(result["after"]["spatialPropagationPasses"], 2)
         self.assertTrue(result["cold"])
         self.assertTrue(result["rejected"])
-        self.assertEqual(result["wide"]["solverWorkgroupSize"], 32)
+        self.assertNotIn("solverWorkgroupSize", result["custom"])
         self.assertNotIn("solverWorkgroupSize", result["live"])
 
 

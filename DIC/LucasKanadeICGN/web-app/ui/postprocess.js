@@ -119,6 +119,7 @@ export function analyzeField(field, options = {}, roiMask = null) {
 }
 
 export function componentValues(analysis,component) {
+  if(component==='vectors')component='magnitude';
   const coefficient=/^computed-p(\d{1,2})$/.exec(component);
   if(coefficient){
     const index=Number(coefficient[1]),model=analysis.field.config.motionModel,components=model==='quadratic'?12:6;

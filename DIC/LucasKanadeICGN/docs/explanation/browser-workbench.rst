@@ -129,8 +129,9 @@ Numerical analysis module
 
 ``web-app/ui/postprocess.js`` operates on a materialized field. It never changes
 the engine parameters, statuses or iterations. "Computed" means exactly the
-solver output, including any explicitly selected solver median policy; it does
-not mean unsmoothed if that policy was enabled.
+solver output. With the median solver policy, accepted states are unchanged
+and rejected parameter slots may contain a neighbour-based repair; their
+solver status still marks them unavailable.
 
 Displacement median/Gaussian smoothing is a separate, optional operation. Its
 odd 3/5/7/9 window is in grid points. Gaussian sigma is half the window radius,
@@ -211,9 +212,9 @@ beside it. The solver's dense exclusions remain visible in status mode.
 
 Colour-map and clim controls sit to the right of the colourbar, stacking below
 it on narrow screens. Robust limits use editable lower/upper percentiles of
-valid measurements (2 and 98 by default); signed fields retain symmetric limits
-around zero. Full-range and
-manual clims are explicit options. Alongside the existing automatic,
+valid measurements (2 and 98 by default), applied independently so signed fields
+can use asymmetric limits. Full-range limits use the actual minimum and maximum;
+manual clims are also available. Alongside the existing automatic,
 blue/green/gold, blue/white/red and grayscale maps, the viewer bundles
 256-entry Viridis, Cividis, Plasma, Inferno and Magma lookup tables sampled
 from Matplotlib's perceptually uniform sequential maps. They require no runtime
@@ -222,6 +223,12 @@ clipped in the data. Histograms use the valid population, not only the
 unsaturated range. Status categories retain their fixed discrete colours and do
 not use scalar clims. These controls recolour the cached analysis and do not
 trigger correlation or derived-field recalculation.
+
+The **Displacement vectors · magnitude + arrows** quantity colours the grid by
+displacement magnitude and overlays the processed displacement arrows. Selecting
+it enables the arrow overlay directly; spacing and magnification remain
+adjustable. For another scalar quantity, **Overlay displacement arrows** adds
+the same vectors without changing the selected colour map.
 
 Solver states outside the active acceptance population are masked from scalar
 maps by default. The optional **Show masked estimates** view evaluates the

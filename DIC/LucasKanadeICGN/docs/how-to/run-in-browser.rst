@@ -32,9 +32,11 @@ header keeps an activity badge and a **Stop** control visible.
    explicit input seek makes that previewed target the next one calculated.
 3. **Results:** after a completed finite calculation, or after pausing one,
    stored fields open automatically. The quantity selector, **Play results**,
-   previous/next buttons and slider sit directly above the image. Choose u, v,
-   magnitude, strain, equivalent strain or status, then replay or scrub. These
-   controls read saved fields and never request a correlation.
+   previous/next buttons and slider sit directly above the image. Choose
+   **Displacement vectors** for a magnitude map with arrows, or choose a scalar
+   quantity such as u, v, strain, equivalent strain or status. The vector
+   spacing and magnification controls tune the arrows. These controls read saved
+   fields and never request a correlation.
 
 Playback keeps the chosen quantity, palette and limits across compatible
 fields. Each field retains its stored processing recipe. Use **Apply recipe to matching
@@ -963,20 +965,12 @@ connection while a resource was being sent, for example during a reload. It
 is distinct from a WebGPU validation error; retain the browser console's first
 GPU error when diagnosing presentation failures.
 
-Choose an opt-in solver workgroup width
----------------------------------------
+Solver workgroup width
+----------------------
 
-In **Analysis → Solve → Use custom settings**, **Solver workgroup** selects
-16 invocations (the unchanged default) or 32. These are GPU threads cooperating
-on one window, not pixels, a grid step or the number of images in flight.
-Changing it only stages settings; **Start calculation** constructs the selected
-pipelines and reference before the sequence. Live retains its fixed default.
-
-For direct JavaScript, pass ``solverWorkgroupSize: 32`` to ``DICEngine.create``.
-For native Python, the existing spelling is ``solver_workgroup_size=32``;
-the runnable ``docs/examples/register_sequence.py`` also accepts
-``--solver-workgroup-size 32``.
-Keep the same images, model, interpolation, windows, levels and convergence
-limits when comparing widths. Wider is not automatically faster; 128 remains
-unavailable in the browser. Benchmark your actual adapter and compare numerical
-quality as well as time. See :doc:`../reference/performance`.
+The browser workbench keeps the solver's qualified default of 16 invocations
+per workgroup and does not expose a width selector. This is an implementation
+and benchmarking parameter; changing it is useful only when comparing complete
+solver runs on a specific adapter. The benchmark and low-level JavaScript and
+Python APIs retain the parameter for controlled engineering experiments. See
+:doc:`../reference/performance` for the existing measurements.

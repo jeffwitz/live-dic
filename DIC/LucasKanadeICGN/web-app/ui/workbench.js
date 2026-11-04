@@ -308,16 +308,19 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
   function render() {
     figureLegend = null;
     if (!analysis) return;
-    const component = $('review-component').value, { values, valid, unit, source, statistics:stats } = viewCache.get(analysis, component);
-    const diagnostic=$('show-rejected-estimates').checked&&component!=='status'?diagnosticForView(component):null;
+    const component = $('review-component').value;
+    const fieldComponent = component === 'vectors' ? 'magnitude' : component;
+    const { values, valid, unit, source, statistics:stats } = viewCache.get(analysis, fieldComponent);
+    const diagnostic=$('show-rejected-estimates').checked&&component!=='status'?diagnosticForView(fieldComponent):null;
     document.querySelector('.legend').hidden=false;$('live-vector-key').hidden=true;
+    $('review-vectors').closest('label').hidden=component==='vectors';
     $('review-colour-controls').hidden=component==='status';
     document.querySelector('.gray-key').textContent=diagnostic
       ?'Grey: ROI excluded or no solver estimate · masked estimates are diagnostic only'
       :'Grey: unavailable / rejected';
     $('quantity-source').hidden=!source;$('quantity-source').textContent=source?`Computed coefficient (${unit}). Workbench displacement smoothing and VSG do not change these values. The solver's original spatial policy still applies.`:'';
     const field = analysis.field;
-    const nonnegative = ['magnitude','vonMises','iterations'].includes(component);
+    const nonnegative = ['magnitude','vectors','vonMises','iterations'].includes(component);
     const scaleMode=$('review-scale').value,factor=STRAIN_COMPONENTS.has(component)?1e6:1;
     const lowPercentile=Number($('review-low-percentile').value),highPercentile=Number($('review-high-percentile').value);
     let low,high;
@@ -330,7 +333,6 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
       [low,high]=lowPercentile===2&&highPercentile===98?[stats.p02,stats.p98]:percentileBounds(analysis,component,values,valid,lowPercentile,highPercentile);
     }
     low??=0;high??=1;
-    if(scaleMode!=='manual'&&!nonnegative){const limit=Math.max(Math.abs(low),Math.abs(high),1e-12);low=-limit;high=limit;}
     if(scaleMode==='manual'){
       low=Number($('review-min').value)/factor;high=Number($('review-max').value)/factor;
       if(!Number.isFinite(low)||!Number.isFinite(high)||high<=low){$('analysis-state').textContent='The clim maximum must be greater than its minimum, with finite values.';return;}
@@ -345,14 +347,14 @@ export function installWorkbench({ captureCurrent, pause, error, recordChange, l
       values,
       valid,
       diagnostic,
-      component,
+      component:fieldComponent,
       low,
       high,
       palette,
       statusColours: STATUS_COLOURS,
       showContour: $('review-contour').checked,
       mask: $('review-contour').checked ? activeEntry().mask : null,
-      showVectors: $('review-vectors').checked,
+      showVectors: component === 'vectors' || $('review-vectors').checked,
       vectorStep: Number($('review-vector-step').value),
       vectorGain: Number($('review-vector-gain').value),
     });

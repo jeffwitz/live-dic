@@ -118,8 +118,6 @@ export function solverOptions(mode = document.body?.dataset.workspaceMode ?? 'an
   const medianFilterSize = outlierPolicy === 'median'
     ? Number(get('median-filter-size')?.value ?? 3) : 3;
   if (![3, 5, 7, 9].includes(medianFilterSize)) throw new Error('Median neighbourhood must be 3, 5, 7, or 9 subsets');
-  const solverWorkgroupSize = Number(get('solver-workgroup-size')?.value ?? 16);
-  if (![16, 32].includes(solverWorkgroupSize)) throw new Error('Solver workgroup must use 16 or 32 invocations');
   const spatialPropagationPasses = Number(get('spatial-propagation')?.value ?? 0);
   if (!Number.isInteger(spatialPropagationPasses) || spatialPropagationPasses < 0 || spatialPropagationPasses > 4) {
     throw new Error('GPU propagation must have zero to four passes per level');
@@ -130,7 +128,6 @@ export function solverOptions(mode = document.body?.dataset.workspaceMode ?? 'an
   }
   return { ...base, subsetSize: size, subsetStride: stride, motionModel: get('motion-model').value,
     ...(spatialPropagationPasses ? { spatialPropagationPasses } : {}),
-    ...(solverWorkgroupSize !== 16 ? { solverWorkgroupSize } : {}),
     interpolation: get('interpolation').value, outlierPolicy, medianFilterSize,
     pyramidLevels: levels, iterationsPerLevel: levels === 1 ? [fine] : [coarse, ...(levels === 3 ? [4] : Array(Math.max(0, levels - 2)).fill(8)), fine],
     initialization: fourier ? 'fourier' : globalAffine ? 'global-affine' : temporal ? 'temporal' : 'zero', temporalPrediction: temporal ? 'velocity' : 'none',
