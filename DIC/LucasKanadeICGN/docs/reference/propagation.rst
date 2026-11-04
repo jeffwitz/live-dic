@@ -15,12 +15,14 @@ examples, not experimental images or benchmark measurements.
 
 .. important:: Availability
 
-   Ordinary pyramids and the public median policies already exist. Photometric
-   spatial propagation is currently an experimental **native Python research
-   host**, restricted to translation, uniform full windows and B-spline. It is
-   not a browser-interface setting or a public engine constructor option.
-   See :doc:`../explanation/spatial-initialization` for the actual scripts and
-   :doc:`performance` for measured results and their limits.
+   The browser workbench now exposes experimental failed-point propagation in
+   **Analysis → Solve → custom solver → GPU seed propagation**. It uses the
+   shared WGSL, requires translation/B-spline, CPU reference preparation and one
+   slot, and is disabled by default. ``DICEngine`` exposes
+   ``spatialPropagationPasses``; the ordinary native Python constructors retain
+   their APIs, with propagation still available as a Python research host.
+   See :doc:`../how-to/run-in-browser`, :doc:`js-api`, and :doc:`performance` for
+   activation, exact scope and the distinction between native and GUI evidence.
 
 .. contents:: On this page
    :local:

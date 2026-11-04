@@ -1874,8 +1874,10 @@ GPU seed selection and median controls (2026-11-04)
 The subsequent `GPU research campaign
 <https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/gpu-spatial-seed-20261104>`_
 keeps candidate scoring, atomic work-list construction and indirect IC-GN
-re-solves on the GPU. It is an experimental native supervisor under
-``benchmarks/``, not a public engine or browser option. Defaults are unchanged.
+re-solves on the GPU. These are native measurements of an experimental
+supervisor under ``benchmarks/``. The browser now exposes an independent opt-in
+host for the same kernels; see :doc:`../how-to/run-in-browser`. Native timings
+below do not establish its application throughput. Defaults are unchanged.
 See :doc:`../explanation/spatial-initialization` for the algorithm and the
 distinction between a median measurement and a median initialization.
 

@@ -562,6 +562,36 @@ pyramid-level selector. This cold initializer is intended for sparse loaded
 image pairs, not camera-rate processing. See
 :doc:`register-large-shifts` for the full procedure and limitations.
 
+Opt in to GPU seed propagation
+------------------------------
+
+In **Analysis → Solve**:
+
+1. Enable **Use custom settings** and select the **Translation** local model.
+2. Keep **B-spline** interpolation and leave **Experimental GPU reference
+   preparation** unchecked. CPU reference preparation is the existing default;
+   the subsequent correlation and propagation still run on the GPU.
+3. Set **GPU seed propagation · experimental** to one or two passes per level.
+   The menu also permits up to four; more attempts cost more work and are not
+   a convergence or frame-rate guarantee.
+4. Keep the desired median/UOD spatial policy. It runs after the propagation
+   re-solves. Global affine or Fourier initialization can be selected
+   independently of this translation-only local stage.
+5. Press **Start calculation**. Editing the option only marks preparation
+   pending; it does not start calculation or rebuild immediately.
+
+The GPU tests neighbour hypotheses on rejected subsets and reruns LK only for
+an improved seed, using an indirect work list. It does not replace a measured
+point with a neighbour vector. The option defaults to **Disabled**, requires
+one processing slot and is not part of the fixed Live preset. Unsupported
+model/interpolation/preparation combinations produce an explicit error.
+Changing the option requires a new preparation at Start; saved fields and NPZ
+exports retain their applied ``spatialPropagationPasses`` value.
+
+See :doc:`../reference/propagation` for the illustrated algorithm and
+:doc:`../reference/performance` for the qualified timing boundaries. Native
+prototype measurements must not be interpreted as browser camera/recording FPS.
+
 Review and process a computed field
 -----------------------------------
 

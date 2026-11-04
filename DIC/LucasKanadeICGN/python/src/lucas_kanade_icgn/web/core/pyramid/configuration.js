@@ -1,4 +1,5 @@
 import { validateTemporal } from '../temporal.js';
+import { validateSpatialPropagation } from '../spatial.js';
 
 const DEFAULT_MAX_ITERATIONS = 30;
 const DEFAULT_TOLERANCE = 1e-3;
@@ -188,7 +189,15 @@ export function resolveConfiguration(
     outlierPolicy,
     medianFilterSize,
     ...(initialization === 'global-affine' ? { globalAffineLevels } : {}),
+    ...(options.spatialPropagationPasses !== undefined || current.spatialPropagationPasses !== undefined
+      ? { spatialPropagationPasses: options.spatialPropagationPasses === undefined
+        ? current.spatialPropagationPasses : options.spatialPropagationPasses } : {}),
   };
+  validateSpatialPropagation({ ...hostOptions, ...current, ...next });
+  if (!allowPyramidRebuild && referenceReady
+      && (next.spatialPropagationPasses ?? 0) !== (current.spatialPropagationPasses ?? 0)) {
+    throw new Error('Changing spatialPropagationPasses requires setReference()');
+  }
   next.iterationsPerLevel[pyramidLevels - 1] = next.iterations;
   next.tolerancePerLevel[pyramidLevels - 1] = next.tolerance;
 

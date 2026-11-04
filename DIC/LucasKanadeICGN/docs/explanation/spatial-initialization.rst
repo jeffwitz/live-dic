@@ -9,8 +9,9 @@ A converged local IC-GN fit and a robust search strategy are different parts of
 a DIC pipeline. An affine initialization can place the field close to the
 solution while leaving individual subsets in the wrong attraction basin.
 Adding scales also enlarges the physical support of a fixed-size coarse patch;
-it does not guarantee recovery. This page describes a research harness, not a
-new native or browser option. Existing solver defaults remain unchanged.
+it does not guarantee recovery. Native Python experiments remain research
+harnesses. The raw-WGSL browser core and Analysis/Solve now expose failed-point
+GPU propagation as an opt-in; existing defaults remain unchanged.
 
 What DIS contributes
 --------------------
@@ -120,7 +121,8 @@ GPU research prototype
 
 ``benchmarks/gpu_spatial_seed.py`` now provides an experimental, synchronous,
 single-slot host around the native full pyramid. It is not a public engine
-option and is not connected to the browser interface. Numerical defaults remain
+constructor option. The browser interface has a separate opt-in supervisor using
+the same canonical kernels. Numerical defaults remain
 unchanged. It supports translation, uniform full subsets and B-spline only.
 The fixed reference, reference ROI, Hessians and all pipelines are prepared once.
 
@@ -197,3 +199,23 @@ environment, from the repository root:
 
 The output directory must be new. See :doc:`../reference/performance` for the
 measured costs, evaluated populations and remaining real-time limitations.
+
+Browser Solve integration
+-------------------------
+
+``spatialPropagationPasses: 0`` keeps the existing browser graph; positive
+integers up to 4 add failed-point passes before each level's spatial filter.
+The browser shares ``spatial_seed.wgsl`` and ``solve_compact_translation`` with
+the native experiment. Its fallback prior is the level's initial seed, captured
+by a GPU copy before the initial solve; no intermediate CPU transfer is needed.
+
+The option supports CPU-prepared references, translation, B-spline, uniform full
+subsets and one processing slot. It accepts decoded inputs and external image
+textures; Fourier/global-affine/temporal initialization remains independent.
+Unsupported combinations fail explicitly. All resources are built at reference
+preparation, and the option participates in the pending-reference key, saved
+field configuration and NPZ metadata. The selected median/UOD policy still
+runs after the re-solves; propagation does not silently disable filtering.
+
+See :doc:`../how-to/run-in-browser` for the Solve controls. Native timing tables
+are not browser end-to-end or recording performance claims.

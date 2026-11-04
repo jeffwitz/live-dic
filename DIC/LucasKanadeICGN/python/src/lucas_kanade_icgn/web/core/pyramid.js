@@ -7,6 +7,7 @@ import { loadShader } from './shaders.js';
 import { createGpuReferenceGraph } from './reference-gpu.js';
 import { FourierInitializer } from './fourier.js';
 import { GlobalAffineInitializer } from './global-affine.js';
+import { createSpatialGraph } from './spatial.js';
 import {
   createInitialConfiguration,
   resolveConfiguration,
@@ -103,7 +104,7 @@ export function createPyramidHost(options = {}) {
     const released = new Set();
     const release = (resource) => { if (resource && !released.has(resource)) { resource.destroy(); released.add(resource); } };
     contexts.forEach((slot) => {
-      slot.temporal?.destroy(); slot.resultReader?.destroy(); release(slot.readback);
+      slot.temporal?.destroy(); slot.spatial?.destroy(); slot.resultReader?.destroy(); release(slot.readback);
       slot.levels.forEach((level) => { release(level.sourceTexture); Object.values(level.buffers).forEach(release); });
       slot.reductionEdges.forEach((edge) => release(edge.intermediate));
       slot.seedEdges.forEach((edge) => { release(edge.config); release(edge.links); });
@@ -425,7 +426,8 @@ export function createPyramidHost(options = {}) {
         levelBuffers.seedState = device.createBuffer({
           label: `DIC-RT seed state level ${levelIndex}`,
           size: gridCount * stateStride * 4,
-          usage: storage | (['fourier','global-affine'].includes(configuration.initialization)?GPUBufferUsage.COPY_DST:0),
+          usage: storage | (['fourier','global-affine'].includes(configuration.initialization)?GPUBufferUsage.COPY_DST:0)
+            | (configuration.spatialPropagationPasses ? GPUBufferUsage.COPY_SRC : 0),
         });
         levelBuffers.activeMask = device.createBuffer({
           label: `DIC-RT active mask level ${levelIndex}`,
@@ -654,6 +656,7 @@ export function createPyramidHost(options = {}) {
       });
     });
     const appendLevel = (level, seeded) => {
+      if (slot.spatial) jobs.push({ encode: command => slot.spatial.beforeLevel(command, level.index, seeded) });
       if (configuration.interpolation === 'bspline') {
         jobs.push({
           pipeline: level.width < 44 ? pipelines.prefilterXSafe : pipelines.prefilterXFast,
@@ -677,6 +680,7 @@ export function createPyramidHost(options = {}) {
         group: 0,
         workgroups: [level.gridWidth, level.gridHeight, 1],
       });
+      if (slot.spatial) jobs.push({ encode: command => slot.spatial.afterLevel(command, level.index, slot.externalActive) });
       if (configuration.outlierPolicy !== 'disabled') {
         jobs.push({
           pipeline: pipelines.median,
@@ -703,6 +707,7 @@ export function createPyramidHost(options = {}) {
     }
     if (temporal) jobs.push(...temporal.after);
     jobs.forEach((job, index) => {
+      if (job.encode) { job.encode(encoder); return; }
       const timestampWrites = measureGpu && timestampQueries ? {
         querySet,
         beginningOfPassWriteIndex: 2 * index,
@@ -848,6 +853,7 @@ export function createPyramidHost(options = {}) {
     configure(options, true);
     const image = typeof dataUrl === 'string' ? await loadImage(dataUrl) : dataUrl;
     let fourierPixels=image.pixels;
+    let spatialReferences = null;
     try {await ensureDevice({...options,width:image.width,height:image.height});}
     catch(error){if(typeof dataUrl==='string')image.close?.();throw error;}
     const started = performance.now();
@@ -909,6 +915,7 @@ export function createPyramidHost(options = {}) {
         const previous = referenceLevels[levelIndex - 1];
         referenceLevels.push(reduceHalfGray(previous.values, previous.width, previous.height));
       }
+      if (configuration.spatialPropagationPasses) spatialReferences = referenceLevels;
       if(configuration.initialization==='fourier')fourierPixels=referenceLevels[0].values;
       levels.forEach((level, levelIndex) => {
         const source = referenceLevels[levelIndex];
@@ -975,6 +982,10 @@ export function createPyramidHost(options = {}) {
       }
       const converter = options.inputConverterForSlot?.(i);
       if (converter) attachExternalInput(device, slot, { base: bindGroupLayout, seeded: seededBindGroupLayout, reduce: reduceYBindGroupLayout }, converter);
+      if (configuration.spatialPropagationPasses) {
+        slot.spatial = await createSpatialGraph(device, shaderModule, slot.levels, seededBindGroupLayout,
+          configuration, spatialReferences, converter?.texture ?? null);
+      }
       if (resultModule) slot.resultReader = await createResultReader(device, resultModule, slot.levels[0],
         { ...configuration, subsetSize: SUBSET_SIZE, subsetStride: SUBSET_STRIDE },
         configuration.outlierPolicy === 'disabled' ? slot.levels[0].buffers.state : slot.levels[0].buffers.filteredState);

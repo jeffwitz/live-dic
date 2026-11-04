@@ -3,6 +3,7 @@ import { createInputConverter, frameSize } from './input.js';
 import { createPyramidHost } from './pyramid.js';
 import { SlotRing } from './ring.js';
 import { gpuMemoryUsage } from './gpu-memory.js';
+import { validateSpatialPropagation } from './spatial.js';
 export { probeCapabilities } from './device.js';
 
 /** Dependency-free controller. Every instance owns its reference and queue. */
@@ -18,8 +19,9 @@ export class DICEngine {
       'znccMin', 'outlierPolicy', 'medianFilterSize', 'initialization', 'temporalPrediction', 'temporalFineCorrection',
       'temporalMaxAge', 'divergencePatience', 'divergenceMinIterations', 'pipelineDepth', 'readback',
       'spatialWeighting', 'roiPolicy', 'roiTruncation', 'pyramidPolicy', 'solverWorkgroupSize',
-      'referencePreparation', 'globalAffineLevels']);
+      'referencePreparation', 'globalAffineLevels', 'spatialPropagationPasses']);
     for (const key of Object.keys(options)) if (!supported.has(key)) throw new Error(`Unsupported engine option: ${key}`);
+    validateSpatialPropagation(options);
     if (options.referencePreparation !== undefined && !['cpu', 'gpu'].includes(options.referencePreparation)) {
       throw new Error("referencePreparation must be 'cpu' or 'gpu'");
     }

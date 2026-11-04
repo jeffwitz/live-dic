@@ -104,6 +104,12 @@ Options and native correspondence
    * - ``medianFilterSize``
      - ``median_filter_size=3``
      - Shared WGSL median only: widths 3, 5, 7, 9 subset-grid cells; values above 3 require ``outlierPolicy: 'median'``.
+   * - ``spatialPropagationPasses``
+     - JavaScript-only opt-in, default 0
+     - Integer 0..4. Extra failed-point seed-search passes per level; translation,
+       B-spline, uniform full windows, CPU reference preparation and one slot.
+       Runs before the selected spatial filter. See :doc:`propagation` and
+       :doc:`../how-to/run-in-browser` for activation and limitations.
    * - ``initialization``
      - ``initialization="zero"``
      - Temporal mode is opt-in.

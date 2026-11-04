@@ -385,6 +385,7 @@ async function updateReferenceControls() {
   let selected=0,valid=0;
   for(let i=0;i<total;i++)if(!referenceInfo.roiSelected||referenceInfo.roiSelected[i]){selected++;if(referenceInfo.referenceValid?.[i])valid++;}
   $('applied-solver-summary').textContent=`Applied ${cfg.motionModel} · ${cfg.interpolation} · ${cfg.pyramidLevels} level(s)\nWindow ${referenceInfo.subsetSize} px · step ${referenceInfo.subsetStride} px · ${Math.round(100*(1-referenceInfo.subsetStride/referenceInfo.subsetSize))}% overlap\nIteration limits (coarse → fine): ${cfg.iterationsPerLevel.join(' / ')}\nGrid ${referenceInfo.grid.join(' × ')} · ${selected} selected / ${total} positions\n${valid} admissible prepared references; target convergence remains to be measured.\nReference preparation: ${cfg.referencePreparation??'cpu'}. Initialization: ${cfg.initialization}.`;
+  if (cfg.spatialPropagationPasses) $('applied-solver-summary').textContent += `\nGPU seed propagation: ${cfg.spatialPropagationPasses} pass(es) per level, rejected points only.`;
   $('last-reference-summary').textContent='Awaiting a target field.';
   updateSolverSettingsStatus();
 }
@@ -874,7 +875,7 @@ $('large-shift-preset').onclick = () => {
   $('temporal-start').checked=false;$('fourier-start').checked=false;$('global-affine-start').checked=false;
   $('custom-solver').onchange();
 };
-for (const id of ['fourier-start','global-affine-start','global-affine-levels','overlap-pipeline','gpu-reference-preparation','custom-solver','motion-model','subset-size','subset-stride','interpolation','pyramid-levels','coarse-iterations','fine-iterations','outlier-policy','temporal-start']) $(id).onchange = () => {
+for (const id of ['fourier-start','global-affine-start','global-affine-levels','overlap-pipeline','gpu-reference-preparation','custom-solver','motion-model','subset-size','subset-stride','interpolation','spatial-propagation','pyramid-levels','coarse-iterations','fine-iterations','outlier-policy','temporal-start']) $(id).onchange = () => {
   $('solver-settings').disabled = !$('custom-solver').checked;
   $('temporal-start').disabled = !$('custom-solver').checked;
   $('global-affine-levels').disabled = !$('global-affine-start').checked;
