@@ -20,9 +20,11 @@ const MAPS = Object.fromEntries(Object.entries(ENCODED).map(([name, hex]) => {
   return [name, rgb];
 }));
 
+export const SEQUENTIAL_COLOUR_MAPS = Object.freeze(Object.keys(MAPS));
+
 export function sequentialColour(name, fraction) {
   const map = MAPS[name];
-  if (!map) throw new Error(`Unknown sequential colour map: ${name}`);
+  if (!Object.hasOwn(MAPS, name)) throw new Error(`Unknown sequential colour map: ${name}`);
   const index = Math.round(Math.max(0, Math.min(1, fraction)) * 255) * 3;
   return [map[index], map[index + 1], map[index + 2]];
 }

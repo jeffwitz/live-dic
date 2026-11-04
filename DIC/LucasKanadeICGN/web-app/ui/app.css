@@ -62,6 +62,10 @@ main { max-width: 1688px; padding: 22px 24px; margin: auto; }
 .legend-bar { height: 10px; width: 150px; max-width: 35vw; flex: 0 1 150px; border-radius: 3px; background: linear-gradient(90deg, #1f52cc, #fafafa, #d62e1f); }
 .legend.magnitude .legend-bar { background: linear-gradient(90deg, #fafafa, #d62e1f); }
 .legend.status .legend-bar { background: linear-gradient(90deg, #19a666 0 25%, #ff801a 25% 50%, #facf26 50% 75%, #cc1f29 75% 100%); }
+body[data-workspace-mode="live"] .legend-row > #low,
+body[data-workspace-mode="live"] .legend-row > #high { white-space:nowrap; }
+.live-colour-control { display:flex; flex:0 1 155px; min-width:110px; flex-direction:column; gap:3px; color:#50646d; font-size:10px; }
+.live-colour-control select { min-height:30px; width:100%; padding:4px 8px; font-size:11px; }
 .legend-controls { display: grid; flex: 0 1 480px; grid-template-columns: minmax(0, 1fr) 160px; grid-template-rows: auto auto; gap: 5px 8px; align-items: end; padding: 0 0 0 12px; border-top: 0; border-left: 1px solid #e6edef; }
 .legend-controls[hidden], .clim-controls[hidden] { display: none; }
 .legend-controls label { display: flex; min-width: 0; flex-direction: column; gap: 3px; color: #50646d; font-size: 10px; }
@@ -249,9 +253,9 @@ body[data-workspace-mode="analysis"] { --accent: #315f8d; }
 body[data-workspace-mode="analysis"] .metrics,
 body[data-workspace-mode="analysis"] #pipeline-timing,
 body[data-workspace-mode="analysis"] #live-monitor,
-body[data-workspace-mode="analysis"] .live-vector-key { display:none !important; }
+body[data-workspace-mode="analysis"] .live-vector-key,
+body[data-workspace-mode="analysis"] .live-colour-control { display:none !important; }
 body[data-workspace-mode="live"] #result-transport,
-body[data-workspace-mode="live"] .legend,
 body[data-workspace-mode="live"] #results-workbench,
 body[data-workspace-mode="live"] #review-controls { display:none !important; }
 body[data-workspace-mode="analysis"] #reset { display:none !important; }
@@ -262,4 +266,9 @@ body[data-workspace-mode="analysis"] #reset { display:none !important; }
   .workspace-mode-switch button { margin-left:0; flex:1; }
   header .active-session { order:4; flex:1 0 100%; justify-content:center; }
   header #help { order:5; margin-left:auto; }
+}
+
+@media(max-width:520px) {
+  .live-colour-control { flex-basis:110px; }
+  .live-colour-control:not([hidden]) + .gray-key { min-width:0; max-width:100px; }
 }

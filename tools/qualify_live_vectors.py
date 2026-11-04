@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import base64
 import json
 from pathlib import Path
 from urllib.parse import quote
 
+from qualify_browser_editor import protocol
 from qualify_local_sources import wait
 
 from lucas_kanade_icgn import ICGNWebGL
@@ -39,6 +41,14 @@ def qualify_renderer(browser):
       }
       const background=await draw({mode:8}),normal=await draw(),amplified=await draw({arrowGain:3});
       const outlined=await draw({vectorOutline:true});
+      const methods=['createBuffer','createTexture','createBindGroup','createRenderPipeline','createRenderPipelineAsync'];
+      const saved=methods.map(name=>[name,device[name]]);let lazyAllocations=0;
+      for(const[name,method]of saved)if(method)device[name]=(...args)=>{lazyAllocations++;return method.apply(device,args);};
+      const viridis=await draw({vectorColourMap:'viridis'});
+      const cividis=await draw({vectorColourMap:'cividis'});
+      const saturated=await draw({vectorColourMap:'viridis',scale:4});
+      for(const[name,method]of saved)if(method)device[name]=method;
+
       function bounds(data){let x0=128,y0=128,x1=-1,y1=-1,count=0;const colours=new Set();
         for(let y=0;y<128;y++)for(let x=0;x<128;x++){const i=(y*128+x)*4;
           if(data[i]!==background[i]||data[i+1]!==background[i+1]||data[i+2]!==background[i+2]){
@@ -59,7 +69,7 @@ def qualify_renderer(browser):
       await draw({mode:8,previewMaxWidth:64});const preview=[canvas.width,canvas.height];
       const report={adapter:{vendor:adapter.info.vendor,architecture:adapter.info.architecture,
           device:adapter.info.device,description:adapter.info.description},
-        errors,normal:a,amplified:b,outlined:outlinedBounds,blockCentre,sentinel,unchanged,
+        errors,normal:a,amplified:b,outlined:outlinedBounds,viridis:bounds(viridis),cividis:bounds(cividis),saturated:bounds(saturated),lazyAllocations,blockCentre,sentinel,unchanged,
         backgroundExact:background.every((v,i)=>v===pixels[i]),roiExcludedExact:excluded.every((v,i)=>v===background[i]),
         unavailable,zero,referenceOnly,referenceExact:referenceView.every((v,i)=>v===referencePixels[i]),preview,grid:field.grid};
       renderer.destroy();renderer.destroy();let closedRefused=false;
@@ -78,6 +88,11 @@ def qualify_renderer(browser):
     assert outlined["count"] > a["count"], result
     assert {"31,132,138", "6,6,6", "250,250,250"}.issubset(outlined["colours"]), result
     assert outlined["x1"] == a["x1"], result  # Same measured tip/length, added lateral contrast.
+    assert result["viridis"]["colours"] == ["33,145,140"], result
+    assert result["cividis"]["colours"] == ["125,124,120"], result
+    assert result["saturated"]["colours"] == ["253,231,37"], result
+    assert result["viridis"]["x1"] == result["saturated"]["x1"] == a["x1"], result
+    assert result["lazyAllocations"] == 0, result
     assert result["unchanged"] and result["roiExcludedExact"], result
     assert result["blockCentre"]["x0"] == 95 and result["blockCentre"]["x1"] == 102, result
     assert 93 <= result["blockCentre"]["y0"] <= result["blockCentre"]["y1"] <= 98, result
@@ -114,6 +129,9 @@ def main():
                 f"location.assign({json.dumps(f'http://127.0.0.1:{server.port}/{quote(site.name)}/?smoke=1&case=plate')});true"
             )
             wait(browser, "globalThis.liveDicStatus?.completed>=1")
+            browser._evaluate(
+                "document.querySelector('button[data-workspace-mode=live]').click();true"
+            )
             report = dict(
                 software=args.software,
                 renderer=qualify_renderer(browser),
@@ -142,6 +160,14 @@ def main():
                 )
                 path.write_bytes(base64.b64decode(data_url.split(",", 1)[1]))
                 previews.append(path.name)
+            report["uhd"]["palette"] = browser._evaluate("""(async()=>{
+              const control=document.getElementById('vector-colour-map');
+              if(!document.getElementById('live-colour-control').getClientRects().length)throw new Error('Hidden live colour control');
+              control.value='viridis';await control.onchange();
+              return {selected:control.value,gradient:document.querySelector('.legend-bar').style.background};
+            })()""")
+            assert report["uhd"]["palette"]["selected"] == "viridis"
+            assert "68, 1, 84" in report["uhd"]["palette"]["gradient"]
             assert browser._evaluate("liveDicStatus.completed") == completed_before
             assert (
                 browser._evaluate(
@@ -149,6 +175,53 @@ def main():
                 )
                 == reference_before
             )
+            report["layout"] = {}
+            for width, height in ((1280, 900), (390, 844)):
+                # Emulation belongs to this DevTools connection. Keep it open
+                # through layout evaluation and capture, then check the viewport.
+                replies = asyncio.run(
+                    protocol(
+                        browser,
+                        [
+                            (
+                                "Emulation.setDeviceMetricsOverride",
+                                dict(
+                                    width=width,
+                                    height=height,
+                                    deviceScaleFactor=1,
+                                    mobile=width < 500,
+                                ),
+                            ),
+                            (
+                                "Runtime.evaluate",
+                                dict(
+                                    expression="""(async()=>{
+                      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+                      document.querySelector('.legend').scrollIntoView({block:'start'});
+                      const control=document.getElementById('live-colour-control'),r=control.getBoundingClientRect();
+                      return {visible:control.getClientRects().length>0,left:r.left,right:r.right,viewport:innerWidth};
+                    })()""",
+                                    returnByValue=True,
+                                    awaitPromise=True,
+                                ),
+                            ),
+                            (
+                                "Page.captureScreenshot",
+                                dict(format="png", captureBeyondViewport=False),
+                            ),
+                        ],
+                    )
+                )
+                assert "exceptionDetails" not in replies[1], replies[1]
+                geometry = replies[1]["result"]["value"]
+                assert geometry["viewport"] == width, geometry
+                assert geometry["visible"] and geometry["left"] >= 0, geometry
+                assert geometry["right"] <= geometry["viewport"], geometry
+                shot = replies[2]
+                path = args.report.with_name(args.report.stem + f"-layout-{width}.png")
+                path.write_bytes(base64.b64decode(shot["data"]))
+                previews.append(path.name)
+                report["layout"][str(width)] = geometry
             report["previews"] = previews
             assert (
                 not report["uhd"]["keyHidden"] and "Tips mark current" in report["uhd"]["lengthKey"]

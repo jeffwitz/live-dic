@@ -65,7 +65,7 @@ class LiveVectorTests(unittest.TestCase):
           const automatic=vectorAppearance(result);
           const before=JSON.stringify(result),a=vectorAppearance(result,{{previewMaxWidth:1920,arrowStep:4}});
           const b=vectorAppearance(result,{{scale:10,arrowGain:3,arrowStep:8}});
-          const invalid=[{{arrowStep:0}},{{scale:0}},{{arrowGain:-1}}].map(options=>{{try{{vectorAppearance(result,options);return false;}}catch{{return true;}}}});
+          const invalid=[{{arrowStep:0}},{{scale:0}},{{arrowGain:-1}},{{vectorColourMap:'unknown'}}].map(options=>{{try{{vectorAppearance(result,options);return false;}}catch{{return true;}}}});
           console.log(JSON.stringify({{a,b,automatic,invalid,unchanged:JSON.stringify(result)===before,
             colours:[0,.5,1].map(vectorColour)}}));
         """
@@ -78,9 +78,27 @@ class LiveVectorTests(unittest.TestCase):
         self.assertEqual(value["b"]["gain"], 3)
         self.assertEqual(value["automatic"]["arrowStep"], 12)
         self.assertEqual(value["automatic"]["instances"], 240)
+        self.assertEqual(value["automatic"]["vectorColourMap"], "original")
         self.assertEqual(value["colours"], [[21, 57, 99], [31, 132, 138], [241, 206, 95]])
         self.assertTrue(value["unchanged"])
-        self.assertEqual(value["invalid"], [True] * 3)
+        self.assertEqual(value["invalid"], [True] * 4)
+
+    def test_named_vector_colours_reuse_the_legend_tables_and_reject_invalid_names(self):
+        script = f"""
+          import {{vectorColour,vectorMapColour,vectorGradient,VECTOR_COLOUR_MAPS}} from {json.dumps((APP / "render/vector-colours.js").as_uri())};
+          const legacy=[0,.5,1].map(vectorColour);
+          const invalid=['__proto__','constructor','unknown',null,2].map(name=>{{try{{vectorMapColour(name,.5);return false;}}catch{{return true;}}}});
+          const maps=Object.fromEntries(VECTOR_COLOUR_MAPS.map(name=>[name,[0,.5,1].map(value=>vectorMapColour(name,value))]));
+          const gradient=vectorGradient('viridis');
+          console.log(JSON.stringify({{legacy,invalid,maps,gradient,stable:gradient===vectorGradient('viridis')}}));
+        """
+        value = self.node(script)
+        self.assertEqual(value["legacy"], [[21, 57, 99], [31, 132, 138], [241, 206, 95]])
+        self.assertEqual(value["maps"]["original"], value["legacy"])
+        self.assertEqual(value["maps"]["viridis"], [[68, 1, 84], [33, 145, 140], [253, 231, 37]])
+        self.assertEqual(value["invalid"], [True] * 5)
+        self.assertTrue(value["stable"])
+        self.assertEqual(value["gradient"].count("rgb("), 256)
 
     def test_review_cache_reuses_arrays_but_not_a_changed_analysis(self):
         script = f"""

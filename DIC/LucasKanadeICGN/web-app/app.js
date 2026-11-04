@@ -1,6 +1,6 @@
 import { RecordingQueue } from './ui/recording-queue.js';
 import { supervisionOptions } from './ui/supervision.js';
-import { vectorColour } from './render/live-vectors.js';
+import { vectorGradient } from './render/vector-colours.js';
 import { parameterOrder, parameterUnits } from './ui/postprocess.js';
 import { decodeMaskImage, maskPng, maskThreshold } from './ui/mask-image.js';
 import { installWorkbench } from './ui/workbench.js';
@@ -102,6 +102,18 @@ const workspace = installWorkspace({ onModeChange: mode => {
   reference: () => { if (workspace.pane !== 'view' && !$('reference').disabled && !loadingSource) $('reference').click(); },
   clear: () => workbench.clearInspection(),
 } });
+function handleReviewMode(reviewing, restore) {
+  $('reference').hidden = reviewing;
+  $('input-field').hidden = reviewing || !viewingInput;
+  if (!reviewing) $('field').hidden = viewingInput;
+  if (restore && transport && referencePrepared) {
+    send('display', { display: displayOptions() }).catch(error => message(error.message, true));
+  }
+  $('run-state').textContent = reviewing ? 'Saved field · reference coordinates'
+    : source ? `${source} · ${paused ? 'paused' : 'running'}` : 'No source selected';
+  updateSessionIndicator();
+  queueMicrotask(updateVectorLengthLegend);
+}
 workbench = installWorkbench({
   captureCurrent: captureCurrentField,
   beforeProjectExport: async () => { pauseSource(); await drain(); $('pause').textContent='Start calculation'; },
@@ -116,7 +128,7 @@ workbench = installWorkbench({
     }
     return send('recording', { enabled }).catch(e => message(e.message, true));
   },
-  liveChanged: (reviewing,restore) => { $('reference').hidden=reviewing; $('input-field').hidden=reviewing||!viewingInput; if(!reviewing)$('field').hidden=viewingInput; if(restore && transport && referencePrepared) send('display',{display:displayOptions()}).catch(e=>message(e.message,true)); $('run-state').textContent = reviewing ? 'Saved field · reference coordinates' : source ? `${source} · ${paused ? 'paused' : 'running'}` : 'No source selected'; updateSessionIndicator(); },
+  liveChanged: handleReviewMode,
   openResults: () => { workspace.showMode('analysis'); workspace.showPane('view'); },
 });
 recordingQueue = new RecordingQueue({
@@ -155,14 +167,15 @@ function updateScale(scale) {
   if (!Number.isFinite(scale)) return;
   const legend=document.querySelector('.legend');legend.hidden=lastVectorLegend?.imageOnly??Number($('component').value)===8;
   legend.classList.remove('status');legend.classList.add('magnitude');
-  legend.querySelector('.legend-bar').style.background=`linear-gradient(90deg,${Array.from({length:11},(_,i)=>`rgb(${vectorColour(i/10).join(',')}) ${i*10}%`).join(',')})`;
+  legend.querySelector('.legend-bar').style.background=vectorGradient(lastVectorLegend?.vectorColourMap ?? 'original');
   $('low').textContent='0 px';$('high').textContent=`${scale.toPrecision(3)} px · |u|`;
   document.querySelector('.gray-key').textContent='Grey crosses: requested but unavailable. ROI holes have no vectors.';
   updateVectorLengthLegend();
 }
 function updateVectorLengthLegend(){
   const key=$('live-vector-key'),legend=lastVectorLegend;
-  key.hidden=workbench.reviewing||!legend||legend.imageOnly;
+  key.hidden=workbench.reviewing||viewingInput||!legend||legend.imageOnly;
+  $('live-colour-control').hidden=key.hidden;
   if(key.hidden)return;
   const factor=legend.gain*$('field').getBoundingClientRect().width/legend.imageWidth;
   if(!(factor>0))return;
@@ -560,7 +573,7 @@ async function startPlate() {
   await captureReference(reference);
   roi.reset(3840, 2160, platePreset()); appliedShapes = roi.shapes();
   workbench.setMask(roi.mask());workbench.setSourceReady(true);appliedEditorState=roi.state();updateSolverSettingsStatus();
-  $('component').value='2';$('scale').value='auto';$('arrow-gain').value='auto';$('opacity').value='1';
+  $('component').value='2';$('scale').value='auto';$('arrow-gain').value='auto';$('opacity').value='1';$('vector-colour-map').value='original';
   await send('display', { display: displayOptions() });
   await previewPlateTarget();
   // Show editable outer rectangle and circular hole on the fixed reference.
@@ -829,13 +842,14 @@ $('clear-roi').onclick = () => sourceChange(async () => { workbench.returnLive()
   invalidatePreparedReference(true);appliedEditorState=roi.state(); $('mask-import-summary').textContent='Full image · no imported base mask.'; $('pause').textContent = 'Start calculation'; details(); if (source === 'plate') await previewPlateTarget(); });
 function displayOptions() { return { mode: Number($('component').value), scale: $('scale').value === 'auto' ? null : Number($('scale').value),
   opacity: Number($('opacity').value), vectorOutline: $('vector-outline').checked,
+  vectorColourMap: $('vector-colour-map').value,
   arrowStep: $('arrow-step').value==='auto'?null:Number($('arrow-step').value), arrowGain: $('arrow-gain').value==='auto'?null:Number($('arrow-gain').value) }; }
 async function updateLiveDisplay() {
   if (!transport || !referenceInfo) return;
   try { await send('display', { display: displayOptions() }); }
   catch (error) { message(error.message, true); }
 }
-for (const id of ['component','scale','opacity','arrow-step','arrow-gain','vector-outline']) {
+for (const id of ['component','scale','opacity','arrow-step','arrow-gain','vector-outline','vector-colour-map']) {
   $(id).onchange = updateLiveDisplay;
 }
 function download(name, content, type) {

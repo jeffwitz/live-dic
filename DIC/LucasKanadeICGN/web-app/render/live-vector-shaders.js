@@ -21,11 +21,16 @@ export const LIVE_GLYPH_SHADER = `
       override OUTLINE_WIDTH:f32=0.0;
       struct Field { values:array<f32> }
       struct Config { width:u32,height:u32,gx:u32,gy:u32,stride:u32,parameters:u32,step:u32,gray:u32,
-        subset:f32,spacing:f32,maximum:f32,gain:f32,view_width:f32,view_height:f32,opacity:f32,padding:f32 }
+        subset:f32,spacing:f32,maximum:f32,gain:f32,view_width:f32,view_height:f32,opacity:f32,colour_map:f32 }
       @group(0) @binding(0) var<storage,read> field:Field;
       @group(0) @binding(2) var<uniform> config:Config;
+      @group(0) @binding(3) var palette:texture_2d<f32>;
       struct Vertex { @builtin(position) position:vec4<f32>, @location(0) colour:vec4<f32> }
       fn colour(norm:f32)->vec3<f32> {
+        if config.colour_map > 0.5 {
+          let index=i32(floor(clamp(norm/max(config.maximum,1e-8),0.0,1.0)*255.0+0.5));
+          return textureLoad(palette,vec2<i32>(index,0),0).rgb;
+        }
         let t=clamp(norm/max(config.maximum,1e-8),0.0,1.0)*2.0;
         let low=vec3<f32>(21,57,99)/255.0;let middle=vec3<f32>(31,132,138)/255.0;let high=vec3<f32>(241,206,95)/255.0;
         return select(mix(low,middle,t),mix(middle,high,t-1.0),t>=1.0);
