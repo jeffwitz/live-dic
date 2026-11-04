@@ -10,7 +10,6 @@ import hashlib
 import importlib.metadata
 import json
 import platform
-import shutil
 import subprocess
 import sys
 import time
@@ -20,7 +19,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from benchmark_spatial_chain import prepare_shared_variants, select_variant
+from benchmark_spatial_chain import power_context, prepare_shared_variants, select_variant
 from gpu_spatial_seed import GpuSpatialPyramid
 
 
@@ -118,19 +117,7 @@ def main():
         rssNote="Process RSS includes CPU/driver mappings, not physical/free VRAM. Only the last fields and a bounded timing batch are retained.",
         rawFormat=dict(dtype="<f8", columns=["pairElapsedMs", "controlMs", "candidateMs"]),
     )
-    for key, name in (
-        ("cpuGovernor", "scaling_governor"),
-        ("energyPerformancePreference", "energy_performance_preference"),
-    ):
-        setting = Path("/sys/devices/system/cpu/cpu0/cpufreq") / name
-        report[key] = setting.read_text().strip() if setting.exists() else None
-    profile_command = shutil.which("powerprofilesctl")
-    profile = (
-        subprocess.run([profile_command, "get"], capture_output=True, text=True)
-        if profile_command
-        else None
-    )
-    report["powerProfile"] = profile.stdout.strip() if profile and profile.returncode == 0 else None
+    report.update(power_context())
     atomic_json(args.output / "progress.json", report)
     engine = None
     pending = []

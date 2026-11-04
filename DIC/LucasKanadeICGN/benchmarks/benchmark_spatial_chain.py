@@ -6,6 +6,7 @@ import hashlib
 import importlib.metadata
 import json
 import platform
+import shutil
 import subprocess
 import sys
 import time
@@ -17,6 +18,30 @@ import numpy as np
 from PIL import Image
 
 from gpu_spatial_seed import GpuSpatialPyramid
+
+
+def power_context():
+    """Cold machine context; absent OS facilities remain explicitly unknown."""
+    context = {"powerContextCapturedUtc": datetime.now(UTC).isoformat()}
+    for key, name in (
+        ("cpuGovernor", "scaling_governor"),
+        ("energyPerformancePreference", "energy_performance_preference"),
+    ):
+        path = Path("/sys/devices/system/cpu/cpu0/cpufreq") / name
+        try:
+            context[key] = path.read_text().strip()
+        except OSError:
+            context[key] = None
+    command = shutil.which("powerprofilesctl")
+    context["powerProfile"] = None
+    if command:
+        try:
+            result = subprocess.run([command, "get"], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                context["powerProfile"] = result.stdout.strip()
+        except (OSError, subprocess.TimeoutExpired) as error:
+            context["powerProfileError"] = str(error)
+    return context
 
 
 def prepare_shared_variants(engine):
@@ -78,13 +103,14 @@ def main():
     args.output.mkdir(parents=True, exist_ok=False)
     project = Path(__file__).resolve().parents[1]
     root = project.parents[1]
-    paths = [project / "assets/uhd_tensile" / name for name in ("reference.png", "frame_040.png")]
+    names = ("reference.png",) if args.seeded_translation else ("reference.png", "frame_040.png")
+    paths = [project / "assets/uhd_tensile" / name for name in names]
     images = []
     for path in paths:
         with Image.open(path) as image:
             images.append(np.array(image))
     if args.seeded_translation:
-        images[1] = np.roll(images[0], (-6, 14), axis=(0, 1))
+        images.append(np.roll(images[0], (-6, 14), axis=(0, 1)))
     with (paths[0].parent / "machine_truth.csv").open() as stream:
         truth = next(row for row in csv.DictReader(stream) if int(row["frame"]) == 40)
     options = dict(
@@ -97,6 +123,7 @@ def main():
         tolerance_per_level=(0.005, 0.005),
     )
     report = dict(
+        **power_context(),
         createdUtc=datetime.now(UTC).isoformat(),
         command=[sys.executable, *sys.argv],
         sourceCommit=subprocess.check_output(
