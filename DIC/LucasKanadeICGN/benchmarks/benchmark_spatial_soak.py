@@ -46,7 +46,7 @@ def statistics(samples):
 
 
 def assert_field_parity(field, expected):
-    """Empty-work skipping changes no arithmetic, including rejected states."""
+    """Exact work/score reuse preserves arrays, including rejected states."""
     for name in ("parameters", "status", "iterations"):
         np.testing.assert_array_equal(getattr(field, name), getattr(expected, name))
 
@@ -64,6 +64,7 @@ def main():
     duration.add_argument("--duration-seconds", type=float)
     duration.add_argument("--until-utc", help="ISO-8601 UTC deadline, e.g. 2026-11-04T06:35:00Z")
     parser.add_argument("--checkpoint-pairs", type=int, default=1024)
+    parser.add_argument("--score-cache", action="store_true", help="Compare exact score reuse")
     args = parser.parse_args()
     seconds = args.duration_seconds
     if args.until_utc:
@@ -113,6 +114,7 @@ def main():
         checkpoints=[],
         boundary="resident NumPy target to materialized field/statistics; excludes decode, preparation, display, durable fields and diagnostic logging",
         schedule="One prepared hardware device, alternating per-frame AB/BA; control and candidate each have two failed-only passes",
+        comparison="score-cache" if args.score_cache else "empty-work",
         rssNote="Process RSS includes CPU/driver mappings, not physical/free VRAM. Only the last fields and a bounded timing batch are retained.",
         rawFormat=dict(dtype="<f8", columns=["pairElapsedMs", "controlMs", "candidateMs"]),
     )
@@ -140,19 +142,21 @@ def main():
             failed_only=True,
             passes=2,
             stop_when_unchanged=True,
+            cache_scores=args.score_cache,
             device_type="gpu",
             subset_size=32,
             subset_stride=16,
             tolerance_per_level=(0.005, 0.005),
         )
         engine.prepare_research(images[0])
-        prepare_shared_variants(engine)
+        if not args.score_cache:
+            prepare_shared_variants(engine)
         report["adapter"] = engine.adapter_info
         report["deviceLimits"] = dict(engine.device.limits)
         expected = None
         configurations = {}
         for variant in (False, True):
-            select_variant(engine, variant)
+            select_variant(engine, variant, score_cache=args.score_cache)
             for _ in range(16):
                 field = engine.register(images[1])
             configurations["candidate" if variant else "control"] = dict(field.config)
@@ -203,7 +207,7 @@ def main():
                 elapsed = (time.perf_counter() - start_measurement) * 1000
                 times = [0.0, 0.0]
                 for index in (0, 1) if report["pairs"] % 2 == 0 else (1, 0):
-                    select_variant(engine, bool(index))
+                    select_variant(engine, bool(index), score_cache=args.score_cache)
                     start = time.perf_counter()
                     field = engine.register(images[1])
                     times[index] = (time.perf_counter() - start) * 1000
