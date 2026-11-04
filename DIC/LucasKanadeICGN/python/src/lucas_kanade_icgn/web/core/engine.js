@@ -16,7 +16,7 @@ export class DICEngine {
   constructor(options = {}) {
     const supported = new Set(['device', 'width', 'height', 'subsetSize', 'subsetStride', 'motionModel',
       'interpolation', 'pyramidLevels', 'iterationsPerLevel', 'tolerancePerLevel', 'iterations', 'tolerance',
-      'znccMin', 'outlierPolicy', 'medianFilterSize', 'initialization', 'temporalPrediction', 'temporalFineCorrection',
+      'znccMin', 'outlierPolicy', 'medianFilterSize', 'medianFilterScope', 'initialization', 'temporalPrediction', 'temporalFineCorrection',
       'temporalMaxAge', 'divergencePatience', 'divergenceMinIterations', 'pipelineDepth', 'readback',
       'spatialWeighting', 'roiPolicy', 'roiTruncation', 'pyramidPolicy', 'solverWorkgroupSize',
       'referencePreparation', 'globalAffineLevels', 'spatialPropagationPasses']);
@@ -43,6 +43,13 @@ export class DICEngine {
     }
     if (options.medianFilterSize > 3 && options.outlierPolicy !== 'median') {
       throw new Error("medianFilterSize greater than 3 requires outlierPolicy='median'");
+    }
+    if (options.medianFilterScope !== undefined
+        && !['rejected', 'all'].includes(options.medianFilterScope)) {
+      throw new Error("medianFilterScope must be 'rejected' or 'all'");
+    }
+    if (options.medianFilterScope === 'all' && options.outlierPolicy !== 'median') {
+      throw new Error("medianFilterScope='all' requires outlierPolicy='median'");
     }
     if (options.globalAffineLevels !== undefined
         && (!Number.isInteger(options.globalAffineLevels)

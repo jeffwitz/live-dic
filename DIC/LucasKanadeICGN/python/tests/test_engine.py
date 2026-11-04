@@ -544,6 +544,18 @@ class RuntimeAssetTests(unittest.TestCase):
                 )
         with self.assertRaisesRegex(ValueError, "outlier_policy"):
             ICGNWebGL(outlier_policy="all")
+        engine = ICGNWebGL(
+            backend="webgpu-wgsl",
+            outlier_policy="median",
+            median_filter_scope="all",
+        )
+        self.assertEqual(engine.median_filter_scope, "all")
+        self.assertEqual(
+            engine._options(iterations=None, tolerance=None, zncc_min=None)["medianFilterScope"],
+            "all",
+        )
+        with self.assertRaisesRegex(ValueError, "requires backend='webgpu-wgsl'"):
+            ICGNWebGL(outlier_policy="median", median_filter_scope="all")
         self.assertIn("outlier_policy", inspect.signature(register_pair).parameters)
 
     def test_three_tsl_no_longer_exposes_a_webgl_fallback(self) -> None:

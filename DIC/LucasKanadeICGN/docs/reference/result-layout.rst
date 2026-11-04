@@ -125,14 +125,18 @@ denominators used for success rates. Undefined RMSE is ``None``. See
      - insufficient intensity norm or failed ZNCC
      - no
 
-``outlier_policy="median"`` applies only to subsets rejected by the current
+With the default ``median_filter_scope="rejected"``,
+``outlier_policy="median"`` repairs only subsets rejected by the current
 solve. It replaces their parameter slots with component medians from valid,
 permitted neighbours while preserving their status. At an intermediate
 pyramid level, the repaired state is made eligible as an initialization for
-the next finer level; the original coarse status remains rejected. A median
-estimate is never reported as an accepted measurement without a successful
-IC-GN solve. This solver-time recovery is separate from post-processing
-smoothing of a displayed or exported field.
+the next finer level; the original coarse status remains rejected. The opt-in
+``median_filter_scope="all"`` also median-smooths accepted parameter values
+after every level, without changing their solver statuses. Rejected estimates
+remain rejected in either scope until a later IC-GN solve accepts them. See
+:doc:`../explanation/displacement-outliers` for the distinction between
+recovery and smoothing. This solver-time processing is separate from
+post-processing a displayed or exported field.
 
 Iteration field
 ---------------

@@ -173,7 +173,11 @@ The original CPU propagation experiment explicitly disabled all median passes.
 It did not establish that median filtering is ineffective in a pyramid.
 The GPU controls now distinguish three operations:
 
-* ``median`` repairs only rejected coarse subsets from accepted neighbours.
+* ``median`` repairs rejected coarse subsets from accepted neighbours; with
+  the default rejected-only scope, accepted subsets pass through unchanged.
+  The separate ``median_filter_scope="all"`` option smooths accepted
+  coefficients at each level as well and can blur spatial detail; it does not
+  change the failed-subset seed rule below.
   The failed target is excluded from the stencil; at least four neighbours
   are required. A private marker makes a repaired coarse state seed-eligible,
   while its raw coarse status and iteration count remain unchanged. The final

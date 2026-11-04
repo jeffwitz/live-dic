@@ -74,6 +74,9 @@ override OUTLIER_POLICY: u32 = 1u;
 // Odd square neighbourhood width in subset-grid cells. UOD keeps its 3x3
 // neighbourhood; this override changes only the explicit median policy.
 override MEDIAN_FILTER_SIZE: u32 = 3u;
+// 0 repairs rejected subsets only; 1 also smooths accepted subsets at each
+// pyramid level before their state is transferred to the next finer level.
+override MEDIAN_FILTER_SCOPE: u32 = 0u;
 // Square subset width. The portable hosts specialize any integer width from
 // 4 to 64 while preserving 16 as the default pipeline constant. Pixel work is
 // distributed over SOLVER_WORKGROUP_SIZE lanes.
@@ -1186,7 +1189,11 @@ fn recentered_component(subset_index: u32, component: u32, offset_x: f32, offset
     }
 }
 
-fn median_repair_failed(subset_index: u32, median_seed_available: bool) {
+fn median_filter_motion_state(
+    subset_index: u32,
+    median_seed_available: bool,
+    smooth_accepted: bool,
+) {
     let stride = state_vec4_stride();
     let state_index = subset_index * stride;
     let own_a = state.values[state_index];
@@ -1205,7 +1212,8 @@ fn median_repair_failed(subset_index: u32, median_seed_available: bool) {
         own_status = own_d.x;
     }
     let reference_status = metadata_value(subset_index, 1u);
-    if own_status >= 0.5 || (reference_status < 0.5 && reference_status != -4.0) {
+    if (own_status >= 0.5 && !smooth_accepted)
+        || (reference_status < 0.5 && reference_status != -4.0) {
         return;
     }
 
@@ -1236,6 +1244,10 @@ fn median_repair_failed(subset_index: u32, median_seed_available: bool) {
         let component = component_order[active_index];
         var values: array<f32, 81>;
         var count = 0u;
+        if own_status >= 0.5 {
+            values[count] = recentered_component(subset_index, component, 0.0, 0.0);
+            count += 1u;
+        }
         for (var dy = -radius; dy <= radius; dy += 1i) {
             for (var dx = -radius; dx <= radius; dx += 1i) {
                 if dx == 0i && dy == 0i {
@@ -1293,11 +1305,13 @@ fn median_repair_failed(subset_index: u32, median_seed_available: bool) {
             filtered[8], filtered[9], filtered[10], filtered[11],
         );
         filtered_state.values[state_index + 3u] = vec4<f32>(
-            select(own_d.x, 0.0, median_seed_available), own_d.y, own_d.z, own_d.w,
+            select(own_d.x, 0.0, median_seed_available && own_status < 0.5),
+            own_d.y, own_d.z, own_d.w,
         );
     } else {
         filtered_state.values[state_index + 1u] = vec4<f32>(
-            filtered[4], filtered[5], select(own_b.z, 0.0, median_seed_available), own_b.w,
+            filtered[4], filtered[5],
+            select(own_b.z, 0.0, median_seed_available && own_status < 0.5), own_b.w,
         );
     }
 }
@@ -1307,7 +1321,11 @@ fn median_filter_impl(subset_index: u32, median_seed_available: bool) {
         return;
     }
     if OUTLIER_POLICY == 3u {
-        median_repair_failed(subset_index, median_seed_available);
+        median_filter_motion_state(
+            subset_index,
+            median_seed_available,
+            MEDIAN_FILTER_SCOPE != 0u,
+        );
         return;
     }
     let stride = state_vec4_stride();

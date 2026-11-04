@@ -80,8 +80,15 @@ as a successful measurement.
 in subset-grid cells. The default remains 3. Values above 3 require the
 ``median`` policy; the Python Chromium wrapper requires
 ``backend="webgpu-wgsl"`` for these larger sizes. Three.js retains a separate
-legacy 3 by 3 post-pass and does not implement pyramid seed repair. See
-:doc:`../explanation/displacement-outliers` for the equations, validation
+legacy 3 by 3 post-pass and does not implement pyramid seed repair.
+``ICGNWGPU``, ``ICGNWGPUFullPyramid``, and raw ``webgpu-wgsl`` additionally
+accept ``median_filter_scope="rejected"`` (default) or ``"all"``. The latter
+requires ``outlier_policy="median"`` and median-smooths accepted parameters
+after each pyramid level, coarsest to finest, while still repairing rejected
+subsets. The workbench exposes the same choice in Solve. This is explicit
+field smoothing and can blur localized features; it is not enabled by default.
+See :doc:`../how-to/smooth-median-each-pyramid-level` and
+:doc:`../explanation/displacement-outliers` for the behaviour, validation
 contracts, and limits.
 
 Native shared-WGSL engines accept every integer ``subset_size`` from 4 through

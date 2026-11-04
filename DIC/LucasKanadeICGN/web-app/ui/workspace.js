@@ -65,8 +65,10 @@ export function installWorkspace({ shortcuts, onPane = () => {}, onModeChange = 
   document.getElementById('help').onclick = () => document.getElementById('quick-guide').showModal();
   const outlierPolicy = document.getElementById('outlier-policy');
   const medianSize = document.getElementById('median-filter-size');
+  const medianScope = document.getElementById('median-filter-scope');
   const updateMedianSizeAvailability = () => {
     medianSize.disabled = outlierPolicy.value !== 'median';
+    if (medianScope) medianScope.disabled = outlierPolicy.value !== 'median';
   };
   outlierPolicy.addEventListener('change', updateMedianSizeAvailability);
   updateMedianSizeAvailability();
@@ -117,7 +119,10 @@ export function solverOptions(mode = document.body?.dataset.workspaceMode ?? 'an
   const outlierPolicy = get('outlier-policy').value;
   const medianFilterSize = outlierPolicy === 'median'
     ? Number(get('median-filter-size')?.value ?? 3) : 3;
+  const medianFilterScope = outlierPolicy === 'median'
+    ? (get('median-filter-scope')?.value ?? 'rejected') : 'rejected';
   if (![3, 5, 7, 9].includes(medianFilterSize)) throw new Error('Median neighbourhood must be 3, 5, 7, or 9 subsets');
+  if (!['rejected', 'all'].includes(medianFilterScope)) throw new Error('Median application must be rejected-only or all-subsets');
   const propagationSetting = get('spatial-propagation')?.value ?? 'auto';
   const propagationCompatible = ['translation', 'affine'].includes(get('motion-model').value)
     && get('interpolation').value === 'bspline' && base.referencePreparation !== 'gpu';
@@ -132,7 +137,7 @@ export function solverOptions(mode = document.body?.dataset.workspaceMode ?? 'an
   }
   return { ...base, subsetSize: size, subsetStride: stride, motionModel: get('motion-model').value,
     ...(spatialPropagationPasses ? { spatialPropagationPasses } : {}),
-    interpolation: get('interpolation').value, outlierPolicy, medianFilterSize,
+    interpolation: get('interpolation').value, outlierPolicy, medianFilterSize, medianFilterScope,
     pyramidLevels: levels, iterationsPerLevel: levels === 1 ? [fine] : [coarse, ...(levels === 3 ? [4] : Array(Math.max(0, levels - 2)).fill(8)), fine],
     initialization: fourier ? 'fourier' : globalAffine ? 'global-affine' : temporal ? 'temporal' : 'zero', temporalPrediction: temporal ? 'velocity' : 'none',
     temporalFineCorrection: temporal && levels === 2, divergencePatience: temporal ? 3 : null };

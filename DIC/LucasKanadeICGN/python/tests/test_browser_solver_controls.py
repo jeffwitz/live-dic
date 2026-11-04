@@ -182,20 +182,25 @@ class SolverControlTests(unittest.TestCase):
         script = f"""
           import {{solverOptions,solverPreparationKey}} from {json.dumps(ui.as_uri())};
           import {{DICEngine}} from {json.dumps(core.as_uri())};
-          const values={{'custom-solver':{{checked:true}},'subset-size':{{value:'16'}},'subset-stride':{{value:'16'}},'median-filter-size':{{value:'5'}},'pyramid-levels':{{value:'2'}},'coarse-iterations':{{value:'8'}},'fine-iterations':{{value:'16'}},'temporal-start':{{checked:false}},'motion-model':{{value:'affine'}},interpolation:{{value:'bspline'}},'outlier-policy':{{value:'median'}}}};
+          const values={{'custom-solver':{{checked:true}},'subset-size':{{value:'16'}},'subset-stride':{{value:'16'}},'median-filter-size':{{value:'5'}},'median-filter-scope':{{value:'rejected'}},'pyramid-levels':{{value:'2'}},'coarse-iterations':{{value:'8'}},'fine-iterations':{{value:'16'}},'temporal-start':{{checked:false}},'motion-model':{{value:'affine'}},interpolation:{{value:'bspline'}},'outlier-policy':{{value:'median'}}}};
           globalThis.document={{getElementById:id=>values[id]}};
           const options=solverOptions();const {{profile,...coreOptions}}=options;const engine=new DICEngine({{...coreOptions,width:128,height:128}});engine.destroy();
           values['median-filter-size'].value='9';const larger=solverOptions();
+          values['median-filter-scope'].value='all';const allScope=solverOptions();
           values['outlier-policy'].value='replace';const unsmoothed=solverOptions();
-          console.log(JSON.stringify({{options,larger,unsmoothed,cold:solverPreparationKey(options)!==solverPreparationKey(larger)}}));
+          console.log(JSON.stringify({{options,larger,allScope,unsmoothed,cold:solverPreparationKey(options)!==solverPreparationKey(larger),scopeCold:solverPreparationKey(larger)!==solverPreparationKey(allScope)}}));
         """
         actual = json.loads(
             subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
         )
         self.assertEqual(actual["options"]["medianFilterSize"], 5)
+        self.assertEqual(actual["options"]["medianFilterScope"], "rejected")
         self.assertEqual(actual["larger"]["medianFilterSize"], 9)
+        self.assertEqual(actual["allScope"]["medianFilterScope"], "all")
         self.assertEqual(actual["unsmoothed"]["medianFilterSize"], 3)
+        self.assertEqual(actual["unsmoothed"]["medianFilterScope"], "rejected")
         self.assertTrue(actual["cold"])
+        self.assertTrue(actual["scopeCold"])
 
     def test_workspace_modes_preserve_the_current_pane_and_toggle_mode_content(self):
         ui = ROOT / "web-app/ui/workspace.js"

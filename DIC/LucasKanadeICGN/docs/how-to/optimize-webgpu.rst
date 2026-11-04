@@ -205,13 +205,15 @@ Workgroup barriers cannot provide the global synchronization required to
 combine them into a single arbitrary shader. GPU residency is achieved by
 retaining the intermediate resources between passes.
 
-The median repair reads the raw solve state and writes a separate filtered
-state. It changes only rejected subsets, using valid permitted neighbours;
-accepted subsets pass through unchanged. At coarse pyramid levels the seed
-entry point makes repaired values transferable while keeping the original
-rejected status for diagnostics. Overwriting records while reading neighbours
-would make the answer depend on execution order. Distinct input/output
-resources give a defined operation.
+The default rejected-only median scope reads the raw solve state and writes a
+separate filtered state. It repairs failed subsets from valid permitted
+neighbours; accepted subsets pass through unchanged. An opt-in all-subset
+scope also smooths accepted parameters after every pyramid level, using the
+same distinct input/output resources. At coarse pyramid levels the seed entry
+point makes repaired values transferable while keeping the original rejected
+status for diagnostics. Overwriting records while reading neighbours would
+make the answer depend on execution order. Distinct input/output resources
+give a defined operation.
 
 Treat precision and numerical shortcuts as experiments
 ------------------------------------------------------

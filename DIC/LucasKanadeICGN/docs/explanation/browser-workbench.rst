@@ -129,9 +129,11 @@ Numerical analysis module
 
 ``web-app/ui/postprocess.js`` operates on a materialized field. It never changes
 the engine parameters, statuses or iterations. "Computed" means exactly the
-solver output. With the median solver policy, accepted states are unchanged
-and rejected parameter slots may contain a neighbour-based repair; their
-solver status still marks them unavailable.
+solver output. With the default rejected-only median scope, accepted states
+are unchanged and rejected parameter slots may contain a neighbour-based
+repair; their solver status still marks them unavailable. The opt-in all-scope
+mode smooths accepted parameters during solving and records that choice in
+result configuration.
 
 Displacement median/Gaussian smoothing is a separate, optional operation. Its
 odd 3/5/7/9 window is in grid points. Gaussian sigma is half the window radius,

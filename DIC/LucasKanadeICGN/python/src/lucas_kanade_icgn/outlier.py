@@ -16,6 +16,9 @@ OUTLIER_POLICY_PIPELINE_CONSTANTS: Final = {
 _POLICY_ERROR = "outlier_policy must be 'replace', 'flag', 'disabled', or 'median'"
 MEDIAN_FILTER_SIZES: Final = (3, 5, 7, 9)
 _MEDIAN_SIZE_ERROR = "median_filter_size must be one of 3, 5, 7, or 9 subsets"
+MEDIAN_FILTER_SCOPES: Final = ("rejected", "all")
+MEDIAN_FILTER_SCOPE_PIPELINE_CONSTANTS: Final = {"rejected": 0, "all": 1}
+_MEDIAN_SCOPE_ERROR = "median_filter_scope must be 'rejected' or 'all'"
 
 
 def normalize_outlier_policy(value: str) -> str:
@@ -39,3 +42,14 @@ def normalize_median_filter_size(value: int) -> int:
     if isinstance(value, bool) or size not in MEDIAN_FILTER_SIZES:
         raise ValueError(_MEDIAN_SIZE_ERROR)
     return size
+
+
+def normalize_median_filter_scope(value: str) -> str:
+    """Validate whether median processing targets rejected or all subsets."""
+
+    if not isinstance(value, str):
+        raise ValueError(_MEDIAN_SCOPE_ERROR)
+    normalized = value.strip().lower()
+    if normalized not in MEDIAN_FILTER_SCOPES:
+        raise ValueError(_MEDIAN_SCOPE_ERROR)
+    return normalized

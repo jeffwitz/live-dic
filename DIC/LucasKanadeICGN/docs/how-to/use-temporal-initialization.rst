@@ -197,9 +197,12 @@ resets it. Reset is harmless before preparation or in zero mode.
 Spatial policies and diagnostics
 ------------------------------------------------------------
 
-The temporal history stores accepted solver states for ``median``, ``flag`` and
-``disabled``. A median repair at an intermediate pyramid level is only an
-intra-frame seed; it enters temporal history only if a finer solve accepts it.
+The temporal history stores accepted states for ``median``, ``flag`` and
+``disabled``. With the default rejected-only median scope, accepted solver
+states pass through unchanged; the opt-in all-subset scope stores the accepted
+state after median smoothing. A median repair at an intermediate pyramid level
+is only an intra-frame seed; it enters temporal history only if a finer solve
+accepts it.
 With ``replace``, history uses the final UOD-corrected accepted state. A
 rejected final state is not made into temporal history merely because a
 coarse-scale seed repair supplied coefficients.

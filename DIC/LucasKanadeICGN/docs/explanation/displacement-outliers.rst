@@ -5,9 +5,11 @@ live-dic provides one deliberately narrow spatial robustness check: a universal
 outlier detection (UOD) test on the two displacement components.  It is a
 guard against subsets that converge into a wrong correlation basin.  It is
 not a denoising filter for affine gradients or quadratic curvatures. A
-separate ``median`` policy can fill rejected subsets with a neighbour-based
+separate ``median`` policy repairs rejected subsets with a neighbour-based
 estimate so a coarse pyramid level can offer it as a seed to the next finer
-solve. It does not smooth accepted measurements.
+solve. By default, accepted measurements are unchanged. Shared-WGSL engines
+also provide an explicit all-subset scope that smooths accepted parameters at
+every pyramid level; this is a smoothing choice, not an outlier detector.
 
 For diagrams comparing measurement smoothing, coarse median seeds and
 photometrically tested propagation, see :doc:`../reference/propagation`.
@@ -22,8 +24,12 @@ The policy is selected when the engine is created:
 
 ``replace`` is the default. ``flag`` preserves the raw solver coefficients,
 ``disabled`` omits the UOD post-pass, and ``median`` repairs rejected subsets
-from valid neighbours. The median width defaults to a 3 by 3 subset-grid
-stencil; shared-WGSL engines also accept 5 by 5, 7 by 7, and 9 by 9.
+from valid neighbours. ``median_filter_scope="rejected"`` is the default and
+preserves accepted subsets. Shared-WGSL engines also accept
+``median_filter_scope="all"`` to median-smooth accepted parameters after each
+level, from coarse to fine, while still repairing rejected subsets as seeds.
+The median width defaults to a 3 by 3 subset-grid stencil; shared-WGSL engines
+also accept 5 by 5, 7 by 7, and 9 by 9.
 
 Detection rule
 --------------
@@ -107,9 +113,35 @@ level, repaired coefficients can be inspected, but the original non-accepted
 status is retained: this repair does not claim that the point converged or
 re-evaluate ZNCC.
 
-Accepted subsets are copied through unchanged. This is not median smoothing of
-the field. The Results workbench has a separate, explicit post-processing
-recipe for spatially smoothing saved displacements.
+With the default rejected-only scope, accepted subsets are copied through
+unchanged. This is not median smoothing of the field. The Results workbench has
+a separate, explicit post-processing recipe for spatially smoothing saved
+displacements.
+
+All-subset median smoothing
+---------------------------
+
+Set ``median_filter_scope="all"`` on ``ICGNWGPU`` or
+``ICGNWGPUFullPyramid`` together with ``outlier_policy="median"``. The raw
+``webgpu-wgsl`` engine accepts the corresponding ``medianFilterScope: "all"``
+option, and the Analysis/Solve workbench exposes the same choice. The default
+``"rejected"`` scope leaves the established recovery behaviour unchanged.
+
+With ``"all"``, each accepted subset includes its own state and eligible
+neighbours in the configured stencil. Neighbour parameters are recentered at
+the target subset before each active motion coefficient is medianed. The
+filtered state is prepared after the solve at every level, beginning at the
+coarsest; that state is used to seed the next finer level. Accepted solver
+statuses are preserved. Rejected subsets continue to use the existing repair
+path and remain rejected until a later IC-GN solve accepts them.
+
+This mode can smooth affine gradients and quadratic curvatures as well as
+translations. It can erase a localized displacement or derivative feature and
+can bias a field near discontinuities. It also increases work with the selected
+stencil width. Treat the resulting coefficients as an explicitly smoothed
+field, not as raw independent subset measurements. Three.js does not implement
+this scope; requesting it through the Python browser wrapper requires
+``backend="webgpu-wgsl"``.
 
 The configured stencil is measured in subset-grid cells. A 9 by 9 stencil
 contains at most 80 neighbours for a failed centre. Stencils at image or ROI
@@ -134,6 +166,9 @@ benchmark would confound:
   neighbours for translation, affine, and quadratic states, leave accepted
   neighbours unchanged, preserve final failure status, avoid ROI-excluded
   targets, and make a repaired coarse estimate eligible for seed transfer.
+* the opt-in all-subset scope must smooth accepted states for translation,
+  affine, and quadratic models while preserving solver statuses and continuing
+  to repair failed states.
 
 These are behavioural guards, not a full metrological qualification.  Real
 camera noise, texture variation, discontinuities, and multiple GPU vendors
@@ -149,12 +184,12 @@ analytic fields was therefore ordinary median smoothing, not demonstrated
 outlier robustness.  It also erased a localized one-subset-wide deformation
 band and could degrade gradients through quadratic recentering.
 
-That coefficient-wise smoothing behavior is no longer the solver-time
-``median`` policy. The current policy uses a median only to initialize a
-rejected point at the next pyramid scale; it never changes accepted states.
-For derivative smoothing, use the Results workbench's explicit saved-field
-recipe or a NumPy post-processing operation with a documented kernel and
-transfer function.
+That experiment did not qualify median smoothing as a robust detector. The
+solver-time ``median`` policy therefore defaults to rejected-only repair. The
+new ``median_filter_scope="all"`` is an explicit smoothing option: it changes
+accepted states at each pyramid scale and must be evaluated for spatial bias
+and feature preservation. For display-only smoothing after a solve, use the
+Results workbench's saved-field recipe instead.
 
 A future all-coefficient detector would need coefficient-specific uncertainty
 floors, for example
@@ -166,5 +201,5 @@ floors, for example
 and qualification of false-positive rate, injected-outlier detection, and
 localized-feature bias. This future detector could use the neighbourhood
 estimate with ``retry_seeded`` and accept the rerun according to its
-correlation score. The current median seed repair is limited to subsets already
-rejected by the solver and relies on the next pyramid level to retry them.
+correlation score. Rejected-only repair remains the default; all-subset
+smoothing is an explicit, separately qualified scope.

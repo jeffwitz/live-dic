@@ -31,7 +31,9 @@ from .motion import (
     state_float_count,
 )
 from .outlier import (
+    MEDIAN_FILTER_SCOPE_PIPELINE_CONSTANTS,
     OUTLIER_POLICY_PIPELINE_CONSTANTS,
+    normalize_median_filter_scope,
     normalize_median_filter_size,
     normalize_outlier_policy,
 )
@@ -842,6 +844,7 @@ class ICGNWGPU:
         motion_model: str = "affine",
         outlier_policy: str = "replace",
         median_filter_size: int = 3,
+        median_filter_scope: str = "rejected",
         subset_size: int = DEFAULT_SUBSET_SIZE,
         subset_stride: int | None = None,
         spatial_weighting: str = "uniform",
@@ -854,6 +857,9 @@ class ICGNWGPU:
         self.motion_model = normalize_motion_model(motion_model)
         self.outlier_policy = normalize_outlier_policy(outlier_policy)
         self.median_filter_size = normalize_median_filter_size(median_filter_size)
+        self.median_filter_scope = normalize_median_filter_scope(median_filter_scope)
+        if self.median_filter_scope == "all" and self.outlier_policy != "median":
+            raise ValueError("median_filter_scope='all' requires outlier_policy='median'")
         if self.median_filter_size > 3 and self.outlier_policy != "median":
             raise ValueError("median_filter_size > 3 requires outlier_policy='median'")
         self._compiled_median_filter_size = (
@@ -1062,6 +1068,9 @@ class ICGNWGPU:
                     "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
                     "OUTLIER_POLICY": OUTLIER_POLICY_PIPELINE_CONSTANTS[self.outlier_policy],
                     "MEDIAN_FILTER_SIZE": self._compiled_median_filter_size,
+                    "MEDIAN_FILTER_SCOPE": MEDIAN_FILTER_SCOPE_PIPELINE_CONSTANTS[
+                        self.median_filter_scope
+                    ],
                     "SUBSET_SIZE": self.subset_size,
                     "SUBSET_STRIDE": self.subset_stride,
                 },
@@ -1078,6 +1087,9 @@ class ICGNWGPU:
                         "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
                         "OUTLIER_POLICY": OUTLIER_POLICY_PIPELINE_CONSTANTS[self.outlier_policy],
                         "MEDIAN_FILTER_SIZE": self._compiled_median_filter_size,
+                        "MEDIAN_FILTER_SCOPE": MEDIAN_FILTER_SCOPE_PIPELINE_CONSTANTS[
+                            self.median_filter_scope
+                        ],
                         "SUBSET_SIZE": self.subset_size,
                         "SUBSET_STRIDE": self.subset_stride,
                     },
@@ -1154,6 +1166,7 @@ class ICGNWGPU:
         level.motion_model = getattr(self, "motion_model", "affine")
         level.outlier_policy = getattr(self, "outlier_policy", "replace")
         level.median_filter_size = getattr(self, "median_filter_size", 3)
+        level.median_filter_scope = getattr(self, "median_filter_scope", "rejected")
         level._compiled_median_filter_size = getattr(self, "_compiled_median_filter_size", 3)
         level.subset_size = self.subset_size
         level.subset_stride = getattr(self, "subset_stride", self.subset_size)
@@ -2107,6 +2120,7 @@ class ICGNWGPU:
                 "motionModel": getattr(self, "motion_model", "affine"),
                 "outlierPolicy": getattr(self, "outlier_policy", "replace"),
                 "medianFilterSize": getattr(self, "median_filter_size", 3),
+                "medianFilterScope": getattr(self, "median_filter_scope", "rejected"),
                 "subsetStride": self.subset_stride,
                 "spatialWeighting": getattr(self, "spatial_weighting", "uniform"),
                 "solverWorkgroupSize": getattr(self, "solver_workgroup_size", 16),
@@ -2408,6 +2422,9 @@ class ICGNWGPU:
                         "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
                         "OUTLIER_POLICY": OUTLIER_POLICY_PIPELINE_CONSTANTS[self.outlier_policy],
                         "MEDIAN_FILTER_SIZE": self._compiled_median_filter_size,
+                        "MEDIAN_FILTER_SCOPE": MEDIAN_FILTER_SCOPE_PIPELINE_CONSTANTS[
+                            self.median_filter_scope
+                        ],
                         "SUBSET_SIZE": self.subset_size,
                         "SUBSET_STRIDE": subset_stride,
                         "ROI_ENABLED": 1,
@@ -2427,6 +2444,9 @@ class ICGNWGPU:
                                 self.outlier_policy
                             ],
                             "MEDIAN_FILTER_SIZE": self._compiled_median_filter_size,
+                            "MEDIAN_FILTER_SCOPE": MEDIAN_FILTER_SCOPE_PIPELINE_CONSTANTS[
+                                self.median_filter_scope
+                            ],
                             "SUBSET_SIZE": self.subset_size,
                             "SUBSET_STRIDE": subset_stride,
                             "ROI_ENABLED": 1,
@@ -2461,6 +2481,7 @@ class ICGNWGPU:
                 "motionModel": getattr(self, "motion_model", "affine"),
                 "outlierPolicy": getattr(self, "outlier_policy", "replace"),
                 "medianFilterSize": getattr(self, "median_filter_size", 3),
+                "medianFilterScope": getattr(self, "median_filter_scope", "rejected"),
                 "subsetStride": subset_stride,
                 "spatialWeighting": getattr(self, "spatial_weighting", "uniform"),
                 "solverWorkgroupSize": getattr(self, "solver_workgroup_size", 16),
@@ -2570,6 +2591,7 @@ class ICGNWGPU:
                 "motionModel": getattr(self, "motion_model", "affine"),
                 "outlierPolicy": getattr(self, "outlier_policy", "replace"),
                 "medianFilterSize": getattr(self, "median_filter_size", 3),
+                "medianFilterScope": getattr(self, "median_filter_scope", "rejected"),
                 "subsetStride": subset_stride,
                 "spatialWeighting": getattr(self, "spatial_weighting", "uniform"),
                 "solverWorkgroupSize": getattr(self, "solver_workgroup_size", 16),

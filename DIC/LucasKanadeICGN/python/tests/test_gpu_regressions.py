@@ -516,6 +516,24 @@ class GPURegressionTests(unittest.TestCase):
                 finally:
                     engine.close()
 
+    def test_full_pyramid_median_all_scope_preserves_fractional_translation(self) -> None:
+        truth = (0.5, -0.375)
+        reference, target = _fractional_pair(256, 256, truth)
+        engine = ICGNWGPUFullPyramid(
+            motion_model="translation",
+            pyramid_levels=2,
+            outlier_policy="median",
+            median_filter_scope="all",
+        )
+        try:
+            engine.set_reference(reference)
+            result = engine.register(target)
+            self.assertEqual(result.config["medianFilterScope"], "all")
+            self.assertGreater(result.accepted, 180)
+            self.assertLess(result.rmse(truth), 0.03)
+        finally:
+            engine.close()
+
     def test_configurable_subset_sizes_run_the_full_pyramid(self) -> None:
         truth = (0.5, -0.375)
         reference, target = _fractional_pair(256, 256, truth)
@@ -825,6 +843,7 @@ class GPURegressionTests(unittest.TestCase):
         outlier_policy: str,
         state: np.ndarray,
         median_filter_size: int = 3,
+        median_filter_scope: str = "rejected",
         subset_size: int = 16,
         subset_stride: int = 16,
         roi_mask: np.ndarray | None = None,
@@ -841,6 +860,7 @@ class GPURegressionTests(unittest.TestCase):
             motion_model=motion_model,
             outlier_policy=outlier_policy,
             median_filter_size=median_filter_size,
+            median_filter_scope=median_filter_scope,
             subset_size=subset_size,
             subset_stride=subset_stride,
             prefer_subgroups=False,
@@ -1013,6 +1033,35 @@ class GPURegressionTests(unittest.TestCase):
         accepted = np.ones(9, dtype=bool)
         accepted[4] = False
         np.testing.assert_array_equal(actual[accepted], original[accepted])
+
+    def test_median_all_scope_smooths_accepted_subsets_without_changing_status(self) -> None:
+        for motion_model, state_width, active_components, status_index in (
+            ("translation", 8, (0, 3), 6),
+            ("affine", 8, tuple(range(6)), 6),
+            ("quadratic", 16, tuple(range(12)), 12),
+        ):
+            with self.subTest(motion_model=motion_model):
+                state = np.zeros((9, state_width), dtype=np.float32)
+                state[:, status_index] = 1.0
+                state[:, status_index + 1] = 4.0
+                state[4, list(active_components)] = np.float32(999.0)
+                original = state.copy()
+                actual = self._filter_injected_state(
+                    motion_model=motion_model,
+                    outlier_policy="median",
+                    median_filter_scope="all",
+                    state=state,
+                )
+
+                np.testing.assert_array_equal(
+                    actual[4, list(active_components)],
+                    np.zeros(len(active_components), dtype=np.float32),
+                )
+                self.assertEqual(actual[4, status_index], 1.0)
+                self.assertEqual(actual[4, status_index + 1], 4.0)
+                np.testing.assert_array_equal(actual[:4], original[:4])
+                np.testing.assert_array_equal(actual[5:], original[5:])
+                np.testing.assert_array_equal(state, original)
 
     def test_median_does_not_fill_roi_excluded_subsets(self) -> None:
         state = np.zeros((9, 8), dtype=np.float32)

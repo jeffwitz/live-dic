@@ -29,7 +29,11 @@ from .motion import (
     parameter_count,
     state_float_count,
 )
-from .outlier import normalize_median_filter_size, normalize_outlier_policy
+from .outlier import (
+    normalize_median_filter_scope,
+    normalize_median_filter_size,
+    normalize_outlier_policy,
+)
 from .roi import reduce_mask, seed_permissions, validate_roi
 from .subset import DEFAULT_SUBSET_SIZE, normalize_subset_size, normalize_subset_stride
 from .weighting import (
@@ -195,6 +199,7 @@ class ICGNWGPUFullPyramid:
         motion_model: str = "affine",
         outlier_policy: str = "replace",
         median_filter_size: int = 3,
+        median_filter_scope: str = "rejected",
         subset_size: int = DEFAULT_SUBSET_SIZE,
         subset_stride: int | None = None,
         spatial_weighting: str = "uniform",
@@ -272,6 +277,9 @@ class ICGNWGPUFullPyramid:
         self._fourier = None
         self.outlier_policy = normalize_outlier_policy(outlier_policy)
         self.median_filter_size = normalize_median_filter_size(median_filter_size)
+        self.median_filter_scope = normalize_median_filter_scope(median_filter_scope)
+        if self.median_filter_scope == "all" and self.outlier_policy != "median":
+            raise ValueError("median_filter_scope='all' requires outlier_policy='median'")
         if self.median_filter_size > 3 and self.outlier_policy != "median":
             raise ValueError("median_filter_size > 3 requires outlier_policy='median'")
         self.subset_size = normalize_subset_size(subset_size)
@@ -321,6 +329,7 @@ class ICGNWGPUFullPyramid:
             motion_model=self.motion_model,
             outlier_policy=self.outlier_policy,
             median_filter_size=self.median_filter_size,
+            median_filter_scope=self.median_filter_scope,
             subset_size=self.subset_size,
             subset_stride=self.subset_stride,
             spatial_weighting=self.spatial_weighting,
@@ -1233,6 +1242,7 @@ class ICGNWGPUFullPyramid:
                 "motionModel": self.motion_model,
                 "outlierPolicy": self.outlier_policy,
                 "medianFilterSize": self.median_filter_size,
+                "medianFilterScope": self.median_filter_scope,
                 "subsetStride": self.subset_stride,
                 "spatialWeighting": self.spatial_weighting,
                 "solverWorkgroupSize": self.solver_workgroup_size,
@@ -1340,7 +1350,9 @@ class ICGNWGPUFullPyramid:
         coarsest_index = levels_used - 1
         coarsest = self._levels[coarsest_index]
         coarsest_slot = slot.level_slots[coarsest_index]
-        outlier_policy = getattr(self, "outlier_policy", getattr(coarsest, "outlier_policy", "replace"))
+        outlier_policy = getattr(
+            self, "outlier_policy", getattr(coarsest, "outlier_policy", "replace")
+        )
         median_pipeline = None
         if outlier_policy != "disabled":
             if outlier_policy == "median" and coarsest_index > 0:

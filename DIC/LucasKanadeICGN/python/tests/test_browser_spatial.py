@@ -202,7 +202,7 @@ class BrowserSpatialExecutionTests(unittest.TestCase):
           const w=128,h=128,f=texture(w,h),rgba=new Uint8ClampedArray(w*h*4);
           for(let i=0;i<f.length;i++){rgba[4*i]=rgba[4*i+1]=rgba[4*i+2]=f[i];rgba[4*i+3]=255;}
           const bitmap=await createImageBitmap(new ImageData(rgba,w,h));
-          const e=await DICEngine.create({motionModel:'translation',spatialPropagationPasses:2,outlierPolicy:'median',medianFilterSize:5});
+          const e=await DICEngine.create({motionModel:'translation',spatialPropagationPasses:2,outlierPolicy:'median',medianFilterSize:5,medianFilterScope:'all'});
           try{
             const info=await e.setReference(bitmap);const first=await e.register(bitmap);
             const resources=e.memoryUsage();let allocation=false;const saved=[];
@@ -211,10 +211,12 @@ class BrowserSpatialExecutionTests(unittest.TestCase):
             }
             let second;try{second=await e.register(bitmap);}finally{for(const [name,value]of saved)e.device[name]=value;}
             check(!allocation,'Lazy spatial allocation/compilation');check(second.accepted===first.accepted,'Warm acceptance changed');
-            check(second.config.spatialPropagationPasses===2&&info.config.spatialPropagationPasses===2,'Missing provenance');
+            check(second.config.spatialPropagationPasses===2&&info.config.spatialPropagationPasses===2,'Missing propagation provenance');
+            check(second.config.medianFilterScope==='all'&&info.config.medianFilterScope==='all','Missing median-scope provenance');
             check(e.memoryUsage().knownResourceBytes===resources.knownResourceBytes,'Warm resources grew');
             return {accepted:second.accepted,configuration:second.config};
           }finally{bitmap.close();e.destroy();}
         """)
         self.assertGreater(actual["accepted"], 0)
         self.assertEqual(actual["configuration"]["outlierPolicy"], "median")
+        self.assertEqual(actual["configuration"]["medianFilterScope"], "all")

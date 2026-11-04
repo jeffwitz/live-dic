@@ -19,6 +19,7 @@ a page or dedicated worker uses the same source. The core never reads
      initialization: 'temporal', temporalPrediction: 'velocity',
      temporalFineCorrection: true, divergencePatience: 3,
      divergenceMinIterations: 4, outlierPolicy: 'median', medianFilterSize: 5,
+     medianFilterScope: 'all',
      pipelineDepth: 1, readback: 'none',
    });
    await engine.setReference(referenceFrame, { roiMask });
@@ -103,7 +104,10 @@ Options and native correspondence
      - Also flag, disabled, median. Median repairs rejected subsets from accepted neighbours; coarse repairs can seed finer levels, while final status remains rejected until IC-GN accepts a solve.
    * - ``medianFilterSize``
      - ``median_filter_size=3``
-     - Shared WGSL median-repair stencil: widths 3, 5, 7, 9 subset-grid cells; values above 3 require ``outlierPolicy: 'median'``. Accepted subsets are not smoothed.
+     - Shared WGSL median stencil: widths 3, 5, 7, 9 subset-grid cells; values above 3 require ``outlierPolicy: 'median'``.
+   * - ``medianFilterScope``
+     - ``median_filter_scope="rejected"``
+     - ``rejected`` is the default repair-only mode; ``all`` also smooths accepted parameters at every level. Requires ``outlierPolicy: 'median'`` and is unsupported by Three.js.
    * - ``spatialPropagationPasses``
      - Direct API default 0; Analysis/Solve UI defaults to automatic
      - Integer 0..4. Maximum extra failed-point seed-search passes per level;

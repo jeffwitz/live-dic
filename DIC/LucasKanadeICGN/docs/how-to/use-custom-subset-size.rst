@@ -70,7 +70,10 @@ The same ``median_filter_size`` argument is available on ``ICGNWGPU``.
 is ``--median-filter-size 5 --outlier-policy median``. In the PWA, select the
 width under Solve before starting the calculation. Changing the width requires
 reference preparation again because it specializes the GPU pipeline. Three.js
-uses a fixed 3 by 3 neighbourhood. The repair changes rejected subsets only;
-it leaves accepted measurements unchanged. Compare coverage and final solver
-statuses on the specimen before using it for metrology. For display smoothing,
-use the separate Results post-processing recipe.
+uses a fixed 3 by 3 neighbourhood. The default
+``median_filter_scope="rejected"`` repairs rejected subsets and leaves accepted
+measurements unchanged. Shared-WGSL engines also offer
+``median_filter_scope="all"`` to smooth accepted parameter states after every
+pyramid level; see :doc:`smooth-median-each-pyramid-level`. Compare coverage
+and final solver statuses on the specimen before using it for metrology. For
+display smoothing, use the separate Results post-processing recipe.

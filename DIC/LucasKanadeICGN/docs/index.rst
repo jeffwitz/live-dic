@@ -39,6 +39,7 @@ Start here
   The default full-window policy rejects any subset touching a forbidden pixel.
   :doc:`how-to/use-partial-roi` covers explicit boundary supports.
 * :doc:`how-to/register-large-shifts` for opt-in Fourier and global-affine initialization of sparse pairs.
+* :doc:`how-to/smooth-median-each-pyramid-level` to choose between failed-subset repair and whole-field median smoothing.
 * :doc:`reference/api` for exact defaults and public interfaces.
 * :doc:`reference/propagation` for illustrated seed propagation, median
   initialization, DIS and GPU work lists.
@@ -89,8 +90,11 @@ The default spatial policy detects displacement outliers and replaces the
 complete local state. Flag-only and raw modes preserve different measurement
 contracts. ``outlier_policy="median"`` repairs rejected subsets from valid
 neighbours; at coarse pyramid levels, the repaired estimate can seed the next
-finer solve. Accepted estimates remain unchanged, and a median seed does not
-become an accepted measurement until IC-GN converges. See
+finer solve. This rejected-only behaviour is the default. The opt-in
+``median_filter_scope="all"`` also smooths accepted parameters after each
+pyramid level; it preserves statuses and can blur localized deformation.
+Neither scope turns a failed estimate into an accepted measurement without a
+successful IC-GN solve. See :doc:`how-to/smooth-median-each-pyramid-level` and
 :doc:`explanation/displacement-outliers`.
 Temporal initialization, velocity prediction and finest-level stopping are
 opt-in; see :doc:`how-to/use-temporal-initialization`.
@@ -139,6 +143,7 @@ when exporting a measurement with :doc:`how-to/export-results`.
    how-to/use-roi
    how-to/use-partial-roi
    how-to/use-temporal-initialization
+   how-to/smooth-median-each-pyramid-level
    how-to/register-large-shifts
    how-to/compare-plate-hole-masks
    how-to/use-custom-subset-size

@@ -9,6 +9,7 @@ const DEFAULT_PYRAMID_LEVELS = 2;
 export const INTERPOLATION_CONSTANTS = { bspline: 0, linear: 1, cubic: 2 };
 export const MOTION_MODEL_CONSTANTS = { affine: 0, translation: 1, quadratic: 2 };
 export const OUTLIER_POLICY_CONSTANTS = { flag: 0, replace: 1, disabled: 2, median: 3 };
+export const MEDIAN_FILTER_SCOPE_CONSTANTS = { rejected: 0, all: 1 };
 
 const ITERATION_SCHEDULES = {
   1: [30],
@@ -67,6 +68,7 @@ export function createInitialConfiguration(options = {}) {
     motionModel: 'affine',
     outlierPolicy: 'replace',
     medianFilterSize: 3,
+    medianFilterScope: 'rejected',
     ...(options.initialization === 'global-affine'
       ? { globalAffineLevels: Number(options.globalAffineLevels ?? 5) }
       : {}),
@@ -155,6 +157,19 @@ export function resolveConfiguration(
     throw new Error('Changing outlierPolicy requires setReference()');
   }
 
+  const medianFilterScope = options.medianFilterScope === undefined
+    ? current.medianFilterScope
+    : String(options.medianFilterScope).toLowerCase();
+  if (!(medianFilterScope in MEDIAN_FILTER_SCOPE_CONSTANTS)) {
+    throw new Error("medianFilterScope must be 'rejected' or 'all'");
+  }
+  if (medianFilterScope === 'all' && outlierPolicy !== 'median') {
+    throw new Error("medianFilterScope='all' requires outlierPolicy='median'");
+  }
+  if (!allowPyramidRebuild && referenceReady && medianFilterScope !== current.medianFilterScope) {
+    throw new Error('Changing medianFilterScope requires setReference()');
+  }
+
   const medianFilterSize = options.medianFilterSize === undefined
     ? current.medianFilterSize
     : Number(options.medianFilterSize);
@@ -195,6 +210,7 @@ export function resolveConfiguration(
     motionModel,
     outlierPolicy,
     medianFilterSize,
+    medianFilterScope,
     ...(initialization === 'global-affine' ? { globalAffineLevels } : {}),
     ...(options.spatialPropagationPasses !== undefined || current.spatialPropagationPasses !== undefined
       ? { spatialPropagationPasses: options.spatialPropagationPasses === undefined

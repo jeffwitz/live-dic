@@ -34,7 +34,11 @@ from PIL import Image
 
 from .interpolation import normalize_interpolation
 from .motion import AFFINE_PARAMETER_ORDER, normalize_motion_model, parameter_order
-from .outlier import normalize_median_filter_size, normalize_outlier_policy
+from .outlier import (
+    normalize_median_filter_scope,
+    normalize_median_filter_size,
+    normalize_outlier_policy,
+)
 from .roi import RoiPlan, immutable, prepare_roi, validate_roi
 from .subset import DEFAULT_SUBSET_SIZE, normalize_subset_size, normalize_subset_stride
 
@@ -71,6 +75,7 @@ class EngineInfo:
     subgroup_validation: str = "unavailable"
     motion_model: str = "affine"
     outlier_policy: str = "replace"
+    median_filter_scope: str = "rejected"
 
 
 @dataclass(frozen=True, slots=True)
@@ -891,6 +896,7 @@ class ICGNWebGL:
         motion_model: str = "affine",
         outlier_policy: str = "replace",
         median_filter_size: int = 3,
+        median_filter_scope: str = "rejected",
         subset_size: int = DEFAULT_SUBSET_SIZE,
         subset_stride: int | None = None,
         initialization: str = "zero",
@@ -926,6 +932,11 @@ class ICGNWebGL:
         self.motion_model = normalize_motion_model(motion_model)
         self.outlier_policy = normalize_outlier_policy(outlier_policy)
         self.median_filter_size = normalize_median_filter_size(median_filter_size)
+        self.median_filter_scope = normalize_median_filter_scope(median_filter_scope)
+        if self.median_filter_scope == "all" and self.outlier_policy != "median":
+            raise ValueError("median_filter_scope='all' requires outlier_policy='median'")
+        if self.median_filter_scope == "all" and backend != "webgpu-wgsl":
+            raise ValueError("median_filter_scope='all' requires backend='webgpu-wgsl'")
         if self.median_filter_size > 3 and self.outlier_policy != "median":
             raise ValueError("median_filter_size > 3 requires outlier_policy='median'")
         if self.median_filter_size > 3 and backend != "webgpu-wgsl":
@@ -1182,6 +1193,7 @@ class ICGNWebGL:
             options["znccMin"] = float(zncc_min)
         if self.backend == "webgpu-wgsl":
             options["pyramidLevels"] = self.pyramid_levels
+            options["medianFilterScope"] = self.median_filter_scope
             if self.initialization != "zero":
                 options["initialization"] = self.initialization
             if self.initialization == "global-affine":
@@ -1211,6 +1223,7 @@ class ICGNWebGL:
             subgroup_validation=str(payload.get("subgroupValidation", "unavailable")),
             motion_model=str(payload.get("motionModel", self.motion_model)),
             outlier_policy=str(payload.get("outlierPolicy", self.outlier_policy)),
+            median_filter_scope=str(payload.get("medianFilterScope", self.median_filter_scope)),
         )
 
     def set_reference(

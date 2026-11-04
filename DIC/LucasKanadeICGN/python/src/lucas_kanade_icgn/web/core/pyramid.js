@@ -14,6 +14,7 @@ import {
   INTERPOLATION_CONSTANTS,
   MOTION_MODEL_CONSTANTS,
   OUTLIER_POLICY_CONSTANTS,
+  MEDIAN_FILTER_SCOPE_CONSTANTS,
 } from './pyramid/configuration.js';
 /*
  * Raw browser WebGPU adapter for the same portable WGSL used by wgpu-py.
@@ -331,6 +332,7 @@ export function createPyramidHost(options = {}) {
       OUTLIER_POLICY: OUTLIER_POLICY_CONSTANTS[configuration.outlierPolicy],
       MEDIAN_FILTER_SIZE: configuration.outlierPolicy === 'median'
         ? configuration.medianFilterSize : 3,
+      MEDIAN_FILTER_SCOPE: MEDIAN_FILTER_SCOPE_CONSTANTS[configuration.medianFilterScope],
       ROI_ENABLED: +!!roiMask,
       SUBSET_SIZE,
       SUBSET_STRIDE,
@@ -1271,6 +1273,7 @@ export function createPyramidHost(options = {}) {
       motionModel: configuration.motionModel,
       outlierPolicy: configuration.outlierPolicy,
       medianFilterSize: configuration.medianFilterSize,
+      medianFilterScope: configuration.medianFilterScope,
       iterationsPerLevel: [...configuration.iterationsPerLevel],
       tolerancePerLevel: [...configuration.tolerancePerLevel],
       solver: configuration.pyramidLevels > 1

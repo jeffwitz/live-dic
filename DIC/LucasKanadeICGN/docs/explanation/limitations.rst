@@ -53,12 +53,13 @@ Geometry and input
   and 32 and requires stride equal to size.
 * Centred Gaussian subset integration is currently exposed by the native
   engines. Browser hosts use uniform integration.
-* Solver-time median repair defaults to a 3 by 3 subset-grid stencil. The
-  shared-WGSL native and raw-browser paths accept 5, 7, or 9; the largest
-  stencil is bounded at 81 samples. Repair only fills rejected subsets from
-  valid neighbours and can seed a finer pyramid scale; it does not smooth
-  accepted estimates or make a final rejected status valid. These larger
-  variants have not received general performance or metrology qualification.
+* Solver-time median repair defaults to a 3 by 3 subset-grid stencil and
+  rejected-only scope. The shared-WGSL native and raw-browser paths accept 5,
+  7, or 9; the largest stencil is bounded at 81 samples. The opt-in all-subset
+  scope also smooths accepted parameters after each pyramid level, while
+  preserving solver statuses. Both scopes can provide seeds at finer scales;
+  neither makes a final rejected status valid. Larger stencils and all-subset
+  smoothing have not received general performance or metrology qualification.
   Three.js retains a separate fixed 3 by 3 post-pass. Results display smoothing
   is a different operation.
 * Grid dimensions are ``1 + floor((width - subset_size) / subset_stride)`` by
