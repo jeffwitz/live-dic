@@ -71,9 +71,14 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
         self._counts_ready = False
         super().__init__(motion_model="translation", outlier_policy="disabled", **kwargs)
 
+    def set_reference(self, image, **kwargs):
+        if self.research_resources:
+            raise ValueError("Create a fresh research host to replace its reference")
+        return super().set_reference(image, **kwargs)
+
     def prepare_research(self, reference, *, roi_mask=None, affine=None):
         """Prepare every resource/pipeline before the measured sequence."""
-        if self.research:
+        if self.research or self.research_resources:
             raise ValueError("Create a fresh research host to replace its reference")
         if affine is not None and (
             len(affine["linear"]) != 4
@@ -403,6 +408,8 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
             )
 
     def _encode_slot(self, slot):
+        if len(self.research) != self.pyramid_levels:
+            raise ValueError("Call prepare_research() before research registration")
         started = time.perf_counter()
         self._counts_ready = False
         encoder = self.device.create_command_encoder(label="GPU spatial seed research")

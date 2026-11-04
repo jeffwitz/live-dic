@@ -61,6 +61,21 @@ class GpuSpatialSeedTests(unittest.TestCase):
         self.addCleanup(engine.close)
         return engine
 
+    def test_research_preserves_reference_bindings_and_rejects_streaming(self):
+        f = np.random.default_rng(40).integers(0, 256, (128, 128), dtype=np.uint8)
+        g = np.roll(f, (-1, 2), axis=(0, 1))
+        engine = self.engine(strategy="spatial", failed_only=True)
+        engine.prepare_research(f)
+        expected = engine.register(g)
+        with self.assertRaisesRegex(ValueError, "fresh research host"):
+            engine.set_reference(np.flipud(f))
+        for options in ({}, {"pipeline_depth": 1}, {"pipeline_depth": 2}):
+            with self.assertRaisesRegex(ValueError, "synchronous register only"):
+                list(engine.register_stream([g, f], **options))
+        actual = engine.register(g)
+        for name in ("parameters", "status", "iterations"):
+            np.testing.assert_array_equal(getattr(actual, name), getattr(expected, name))
+
     def test_empty_work_clears_continuation_and_nonempty_work_restores_it(self):
         reference = np.random.default_rng(37).integers(0, 256, (128, 128), dtype=np.uint8)
         engine = self.engine(strategy="spatial", failed_only=True, stop_when_unchanged=True)
