@@ -232,7 +232,7 @@ def main():
                     else None,
                     quality=quality,
                     workListsByLevel=work_counts,
-                    scoreCacheLevels=[
+                    allocatedScoreCacheLevels=[
                         i for i, stage in enumerate(engine.research) if stage["cache_enabled"]
                     ],
                     fieldSha256={
