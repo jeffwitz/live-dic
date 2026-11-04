@@ -217,6 +217,15 @@ preparation, and the option participates in the pending-reference key, saved
 field configuration and NPZ metadata. The selected median/UOD policy still
 runs after the re-solves; propagation does not silently disable filtering.
 
+The pass count is a budget. After a search queues no new seed, there is no LK
+work and the state remains identical. The next search would see the same image,
+state, permissions and prior, so it cannot add work. ``finalize_chain`` writes
+zero continuation dimensions on the GPU, avoiding these redundant searches.
+The first pass of each new level/frame always runs independently of the previous
+continuation. This is exact empty-work elimination, not a looser convergence
+tolerance or a photometric early-acceptance threshold. The native research host
+exposes it separately as ``stop_when_unchanged=True`` for controlled comparisons.
+
 See :doc:`../how-to/run-in-browser` for the Solve controls. Native timing tables
 are not browser end-to-end or recording performance claims.
 

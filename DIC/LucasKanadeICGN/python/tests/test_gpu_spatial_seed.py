@@ -61,6 +61,31 @@ class GpuSpatialSeedTests(unittest.TestCase):
         self.addCleanup(engine.close)
         return engine
 
+    def test_empty_work_clears_continuation_and_nonempty_work_restores_it(self):
+        reference = np.random.default_rng(37).integers(0, 256, (128, 128), dtype=np.uint8)
+        engine = self.engine(strategy="spatial", failed_only=True, stop_when_unchanged=True)
+        engine.prepare_research(reference)
+        stage = engine.research[0]
+        # Alternate empty/nonempty lists, including a stale nonzero argument.
+        # The oracle is the dispatch geometry, independently of NCC selection.
+        for count in (1, 0, 2, 0):
+            engine.device.queue.write_buffer(stage["work"], 0, np.array([count], np.uint32))
+            encoder = engine.device.create_command_encoder()
+            compute = encoder.begin_compute_pass()
+            compute.set_pipeline(stage["finalize"])
+            compute.set_bind_group(0, stage["finalize_group"])
+            compute.dispatch_workgroups(1)
+            compute.end()
+            engine.device.queue.submit([encoder.finish()])
+            arguments = np.frombuffer(
+                engine.device.queue.read_buffer(stage["continuation"]), np.uint32
+            )
+            np.testing.assert_array_equal(arguments, [8 if count else 0, 8, 1])
+
+        # The first search must run independently of a previous frame's empty list.
+        result = engine.register(np.roll(reference, (-1, 2), axis=(0, 1)))
+        self.assertGreater(result.accepted, 20)
+
     def test_only_improved_seed_is_compacted_and_other_states_are_untouched(self):
         f = np.random.default_rng(31).integers(0, 256, (128, 128), dtype=np.uint8)
         g = np.roll(f, (-1, 2), axis=(0, 1))

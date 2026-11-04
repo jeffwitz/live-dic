@@ -21,6 +21,9 @@ struct Config {
 @group(0) @binding(6) var<storage, read_write> work: WorkList;
 @group(0) @binding(7) var<storage, read_write> scores: Floats;
 @group(0) @binding(8) var<storage, read> prior: Floats;
+// Separate from the writable work list, so it may supply indirect arguments
+// while choose writes its new work list in the same dispatch.
+@group(0) @binding(9) var<storage, read_write> continuation: UintBuffer;
 override FAILED_ONLY: bool = false;
 // 0 neighbours, 1 median hypothesis only, 2 neighbours plus median.
 override CANDIDATE_MODE: u32 = 0u;
@@ -159,6 +162,19 @@ fn finalize() {
     work.x = min(count, 65535u);
     work.y = max(1u, (count + 65534u) / 65535u);
     work.z = 1u;
+}
+
+// An empty work list means that the state will not change. Later passes then
+// have exactly the same candidates and cannot produce new work.
+@compute @workgroup_size(1)
+fn finalize_chain() {
+    let count = atomicLoad(&work.count);
+    work.x = min(count, 65535u);
+    work.y = max(1u, (count + 65534u) / 65535u);
+    work.z = 1u;
+    continuation.values[0] = select(0u, config.grid_width, count > 0u);
+    continuation.values[1] = config.count / config.grid_width;
+    continuation.values[2] = 1u;
 }
 
 // An accepted original measurement is retained if its trial re-solve fails.

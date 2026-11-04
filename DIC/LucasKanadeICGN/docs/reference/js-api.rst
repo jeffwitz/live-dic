@@ -106,9 +106,10 @@ Options and native correspondence
      - Shared WGSL median only: widths 3, 5, 7, 9 subset-grid cells; values above 3 require ``outlierPolicy: 'median'``.
    * - ``spatialPropagationPasses``
      - JavaScript-only opt-in, default 0
-     - Integer 0..4. Extra failed-point seed-search passes per level; translation,
+     - Integer 0..4. Maximum extra failed-point seed-search passes per level; translation,
        B-spline, uniform full windows, CPU reference preparation and one slot.
-       Runs before the selected spatial filter. See :doc:`propagation` and
+       Runs before the selected spatial filter; repeats stop when no seed is queued.
+       See :doc:`propagation` and
        :doc:`../how-to/run-in-browser` for activation and limitations.
    * - ``initialization``
      - ``initialization="zero"``

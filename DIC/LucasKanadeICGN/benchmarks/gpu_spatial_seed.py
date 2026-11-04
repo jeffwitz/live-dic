@@ -24,6 +24,7 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
         passes=2,
         sample_step=1,
         failed_only=False,
+        stop_when_unchanged=False,
         min_gain=1e-4,
         **kwargs,
     ):
@@ -58,6 +59,9 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
         self.passes = passes
         self.sample_step = sample_step
         self.failed_only = failed_only
+        if not isinstance(stop_when_unchanged, bool):
+            raise ValueError("stop_when_unchanged must be boolean")
+        self.stop_when_unchanged = stop_when_unchanged
         self.min_gain = min_gain
         self.capture_counts = False
         self._counts_ready = False
@@ -97,6 +101,11 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
             )
             snapshot = buffer(n * 32, storage)
             work = buffer((n + 4) * 4, storage | wgpu.BufferUsage.INDIRECT)
+            continuation = (
+                buffer(12, storage | wgpu.BufferUsage.INDIRECT)
+                if self.stop_when_unchanged
+                else None
+            )
             diagnostics = buffer(
                 self.passes * 16, wgpu.BufferUsage.COPY_DST | wgpu.BufferUsage.COPY_SRC
             )
@@ -174,7 +183,11 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
                 },
             )
             finalize = device.create_compute_pipeline(
-                layout="auto", compute={"module": module, "entry_point": "finalize"}
+                layout="auto",
+                compute={
+                    "module": module,
+                    "entry_point": "finalize_chain" if self.stop_when_unchanged else "finalize",
+                },
             )
             merge = device.create_compute_pipeline(
                 layout="auto", compute={"module": module, "entry_point": "retain_accepted"}
@@ -214,7 +227,13 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
                 layout=choose.get_bind_group_layout(0), entries=resources
             )
             finalize_group = device.create_bind_group(
-                layout=finalize.get_bind_group_layout(0), entries=[self._buffer_resource(6, work)]
+                layout=finalize.get_bind_group_layout(0),
+                entries=[self._buffer_resource(6, work)]
+                + (
+                    [self._buffer_resource(2, config), self._buffer_resource(9, continuation)]
+                    if self.stop_when_unchanged
+                    else []
+                ),
             )
             merge_group = device.create_bind_group(
                 layout=merge.get_bind_group_layout(0),
@@ -291,6 +310,7 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
                     merge_group=merge_group,
                     snapshot=snapshot,
                     work=work,
+                    continuation=continuation,
                     diagnostics=diagnostics,
                     median=median,
                     scores=scores,
@@ -368,7 +388,10 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
                     compute = encoder.begin_compute_pass()
                     compute.set_pipeline(r["choose"])
                     compute.set_bind_group(0, r["choose_group"])
-                    compute.dispatch_workgroups(level.grid_width, level.grid_height)
+                    if self.stop_when_unchanged and step > 0:
+                        compute.dispatch_workgroups_indirect(r["continuation"], 0)
+                    else:
+                        compute.dispatch_workgroups(level.grid_width, level.grid_height)
                     compute.set_pipeline(r["finalize"])
                     compute.set_bind_group(0, r["finalize_group"])
                     compute.dispatch_workgroups(1)
@@ -429,6 +452,7 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
                 else 0,
                 "sampleStep": self.sample_step,
                 "failedOnly": self.failed_only,
+                "stopWhenUnchanged": self.stop_when_unchanged,
                 "minimumScoreGain": self.min_gain,
                 "minimumSeedDisplacementPx": 1e-3,
                 "finalFieldRaw": True,

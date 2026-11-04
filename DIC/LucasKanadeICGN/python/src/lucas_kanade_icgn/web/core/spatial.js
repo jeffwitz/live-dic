@@ -44,7 +44,7 @@ export async function createSpatialGraph(device, solverModule, levels, seededLay
     const choose = await device.createComputePipelineAsync({ layout: 'auto',
       compute: { module, entryPoint: 'choose', constants: { FAILED_ONLY: true, CANDIDATE_MODE: 0 } } });
     const finalize = await device.createComputePipelineAsync({ layout: 'auto',
-      compute: { module, entryPoint: 'finalize' } });
+      compute: { module, entryPoint: 'finalize_chain' } });
     const stages = [];
     for (const level of levels) {
       const { width, height, gridWidth, gridHeight, gridCount, buffers } = level;
@@ -72,6 +72,7 @@ export async function createSpatialGraph(device, solverModule, levels, seededLay
       floats[8] = 1e-4; floats[9] = 1e-3;
       const config = data('Spatial seed configuration', new Uint8Array(configBytes), GPUBufferUsage.UNIFORM);
       const work = storage('Spatial indirect work list', (gridCount + 4) * 4, GPUBufferUsage.INDIRECT);
+      const continuation = storage('Spatial continuation arguments', 12, GPUBufferUsage.INDIRECT);
       const prior = storage('Spatial initial level seeds', gridCount * 32);
       const scores = storage('Spatial candidate scores', gridCount * 16);
       const chooseGroup = texture => device.createBindGroup({ layout: choose.getBindGroupLayout(0), entries: [
@@ -97,11 +98,12 @@ export async function createSpatialGraph(device, solverModule, levels, seededLay
           resource: { buffer: buffers[name], ...(binding === 2 ? { size: level.pixelCount * 4 } : {}) } })),
         entry(11, work),
       ] });
-      stages.push({ level, work, prior, choose: chooseGroup(level.sourceTexture), compact: compactGroup(level.sourceTexture),
+      stages.push({ level, work, continuation, prior, choose: chooseGroup(level.sourceTexture), compact: compactGroup(level.sourceTexture),
         externalChoose: level.index === 0 && externalTexture ? chooseGroup(externalTexture) : null,
         externalCompact: level.index === 0 && externalTexture ? compactGroup(externalTexture) : null,
         compactPipeline: compact,
-        finalize: device.createBindGroup({ layout: finalize.getBindGroupLayout(0), entries: [entry(6, work)] }),
+        finalize: device.createBindGroup({ layout: finalize.getBindGroupLayout(0),
+          entries: [entry(2, config), entry(6, work), entry(9, continuation)] }),
       });
     }
     return {
@@ -117,7 +119,8 @@ export async function createSpatialGraph(device, solverModule, levels, seededLay
           encoder.clearBuffer(stage.work);
           const compute = encoder.beginComputePass();
           compute.setPipeline(choose); compute.setBindGroup(0, external && levelIndex === 0 ? stage.externalChoose : stage.choose);
-          compute.dispatchWorkgroups(stage.level.gridWidth, stage.level.gridHeight);
+          if (step === 0) compute.dispatchWorkgroups(stage.level.gridWidth, stage.level.gridHeight);
+          else compute.dispatchWorkgroupsIndirect(stage.continuation, 0);
           compute.setPipeline(finalize); compute.setBindGroup(0, stage.finalize); compute.dispatchWorkgroups(1);
           compute.setPipeline(stage.compactPipeline);
           compute.setBindGroup(0, external && levelIndex === 0 ? stage.externalCompact : stage.compact);
