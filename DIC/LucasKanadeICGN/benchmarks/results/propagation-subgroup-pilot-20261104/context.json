@@ -1,0 +1,28 @@
+{
+  "controlShaderSha256": "1608441f52193d078ed683337bdf544792b716316367bd2f6495fb6a70742c2e",
+  "controlShaderRevision": "3aaeaa0",
+  "inputSha256": {
+    "reference.png": "7cadf6032d7c5ac2de74ae542573a3b38069dc8c1c075ef9576641601996aeec",
+    "frame_040.png": "7477178b00acb669b34aeb2084b895076cf74475f472bc25f3af2696b2719e30"
+  },
+  "scope": "Exploratory native-only prototype; no application integration or camera timing",
+  "options": {
+    "subsetSize": 32,
+    "subsetStride": 16,
+    "motionModel": "translation",
+    "interpolation": "bspline",
+    "outlierPolicy": "disabled",
+    "pyramidLevels": 2,
+    "iterationsPerLevel": [
+      8,
+      16
+    ],
+    "tolerancePerLevel": [
+      0.005,
+      0.005
+    ],
+    "znccMin": 0.8,
+    "propagationPasses": 2,
+    "failedOnly": true
+  }
+}
