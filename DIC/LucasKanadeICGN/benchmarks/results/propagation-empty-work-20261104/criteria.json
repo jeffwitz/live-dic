@@ -1,0 +1,22 @@
+{
+  "controlReportSha256": "e846a11e1cbf876334c2a109a2e7582df0c037c33d76c2adb07605b5bb0e4495",
+  "createdUtc": "2026-11-04T02:38:50.576755+00:00",
+  "method": "95th percentile of absolute per-block median paired-frame control/control differences",
+  "pairedBlockDifferencesMs": [
+    -0.0034549739211797714,
+    -0.029974471544846892,
+    0.007846480002626777,
+    -0.07925400859676301,
+    0.038634490920230746,
+    -0.03447500057518482,
+    -0.05648151272907853,
+    -0.060870981542393565,
+    0.042447500163689256,
+    -0.013550481526181102,
+    -0.1038614718709141,
+    -0.02440696698613465
+  ],
+  "nonRegressionMarginMs": 0.09032736707013099,
+  "bootstrapSeed": 1729,
+  "bootstrapResamples": 10000
+}

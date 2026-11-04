@@ -1,0 +1,58 @@
+{
+  "sourceCommit": "8bdbad87988328934cb45617bbf59090c469837e",
+  "sourceDirty": false,
+  "adapter": {
+    "vendor": "Intel open-source Mesa driver",
+    "architecture": "",
+    "device": "Intel(R) Graphics (LNL)",
+    "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+    "stackgroup_min_size": 4,
+    "stackgroup_max_size": 128,
+    "vendor_id": 32902,
+    "device_id": 25760,
+    "adapter_type": "IntegratedGPU",
+    "backend_type": "Vulkan"
+  },
+  "boundary": "resident NumPy target to materialized NumPy field/statistics; no decode/display/storage/preparation",
+  "quality": {
+    "coverage": 1.0,
+    "vectorRmse": 0.010168396570294525,
+    "p95Error": 0.017227586244966918,
+    "accepted": 31284
+  },
+  "control": {
+    "medianMs": 15.19330550218001,
+    "p95Ms": 16.302295241621323,
+    "p99Ms": 16.767630077083595,
+    "fps": 65.70206886458413
+  },
+  "candidate": {
+    "medianMs": 14.98299150262028,
+    "p95Ms": 16.125312208896503,
+    "p99Ms": 16.662866286351345,
+    "fps": 66.51181374614843
+  },
+  "pairedBlockSavingMs": [
+    0.2444719721097499,
+    0.05550903733819723,
+    0.2721354831010103,
+    0.12971748947165906,
+    0.17037749057635665,
+    0.2397464995738119,
+    0.22417400032281876,
+    0.1584735291544348,
+    0.1263919984921813,
+    0.12238847557455301,
+    0.1684454909991473,
+    0.1999999803956598
+  ],
+  "pairedMedianSavingMs": 0.16941149078775197,
+  "bootstrap95PercentCiMs": [
+    0.12805474398192018,
+    0.23196024994831532
+  ],
+  "nonRegressionMarginMs": 0.09032736707013099,
+  "uncertaintyMethod": "Median of per-block paired-frame median savings; percentile bootstrap of 12 blocks, 10000 resamples, seed 1729",
+  "exactFieldParity": "Parameters, statuses and iteration arrays checked by the driver",
+  "samplesPerVariant": 1200
+}

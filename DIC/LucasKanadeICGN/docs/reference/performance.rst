@@ -1931,3 +1931,38 @@ A 32/16, two-level, full-resolution case without variational refinement takes
 per-call reference preparation differ from the cached-reference native DIC
 engine; these are application observations, not equal-work kernel speedups.
 The archive retains all six CPU cases, analytic errors and exact script.
+
+Exact empty-work elimination (2026-11-04)
+-----------------------------------------
+
+The `paired UHD campaign
+<https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/propagation-empty-work-20261104>`_
+compares the same two-pass propagation budget before and after omitting searches
+whose preceding pass queued no re-solves. With no state changes, repeating the
+same candidate search cannot change its result. The first search of every frame
+and level still runs. This changes neither scoring nor IC-GN, adds no CPU
+readback and does not change disabled-propagation defaults.
+
+On the original UHD tensile pair, Intel LNL/Mesa 25.2.8, the repeated-search
+control measures 15.193 ms median, 16.302 ms p95 and 16.768 ms p99. Empty-work
+elimination measures 14.983 ms, 16.125 ms and 16.663 ms respectively; engine
+throughput changes from 65.70 to 66.51 fields/s. The timing boundary remains
+resident NumPy image to materialized field/statistics, excluding preparation,
+decoding, display and storage. Translation 32/16, B-spline, two fixed levels,
+one slot and raw outputs are unchanged.
+
+Twelve blocks of one hundred frames per variant alternate AB/BA after every
+frame on one prepared device. The reference/reference repeatability margin was
+fixed before the candidate run: 0.09033 ms. The median per-block paired saving
+is 0.16941 ms, with a block-bootstrap 95 percent interval of
+[0.12805, 0.23196] ms. Arrays of parameters, statuses and iterations agree;
+interior coverage remains 100 percent under the existing error gates. Raw
+samples, hashes, criteria and the bootstrap seed are archived as compressed
+JSON rather than duplicated in this reference.
+
+This is a small measured benefit on an easy pair that queues no new seeds.
+It does not accelerate difficult passes that keep producing work, nor certify
+camera-to-disk 4K60 or PWA throughput. Separate browser UHD and installed-wheel
+checks cover integration. Scoring-width, sampler, subgroup, reference-cache and
+initial compaction pilots did not establish a portable improvement; their
+negative controls remain in the dated propagation experiment archives.
