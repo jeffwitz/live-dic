@@ -39,9 +39,9 @@ compatibility while reducing arithmetic inside each iteration.
      - 256 (one-dimensional)
      - 46 x 16 or 16 x 46 shared source tile, 31 taps
    * - Portable shared-WGSL IC-GN
-     - one 8 x 8, 16 x 16, or 32 x 32 subset
-     - 16
-     - 4, 16, or 64 pixels per lane, then workgroup-memory reduction
+     - one square subset, width 4 through 64
+     - 16 by default; native opt-in 32 or experimental 128
+     - Strided pixel distribution, then workgroup-memory reduction
    * - Three.js specialized IC-GN on the validation GPU
      - one selected square subset
      - 32

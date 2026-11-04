@@ -94,13 +94,15 @@ Execution mappings are independent of pyramid depth
 Three separate sizes appear in the implementation and should not be
 conflated:
 
-* a numerical subset is 8 x 8, 16 x 16, or 32 x 32 pixels, with 16 x 16 as
-  the default; native and browser shared-WGSL paths can independently reduce
-  the centre-to-centre stride to create an overlapping field;
+* a numerical subset has any integer square width from 4 through 64 in the
+  native and raw shared-WGSL paths, with 16 x 16 as the default. Three.js/TSL
+  retains the discrete widths 8, 16 and 32. Stride controls centre-to-centre
+  distance independently and can create overlapping windows;
 * the shared-WGSL FIR uses 32 x 8 horizontal and 8 x 32 vertical output
   tiles, each executed by 256 threads;
-* the portable native IC-GN solver uses one configurable 16- or 32-lane
-  workgroup per subset (16 by default), while the specialized Three.js path
+* the portable native IC-GN solver uses one configurable 16-, 32- or
+  experimental 128-lane workgroup per subset (16 by default). The raw browser
+  core retains 16 lanes. The specialized Three.js path
   fills the measured hardware subgroup (32 lanes on the validation GPU).
 
 The full-pyramid reduction passes use 16 x 16 dispatch groups, and polynomial seed
@@ -109,3 +111,41 @@ dispatch dimensions are scheduling choices and do not change with
 ``subset_size`` or ``subset_stride``. See :doc:`subset-size` for the numerical
 geometry.
 See :doc:`gpu-optimization` for the detailed memory-access diagrams.
+
+Options do not automatically propagate between hosts
+----------------------------------------------------
+
+Sharing WGSL preserves the numerical equations, but a host must also prepare
+resources and schedule each optional stage. The current boundaries are:
+
+.. list-table:: Current native and raw-browser scope
+   :header-rows: 1
+   :widths: 30 35 35
+
+   * - Feature
+     - Native full pyramid
+     - Raw browser core / standalone workbench
+   * - Local motion models
+     - Translation, affine, quadratic
+     - Translation, affine, quadratic
+   * - Fixed pyramid depth
+     - 1 through 4; default 2
+     - 1 through 6; default 2
+   * - Global affine initialization
+     - Not a public native option
+     - Opt-in CPU initializer; independent of the local model
+   * - GPU spatial seed propagation
+     - Research supervisor under ``benchmarks/``
+     - Opt-in ``spatialPropagationPasses``; translation/B-spline only
+   * - ROI
+     - Full by default; partial supports explicitly enabled
+     - Full only
+   * - Reference preparation
+     - CPU, retained across a fixed-reference sequence
+     - CPU by default; experimental GPU variant is a separate opt-in
+
+The browser propagation option currently requires CPU reference preparation,
+uniform full windows and one slot. It is available in Analysis/Solve, not the
+fixed Live preset. Preparation on CPU does not mean that target correlation
+runs on CPU. See :doc:`spatial-initialization` and
+:doc:`../reference/js-api` before copying options between languages.

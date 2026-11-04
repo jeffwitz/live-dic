@@ -287,7 +287,12 @@ with the binary ``roi`` data. Unapplied edits are not exported as applied data.
 from ``DICEngine``. It accepts mode 2 (vectors) or 8 (image only), ``arrowStep``
 (positive integer grid spacing, or null for an automatic overview), ``arrowGain`` (positive length magnification
 or null for automatic), ``scale`` (positive norm maximum in image pixels or
-null for automatic), and ``opacity`` (0..1 for glyphs). It reads the existing
+null for automatic), ``opacity`` (0..1 for glyphs), and ``vectorOutline``
+(boolean, false by default) for light/dark contrast borders. The outline uses
+two additional sparse draws with the same tips and norm colours. The renderer
+is permanently closed by its idempotent ``destroy()`` method; draw after close
+fails explicitly. These are presentation settings, not ``DICEngine`` options.
+It reads the existing
 GPU image and field, with no full-field readback or derived strain map.
 ``vectorLegend`` describes actual norm maximum, gain, image/preview dimensions
 and current-tip anchoring. The live colourbar and length key use this metadata.

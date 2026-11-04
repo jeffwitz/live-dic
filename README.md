@@ -47,7 +47,7 @@ after its first installation. The original UHD plate-with-hole case loads
 with an editable rectangle/circle preset and both analytical load states.
 
 Consecutive mode can opt into **Experimental GPU reference preparation** in
-**Solve**, applied at the next reference capture. This rebuilds the reference
+**Solve**, applied at the next **Start calculation**. This rebuilds the reference
 on GPU for each pair while reusing allocations. CPU preparation stays the
 default. It improves the tested consecutive path but does not establish a
 4K60 camera pipeline; [scope and activation](DIC/LucasKanadeICGN/docs/explanation/gpu-reference-preparation.rst).
@@ -56,7 +56,8 @@ default. It improves the tested consecutive path but does not establish a
 bounded disk recording. Live preview is independent: 10 Hz maximum and 1920 px
 width initially, with immediate controls to slow or suspend it.
 The numerical input, ROI and saved fields keep their original resolution.
-GPU preparation and recording overlap require a new reference. Preview controls
+GPU preparation and recording overlap mark preparation pending until Start;
+the staged reference image can be reused. Preview controls
 do not rebuild the reference or alter numerical defaults. See the
 [activation guide](DIC/LucasKanadeICGN/docs/how-to/run-in-browser.rst) and
 [1080p/UHD recording measurements](DIC/LucasKanadeICGN/docs/reference/performance.rst#browser-recording-overlap).
@@ -137,7 +138,8 @@ field and ROI; a CSV index and JSON manifest describe the sequence.
   quadratic. Quadratic adds the displacement's second derivatives.
 - **Sampling:** B-spline (default), bilinear or Keys cubic interpolation.
 - **Geometry:** native wgpu-py and raw shared-WGSL accept any square width from
-  4 through 64, with independent stride and uniform or Gaussian integration.
+  4 through 64, with independent stride. Native engines support uniform or
+  Gaussian integration; the raw browser core currently supports uniform only.
   The Three.js/TSL WebGPU compatibility path supports widths 8, 16 and 32.
   The default width remains 16.
 - **ROI:** native translation and affine accept a reference-sized boolean
@@ -151,6 +153,15 @@ field and ROI; a CSV index and JSON manifest describe the sequence.
 - **Initialization:** zero by default; temporal history, velocity prediction,
   fine correction and finest-level stagnation stopping are opt-in. The
   qualified temporal profile is documented separately from API defaults.
+
+For difficult loaded image pairs, the browser offers independent global-affine
+initialization and experimental GPU seed propagation in **Analysis → Solve**.
+Propagation currently requires local translation/B-spline, CPU reference
+preparation and one slot. It tests neighbour seeds and reruns LK on improved
+rejected points; it does not copy neighbours into the measured field. See the
+[illustrated propagation reference](DIC/LucasKanadeICGN/docs/reference/propagation.rst)
+and [host capability boundaries](DIC/LucasKanadeICGN/docs/explanation/backend-selection.rst).
+These options are not public native Python constructor arguments.
 
 ```python
 mask = np.ones(reference.shape, dtype=bool)

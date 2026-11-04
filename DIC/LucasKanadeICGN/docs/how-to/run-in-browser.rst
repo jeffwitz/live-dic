@@ -298,8 +298,8 @@ coordinates when the pair reference changes; it is not advected with material.
 Try GPU preparation for consecutive images
 ------------------------------------------
 
-In **Solve**, check **Experimental GPU reference preparation**, then capture a
-**new reference** to apply it. Choose **Consecutive images** and initially leave
+In **Solve**, check **Experimental GPU reference preparation**, then press
+**Start calculation** to apply it to the staged reference. Choose **Consecutive images** and initially leave
 recording off to distinguish computation from durable result storage. This
 opt-in is independent of the custom-solver checkbox. The applied solver summary
 reports CPU or GPU preparation; pending edits do not modify an active analysis.
@@ -328,8 +328,9 @@ width. The initial GUI values are 10 Hz maximum and 1920 px width. These
 settings apply immediately without preparing a reference, resetting seeds or
 changing recording. They are independent of recording overlap.
 
-In **Solve**, check **Experimental pipeline overlap**, then capture a new
-reference or apply the mask. Synchronous recording remains the default.
+In **Solve**, check **Experimental pipeline overlap**, then press
+**Start calculation**. Changes stay pending until Start; a staged reference
+can be reused without capturing another image. Synchronous recording remains the default.
 This option is independent of experimental GPU preparation and custom settings.
 
 With overlap enabled, the supervisor reserves space before every recorded solve.
@@ -362,6 +363,15 @@ about 1 Hz. It does not pause acquisition or omit computed fields. Explicit
 inspection, reference/mask views and Pause/export can still draw the latest
 view. Changes apply immediately. A low display rate is a maximum, not a
 target computational rate.
+
+For dark or strongly textured specimens, **High-contrast vector outlines**
+adds thin light/dark borders around the norm-coloured glyphs. It is off by
+default and applies immediately without recalculating a field or preparing a
+reference. Colour still represents the displacement norm; magnification only
+changes displayed lengths, and the nearby length key includes the gain. Arrow
+tips retain the measured current subset centres. Zero-length vectors remain
+dots, unavailable requested points are crosses, and ROI holes remain empty.
+The outline adds sparse drawing work, not scalar interpolation or strain fitting.
 
 The pipeline status distinguishes the displayed input, pending recording slots
 and library admissions. Computed FPS may temporarily lead committed FPS by up
@@ -573,7 +583,8 @@ In **Analysis → Solve**:
    the subsequent correlation and propagation still run on the GPU.
 3. Set **GPU seed propagation · experimental** to one or two passes per level.
    The menu also permits up to four; more attempts cost more work and are not
-   a convergence or frame-rate guarantee.
+   a convergence or frame-rate guarantee. The GPU skips further searches once
+   an empty work list proves that the state has not changed.
 4. Keep the desired median/UOD spatial policy. It runs after the propagation
    re-solves. Global affine or Fourier initialization can be selected
    independently of this translation-only local stage.

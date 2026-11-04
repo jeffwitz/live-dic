@@ -23,6 +23,12 @@ its UI/demo assets are assembled separately from this Python wheel. It does
 not change the native Python defaults or qualify phone metrology. Try it at
 [jeffwitz.github.io/live-dic](https://jeffwitz.github.io/live-dic/).
 
+Browser-only settings must not be copied directly into native constructors.
+In particular, global affine initialization and `spatialPropagationPasses` have
+browser supervisors; native propagation is still development tooling. Consult
+the [backend scope](https://github.com/jeffwitz/live-dic/blob/main/DIC/LucasKanadeICGN/docs/explanation/backend-selection.rst)
+and [illustrated propagation reference](https://github.com/jeffwitz/live-dic/blob/main/DIC/LucasKanadeICGN/docs/reference/propagation.rst).
+
 ## Installation and stable names
 
 With Python 3.11 or newer, from this `python/` directory:

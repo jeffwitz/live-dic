@@ -23,12 +23,13 @@ Results places quantity, Play/Pause and a timeline beside the image. Its results
 computed fields while adding explicit smoothing, strain fitting, point/line/gauge
 measurements and NPZ export/import. Recording is optional and adds full readback.
 Consecutive-image acquisition has an opt-in **Experimental GPU reference
-preparation** checkbox in Solve. Apply it with a new reference. See the
+preparation** checkbox in Solve. Settings and mask edits remain pending until
+**Start calculation**, which prepares the staged reference once. See the
 [GPU preparation explanation](docs/explanation/gpu-reference-preparation.rst)
 for the tested scope and timing boundary; CPU preparation remains the default.
 
 **Experimental pipeline overlap** in Solve adds a bounded two-field recording
-queue. Apply it with a new reference. The lightweight live preview independently
+queue. It is separate from numerical seed propagation. The lightweight live preview independently
 shows norm-coloured displacement vectors on the current image, initially at
 10 Hz maximum and 1920 px width. Its controls apply immediately; numerical
 images, ROI and saved fields retain their original size. Scalar maps and strain
@@ -38,6 +39,14 @@ post-processing run only when reviewing saved fields. See the [browser guide](do
 [Open the published workbench](https://jeffwitz.github.io/live-dic/) without installing a local server.
 Hand-held camera use is
 not qualified for metrology. Python remains the primary NumPy supervisor.
+
+**Analysis → Solve → GPU seed propagation** is an experimental, disabled-by-default
+recovery stage for local translation/B-spline, uniform full windows, CPU
+reference preparation and one slot. Global affine initialization remains
+independent. The stage scores hypotheses and reruns LK; it does not substitute
+neighbour vectors for measurements. Native Python propagation remains research
+tooling. See the [illustrated reference](docs/reference/propagation.rst) and
+[backend scope](docs/explanation/backend-selection.rst).
 
 Long recordings use [browser-local disk storage](docs/how-to/store-long-sequences.rst) with a CPU cache
 configurable up to 1 GiB, lazy session reopening and portable multipart exports.

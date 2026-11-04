@@ -73,6 +73,11 @@ adapter; skipped GPU tests do not validate numerical execution.
   Stagnation stopping applies only to the finest level. Adaptive pyramids and
   direct interpolation have failed some qualified trajectory cases; do not
   present their speed alone as a successful optimization.
+- Browser Analysis/Solve exposes opt-in `spatialPropagationPasses` for local
+  translation/B-spline/uniform full windows, CPU reference preparation and one
+  slot. It shares canonical scoring/compact-LK kernels with native research
+  tooling; it is not a public native constructor option or a fixed Live preset.
+  Preserve the separation from median smoothing and global affine initialization.
 
 ## Numerical and performance evidence
 

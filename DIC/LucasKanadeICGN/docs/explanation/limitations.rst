@@ -381,7 +381,10 @@ Live preview versus results analysis
 -------------------------------------
 
 The live companion shows sparse norm-coloured vectors over the current image,
-or image only. It does not compute scalar/strain maps in the live renderer.
+or the image only. ``vectorOutline`` adds optional high-contrast borders as a renderer display
+setting, off by default, not a numerical-engine option. It adds two sparse draw
+calls and cannot make an unavailable vector valid or alter stored fields.
+It does not compute scalar/strain maps in the live renderer.
 Preview decimation and its maximum rate are display choices, not changes to
 full-resolution fields or a guarantee of 4K60 recording. Saved-field analysis
 pauses acquisition; palette and range edits reuse cached component arrays and
