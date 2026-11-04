@@ -1,0 +1,254 @@
+{
+  "tensile-16": {
+    "control": {
+      "medianMs": 15.130093990592286,
+      "p95Ms": 16.054586245445535,
+      "p99Ms": 16.520402742316946,
+      "engineFieldsPerSecond": 66.21199960666937,
+      "over60HzBudgetFraction": 0.006666666666666667
+    },
+    "candidate": {
+      "medianMs": 15.145161480177194,
+      "p95Ms": 16.043526137946174,
+      "p99Ms": 16.46767007536255,
+      "engineFieldsPerSecond": 66.22982030876815,
+      "over60HzBudgetFraction": 0.006666666666666667
+    },
+    "pairedBlockMedianSavingMs": 0.012822492863051593,
+    "saving95IntervalMs": [
+      -0.03827798354905099,
+      0.05210602830629796
+    ],
+    "referenceMarginMs": 0.08455025235889475,
+    "improvementBeyondMargin": false,
+    "nonRegressionWithinMargin": true,
+    "quality": [
+      {
+        "coverage": 1.0,
+        "vectorRmse": 0.010168396570294525,
+        "p95Error": 0.017227586244966918,
+        "parameterMaxAbsDifference": 0.0,
+        "accepted": 31284,
+        "iterationDifferences": 0
+      },
+      {
+        "coverage": 1.0,
+        "vectorRmse": 0.010168396570294525,
+        "p95Error": 0.017227586244966918,
+        "parameterMaxAbsDifference": 0.0,
+        "accepted": 31284,
+        "iterationDifferences": 0
+      }
+    ]
+  },
+  "tensile-32": {
+    "control": {
+      "medianMs": 18.132856988813728,
+      "p95Ms": 20.183287537656724,
+      "p99Ms": 21.52022834867239,
+      "engineFieldsPerSecond": 55.50522332025757,
+      "over60HzBudgetFraction": 0.8541666666666666
+    },
+    "candidate": {
+      "medianMs": 16.452572483103722,
+      "p95Ms": 18.36725200118962,
+      "p99Ms": 19.83317269361578,
+      "engineFieldsPerSecond": 61.01596760141989,
+      "over60HzBudgetFraction": 0.3375
+    },
+    "pairedBlockMedianSavingMs": 1.6509514971403405,
+    "saving95IntervalMs": [
+      1.5235470345942304,
+      1.710898504825309
+    ],
+    "referenceMarginMs": 0.08455025235889475,
+    "improvementBeyondMargin": true,
+    "nonRegressionWithinMargin": true,
+    "quality": [
+      {
+        "coverage": 1.0,
+        "vectorRmse": 0.010168396570294525,
+        "p95Error": 0.017227586244966918,
+        "parameterMaxAbsDifference": 0.0,
+        "accepted": 31284,
+        "iterationDifferences": 0
+      },
+      {
+        "coverage": 1.0,
+        "vectorRmse": 0.010168430015151645,
+        "p95Error": 0.01722771629264342,
+        "parameterMaxAbsDifference": 0.00030541419982910156,
+        "accepted": 31284,
+        "iterationDifferences": 6
+      }
+    ]
+  },
+  "tensile-128": {
+    "control": {
+      "medianMs": 17.132453009253368,
+      "p95Ms": 18.55715923011303,
+      "p99Ms": 21.34726777963806,
+      "engineFieldsPerSecond": 58.02497457561095,
+      "over60HzBudgetFraction": 0.8791666666666667
+    },
+    "candidate": {
+      "medianMs": 18.506132008042186,
+      "p95Ms": 19.640923812403344,
+      "p99Ms": 21.373647892614823,
+      "engineFieldsPerSecond": 54.3333710706304,
+      "over60HzBudgetFraction": 0.9341666666666667
+    },
+    "pairedBlockMedianSavingMs": -1.1951017659157515,
+    "saving95IntervalMs": [
+      -1.2221782526466995,
+      -1.1213137622689828
+    ],
+    "referenceMarginMs": 0.08455025235889475,
+    "improvementBeyondMargin": false,
+    "nonRegressionWithinMargin": false,
+    "quality": [
+      {
+        "coverage": 1.0,
+        "vectorRmse": 0.010168396570294525,
+        "p95Error": 0.017227586244966918,
+        "parameterMaxAbsDifference": 0.0,
+        "accepted": 31284,
+        "iterationDifferences": 0
+      },
+      {
+        "coverage": 1.0,
+        "vectorRmse": 0.010168428766043184,
+        "p95Error": 0.017227005212148424,
+        "parameterMaxAbsDifference": 0.00030493736267089844,
+        "accepted": 31284,
+        "iterationDifferences": 5
+      }
+    ]
+  },
+  "seeded-16": {
+    "control": {
+      "medianMs": 17.071695474442095,
+      "p95Ms": 18.76323038013652,
+      "p99Ms": 20.292198408860713,
+      "engineFieldsPerSecond": 58.62448318944433,
+      "over60HzBudgetFraction": 0.7491666666666666
+    },
+    "candidate": {
+      "medianMs": 17.058960016584024,
+      "p95Ms": 18.95279252785258,
+      "p99Ms": 20.118992198840715,
+      "engineFieldsPerSecond": 58.652288519291155,
+      "over60HzBudgetFraction": 0.7616666666666667
+    },
+    "pairedBlockMedianSavingMs": -0.01598097151145339,
+    "saving95IntervalMs": [
+      -0.028662514523603022,
+      0.019491242710500956
+    ],
+    "referenceMarginMs": 0.06883523601572959,
+    "improvementBeyondMargin": false,
+    "nonRegressionWithinMargin": true,
+    "quality": [
+      {
+        "coverage": 0.998706171561651,
+        "vectorRmse": 6.498346804961139e-06,
+        "p95Error": 0.0,
+        "parameterMaxAbsDifference": 0.0,
+        "accepted": 31614,
+        "iterationDifferences": 0
+      },
+      {
+        "coverage": 0.998706171561651,
+        "vectorRmse": 6.498346804961139e-06,
+        "p95Error": 0.0,
+        "parameterMaxAbsDifference": 0.0,
+        "accepted": 31614,
+        "iterationDifferences": 0
+      }
+    ]
+  },
+  "seeded-32": {
+    "control": {
+      "medianMs": 17.55909199710004,
+      "p95Ms": 19.74004048970528,
+      "p99Ms": 20.953456056304276,
+      "engineFieldsPerSecond": 57.017264450310265,
+      "over60HzBudgetFraction": 0.8558333333333333
+    },
+    "candidate": {
+      "medianMs": 15.616189979482442,
+      "p95Ms": 17.318096495000642,
+      "p99Ms": 18.23965204821434,
+      "engineFieldsPerSecond": 64.1697616365734,
+      "over60HzBudgetFraction": 0.12
+    },
+    "pairedBlockMedianSavingMs": 1.9258210086263716,
+    "saving95IntervalMs": [
+      1.8925294862128794,
+      2.021822991082445
+    ],
+    "referenceMarginMs": 0.06883523601572959,
+    "improvementBeyondMargin": true,
+    "nonRegressionWithinMargin": true,
+    "quality": [
+      {
+        "coverage": 0.998706171561651,
+        "vectorRmse": 6.498346804961139e-06,
+        "p95Error": 0.0,
+        "parameterMaxAbsDifference": 0.0,
+        "accepted": 31614,
+        "iterationDifferences": 0
+      },
+      {
+        "coverage": 0.998706171561651,
+        "vectorRmse": 6.499005742069067e-06,
+        "p95Error": 0.0,
+        "parameterMaxAbsDifference": 0.0002651214599609375,
+        "accepted": 31614,
+        "iterationDifferences": 0
+      }
+    ]
+  },
+  "seeded-128": {
+    "control": {
+      "medianMs": 17.37359049730003,
+      "p95Ms": 21.440076868748292,
+      "p99Ms": 22.866694222320803,
+      "engineFieldsPerSecond": 56.67682052008203,
+      "over60HzBudgetFraction": 0.79
+    },
+    "candidate": {
+      "medianMs": 16.53996401000768,
+      "p95Ms": 20.163204823620614,
+      "p99Ms": 21.57863356580492,
+      "engineFieldsPerSecond": 59.55278867949005,
+      "over60HzBudgetFraction": 0.4558333333333333
+    },
+    "pairedBlockMedianSavingMs": 0.7719057612121105,
+    "saving95IntervalMs": [
+      0.7119142392184585,
+      0.9247375128325075
+    ],
+    "referenceMarginMs": 0.06883523601572959,
+    "improvementBeyondMargin": true,
+    "nonRegressionWithinMargin": true,
+    "quality": [
+      {
+        "coverage": 0.998706171561651,
+        "vectorRmse": 6.498346804961139e-06,
+        "p95Error": 0.0,
+        "parameterMaxAbsDifference": 0.0,
+        "accepted": 31614,
+        "iterationDifferences": 0
+      },
+      {
+        "coverage": 0.998706171561651,
+        "vectorRmse": 6.499890641055131e-06,
+        "p95Error": 0.0,
+        "parameterMaxAbsDifference": 0.0002636909484863281,
+        "accepted": 31614,
+        "iterationDifferences": 0
+      }
+    ]
+  }
+}

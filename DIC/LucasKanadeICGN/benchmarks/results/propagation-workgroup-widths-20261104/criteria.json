@@ -1,0 +1,25 @@
+{
+  "scriptSha256": "eb5d0068c9eaebea1af27a95a7c6daee11f212d46a2a7c53f83bf621adde3ac0",
+  "rounds": 12,
+  "repeats": 100,
+  "schedule": "one prepared device, per-frame AB/BA; only existing solver workgroup overrides change",
+  "referenceMargin": "95th percentile of absolute per-block median paired reference/reference differences; derived and written before candidates",
+  "bootstrapSamples": 10000,
+  "bootstrapSeed": 1729,
+  "parameterMaxAbsDifference": 0.001,
+  "coverageMinimum": 0.995,
+  "vectorRmseMaximum": 0.01518230373115895,
+  "p95ErrorMaximum": 0.02722860762111737,
+  "statusAgreement": "exact",
+  "iterationAgreement": "reported, not forced when floating reductions change",
+  "cases": {
+    "tensile": {
+      "referenceReportSha256": "ba28a1aea3b5be13864d19831c78bb396702f58dda59e5c3524509a9e2905072",
+      "marginMs": 0.08455025235889475
+    },
+    "seeded": {
+      "referenceReportSha256": "7653d02cb0a0759fb106fea7f7435f59aaa8d51e363381aced390b793b0c1d0b",
+      "marginMs": 0.06883523601572959
+    }
+  }
+}

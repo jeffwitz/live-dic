@@ -1,0 +1,8 @@
+{
+  "referenceReportSha256": "948c17368a0bea87698e2b381f7220ceba84cb8e417fda462876202497fa3425",
+  "scriptSha256": "0d73ff84d5cf94faf31fd92e34dfa86b5699c7908b7e625adbe5b66c61b40891",
+  "marginMs": 0.31750000566244113,
+  "method": "95th percentile of absolute reference/reference per-block median paired differences, fixed before candidate evaluation",
+  "bootstrapSeed": 1729,
+  "bootstrapSamples": 10000
+}

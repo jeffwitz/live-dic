@@ -1,0 +1,48 @@
+{
+  "sourceCommit": "799440ea6eda891f0b0807ad83dbfdfb0b1011d4",
+  "blocks": 180,
+  "pairs": 18000,
+  "timedFields": 36000,
+  "control": {
+    "medianMs": 17.895185999805108,
+    "p95Ms": 19.659793813480064,
+    "p99Ms": 21.52688024914821,
+    "engineFieldsPerSecond": 56.01649960533833,
+    "over60HzBudgetFraction": 0.8956111111111111
+  },
+  "candidate": {
+    "medianMs": 16.23458747053519,
+    "p95Ms": 18.00983361026738,
+    "p99Ms": 19.766350884456184,
+    "engineFieldsPerSecond": 61.618560042673586,
+    "over60HzBudgetFraction": 0.21961111111111112
+  },
+  "pairedBlockMedianSavingMs": 1.591210748301819,
+  "saving95IntervalMs": [
+    1.5728117432445288,
+    1.6087434923974797
+  ],
+  "quality": [
+    {
+      "coverage": 1.0,
+      "vectorRmse": 0.010168396570294525,
+      "p95Error": 0.017227586244966918,
+      "parameterMaxAbsDifference": 0.0,
+      "accepted": 31284,
+      "iterationDifferences": 0
+    },
+    {
+      "coverage": 1.0,
+      "vectorRmse": 0.010168430015151645,
+      "p95Error": 0.01722771629264342,
+      "parameterMaxAbsDifference": 0.00030541419982910156,
+      "accepted": 31284,
+      "iterationDifferences": 6
+    }
+  ],
+  "notes": [
+    "Whole-process asynchronous observer includes preparation and warmups; paired times do not.",
+    "Timing lists are retained by this fixed-length pilot; process RSS is not a production cache or physical/free VRAM measurement.",
+    "The numerical criteria and two-pass budget are unchanged; this is one repeated easy UHD pair, not camera, storage or difficult-motion qualification."
+  ]
+}

@@ -2037,3 +2037,92 @@ power-limit flags are preserved without claiming an isolated cause of drift.
 The archive includes every paired timing, raw observer data, source snapshots,
 input hashes and an editable Matplotlib plot. This soak does not establish a
 new repeatability margin; retain the separate predeclared acceptance control.
+
+Opt-in 32-invocation solves (2026-11-04)
+----------------------------------------
+
+The `native width controls
+<https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/propagation-workgroup-widths-20261104>`_
+compare existing solver widths on one prepared device, keeping the same buffers,
+reference, failed-only propagation budget and scoring. The default remains 16.
+Translation 32/16, B-spline, uniform, two fixed levels (8/16), tolerance 0.005,
+ZNCC 0.8 and raw fields are unchanged. The boundary is resident NumPy target to
+materialized field/statistics; preparation, decoding, display and storage are
+excluded. Each run has twelve 100-pair AB/BA blocks. Reference/reference margins
+are fixed before candidate evaluation, with raw samples and criteria archived.
+
+.. list-table:: Intel LNL/Vulkan native propagation, explicit width choices
+   :header-rows: 1
+
+   * - Case / width
+     - Control 16 median
+     - Candidate median / p95
+     - Candidate fields/s
+   * - Original tensile frame 40 / 32
+     - 18.133 ms
+     - 16.453 / 18.367 ms
+     - 61.02
+   * - Original tensile frame 40 / 128
+     - 17.132 ms
+     - 18.506 / 19.641 ms
+     - 54.33
+   * - Static coarse-seed defects / 32
+     - 17.559 ms
+     - 15.616 / 17.318 ms
+     - 64.17
+   * - Static coarse-seed defects / 128
+     - 17.374 ms
+     - 16.540 / 20.163 ms
+     - 59.55
+
+Width 32 saves 1.651 ms [1.524, 1.711] on the original pair and 1.926 ms
+[1.893, 2.022] on the seed-defect control (block-bootstrap 95 percent intervals).
+Status arrays agree exactly; the fixed 0.001 px parameter-agreement bound and
+existing analytical coverage/RMSE/p95 gates pass. A few iteration values change
+with floating reduction order. Wider is not uniformly faster: width 128
+regresses on the original pair. Its native experimental option is preserved;
+it is not exposed in the browser. No vendor-based autotuning is added.
+
+The `extended paired 16/32 control
+<https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/propagation-width-stability-20261104>`_
+adds 18,000 pairs (36,000 timed fields) on the original
+UHD pair. Width 16 measures 17.895 ms median and
+19.660 ms p95; width 32 measures
+16.235 and 18.010 ms,
+with 61.62 fields/s from call durations.
+The observer covers the whole process including warmups; its memory counters
+are not physical/free VRAM. This remains repeated-pair engine evidence, not
+camera/recording performance or a worst-case latency guarantee.
+
+Browser width comparison uses a different input boundary
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The `browser width control
+<https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/browser-propagation-workgroup-20261104>`_
+measures a resident decoded ImageBitmap to a full typed field and statistics,
+inside Chromium on the same Intel adapter. It includes external-image upload,
+luminance, solving and readback; excludes decoding, reference preparation,
+display, storage and Python/DevTools round trips. Two engines share one device
+but retain independent reference/state resources. This differs from the native
+pipeline-swap control and the PWA's GPU-only temporal Live preset.
+
+With otherwise identical translation 32/16, two-level, two-pass options,
+width 16 takes 38.70 ms median, 40.60 ms p95 and 26.05 fields/s; width 32 takes
+33.65 ms, 35.40 ms and 30.09 fields/s. The median block-paired saving is
+5.100 ms [4.975, 5.200], beyond the reference/reference margin of 0.31750 ms.
+Both cover the full 30,916-centre analytical interior, with about 0.0101684 px
+vector RMSE, exact status agreement and zero translation gradients. The maximum
+parameter difference is 0.0002412 px; two iteration values differ. No precision
+or convergence gate changes. **This boundary does not achieve 4K60.**
+
+A separate 20-pair gray-target diagnostic observes medians of 24.20 ms (16) and
+18.85 ms (32), excluding one-time gray extraction. These short, separate samples
+are not a qualified percentile comparison or an isolated measurement of upload
+cost. Do not substitute them for the ImageBitmap, native NumPy, camera or
+recording results. Input representation and the chosen return path must remain
+visible alongside every FPS figure.
+
+The explicit browser setting is ``solverWorkgroupSize: 32``; Analysis exposes it
+under custom Solve settings. Native Python retains ``solver_workgroup_size=32``.
+The fixed Live preset and all defaults stay at 16. No mobile/all-vendor claim
+follows from the Linux hardware and software checks.

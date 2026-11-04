@@ -1,0 +1,44 @@
+{
+  "pairedMedianSavingMs": 5.100000023841858,
+  "saving95IntervalMs": [
+    4.975000023841858,
+    5.200000032782555
+  ],
+  "marginMs": 0.31750000566244113,
+  "improvementBeyondMargin": true,
+  "maximumParameterDifference": 0.00024116039276123047,
+  "statusMismatch": 0,
+  "iterationDifferences": 2,
+  "rows": [
+    {
+      "width": 16,
+      "medianMs": 38.69999998807907,
+      "p95Ms": 40.60000002384186,
+      "p99Ms": 41.39999997675419,
+      "fieldsPerSecond": 26.04556671855703,
+      "quality": {
+        "population": 30916,
+        "accepted": 31284,
+        "coverage": 1,
+        "vectorRmse": 0.010168431449364,
+        "p95Error": 0.017227320270596744,
+        "gradient": 0
+      }
+    },
+    {
+      "width": 32,
+      "medianMs": 33.650000005960464,
+      "p95Ms": 35.39999997615814,
+      "p99Ms": 36.3010000115633,
+      "fieldsPerSecond": 30.08755478512412,
+      "quality": {
+        "population": 30916,
+        "accepted": 31284,
+        "coverage": 1,
+        "vectorRmse": 0.01016843386456303,
+        "p95Error": 0.017227134965414972,
+        "gradient": 0
+      }
+    }
+  ]
+}

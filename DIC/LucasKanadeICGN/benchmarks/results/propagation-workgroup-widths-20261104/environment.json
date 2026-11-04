@@ -1,0 +1,14 @@
+{
+  "python": "3.11.14 (main, Jan 27 2026, 23:58:49) [Clang 21.1.4 ]",
+  "executable": "/home/jeff/Code/tests_gpuio/DIC/LucasKanadeICGN/python/.venv/bin/python",
+  "versions": {
+    "numpy": "2.4.6",
+    "wgpu": "0.32.0",
+    "Pillow": "13.0.0"
+  },
+  "captureNote": "Supplemental capture after the campaigns; this venv was not installed or modified between runs.",
+  "fixtureSha256": {
+    "reference.png": "7cadf6032d7c5ac2de74ae542573a3b38069dc8c1c075ef9576641601996aeec",
+    "frame_040.png": "7477178b00acb669b34aeb2084b895076cf74475f472bc25f3af2696b2719e30"
+  }
+}
