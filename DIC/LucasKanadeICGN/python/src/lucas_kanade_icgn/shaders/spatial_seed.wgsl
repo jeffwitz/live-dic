@@ -37,7 +37,6 @@ var<workgroup> candidates: array<vec4<f32>, 11>;
 var<workgroup> sums: array<vec4<f32>, 64>;
 var<workgroup> sum_g2: array<f32, 64>;
 var<workgroup> best: vec4<f32>; // dx, dy, rho, own_rho
-var<workgroup> cached_score: vec4<f32>; // dx, dy, rho, initialized
 
 fn median(v: ptr<function, array<f32, 9>>, n: u32) -> f32 {
     for (var i = 1u; i < n; i++) {
@@ -111,6 +110,16 @@ fn choose(@builtin(workgroup_id) group: vec3<u32>,
         if CANDIDATE_MODE != 0u && n > 0u {
             candidates[10] = vec4<f32>(median(&us, n), median(&vs, n), 1.0, 0.0);
         }
+        // Piggyback exact cache keys/scores on the existing candidate broadcast.
+        // z=2 means reuse w; no extra per-candidate barrier is necessary.
+        if CACHE_SCORES && REUSE_SCORES {
+            for (var k = 0u; k < 11u; k++) {
+                let previous = scores.values[config.count + index * 11u + k];
+                if candidates[k].z != 0.0 && previous.w > 0.5 && all(previous.xy == candidates[k].xy) {
+                    candidates[k] = vec4<f32>(candidates[k].xy, 2.0, previous.z);
+                }
+            }
+        }
         best = vec4<f32>(own, -2.0, -2.0);
     }
     workgroupBarrier();
@@ -129,18 +138,14 @@ fn choose(@builtin(workgroup_id) group: vec3<u32>,
             || any(maximum > vec2<f32>(f32(config.width - 3u), f32(config.height - 3u))) {
             continue;
         }
-        if CACHE_SCORES && REUSE_SCORES {
-            if lane == 0u { cached_score = scores.values[config.count + index * 11u + k]; }
-            let previous = workgroupUniformLoad(&cached_score);
-            if previous.w > 0.5 && all(previous.xy == p) {
-                if lane == 0u {
-                    let rho = previous.z;
-                    if k == 0u { best.w = rho; }
-                    if rho > best.z { best = vec4<f32>(p, rho, best.w); }
-                }
-                workgroupBarrier();
-                continue;
+        if CACHE_SCORES && REUSE_SCORES && candidate.z == 2.0 {
+            if lane == 0u {
+                let rho = candidate.w;
+                if k == 0u { best.w = rho; }
+                if rho > best.z { best = vec4<f32>(p, rho, best.w); }
             }
+            workgroupBarrier();
+            continue;
         }
         var s = vec4<f32>(0.0);
         var g2 = 0.0;

@@ -116,7 +116,11 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
             cache_enabled = (
                 self.cache_scores
                 and self.passes > 1
-                and n * 192 <= device.limits["max-storage-buffer-binding-size"]
+                and n * 192
+                <= min(
+                    device.limits["max-storage-buffer-binding-size"],
+                    device.limits["max-buffer-size"],
+                )
             )
             scores = buffer(n * (192 if cache_enabled else 16), storage)
             prior = buffer(n * 32, storage)
