@@ -64,6 +64,11 @@ unreachable code, unsafe control flow and Promise executors. Treat returned
 Promise-executor values as mistakes: resolve/reject explicitly and use a block
 for side effects. Unused suppression comments also fail lint. The shared ``web/core`` also
 forbids ``window`` and ``document`` so host code stays usable in Workers.
+The checks also reject reversed loop increments, self-comparisons or
+self-assignment, duplicate switch cases and invalid NaN comparisons. Equality
+uses strict comparison, while the deliberate ``value == null`` idiom remains
+allowed for a combined null/undefined check. These are correctness rules;
+vendor bundles and historical reports remain excluded.
 
 The root Ruff configuration extends the package configuration to active
 benchmarks, tools and documentation examples. Archived `benchmarks/results/`

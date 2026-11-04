@@ -43,6 +43,12 @@ export default [
         { args: "none", caughtErrors: "none", varsIgnorePattern: "^_" },
       ],
       "valid-typeof": "error",
+      "eqeqeq": ["error", "smart"],
+      "for-direction": "error",
+      "no-self-compare": "error",
+      "no-self-assign": "error",
+      "no-duplicate-case": "error",
+      "use-isnan": "error",
     },
   },
   {
