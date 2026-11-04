@@ -1,3 +1,4 @@
+import { LIVE_BACKGROUND_SHADER, LIVE_GLYPH_SHADER } from './live-vector-shaders.js';
 import { presentationSize } from '../ui/supervision.js';
 import { resizeAndConfigureCanvas } from './canvas-context.js';
 
@@ -43,6 +44,7 @@ export function vectorAppearance(result, { scale = null, arrowStep = null, arrow
  */
 export class LiveVectorRenderer {
   constructor(device, canvas) {
+    this.closed = false;
     this.device = device; this.canvas = canvas;
     this.context = canvas.getContext('webgpu');
     if (!this.context) throw new Error('This canvas cannot present WebGPU');
@@ -52,85 +54,34 @@ export class LiveVectorRenderer {
     this.configuredCanvasSize = { width: canvas.width, height: canvas.height };
     this.config = device.createBuffer({ size: 64, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
     this.backgroundGroups = new WeakMap(); this.vectorGroups = new WeakMap(); this.legend = null;
-    const image = device.createShaderModule({ label: 'Live image without field sampling', code: `
-      struct Config { width:u32,height:u32,gx:u32,gy:u32,stride:u32,parameters:u32,step:u32,gray:u32,
-        subset:f32,spacing:f32,maximum:f32,gain:f32,view_width:f32,view_height:f32,opacity:f32,padding:f32 }
-      @group(0) @binding(1) var image:texture_2d<f32>;
-      @group(0) @binding(2) var<uniform> config:Config;
-      @vertex fn vertex(@builtin(vertex_index) i:u32)->@builtin(position) vec4<f32> {
-        let x=f32((i<<1u)&2u);let y=f32(i&2u);return vec4<f32>(x*2.0-1.0,y*2.0-1.0,0,1);
-      }
-      @fragment fn background(@builtin(position) p:vec4<f32>)->@location(0) vec4<f32> {
-        let xy=vec2<i32>(p.xy*vec2<f32>(f32(config.width)/config.view_width,f32(config.height)/config.view_height));
-        let value=textureLoad(image,clamp(xy,vec2<i32>(0),vec2<i32>(i32(config.width)-1,i32(config.height)-1)),0);
-        return vec4<f32>(select(value.rgb,vec3<f32>(value.r),config.gray!=0u),1);
-      }
-    ` });
+    const image = device.createShaderModule({ label: 'Live image without field sampling', code: LIVE_BACKGROUND_SHADER });
     this.background = device.createRenderPipeline({ label: 'Live current image', layout: 'auto',
       vertex: { module: image, entryPoint: 'vertex' }, fragment: { module: image, entryPoint: 'background', targets: [{ format }] },
       primitive: { topology: 'triangle-list' } });
-    const vectors = device.createShaderModule({ label: 'Sparse norm-coloured live vectors', code: `
-      struct Field { values:array<f32> }
-      struct Config { width:u32,height:u32,gx:u32,gy:u32,stride:u32,parameters:u32,step:u32,gray:u32,
-        subset:f32,spacing:f32,maximum:f32,gain:f32,view_width:f32,view_height:f32,opacity:f32,padding:f32 }
-      @group(0) @binding(0) var<storage,read> field:Field;
-      @group(0) @binding(2) var<uniform> config:Config;
-      struct Vertex { @builtin(position) position:vec4<f32>, @location(0) colour:vec4<f32> }
-      fn colour(norm:f32)->vec3<f32> {
-        let t=clamp(norm/max(config.maximum,1e-8),0.0,1.0)*2.0;
-        let low=vec3<f32>(21,57,99)/255.0;let middle=vec3<f32>(31,132,138)/255.0;let high=vec3<f32>(241,206,95)/255.0;
-        return select(mix(low,middle,t),mix(middle,high,t-1.0),t>=1.0);
-      }
-      @vertex fn glyph(@builtin(vertex_index) vertex:u32,@builtin(instance_index) instance:u32)->Vertex {
-        let columns=(config.gx+config.step-1u)/config.step;
-        let ix=min(config.gx-1u,(instance%columns)*config.step+config.step/2u);
-        let iy=min(config.gy-1u,(instance/columns)*config.step+config.step/2u);
-        let base=(iy*config.gx+ix)*config.stride;
-        let status=field.values[base+config.parameters];
-        var output:Vertex;output.position=vec4<f32>(-2,-2,0,1);output.colour=vec4<f32>(0);
-        if status == -3.0 {return output;}
-        let factor=vec2<f32>(config.view_width/f32(config.width),config.view_height/f32(config.height));
-        let centre=(vec2<f32>(f32(ix),f32(iy))*config.spacing+vec2<f32>((config.subset-1.0)/2.0));
-        let corners=array<vec2<f32>,6>(vec2<f32>(0,-1),vec2<f32>(1,-1),vec2<f32>(1,1),vec2<f32>(0,-1),vec2<f32>(1,1),vec2<f32>(0,1));
-        var point=centre*factor;
-        if status < 0.5 {
-          // An unavailable requested subset has no reliable deformed centre.
-          // Mark its reference centre, never manufacture a displacement.
-          let axis=select(vec2<f32>(.7071,.7071),vec2<f32>(.7071,-.7071),vertex>=6u);
-          let normal=vec2<f32>(-axis.y,axis.x);let corner=corners[vertex%6u];
-          point+=(corner.x*2.0-1.0)*axis*3.0+normal*corner.y*.65;
-          output.colour=vec4<f32>(.63,.67,.70,config.opacity);
-        } else {
-          let displacement=vec2<f32>(field.values[base],field.values[base+3u]);
-          let end=(centre+displacement)*factor;
-          let delta=displacement*config.gain*factor;
-          let distance=length(delta);output.colour=vec4<f32>(colour(length(displacement)),config.opacity);
-          if distance < 1.0 {
-            // A short measured vector is a dot; its colour still reports norm.
-            point=end;
-            if vertex<6u {let c=corners[vertex];point+=vec2<f32>(c.x*2.0-1.0,c.y)*1.25;}
-          } else {
-            let direction=delta/distance;let normal=vec2<f32>(-direction.y,direction.x);
-            let head=min(distance*.4,12.0);let start=end-delta;let neck=end-direction*head;
-            if vertex<6u {let c=corners[vertex];point=mix(start,neck,c.x)+normal*c.y*2.0;}
-            else if vertex<9u {
-              let points=array<vec2<f32>,3>(end,neck+normal*head*.5,neck-normal*head*.5);point=points[vertex-6u];
-            } else {point=start;}
-          }
-        }
-        output.position=vec4<f32>(point.x/config.view_width*2.0-1.0,1.0-point.y/config.view_height*2.0,0,1);
-        return output;
-      }
-      @fragment fn ink(input:Vertex)->@location(0) vec4<f32> {return input.colour;}
-    ` });
-    this.vectors = device.createRenderPipeline({ label: 'Live sparse displacement glyphs', layout: 'auto',
+    const vectors = device.createShaderModule({ label: 'Sparse norm-coloured live vectors', code: LIVE_GLYPH_SHADER });
+    const vectorBindings = device.createBindGroupLayout({ entries: [
+      { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+      { binding: 2, visibility: GPUShaderStage.VERTEX, buffer: { type: 'uniform', minBindingSize: 64 } },
+    ] });
+    const vectorLayout = device.createPipelineLayout({ bindGroupLayouts: [vectorBindings] });
+    this.vectors = device.createRenderPipeline({ label: 'Live sparse displacement glyphs', layout: vectorLayout,
       vertex: { module: vectors, entryPoint: 'glyph' }, fragment: { module: vectors, entryPoint: 'ink',
         targets: [{ format, blend: { color: { srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha' },
           alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha' } } }] }, primitive: { topology: 'triangle-list' } });
+    this.outlines = [2.2, 1.1].map(width => device.createRenderPipeline({
+      label: `Live vector contrast outline ${width}`, layout: vectorLayout,
+      vertex: { module: vectors, entryPoint: 'glyph', constants: { OUTLINE_WIDTH: width } },
+      fragment: { module: vectors, entryPoint: 'ink', targets: [{ format,
+        blend: { color: { srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha' },
+          alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha' } } }] },
+      primitive: { topology: 'triangle-list' },
+    }));
   }
-  draw(engine, result, { mode = 2, scale = null, opacity = 1, imageTexture = null, arrowStep = null, arrowGain = null, previewMaxWidth = 0 } = {}) {
+  draw(engine, result, { mode = 2, scale = null, opacity = 1, imageTexture = null, arrowStep = null, arrowGain = null, vectorOutline = false, previewMaxWidth = 0 } = {}) {
+    if (this.closed) throw new Error('Live vector renderer is closed');
     if (![2,8].includes(mode)) throw new Error('Live view supports norm-coloured vectors or the current image; use Results for scalar fields');
     if (!Number.isFinite(opacity) || opacity < 0 || opacity > 1) throw new Error('Vector opacity must be 0..1');
+    if (typeof vectorOutline !== 'boolean') throw new Error('Vector outline must be boolean');
     const appearance = vectorAppearance(result, { scale, arrowStep, arrowGain, previewMaxWidth });
     const { viewWidth, viewHeight, maximumPx, gain } = appearance;
     resizeAndConfigureCanvas(
@@ -159,11 +110,23 @@ export class LiveVectorRenderer {
       let group=this.vectorGroups.get(engine.fieldBuffer);
       if(!group){group=this.device.createBindGroup({layout:this.vectors.getBindGroupLayout(0),entries:[
         {binding:0,resource:{buffer:engine.fieldBuffer}},{binding:2,resource:{buffer:this.config}}]});this.vectorGroups.set(engine.fieldBuffer,group);}
+      if (vectorOutline) for (const outline of this.outlines) {
+        pass.setPipeline(outline);pass.setBindGroup(0,group);pass.draw(12,appearance.instances);
+      }
       pass.setPipeline(this.vectors);pass.setBindGroup(0,group);pass.draw(12,appearance.instances);
     }
     pass.end();this.device.queue.submit([encoder.finish()]);
-    this.legend={...appearance,imageOnly:!visible};
+    this.legend={...appearance,imageOnly:!visible,vectorOutline};
     return maximumPx;
   }
-  destroy(){this.config.destroy();this.context.unconfigure();}
+  destroy() {
+    if (this.closed) return;
+    this.closed = true;
+    this.config.destroy();
+    this.context.unconfigure();
+    this.backgroundGroups = new WeakMap();
+    this.vectorGroups = new WeakMap();
+    this.outlines = [];
+    this.background = this.vectors = this.config = this.legend = null;
+  }
 }

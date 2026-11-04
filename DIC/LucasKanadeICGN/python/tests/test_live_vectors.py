@@ -11,6 +11,24 @@ APP = Path(__file__).resolve().parents[2] / "web-app"
 
 @unittest.skipUnless(shutil.which("node"), "Node is needed for presentation contracts")
 class LiveVectorTests(unittest.TestCase):
+    def test_saved_vectors_preserve_canvas_centres_and_physical_unit_conversion(self):
+        script = f"""
+          import {{renderFieldRaster}} from {json.dumps((APP / "ui/field-rendering.js").as_uri())};
+          const paths=[];
+          globalThis.Path2D=class{{constructor(){{this.points=[];paths.push(this);}}moveTo(x,y){{this.points.push(['M',x,y]);}}lineTo(x,y){{this.points.push(['L',x,y]);}}}};
+          const context={{createImageData:(w,h)=>({{data:new Uint8ClampedArray(w*h*4)}}),
+            putImageData(){{}},fillRect(){{}},drawImage(){{}},stroke(){{}}}};
+          globalThis.OffscreenCanvas=class{{getContext(){{return context;}}}};
+          const canvas={{width:64,height:64,getContext:()=>context}};
+          const analysis={{field:{{width:64,height:64,grid:[1,1],subsetSize:16,subsetStride:16}},
+            valid:new Uint8Array([1]),fields:{{u:new Float32Array([20]),v:new Float32Array([0])}},recipe:{{unitsPerPixel:2}}}};
+          renderFieldRaster({{canvas,overlay:{{width:64,height:64}},analysis,values:[1],valid:[1],
+            component:'u',low:0,high:2,palette:'sequential',showVectors:true,vectorStep:1,vectorGain:3}});
+          console.log(JSON.stringify(paths[0].points.slice(0,2)));
+        """
+        # Canvas pixels occupy unit squares: a 16-pixel support is centred at 8.
+        self.assertEqual(self.node(script), [["M", 8, 8], ["L", 38, 8]])
+
     def test_canvas_resize_reconfigures_webgpu_before_texture_acquisition(self):
         script = f"""
           import {{resizeAndConfigureCanvas}} from {json.dumps((APP / "render/canvas-context.js").as_uri())};

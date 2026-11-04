@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 from pathlib import Path
 from urllib.parse import quote
@@ -37,12 +38,13 @@ def qualify_renderer(browser):
         ctx.drawImage(bitmap,0,0);bitmap.close();return ctx.getImageData(0,0,canvas.width,canvas.height).data;
       }
       const background=await draw({mode:8}),normal=await draw(),amplified=await draw({arrowGain:3});
+      const outlined=await draw({vectorOutline:true});
       function bounds(data){let x0=128,y0=128,x1=-1,y1=-1,count=0;const colours=new Set();
         for(let y=0;y<128;y++)for(let x=0;x<128;x++){const i=(y*128+x)*4;
           if(data[i]!==background[i]||data[i+1]!==background[i+1]||data[i+2]!==background[i+2]){
             x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y);count++;colours.add([...data.slice(i,i+3)].join(','));}}
         return {x0,y0,x1,y1,count,colours:[...colours]};}
-      const a=bounds(normal),b=bounds(amplified),sentinel=[...amplified.slice((100*128+100)*4,(100*128+100)*4+4)];
+      const a=bounds(normal),b=bounds(amplified),outlinedBounds=bounds(outlined),sentinel=[...amplified.slice((100*128+100)*4,(100*128+100)*4+4)];
       const read=device.createBuffer({size:values.byteLength,usage:GPUBufferUsage.COPY_DST|GPUBufferUsage.MAP_READ});
       const encoder=device.createCommandEncoder();encoder.copyBufferToBuffer(buffer,0,read,0,values.byteLength);device.queue.submit([encoder.finish()]);
       await read.mapAsync(GPUMapMode.READ);const unchanged=new Float32Array(read.getMappedRange()).every((v,i)=>v===values[i]);read.unmap();
@@ -57,10 +59,13 @@ def qualify_renderer(browser):
       await draw({mode:8,previewMaxWidth:64});const preview=[canvas.width,canvas.height];
       const report={adapter:{vendor:adapter.info.vendor,architecture:adapter.info.architecture,
           device:adapter.info.device,description:adapter.info.description},
-        errors,normal:a,amplified:b,blockCentre,sentinel,unchanged,
+        errors,normal:a,amplified:b,outlined:outlinedBounds,blockCentre,sentinel,unchanged,
         backgroundExact:background.every((v,i)=>v===pixels[i]),roiExcludedExact:excluded.every((v,i)=>v===background[i]),
         unavailable,zero,referenceOnly,referenceExact:referenceView.every((v,i)=>v===referencePixels[i]),preview,grid:field.grid};
-      renderer.destroy();read.destroy();buffer.destroy();texture.destroy();reference.destroy();device.destroy();return report;
+      renderer.destroy();renderer.destroy();let closedRefused=false;
+      try{renderer.draw(engine,field);}catch(error){closedRefused=error.message.includes('closed');}
+      report.closedRefused=closedRefused;
+      read.destroy();buffer.destroy();texture.destroy();reference.destroy();device.destroy();return report;
     })()""")
     assert not result["errors"], result
     assert result["backgroundExact"] and result["sentinel"] == [30, 40, 50, 255], result
@@ -69,6 +74,10 @@ def qualify_renderer(browser):
     assert a["x0"] - b["x0"] == 16 and a["x1"] == b["x1"], result
     assert a["x1"] in [38, 39] and a["y0"] >= 29 and a["y1"] <= 33, result
     assert a["colours"] == b["colours"] == ["31,132,138"], result
+    outlined = result["outlined"]
+    assert outlined["count"] > a["count"], result
+    assert {"31,132,138", "6,6,6", "250,250,250"}.issubset(outlined["colours"]), result
+    assert outlined["x1"] == a["x1"], result  # Same measured tip/length, added lateral contrast.
     assert result["unchanged"] and result["roiExcludedExact"], result
     assert result["blockCentre"]["x0"] == 95 and result["blockCentre"]["x1"] == 102, result
     assert 93 <= result["blockCentre"]["y0"] <= result["blockCentre"]["y1"] <= 98, result
@@ -76,6 +85,7 @@ def qualify_renderer(browser):
     assert result["zero"]["colours"] == ["21,57,99"], result
     assert result["referenceOnly"] and result["referenceExact"], result
     assert result["preview"] == [64, 64] and result["grid"] == [2, 2], result
+    assert result["closedRefused"], result
     return result
 
 
@@ -114,6 +124,32 @@ def main():
               colourbar:document.getElementById('high').textContent,lengthKey:document.getElementById('vector-key-label').textContent,
               keyHidden:document.getElementById('live-vector-key').hidden,workbench:liveDicWorkbench.report(),errors:liveDicStatus.errors})""")
             assert report["uhd"]["canvas"] == [1920, 1080], report["uhd"]
+            reference_before = browser._evaluate(
+                "JSON.parse(document.getElementById('details').textContent).reference"
+            )
+            completed_before = browser._evaluate("liveDicStatus.completed")
+            previews = []
+            for outlined in (False, True):
+                data_url = browser._evaluate(f"""(async()=>{{
+                  const control=document.getElementById('vector-outline');
+                  control.checked={str(outlined).lower()};await control.onchange();
+                  const original=document.getElementById('field'),crop=document.createElement('canvas');
+                  crop.width=640;crop.height=360;crop.getContext('2d').drawImage(original,480,300,640,360,0,0,640,360);
+                  return crop.toDataURL('image/png');
+                }})()""")
+                path = args.report.with_name(
+                    args.report.stem + ("-outline.png" if outlined else "-plain.png")
+                )
+                path.write_bytes(base64.b64decode(data_url.split(",", 1)[1]))
+                previews.append(path.name)
+            assert browser._evaluate("liveDicStatus.completed") == completed_before
+            assert (
+                browser._evaluate(
+                    "JSON.parse(document.getElementById('details').textContent).reference"
+                )
+                == reference_before
+            )
+            report["previews"] = previews
             assert (
                 not report["uhd"]["keyHidden"] and "Tips mark current" in report["uhd"]["lengthKey"]
             )

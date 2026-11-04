@@ -39,12 +39,14 @@ class BrowserTimingTests(unittest.TestCase):
           Object.defineProperty(globalThis,'navigator',{{configurable:true,value:{{gpu:{{requestAdapter:async()=>null,getPreferredCanvasFormat:()=> 'rgba8unorm'}}}}}});
           globalThis.isSecureContext=true;
           globalThis.GPUBufferUsage={{UNIFORM:1,COPY_DST:2}};
+          globalThis.GPUShaderStage={{VERTEX:1}};
           globalThis.GPUTextureUsage={{COPY_DST:2,TEXTURE_BINDING:4,RENDER_ATTACHMENT:16}};
           const frame=()=>({{width:64,height:64,close(){{this.closed=true;}}}});
           globalThis.createImageBitmap=async()=>frame();
           const context={{configure(){{}},unconfigure(){{}}}},canvas={{width:64,height:64,getContext:()=>context}};
           const info={{width:64,height:64,referenceValid:new Uint8Array(16).fill(1),grid:[4,4],config:{{motionModel:'affine'}}}};
           const engine={{device:{{lost:new Promise(()=>{{}}),addEventListener(){{}},createShaderModule:()=>({{}}),createRenderPipeline:()=>({{}}),
+             createBindGroupLayout:()=>({{}}),createPipelineLayout:()=>({{}}),
              createBuffer:()=>({{destroy(){{}}}}),createTexture:()=>({{destroy(){{}}}}),queue:{{copyExternalImageToTexture(){{}}}}}},
              ring:{{idle:true}},resetTemporalState(){{resets++;}},setAnalyticTruth(){{}},destroy(){{}},setReference:async()=>{{preparations++;return info;}},
              register:async()=>{{solves++;return {{width:64,height:64,grid:[4,4],config:info.config,timing:{{wallMs:0}},accepted:4,selected:16}};}},
@@ -95,15 +97,9 @@ class BrowserTimingTests(unittest.TestCase):
             (root / "package.json").write_text('{"type":"module"}')
             shutil.copytree(PROJECT / "python/src/lucas_kanade_icgn/web/core", root / "web/core")
             (root / "ui").mkdir()
-            (root / "render").mkdir()
+            shutil.copytree(PROJECT / "web-app/render", root / "render")
             for name in ("session.js", "plate-truth.js", "supervision.js"):
                 shutil.copyfile(PROJECT / "web-app/ui" / name, root / "ui" / name)
-            shutil.copyfile(
-                PROJECT / "web-app/render/canvas-context.js", root / "render/canvas-context.js"
-            )
-            shutil.copyfile(
-                PROJECT / "web-app/render/live-vectors.js", root / "render/live-vectors.js"
-            )
             script = f"""
               import {{DICEngine}} from {json.dumps((root / "web/core/engine.js").as_uri())};
               import {{createSession}} from {json.dumps((root / "ui/session.js").as_uri())};

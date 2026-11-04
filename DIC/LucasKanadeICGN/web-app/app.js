@@ -828,8 +828,16 @@ $('apply-roi').onclick = () => sourceChange(async () => {
 $('clear-roi').onclick = () => sourceChange(async () => { workbench.returnLive(); pauseSource(); await drain(); workbench.setMask(null); workbench.setReady(false);$('export').disabled=true;clearLiveMetrics(); roiEditing = false; roi.reset(referenceInfo.width, referenceInfo.height); appliedShapes = []; draftMaskSource = appliedMaskSource = null; $('roi-editor').hidden = true;
   invalidatePreparedReference(true);appliedEditorState=roi.state(); $('mask-import-summary').textContent='Full image · no imported base mask.'; $('pause').textContent = 'Start calculation'; details(); if (source === 'plate') await previewPlateTarget(); });
 function displayOptions() { return { mode: Number($('component').value), scale: $('scale').value === 'auto' ? null : Number($('scale').value),
-  opacity: Number($('opacity').value), arrowStep: $('arrow-step').value==='auto'?null:Number($('arrow-step').value), arrowGain: $('arrow-gain').value==='auto'?null:Number($('arrow-gain').value) }; }
-for (const id of ['component','scale','opacity','arrow-step','arrow-gain']) $(id).onchange = () => {if(transport&&referenceInfo)send('display',{display:displayOptions()}).catch(e=>message(e.message,true));};
+  opacity: Number($('opacity').value), vectorOutline: $('vector-outline').checked,
+  arrowStep: $('arrow-step').value==='auto'?null:Number($('arrow-step').value), arrowGain: $('arrow-gain').value==='auto'?null:Number($('arrow-gain').value) }; }
+async function updateLiveDisplay() {
+  if (!transport || !referenceInfo) return;
+  try { await send('display', { display: displayOptions() }); }
+  catch (error) { message(error.message, true); }
+}
+for (const id of ['component','scale','opacity','arrow-step','arrow-gain','vector-outline']) {
+  $(id).onchange = updateLiveDisplay;
+}
 function download(name, content, type) {
   const url = URL.createObjectURL(new Blob([content], { type })), link = document.createElement('a');
   link.href = url; link.download = name; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
