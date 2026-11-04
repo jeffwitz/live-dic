@@ -1,0 +1,107 @@
+{
+  "measurementMonitorSamples": 18133,
+  "rssBytes": {
+    "minimum": 183812096.0,
+    "median": 185589760.0,
+    "maximum": 185974784.0
+  },
+  "requestedClientBytes": {
+    "minimum": 712192000.0,
+    "median": 712192000.0,
+    "maximum": 712192000.0
+  },
+  "residentClientBytes": {
+    "minimum": 712192000.0,
+    "median": 712192000.0,
+    "maximum": 712192000.0
+  },
+  "packageCelsius": {
+    "minimum": 57.0,
+    "median": 75.0,
+    "maximum": 97.0
+  },
+  "actualGt0Raw": {
+    "minimum": 0.0,
+    "median": 1400.0,
+    "maximum": 1850.0
+  },
+  "requestedGt0Raw": {
+    "minimum": 1850.0,
+    "median": 1850.0,
+    "maximum": 1850.0
+  },
+  "sampledPl4Fraction": 0.022279821320244857,
+  "sampledThermalFraction": 0.0,
+  "tenMinuteBlocks": [
+    {
+      "startMinutes": 0,
+      "endMinutes": 10,
+      "pairs": 17092,
+      "controlMedianMs": 17.685641010757536,
+      "candidateMedianMs": 17.457177018513903,
+      "candidateP95Ms": 19.112280843546614,
+      "pairedMedianSavingMs": 0.21754097542725503
+    },
+    {
+      "startMinutes": 10,
+      "endMinutes": 20,
+      "pairs": 16730,
+      "controlMedianMs": 17.94850849546492,
+      "candidateMedianMs": 17.708752973703668,
+      "candidateP95Ms": 19.598593105911277,
+      "pairedMedianSavingMs": 0.22817650460638106
+    },
+    {
+      "startMinutes": 20,
+      "endMinutes": 30,
+      "pairs": 16725,
+      "controlMedianMs": 17.95069605577737,
+      "candidateMedianMs": 17.708930012304336,
+      "candidateP95Ms": 19.58654597401619,
+      "pairedMedianSavingMs": 0.2239489695057273
+    },
+    {
+      "startMinutes": 30,
+      "endMinutes": 40,
+      "pairs": 16529,
+      "controlMedianMs": 18.036379013210535,
+      "candidateMedianMs": 17.79661199543625,
+      "candidateP95Ms": 20.225886208936572,
+      "pairedMedianSavingMs": 0.2294359728693962
+    },
+    {
+      "startMinutes": 40,
+      "endMinutes": 50,
+      "pairs": 16312,
+      "controlMedianMs": 18.215023505035788,
+      "candidateMedianMs": 17.97836850164458,
+      "candidateP95Ms": 20.806637368514203,
+      "pairedMedianSavingMs": 0.2217940054833889
+    },
+    {
+      "startMinutes": 50,
+      "endMinutes": 60,
+      "pairs": 15875,
+      "controlMedianMs": 18.51783599704504,
+      "candidateMedianMs": 18.266341998241842,
+      "candidateP95Ms": 22.417710610898208,
+      "pairedMedianSavingMs": 0.23299898020923138
+    },
+    {
+      "startMinutes": 60,
+      "endMinutes": 60.47453701991665,
+      "pairs": 768,
+      "controlMedianMs": 18.442679021973163,
+      "candidateMedianMs": 18.188046000432223,
+      "candidateP95Ms": 20.057881757384166,
+      "pairedMedianSavingMs": 0.23604350280947983
+    }
+  ],
+  "notes": [
+    "Asynchronous observer sampling may perturb scheduling/power. This is a paired single-device soak, not an isolated timing rerun of earlier campaigns.",
+    "Periodic full-field parity, accepted counts on every call; raw arrays are not retained for every repetition.",
+    "DRM sums are deduplicated per-client accounting, not physical/free VRAM and not additive with process RSS.",
+    "Clock values retain raw sysfs units; actual/requested divergence and sampled limit flags do not isolate a cause of performance drift.",
+    "Checkpoint stage wall timers overlap; they are snapshots, not GPU timestamps or percentile distributions."
+  ]
+}

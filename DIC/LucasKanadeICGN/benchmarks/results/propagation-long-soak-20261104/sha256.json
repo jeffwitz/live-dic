@@ -1,0 +1,12 @@
+{
+  "README.md": "78dd45f5e17f047a4b921dce44599b1463bacbb8ff24071c48ee0c63c2bb6487",
+  "analysis.json": "0f32295cf07debfa5e90ac3e0eb24fcca39058a4d0ba219ab277c2c46b3bde5b",
+  "drm.jsonl.gz": "82ac4f1fb58d5d79e23fdb6895838fa0a023d5f958cfabfcdd71aa516aec74fb",
+  "monitor.csv.gz": "c0015c9730bcbd04d5be16e2e2c63360442b2f425217700c738c18e29b07ea82",
+  "monitor.json": "02304f265e875fa4ba4bacb12bc833dd34d99f796a2b8deff5cffc28af31c6f6",
+  "overview.png": "d707d2873ca48521cb8e070e617e7ba867e5a0ec62231610c01c9688f0e5aecf",
+  "plot.py": "083d06bda9c9eadfa02373410a6a68785831020f79c2b101ea6382cc88b23d73",
+  "report.json": "8343aa947d8b82a3c5c7d2d7439c77fd0ee5ee8f977c489d77001596bf898002",
+  "sources.tar.gz": "a3d11600bec78dbc5a7b57c62cb57157612b170d1e22005c003f8995ebb3819a",
+  "timings.npz": "fd12dabca09bcd63aadc20c3b122ae8cb6b033dafcfbb06e90de40389612657e"
+}

@@ -2005,3 +2005,35 @@ monotonic high-water marks. Requested and actual GT frequencies can differ:
 see `Xe frequency management
 <https://docs.kernel.org/gpu/xe/xe_gt_freq.html>`_. No untested mobile,
 all-vendor or physical-free-VRAM claim follows from this Linux diagnostic.
+
+Hour-long retained-path control (2026-11-04)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The `monitored UHD soak
+<https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/propagation-long-soak-20261104>`_
+executes 100,031 AB/BA pairs on clean source ``99ca6fd``: 200,062 registrations
+in 3,628.514 seconds. Same original tensile reference/frame 40, translation
+32/16, B-spline, two fixed levels, raw fields, one slot and two failed-only
+propagation passes. Only empty-work termination differs; score caching and
+fused rejection lists remain disabled. Preparation, decoding, display and
+storage are excluded. A read-only 5 Hz Linux observer runs alongside the
+benchmark; its scheduling/power perturbation belongs to this protocol.
+
+Repeated dense searches take 18.010 ms median, 20.627 ms p95 and 23.437 ms p99;
+empty-work termination takes 17.776, 20.392 and 23.202 ms. Throughput from the
+individual call durations changes from 54.829 to 55.541 fields/s. The median
+paired saving is 0.22573 ms. The combined observed alternating rate, including
+logging, is 55.136 fields/s. **This sustained case does not meet 60 fields/s**;
+94.12 percent of candidate calls exceed 16.67 ms. It is not a new camera,
+recording, difficult-motion or PWA throughput qualification.
+
+All 97 periodic full-field comparisons are exact; accepted counts agree on
+every call. The 30,916-centre analytical interior has 100 percent coverage,
+0.0101684 px vector RMSE and 0.0172276 px p95 error. Process RSS remains
+175.30–177.36 MiB during measurement; requested and resident DRM client sums
+are constant at 712,192,000 bytes each. These are distinct accounting domains,
+not additive physical memory. Actual/requested clock differences and sampled
+power-limit flags are preserved without claiming an isolated cause of drift.
+The archive includes every paired timing, raw observer data, source snapshots,
+input hashes and an editable Matplotlib plot. This soak does not establish a
+new repeatability margin; retain the separate predeclared acceptance control.
