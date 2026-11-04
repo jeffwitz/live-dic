@@ -40,6 +40,8 @@ Start here
   :doc:`how-to/use-partial-roi` covers explicit boundary supports.
 * :doc:`how-to/register-large-shifts` for opt-in Fourier and global-affine initialization of sparse pairs.
 * :doc:`reference/api` for exact defaults and public interfaces.
+* :doc:`reference/propagation` for illustrated seed propagation, median
+  initialization, DIS and GPU work lists.
 * `Open the browser workbench <https://jeffwitz.github.io/live-dic/>`_ directly.
 * :doc:`tutorials/browser-experiment` for a guided visual UHD experiment,
   saved-field analysis and NumPy interchange.
@@ -147,6 +149,7 @@ when exporting a measurement with :doc:`how-to/export-results`.
    reference/result-layout
    reference/command-line
    reference/performance
+   reference/propagation
    reference/gpu-vocabulary
 
 .. toctree::

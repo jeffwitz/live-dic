@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="792pt" height="388.8pt" viewBox="0 0 792 388.8" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <title>live-dic seed propagation: compaction</title>
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:title>live-dic seed propagation: compaction</dc:title>
+    <dc:description>Original illustrative schematic, not experimental data. See the propagation reference for a text explanation.</dc:description>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.10.9, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 388.8 
+L 792 388.8 
+L 792 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 33.48 121.0464 
+L 197.64 121.0464 
+Q 203.112 121.0464 203.112 116.208 
+L 203.112 73.872 
+Q 203.112 69.0336 197.64 69.0336 
+L 33.48 69.0336 
+Q 28.008 69.0336 28.008 73.872 
+L 28.008 116.208 
+Q 28.008 121.0464 33.48 121.0464 
+z
+" clip-path="url(#p9eab80aa95)" style="fill: #eaf1fa; stroke: #275d94; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 296.82 121.0464 
+L 467.82 121.0464 
+Q 473.292 121.0464 473.292 116.208 
+L 473.292 73.872 
+Q 473.292 69.0336 467.82 69.0336 
+L 296.82 69.0336 
+Q 291.348 69.0336 291.348 73.872 
+L 291.348 116.208 
+Q 291.348 121.0464 296.82 121.0464 
+z
+" clip-path="url(#p9eab80aa95)" style="fill: #eaf1fa; stroke: #275d94; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 570.42 121.0464 
+L 741.42 121.0464 
+Q 746.892 121.0464 746.892 116.208 
+L 746.892 73.872 
+Q 746.892 69.0336 741.42 69.0336 
+L 570.42 69.0336 
+Q 564.948 69.0336 564.948 73.872 
+L 564.948 116.208 
+Q 564.948 121.0464 570.42 121.0464 
+z
+" clip-path="url(#p9eab80aa95)" style="fill: #eaf1fa; stroke: #275d94; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 209.896559 95.04 
+Q 246.202694 95.04 280.608171 95.04 
+" clip-path="url(#p9eab80aa95)" style="fill: none; stroke: #275d94; stroke-width: 1.7; stroke-linecap: round"/>
+    <path d="M 274.208171 91.84 
+L 280.608171 95.04 
+L 274.208171 98.24 
+z
+" clip-path="url(#p9eab80aa95)" style="fill: #275d94; stroke: #275d94; stroke-width: 1.7; stroke-linecap: round"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 480.077769 95.04 
+Q 518.095123 95.04 554.211818 95.04 
+" clip-path="url(#p9eab80aa95)" style="fill: none; stroke: #275d94; stroke-width: 1.7; stroke-linecap: round"/>
+    <path d="M 547.811818 91.84 
+L 554.211818 95.04 
+L 547.811818 98.24 
+z
+" clip-path="url(#p9eab80aa95)" style="fill: #275d94; stroke: #275d94; stroke-width: 1.7; stroke-linecap: round"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 655.92 128.487647 
+Q 655.92 160.661662 655.92 190.935019 
+" clip-path="url(#p9eab80aa95)" style="fill: none; stroke: #275d94; stroke-width: 1.7; stroke-linecap: round"/>
+    <path d="M 659.12 184.535019 
+L 655.92 190.935019 
+L 652.72 184.535019 
+z
+" clip-path="url(#p9eab80aa95)" style="fill: #275d94; stroke: #275d94; stroke-width: 1.7; stroke-linecap: round"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 563.58 263.1744 
+L 741.42 263.1744 
+Q 746.892 263.1744 746.892 258.336 
+L 746.892 203.904 
+Q 746.892 199.0656 741.42 199.0656 
+L 563.58 199.0656 
+Q 558.108 199.0656 558.108 203.904 
+L 558.108 258.336 
+Q 558.108 263.1744 563.58 263.1744 
+z
+" clip-path="url(#p9eab80aa95)" style="fill: #e7f4ef; stroke: #167066; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 293.4 263.1744 
+L 471.24 263.1744 
+Q 476.712 263.1744 476.712 258.336 
+L 476.712 203.904 
+Q 476.712 199.0656 471.24 199.0656 
+L 293.4 199.0656 
+Q 287.928 199.0656 287.928 203.904 
+L 287.928 258.336 
+Q 287.928 263.1744 293.4 263.1744 
+z
+" clip-path="url(#p9eab80aa95)" style="fill: #e7f4ef; stroke: #167066; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 551.320269 231.12 
+Q 519.119137 231.12 488.818664 231.12 
+" clip-path="url(#p9eab80aa95)" style="fill: none; stroke: #167066; stroke-width: 1.7; stroke-linecap: round"/>
+    <path d="M 495.218664 234.32 
+L 488.818664 231.12 
+L 495.218664 227.92 
+z
+" clip-path="url(#p9eab80aa95)" style="fill: #167066; stroke: #167066; stroke-width: 1.7; stroke-linecap: round"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 33.48 263.1744 
+L 204.48 263.1744 
+Q 209.952 263.1744 209.952 258.336 
+L 209.952 203.904 
+Q 209.952 199.0656 204.48 199.0656 
+L 33.48 199.0656 
+Q 28.008 199.0656 28.008 203.904 
+L 28.008 258.336 
+Q 28.008 263.1744 33.48 263.1744 
+z
+" clip-path="url(#p9eab80aa95)" style="fill: #e7f4ef; stroke: #167066; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 281.137137 231.12 
+Q 250.649884 231.12 222.063288 231.12 
+" clip-path="url(#p9eab80aa95)" style="fill: none; stroke: #167066; stroke-width: 1.7; stroke-linecap: round"/>
+    <path d="M 228.463288 234.32 
+L 222.063288 231.12 
+L 228.463288 227.92 
+z
+" clip-path="url(#p9eab80aa95)" style="fill: #167066; stroke: #167066; stroke-width: 1.7; stroke-linecap: round"/>
+   </g>
+   <g id="text_1">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #223447" transform="translate(72.159375 91.632562)">Initial LK solve</text>
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #223447" transform="translate(54.66375 105.069937)">dense field of states</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #223447" transform="translate(355.005938 91.632562)">Eligibility</text>
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #223447" transform="translate(317.894063 105.069937)">ROI + valid reference</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #223447" transform="translate(604.300313 91.632562)">Score candidates</text>
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #223447" transform="translate(596.544375 105.069937)">on each destination</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #223447" x="389.16" y="146.448" transform="rotate(-0 389.16 146.448)">Failed-only policy also skips accepted points before scoring.</text>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #223447" transform="translate(579.840937 220.993875)">Append improved seeds</text>
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #223447" transform="translate(609.680625 234.43125)">IDs [7, 18, 42]</text>
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #223447" transform="translate(622.913437 247.868625)">count = 3</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #223447" transform="translate(332.14875 220.993875)">Indirect dispatch</text>
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #223447" transform="translate(332.342813 234.43125)">3 LK workgroups</text>
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #223447" transform="translate(307.172813 247.868625)">existing solver equations</text>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #223447" transform="translate(67.512188 220.993875)">Dense result grid</text>
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #223447" transform="translate(69.216563 234.43125)">update 7, 18, 42</text>
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #223447" transform="translate(49.108125 247.868625)">retain unqueued states</text>
+   </g>
+   <g id="text_8">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #223447" transform="translate(249.09375 290.258625)">No global sort. No intermediate CPU readback.</text>
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; fill: #223447" transform="translate(217.1325 303.696)">Each queued patch must still pass the normal final solve.</text>
+   </g>
+   <g id="text_9">
+    <text style="font-size: 10.5px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #223447" x="389.16" y="353.8944" transform="rotate(-0 389.16 353.8944)">Toy IDs; not a measured active count. All-window search can remain expensive even with a short work list.</text>
+   </g>
+  </g>
+  <g id="text_10">
+   <text style="font-weight: 700; font-size: 16px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #223447" x="396" y="19.9335" transform="rotate(-0 396 19.9335)">GPU work list: launch LK only where a better seed was found</text>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p9eab80aa95">
+   <rect x="19.8" y="46.656" width="752.4" height="326.592"/>
+  </clipPath>
+ </defs>
+</svg>

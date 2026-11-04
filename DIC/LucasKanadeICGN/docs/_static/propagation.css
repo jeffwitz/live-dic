@@ -1,0 +1,14 @@
+/* The RTD theme defaults to nowrap table cells. Wrap the new reference's
+   prose tables without changing the layout of existing API/timing tables. */
+.wy-table-responsive table.propagation-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.wy-table-responsive table.propagation-table th,
+.wy-table-responsive table.propagation-table td,
+.wy-table-responsive table.propagation-table code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}

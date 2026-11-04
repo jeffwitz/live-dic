@@ -1,6 +1,10 @@
 Spatial initialization experiments
 ==================================
 
+Start with :doc:`../reference/propagation` for the illustrated explanation of
+seeds, attraction basins, medians, update order and compact GPU work lists.
+This page records implementation scope and reproduction commands.
+
 A converged local IC-GN fit and a robust search strategy are different parts of
 a DIC pipeline. An affine initialization can place the field close to the
 solution while leaving individual subsets in the wrong attraction basin.

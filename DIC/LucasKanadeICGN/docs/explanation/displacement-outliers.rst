@@ -8,6 +8,9 @@ not a denoising filter for affine gradients or quadratic curvatures.  A
 separate ``median`` policy is available when that smoothing is explicitly
 wanted.
 
+For diagrams comparing measurement smoothing, coarse median seeds and
+photometrically tested propagation, see :doc:`../reference/propagation`.
+
 The policy is selected when the engine is created:
 
 .. code-block:: python
