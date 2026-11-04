@@ -235,3 +235,48 @@ checks the original UHD tensile pair through the actual Solve menu, worker,
 saved fields and NPZ export. Disabled and two-pass runs both retain 100% of the
 defined interior population, with 0.00945 px displacement RMSE. This smooth
 case checks preserved accuracy, not an additional recovery or speed benefit.
+
+
+Controlled timing and sustained checks
+--------------------------------------
+
+The empty-work optimization has a small cost relative to the full image graph.
+Measure reference against reference before interpreting a fraction of a
+millisecond as a gain. The calibration driver can alternate both variants on
+one prepared device, with no GPU allocations or reference reconstruction in
+the measured calls:
+
+.. code-block:: console
+
+   python3 DIC/LucasKanadeICGN/benchmarks/benchmark_spatial_chain.py \
+     --one-device --interleave --control-only --output /tmp/chain-repeatability
+   python3 DIC/LucasKanadeICGN/benchmarks/benchmark_spatial_chain.py \
+     --one-device --interleave --output /tmp/chain-candidate
+
+``--candidate-first`` reverses initial variant order. These controls retain the
+original UHD reference/frame-40 images, raw translation 32/16, B-spline, two
+levels and two failed-point passes. Both outputs must retain identical
+parameters, statuses and iteration counts, in addition to the established
+analytical coverage/error gates. The timing boundary excludes image decoding,
+reference preparation, display and result storage.
+
+For a bounded sustained run, ``benchmark_spatial_soak.py`` supports
+``--duration-seconds`` or an explicit future ``--until-utc`` deadline. For example:
+
+.. code-block:: console
+
+   python3 DIC/LucasKanadeICGN/benchmarks/benchmark_spatial_soak.py \
+     --duration-seconds 1800 --output /tmp/chain-soak
+
+It alternates controls, keeps only the latest fields and a bounded timing batch,
+and checks full-field parity at checkpoints and completion. All paired timings
+are retained numerically in ``timings.npz`` (load with ``allow_pickle=False``),
+with strict JSON metadata, checkpoint statistics, source/input hashes and
+process RSS. RSS includes CPU/driver mappings; it is not physical or free VRAM.
+An interrupted/failed run remains explicitly incomplete and keeps its completed
+timing records. No user fields are being recorded by this diagnostic.
+
+This is a fixed-pair stability check. It does not qualify changing motion,
+camera exposure age, decoding, live drawing or durable recording. Do not run
+other tests/builds or GPU work during timed campaigns, and report throughput,
+latency tails, quality and run duration separately.
