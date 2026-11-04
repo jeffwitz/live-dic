@@ -1,0 +1,465 @@
+{
+  "createdUtc": "2026-11-04T00:53:09.541227+00:00",
+  "command": [
+    "/home/jeff/Code/tests_gpuio/DIC/LucasKanadeICGN/python/.venv/bin/python",
+    "tools/qualify_browser_spatial.py",
+    "--site",
+    "/tmp/live-dic-spatial-ui",
+    "--output",
+    "/tmp/live-dic-spatial-ui-qualified"
+  ],
+  "build": {
+    "commit": "449fb09ab48a31a1d3e801d2c0f3308b7c35d442",
+    "dirty": false,
+    "shaders": {
+      "full_pyramid.wgsl": "d00ef999c5dbc23013928e95ea6ca498a52fbb63850056c05bdbd3c963dc0401",
+      "icgn.wgsl": "ec0d877e2a158ebc3301a2acb78e9d3b698a7c188f360e74a6d6892e7df88387",
+      "icgn_subgroup.wgsl": "d68225b1b6b6b21071e59ea6109bbd24dc0fd8b6734b6ebc4f7d59356799a034",
+      "input.wgsl": "d269f8bf203e3363a6e753476c49de27188329409fa5a848358ea031bb554f7e",
+      "reference.wgsl": "0d86eefde8fb6ac25a7cfd46b23c71b7bc6e827696602cd13229c4cab29102c2",
+      "result.wgsl": "a587a3112670a702578df6c13f75addd4136e43fa6c7efba7959aa472d0e3267",
+      "spatial_seed.wgsl": "1608441f52193d078ed683337bdf544792b716316367bd2f6495fb6a70742c2e",
+      "subgroup_probe.wgsl": "6e4d149ed7f17969ede557a3062742d8da6c62cb6dd745d5510112c1489fed61"
+    },
+    "demo_manifest_sha256": "c78c445a38a8541d632f28e85ec1154e492b4195c7b8f5d4755597e07605f24a",
+    "plate_image_sha256": {
+      "reference.png": "26135118b554c5996443f07abd2a89273a344154338c4c7f428ab283f85f7192",
+      "frame_095.png": "af0f4c09d2e9292beb4cbbabe01c6651a2e914c1b36b569a5861a8be431d3faf",
+      "frame_225.png": "abe3693810e289b8a2029833011a0d59fdf7ff1ea975eea91b12dc5e708d2897"
+    },
+    "cache_version": "449fb09ab48a31a1d3e801d2c0f3308b7c35d442"
+  },
+  "userAgent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+  "software": false,
+  "criteria": {
+    "minimumInteriorCoverage": 0.995,
+    "maximumVectorRmsePixels": 0.01518230373115895,
+    "maximumP95ErrorPixels": 0.02722860762111737,
+    "gradients": "Exactly zero for local translation",
+    "population": "Subset centres >=32 pixels from all image edges"
+  },
+  "inputSha256": {
+    "reference.png": "7cadf6032d7c5ac2de74ae542573a3b38069dc8c1c075ef9576641601996aeec",
+    "frame_040.png": "7477178b00acb669b34aeb2084b895076cf74475f472bc25f3af2696b2719e30"
+  },
+  "records": [
+    {
+      "config": {
+        "subsetSize": 32,
+        "subsetStride": 16,
+        "initialization": "global-affine",
+        "temporalPrediction": "none",
+        "temporalFineCorrection": false,
+        "temporalMaxAge": null,
+        "divergencePatience": null,
+        "divergenceMinIterations": 4,
+        "pyramidPolicy": "fixed",
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "pipelineDepth": 1,
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "interpolation": "bspline",
+        "motionModel": "translation",
+        "outlierPolicy": "median",
+        "medianFilterSize": 3,
+        "globalAffineLevels": 6,
+        "globalAffine": {
+          "levels": 6,
+          "domain": "spatially sampled masked reference pixels",
+          "maskAware": false,
+          "sampleCounts": [
+            82944,
+            82944,
+            57600,
+            32400,
+            32400,
+            8040
+          ]
+        },
+        "globalAffineEstimate": {
+          "dx": 0.0002909144817685378,
+          "dy": -0.0005112435101435608,
+          "linear": [
+            0.0011207129029056362,
+            1.8607113108322738e-06,
+            5.76303202725869e-07,
+            -0.0003154111665534558
+          ],
+          "score": 0.995709477903209,
+          "overlap": 1,
+          "sampleCount": 82944,
+          "levels": 6,
+          "diagnostics": [
+            {
+              "level": 5,
+              "score": 0.997891980577737,
+              "overlap": 0.9833333333333333,
+              "params": [
+                0.0001263096462314987,
+                0.0005358551462427965,
+                0.001465132679881606,
+                0.00011321240345430165,
+                -9.640901821206212e-06,
+                -0.00046718773748395334
+              ]
+            },
+            {
+              "level": 4,
+              "score": 0.997395155702495,
+              "overlap": 0.9916666666666667,
+              "params": [
+                -0.0007909294392002158,
+                0.0008698048937073567,
+                0.0013419318752223176,
+                -1.770598123293172e-05,
+                1.7832832667769236e-06,
+                -0.0004717087611850069
+              ]
+            },
+            {
+              "level": 3,
+              "score": 0.994166441278028,
+              "overlap": 0.9958333333333333,
+              "params": [
+                -0.0015322725771690087,
+                -0.0018161443203017122,
+                0.0012233767558640922,
+                1.7820219594782193e-06,
+                -1.554760915905486e-06,
+                -0.00044408122062238644
+              ]
+            },
+            {
+              "level": 2,
+              "score": 0.9920828303277259,
+              "overlap": 1,
+              "params": [
+                -0.00018475394338604567,
+                -0.00017245351198203612,
+                0.0011292091928992378,
+                7.23642279186985e-06,
+                2.680211152585029e-06,
+                -0.00039843975089329426
+              ]
+            },
+            {
+              "level": 1,
+              "score": 0.996278229428281,
+              "overlap": 1,
+              "params": [
+                0.0006174050007759137,
+                0.00037537434617583576,
+                0.0011131694596028508,
+                -8.416456364193038e-07,
+                -2.2541433727496787e-07,
+                -0.00035598735227271533
+              ]
+            },
+            {
+              "level": 0,
+              "score": 0.995709477903209,
+              "overlap": 1,
+              "params": [
+                0.0002909144817685378,
+                -0.0005112435101435608,
+                0.0011207129029056362,
+                1.8607113108322738e-06,
+                5.76303202725869e-07,
+                -0.0003154111665534558
+              ]
+            }
+          ]
+        }
+      },
+      "comparison": {
+        "mode": "fixed",
+        "reference": {
+          "kind": "images",
+          "index": 0,
+          "name": "00-reference.png",
+          "size": 4281256,
+          "type": "image/png",
+          "lastModified": 1793753581815
+        },
+        "target": {
+          "kind": "images",
+          "ordinal": 1,
+          "timestampUs": null,
+          "timestampClock": null,
+          "index": 1,
+          "name": "01-frame_040.png",
+          "size": 5633535,
+          "type": "image/png",
+          "lastModified": 1793753581820
+        },
+        "referenceAdmissible": 32026,
+        "requested": 32026,
+        "fixedImageCoordinateRoi": true
+      },
+      "population": 30916,
+      "valid": 30916,
+      "coverage": 1,
+      "vectorRmse": 0.009448625808190567,
+      "p95Error": 0.015620313591428917,
+      "applied": "Applied translation \u00b7 bspline \u00b7 2 level(s)\nWindow 32 px \u00b7 step 16 px \u00b7 50% overlap\nIteration limits (coarse \u2192 fine): 8 / 16\nGrid 239 \u00d7 134 \u00b7 32026 selected / 32026 positions\n32026 admissible prepared references; target convergence remains to be measured.\nReference preparation: cpu. Initialization: global-affine."
+    },
+    {
+      "config": {
+        "subsetSize": 32,
+        "subsetStride": 16,
+        "initialization": "global-affine",
+        "temporalPrediction": "none",
+        "temporalFineCorrection": false,
+        "temporalMaxAge": null,
+        "divergencePatience": null,
+        "divergenceMinIterations": 4,
+        "pyramidPolicy": "fixed",
+        "spatialWeighting": "uniform",
+        "solverWorkgroupSize": 16,
+        "pipelineDepth": 1,
+        "iterations": 16,
+        "tolerance": 0.005,
+        "znccMin": 0.8,
+        "pyramidLevels": 2,
+        "iterationsPerLevel": [
+          8,
+          16
+        ],
+        "tolerancePerLevel": [
+          0.005,
+          0.005
+        ],
+        "interpolation": "bspline",
+        "motionModel": "translation",
+        "outlierPolicy": "median",
+        "medianFilterSize": 3,
+        "globalAffineLevels": 6,
+        "spatialPropagationPasses": 2,
+        "globalAffine": {
+          "levels": 6,
+          "domain": "spatially sampled masked reference pixels",
+          "maskAware": false,
+          "sampleCounts": [
+            82944,
+            82944,
+            57600,
+            32400,
+            32400,
+            8040
+          ]
+        },
+        "globalAffineEstimate": {
+          "dx": 0.0002909144817685378,
+          "dy": -0.0005112435101435608,
+          "linear": [
+            0.0011207129029056362,
+            1.8607113108322738e-06,
+            5.76303202725869e-07,
+            -0.0003154111665534558
+          ],
+          "score": 0.995709477903209,
+          "overlap": 1,
+          "sampleCount": 82944,
+          "levels": 6,
+          "diagnostics": [
+            {
+              "level": 5,
+              "score": 0.997891980577737,
+              "overlap": 0.9833333333333333,
+              "params": [
+                0.0001263096462314987,
+                0.0005358551462427965,
+                0.001465132679881606,
+                0.00011321240345430165,
+                -9.640901821206212e-06,
+                -0.00046718773748395334
+              ]
+            },
+            {
+              "level": 4,
+              "score": 0.997395155702495,
+              "overlap": 0.9916666666666667,
+              "params": [
+                -0.0007909294392002158,
+                0.0008698048937073567,
+                0.0013419318752223176,
+                -1.770598123293172e-05,
+                1.7832832667769236e-06,
+                -0.0004717087611850069
+              ]
+            },
+            {
+              "level": 3,
+              "score": 0.994166441278028,
+              "overlap": 0.9958333333333333,
+              "params": [
+                -0.0015322725771690087,
+                -0.0018161443203017122,
+                0.0012233767558640922,
+                1.7820219594782193e-06,
+                -1.554760915905486e-06,
+                -0.00044408122062238644
+              ]
+            },
+            {
+              "level": 2,
+              "score": 0.9920828303277259,
+              "overlap": 1,
+              "params": [
+                -0.00018475394338604567,
+                -0.00017245351198203612,
+                0.0011292091928992378,
+                7.23642279186985e-06,
+                2.680211152585029e-06,
+                -0.00039843975089329426
+              ]
+            },
+            {
+              "level": 1,
+              "score": 0.996278229428281,
+              "overlap": 1,
+              "params": [
+                0.0006174050007759137,
+                0.00037537434617583576,
+                0.0011131694596028508,
+                -8.416456364193038e-07,
+                -2.2541433727496787e-07,
+                -0.00035598735227271533
+              ]
+            },
+            {
+              "level": 0,
+              "score": 0.995709477903209,
+              "overlap": 1,
+              "params": [
+                0.0002909144817685378,
+                -0.0005112435101435608,
+                0.0011207129029056362,
+                1.8607113108322738e-06,
+                5.76303202725869e-07,
+                -0.0003154111665534558
+              ]
+            }
+          ]
+        }
+      },
+      "comparison": {
+        "mode": "fixed",
+        "reference": {
+          "kind": "images",
+          "index": 0,
+          "name": "00-reference.png",
+          "size": 4281256,
+          "type": "image/png",
+          "lastModified": 1793753581815
+        },
+        "target": {
+          "kind": "images",
+          "ordinal": 2,
+          "timestampUs": null,
+          "timestampClock": null,
+          "index": 1,
+          "name": "01-frame_040.png",
+          "size": 5633535,
+          "type": "image/png",
+          "lastModified": 1793753581820
+        },
+        "referenceAdmissible": 32026,
+        "requested": 32026,
+        "fixedImageCoordinateRoi": true
+      },
+      "population": 30916,
+      "valid": 30916,
+      "coverage": 1,
+      "vectorRmse": 0.009448625808190567,
+      "p95Error": 0.015620313591428917,
+      "applied": "Applied translation \u00b7 bspline \u00b7 2 level(s)\nWindow 32 px \u00b7 step 16 px \u00b7 50% overlap\nIteration limits (coarse \u2192 fine): 8 / 16\nGrid 239 \u00d7 134 \u00b7 32026 selected / 32026 positions\n32026 admissible prepared references; target convergence remains to be measured.\nReference preparation: cpu. Initialization: global-affine.\nGPU seed propagation: 2 pass(es) per level, rejected points only."
+    }
+  ],
+  "capabilities": {
+    "supported": true,
+    "adapter": {
+      "vendor": "intel",
+      "architecture": "xe-2lpg",
+      "device": "",
+      "description": ""
+    },
+    "limits": {
+      "maxStorageBuffersPerShaderStage": 16,
+      "maxBindGroups": 4,
+      "maxStorageBufferBindingSize": 4294967292,
+      "maxBufferSize": 4294967292,
+      "maxComputeWorkgroupStorageSize": 65536,
+      "maxComputeInvocationsPerWorkgroup": 1024,
+      "maxTextureDimension2D": 16384
+    },
+    "features": [
+      "depth32float-stencil8",
+      "chromium-experimental-subgroup-matrix",
+      "rg11b10ufloat-renderable",
+      "bgra8unorm-storage",
+      "texture-formats-tier1",
+      "chromium-experimental-multi-draw-indirect",
+      "texture-compression-bc",
+      "dual-source-blending",
+      "core-features-and-limits",
+      "chromium-experimental-sampling-resource-table",
+      "chromium-experimental-timestamp-query-inside-passes",
+      "float32-filterable",
+      "indirect-first-instance",
+      "float32-blendable",
+      "atomic-vec2u-min-max",
+      "subgroup-size-control",
+      "texture-compression-unaligned",
+      "texture-compression-etc2",
+      "depth-clip-control",
+      "texture-compression-bc-sliced-3d",
+      "timestamp-query",
+      "shader-f16",
+      "clip-distances",
+      "texture-formats-tier2",
+      "primitive-index",
+      "texture-component-swizzle",
+      "subgroups"
+    ],
+    "resolutions": [
+      [
+        1280,
+        720
+      ],
+      [
+        1920,
+        1080
+      ],
+      [
+        3840,
+        2160
+      ]
+    ],
+    "recommendedProfile": "portable",
+    "reasons": [
+      "Start at 720p; measure the real graph before raising resolution"
+    ],
+    "profiles": {
+      "portable": true,
+      "qualified-latency": true,
+      "minimal": false
+    }
+  },
+  "npzSha256": "772207afa16abd6339d7cc01171526550b2f6c1b66b5643577ba8e7305a9b323",
+  "notes": [
+    "Actual UHD PNG file input and worker/session/storage path, not a throughput benchmark.",
+    "Global affine six-level initialization remains independent of local translation."
+  ]
+}

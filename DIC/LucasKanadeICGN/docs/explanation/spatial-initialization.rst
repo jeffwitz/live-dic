@@ -219,3 +219,10 @@ runs after the re-solves; propagation does not silently disable filtering.
 
 See :doc:`../how-to/run-in-browser` for the Solve controls. Native timing tables
 are not browser end-to-end or recording performance claims.
+
+The `browser functional campaign
+<https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/browser-spatial-seed-20261104>`_
+checks the original UHD tensile pair through the actual Solve menu, worker,
+saved fields and NPZ export. Disabled and two-pass runs both retain 100% of the
+defined interior population, with 0.00945 px displacement RMSE. This smooth
+case checks preserved accuracy, not an additional recovery or speed benefit.
