@@ -5,6 +5,13 @@ version heading when a release is published.
 
 ## Unreleased
 
+### Licensing and citation
+
+- Licensed first-party live-dic source, documentation, examples and analytic
+  qualification fixtures under GPL-2.0-or-later. Added SPDX package metadata,
+  shipped license text and a `CITATION.cff`; third-party components retain
+  their own terms.
+
 ### Breaking changes
 
 - Removed the `ICGNWebGL(backend="gpuio")` backend and the corresponding

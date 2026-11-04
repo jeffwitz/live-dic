@@ -50,6 +50,10 @@ python3 -m pip install -e DIC/LucasKanadeICGN/python
 | Import | `lucas_kanade_icgn` |
 | Existing browser CLI | `icgn-webgl` |
 
+The `webgl` suffix in the distribution and CLI names is historical and retained
+for compatibility. The maintained native Python engine uses `wgpu-py` and
+WebGPU; these identifiers do not select a WebGL backend.
+
 The standard dependencies are NumPy, Pillow, websockets and wgpu-py. The
 project wheel contains Python, WGSL and vendored browser resources. It has no
 first-party compiled extension and needs no Cargo, Maturin or external shader
@@ -206,3 +210,10 @@ icgn-webgl DIC/LucasKanadeICGN/assets/frame_000.png \
 See the [CLI reference](https://github.com/jeffwitz/live-dic/blob/main/DIC/LucasKanadeICGN/docs/reference/command-line.rst).
 Development and release validation are described in
 [CONTRIBUTING.md](https://github.com/jeffwitz/live-dic/blob/main/CONTRIBUTING.md).
+
+## License
+
+The first-party Python package is licensed under GPL-2.0-or-later. The wheel
+includes the full license text. Vendored browser components retain their
+upstream licenses; see the repository's
+[third-party notice](https://github.com/jeffwitz/live-dic/blob/main/DIC/LucasKanadeICGN/THIRD_PARTY.md).

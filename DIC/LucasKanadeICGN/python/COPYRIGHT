@@ -1,0 +1,10 @@
+Copyright (C) 2026 Jeff Witz
+
+Unless a file carries a separate notice, the first-party live-dic source,
+documentation, examples and analytic qualification fixtures are licensed under
+the GNU General Public License, version 2 or (at your option) any later version.
+See LICENSE. Third-party software retains its own licenses; see
+DIC/LucasKanadeICGN/THIRD_PARTY.md.
+
+This notice applies to the current maintained file tree. It does not change the
+licensing status of material that appears only in earlier historical commits.

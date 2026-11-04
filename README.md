@@ -232,3 +232,12 @@ The root [project page](index.html) links to the published workbench and the
 maintained Python engine.
 Third-party attributions are in
 [THIRD_PARTY.md](DIC/LucasKanadeICGN/THIRD_PARTY.md).
+
+## License
+
+Unless a file carries a separate notice, the current maintained tree's
+first-party source,
+documentation, examples and analytic qualification fixtures are licensed under
+the GNU General Public License, version 2 or (at your option) any later version.
+See [LICENSE](LICENSE). Vendored and runtime dependencies retain their own
+licenses and notices; see [THIRD_PARTY.md](DIC/LucasKanadeICGN/THIRD_PARTY.md).

@@ -4,6 +4,14 @@ The browser and Python runtimes do not fetch JavaScript from a CDN. The
 following files are kept in the repository so that the solver can run without
 network access.
 
+The current maintained live-dic first-party tree is GPL-2.0-or-later.
+Third-party licenses below remain in force for their respective components
+and are not replaced by the project license. This does not change the status of
+material present only in earlier historical commits. The root and Python-project
+copies of `LICENSE` and `COPYRIGHT`
+are identical so both the repository and wheel carry the license and ownership
+notice.
+
 | Component | Version | Local file | SHA-256 |
 | --- | --- | --- | --- |
 | Three.js core | 0.186.1 | `three/vendor/three.core.js` | `9edde002b066a9a05676a6127f67735b62baf399bdea529f2f7e31657da769e6` |
@@ -12,6 +20,21 @@ network access.
 
 The Three.js modules come from the official npm package. Their MIT licence is
 stored at `three/vendor/THREE-LICENSE.txt`.
+
+## Python runtime distributions
+
+These dependencies are installed as separate Python distributions rather than
+copied into live-dic. Their own license files remain authoritative. The listed
+licenses are permissive and compatible with GPLv2; updates should preserve the
+notices supplied by each distribution.
+
+| Distribution | License | Notes |
+| --- | --- | --- |
+| NumPy | BSD-3-Clause and additional permissive notices | Upstream wheels may include separately licensed bundled components. |
+| Pillow | MIT-CMU (13.0.0; older supported releases may use HPND) | Both are permissive. |
+| websockets | BSD-3-Clause | Separate dependency wheel. |
+| wgpu-py (`wgpu`) | BSD-2-Clause | The project requires `wgpu>=0.32,<0.33`. |
+| wgpu-native | MIT OR Apache-2.0 | The dual license allows selecting MIT for GPLv2 compatibility; the binary arrives through the `wgpu` wheel. |
 
 The Python wheel contains the Three.js/TSL and raw-WebGPU browser adapters,
 their local vendor modules, shared JavaScript core and WGSL shaders. No

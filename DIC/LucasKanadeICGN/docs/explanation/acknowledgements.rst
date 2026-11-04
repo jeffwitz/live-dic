@@ -12,7 +12,21 @@ prototype. This acknowledgment describes methodological influence; it does not
 claim that Pierre authored the maintained live-dic solver or that the solver
 reuses Strobox source code. The active Three.js/TSL solver was implemented as a
 separate live-dic backend. Third-party software licenses and notices are listed
-separately in the project-root ``THIRD_PARTY.md`` file.
+separately in ``DIC/LucasKanadeICGN/THIRD_PARTY.md``.
+
+Software license
+----------------
+
+Unless a file carries a separate notice, the current maintained tree's
+first-party source,
+documentation, examples and analytic qualification fixtures are licensed under
+the GNU General Public License, version 2 or (at your option) any later version
+(GPL-2.0-or-later). The full license is in the repository-root ``LICENSE``;
+the Python wheel includes the same text. Third-party code retains its own
+licenses, listed in ``DIC/LucasKanadeICGN/THIRD_PARTY.md``. The methodology
+acknowledgement above is separate from software licensing.
+This license notice does not change the status of material that appears only in
+earlier historical commits.
 
 Implementation provenance
 -------------------------
