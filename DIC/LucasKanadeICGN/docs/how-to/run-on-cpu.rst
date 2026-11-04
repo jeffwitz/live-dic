@@ -60,9 +60,10 @@ Recreate the engine and prepare the reference again to change devices.
 
 The default remains the two-level full pyramid. Result shapes, motion models,
 spatial policies, and bounded ``register_stream`` execution are unchanged.
-``outlier_policy="median"`` is explicit smoothing; see
-:doc:`../explanation/displacement-outliers` before interpreting filtered
-derivatives.
+``outlier_policy="median"`` repairs rejected subsets from valid neighbours;
+it does not smooth accepted measurements. See
+:doc:`../explanation/displacement-outliers` before interpreting repaired
+parameters, which retain their rejected status until a later solve accepts them.
 
 Install the required runtime
 ----------------------------

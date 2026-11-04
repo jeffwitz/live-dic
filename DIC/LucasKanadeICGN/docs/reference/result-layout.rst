@@ -125,9 +125,14 @@ denominators used for success rates. Undefined RMSE is ``None``. See
      - insufficient intensity norm or failed ZNCC
      - no
 
-``outlier_policy="median"`` preserves these solver statuses while replacing
-the active coefficients with a centred 3 by 3 component median. Status 2 is
-therefore never introduced merely because explicit smoothing was requested.
+``outlier_policy="median"`` applies only to subsets rejected by the current
+solve. It replaces their parameter slots with component medians from valid,
+permitted neighbours while preserving their status. At an intermediate
+pyramid level, the repaired state is made eligible as an initialization for
+the next finer level; the original coarse status remains rejected. A median
+estimate is never reported as an accepted measurement without a successful
+IC-GN solve. This solver-time recovery is separate from post-processing
+smoothing of a displayed or exported field.
 
 Iteration field
 ---------------

@@ -69,14 +69,18 @@ Every engine accepts ``outlier_policy="replace"`` (the default), ``"flag"``,
 ``"disabled"``, or ``"median"``. Detection is always limited to recentered
 ``tx`` and ``ty``. ``replace`` changes the complete active state after a
 trigger; ``flag`` preserves raw coefficients and sets status 2; ``disabled``
-skips the post-pass. ``median`` is not detection: it applies a centred
-component median to every valid state and preserves its solver status.
+skips the post-pass. ``median`` repairs only rejected subsets, using the
+component-wise median of eligible accepted neighbours after recentering. It
+leaves accepted subsets unchanged and preserves the rejected status of the
+repaired subset. At intermediate pyramid levels, a private seed marker makes
+the repaired estimate eligible for the next finer solve; it is not reported
+as a successful measurement.
 ``ICGNWGPU``, ``ICGNWGPUFullPyramid``, and raw ``webgpu-wgsl`` also accept
 ``median_filter_size`` / ``medianFilterSize`` values 3, 5, 7, or 9, measured
 in subset-grid cells. The default remains 3. Values above 3 require the
 ``median`` policy; the Python Chromium wrapper requires
-``backend="webgpu-wgsl"`` for these larger sizes. Three.js retains its 3 by 3
-filter. See
+``backend="webgpu-wgsl"`` for these larger sizes. Three.js retains a separate
+legacy 3 by 3 post-pass and does not implement pyramid seed repair. See
 :doc:`../explanation/displacement-outliers` for the equations, validation
 contracts, and limits.
 

@@ -169,10 +169,11 @@ The original CPU propagation experiment explicitly disabled all median passes.
 It did not establish that median filtering is ineffective in a pyramid.
 The GPU controls now distinguish three operations:
 
-* ``median`` applies the existing centred 3 x 3 component median to accepted
-  coarse measurements only. Statuses and iteration counts are retained; an
-  invalid own point is not filled. The filtered coarse buffer is actually used
-  for coarse-to-fine transfer. The final fine field remains raw.
+* ``median`` repairs only rejected coarse subsets from accepted neighbours.
+  The failed target is excluded from the stencil; at least four neighbours
+  are required. A private marker makes a repaired coarse state seed-eligible,
+  while its raw coarse status and iteration count remain unchanged. The final
+  fine solve has to converge and records its own status.
 * ``seed-median`` is a separate initialization-only control. Numerically
   admissible status-0 coarse estimates also contribute. With at least four
   permitted sources, an unavailable coarse seed can receive a median seed.

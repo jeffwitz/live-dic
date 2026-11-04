@@ -91,10 +91,12 @@ Scientific scope
 ----------------
 
 No reference update, displacement accumulation or extra mechanical model is
-introduced. The default temporal mode does not predict velocity. Raw seeds avoid feeding repeated explicit
-median smoothing back into the optimizer. UOD ``replace`` is an exception:
-its corrected state replaces a suspect solution in history as well as output.
-Neither policy turns convergence into a statistical uncertainty guarantee.
+introduced. The default temporal mode does not predict velocity. Temporal
+history stores accepted solver states; median repairs at coarse pyramid levels
+are within-frame seeds and do not enter history unless a later solve accepts
+them. UOD ``replace`` is an exception: its corrected accepted state replaces a
+suspect solution in history as well as output. Neither policy turns
+convergence into a statistical uncertainty guarantee.
 
 A corrupted frame with no accepted subsets leaves historical parameters
 unchanged, but ages them. A corrupted frame that produces an accepted wrong

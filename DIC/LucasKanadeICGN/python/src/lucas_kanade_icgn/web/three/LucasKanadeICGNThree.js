@@ -797,7 +797,7 @@ const median9Node = (values, count) => {
   );
 };
 
-/** Displacement UOD or an explicit centred 3x3 component median. */
+/** Displacement UOD or 3x3 repair of a rejected subset from valid neighbours. */
 const makeMedianKernel = () => Fn(() => {
   const subsetIndex = instanceIndex;
   const translation = translationNode.element(subsetIndex);
@@ -806,7 +806,12 @@ const makeMedianKernel = () => Fn(() => {
   filteredTranslationNode.element(subsetIndex).assign(translation);
   filteredLinearNode.element(subsetIndex).assign(linear);
   filteredStatusNode.element(subsetIndex).assign(status);
-  If(status.x.lessThan(0.5), () => Return());
+  const pureMedian = configuration.outlierPolicy === 'median';
+  if (pureMedian) {
+    If(status.x.greaterThanEqual(0.5), () => Return());
+  } else {
+    If(status.x.lessThan(0.5), () => Return());
+  }
 
   const predictedX = array('float', 9).toVar();
   const predictedY = array('float', 9).toVar();
@@ -814,16 +819,7 @@ const makeMedianKernel = () => Fn(() => {
   const p2 = array('float', 9).toVar();
   const p4 = array('float', 9).toVar();
   const p5 = array('float', 9).toVar();
-  const pureMedian = configuration.outlierPolicy === 'median';
-  const count = int(pureMedian ? 1 : 0).toVar();
-  if (pureMedian) {
-    predictedX.element(0).assign(translation.x);
-    predictedY.element(0).assign(translation.y);
-    p1.element(0).assign(linear.x);
-    p2.element(0).assign(linear.y);
-    p4.element(0).assign(linear.z);
-    p5.element(0).assign(linear.w);
-  }
+  const count = int(0).toVar();
   const pointX = int(subsetIndex.mod(uint(GRID_WIDTH)));
   const pointY = int(subsetIndex.div(uint(GRID_WIDTH)));
 
@@ -854,7 +850,7 @@ const makeMedianKernel = () => Fn(() => {
       });
     }
   }
-  if (!pureMedian) If(count.lessThan(4), () => Return());
+  If(count.lessThan(4), () => Return());
 
   const filteredTranslation = translation.toVar();
   const filteredLinear = linear.toVar();
@@ -912,7 +908,7 @@ const makeMedianKernel = () => Fn(() => {
   filteredStatusNode.element(subsetIndex).assign(filteredStatus);
 })().compute(GRID_COUNT, [64]).setName(
   configuration.outlierPolicy === 'median'
-    ? 'DIC-RT centred 3x3 field median' : 'DIC-RT displacement UOD',
+    ? 'DIC-RT rejected-subset 3x3 median repair' : 'DIC-RT displacement UOD',
 );
 
 const buildKernels = () => {

@@ -1067,6 +1067,22 @@ class ICGNWGPU:
                 },
             },
         )
+        self._median_seed_filter = self._median_filter
+        if self.outlier_policy == "median":
+            self._median_seed_filter = self.device.create_compute_pipeline(
+                layout=pipeline_layout,
+                compute={
+                    "module": shader,
+                    "entry_point": "median_filter_seed",
+                    "constants": {
+                        "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
+                        "OUTLIER_POLICY": OUTLIER_POLICY_PIPELINE_CONSTANTS[self.outlier_policy],
+                        "MEDIAN_FILTER_SIZE": self._compiled_median_filter_size,
+                        "SUBSET_SIZE": self.subset_size,
+                        "SUBSET_STRIDE": self.subset_stride,
+                    },
+                },
+            )
         self._seeded_bind_group_layout: Any = None
         self._seeded_solver: Any = None
         self._retry_solver: Any = None
@@ -1075,6 +1091,7 @@ class ICGNWGPU:
         self.reference_valid = None
         self._roi_seed_permissions = None
         self._default_median_filter = self._median_filter
+        self._default_median_seed_filter = self._median_seed_filter
         self._base_portable_solver = self._portable_solver
         self._base_subgroup_solver = self._subgroup_solver
         self._subgroup_shader = subgroup_shader
@@ -1124,8 +1141,10 @@ class ICGNWGPU:
             "_portable_solver",
             "_subgroup_solver",
             "_median_filter",
+            "_median_seed_filter",
         ):
-            setattr(level, name, getattr(self, name))
+            if hasattr(self, name):
+                setattr(level, name, getattr(self, name))
         level._solver_preference = False
         level._solver_extra_constants = getattr(self, "_solver_extra_constants", {})
         level.device_type = getattr(self, "device_type", "auto")
@@ -1155,7 +1174,12 @@ class ICGNWGPU:
         level.roi = None
         level.reference_valid = None
         level._roi_seed_permissions = None
-        level._default_median_filter = getattr(self, "_default_median_filter", self._median_filter)
+        level._default_median_filter = getattr(
+            self, "_default_median_filter", getattr(self, "_median_filter", None)
+        )
+        level._default_median_seed_filter = getattr(
+            self, "_default_median_seed_filter", getattr(self, "_median_seed_filter", None)
+        )
         level._base_portable_solver = getattr(self, "_base_portable_solver", self._portable_solver)
         level._base_subgroup_solver = getattr(self, "_base_subgroup_solver", self._subgroup_solver)
         level._subgroup_shader = getattr(self, "_subgroup_shader", None)
@@ -1729,6 +1753,7 @@ class ICGNWGPU:
         *,
         solver_bind_group: Any,
         compute_pass: Any | None = None,
+        median_pipeline: Any | None = None,
     ) -> None:
         """Append a level; an externally owned pass requires precleared states."""
 
@@ -1769,7 +1794,7 @@ class ICGNWGPU:
         if self.outlier_policy != "disabled":
             passes.append(
                 (
-                    self._median_filter,
+                    median_pipeline or self._median_filter,
                     ((self.grid_width * self.grid_height + 255) // 256, 1, 1),
                     slot.bind_group,
                 )
@@ -2372,6 +2397,7 @@ class ICGNWGPU:
         runtime_start = time.perf_counter()
         self._select_roi_solver_pipelines()
         self._median_filter = self._default_median_filter
+        self._median_seed_filter = self._default_median_seed_filter
         if roi is not None and roi.effective and self.outlier_policy != "disabled":
             self._median_filter = self.device.create_compute_pipeline(
                 layout=self._pipeline_layout,
@@ -2388,6 +2414,25 @@ class ICGNWGPU:
                     },
                 },
             )
+            self._median_seed_filter = self._median_filter
+            if self.outlier_policy == "median":
+                self._median_seed_filter = self.device.create_compute_pipeline(
+                    layout=self._pipeline_layout,
+                    compute={
+                        "module": self._shader,
+                        "entry_point": "median_filter_seed",
+                        "constants": {
+                            "MOTION_MODEL": MOTION_MODEL_PIPELINE_CONSTANTS[self.motion_model],
+                            "OUTLIER_POLICY": OUTLIER_POLICY_PIPELINE_CONSTANTS[
+                                self.outlier_policy
+                            ],
+                            "MEDIAN_FILTER_SIZE": self._compiled_median_filter_size,
+                            "SUBSET_SIZE": self.subset_size,
+                            "SUBSET_STRIDE": subset_stride,
+                            "ROI_ENABLED": 1,
+                        },
+                    },
+                )
         self._allocate_runtime(reference, inverse, metadata)
         self._update_config()
         admissible = reference_valid if roi is None else reference_valid & roi.selected

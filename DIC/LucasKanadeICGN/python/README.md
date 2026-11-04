@@ -146,15 +146,20 @@ include mask data, selection and strict `config_json`, readable with
 | `replace` (default) | Detect displacement outliers; replace the complete local state |
 | `flag` | Detect the same outliers; retain raw coefficients with status 2 |
 | `disabled` | Omit the spatial pass |
-| `median` | Explicitly smooth each valid state; preserve solver status |
+| `median` | Repair rejected subsets from valid neighbours; at coarse pyramid levels, offer the repaired estimate as a seed for the next finer solve |
 
 Use `median_filter_size=3`, `5`, `7` or `9` with `outlier_policy="median"`
 to choose the grid neighbourhood (3 by 3 by default). This width is independent
-of the image subset width.
+of the image subset width. The solver leaves accepted subsets unchanged and
+requires at least four valid neighbours to repair a rejected subset. The final
+solver status remains rejected unless IC-GN later accepts a solve; intermediate
+repairs are only eligible as seeds. This option does not perform median
+smoothing of accepted measurements. Results-tab smoothing is a separate
+post-processing recipe.
 
-The median mode is smoothing, not an outlier detector. Status 2 therefore
-means detection, not necessarily replacement. `result.flagged` and
-`outlier_mask` express this; older `replaced` aliases remain for compatibility.
+The median mode is a recovery initializer, not the UOD detector. It does not
+set status 2. `result.flagged` and `outlier_mask` describe UOD detection under
+`replace` or `flag`; older `replaced` aliases remain for compatibility.
 
 ## Supported choices and defaults
 

@@ -17,10 +17,12 @@ How to read this page
 
 There is no single FPS number independent of the workload. The backend
 comparison below uses tiled small-image fixtures and default displacement UOD.
-The native-UHD tensile campaigns use analytic images, chronological temporal
-initialization and explicit median smoothing. Fixed-pair workgroup experiments
-repeat one image; changing-frame campaigns exercise a sequence. Their times
-must not be pooled or treated as interchangeable results.
+The archived native-UHD tensile campaigns use analytic images, chronological
+temporal initialization and the then-current explicit median-smoothing
+semantics. They do not qualify the newer rejected-subset median seed repair.
+Fixed-pair workgroup experiments repeat one image; changing-frame campaigns
+exercise a sequence. Their times must not be pooled or treated as
+interchangeable results.
 
 Each detailed table retains its original configuration and revision. The
 workgroup-width controls and negative latency experiments are evidence for
@@ -181,8 +183,8 @@ displacement UOD pass. No camera or H.264 stage is included.
 Primary backend performance measurements use
 ``outlier_policy="replace"``. It tests only displacement and replaces the
 complete local state after a trigger. ``flag`` and ``disabled`` are scientific
-control modes. ``median`` is an explicit smoothing mode and is not represented
-by the default performance rows. See
+control modes. Archived ``median`` measurements used explicit smoothing and
+do not measure the current rejected-subset seed-repair behavior. See
 :doc:`../explanation/displacement-outliers` for the exact rule and the
 false-positive, injected-outlier, and localized-feature regressions.
 Quadratic performance remains reported separately because its state and solver
@@ -926,14 +928,17 @@ sequence reaches stretch 1.1 about (1920,1080). On a fixed 26,924-position
 interior support, the final temporal/two-level result retains 99.967% coverage,
 0.02838 px displacement RMSE and 0.001431 strain-component RMSE. Zero/two
 levels retains only 1.645%, with 63.37 px error among accepted estimates.
-Median smoothing is explicit; these gradient errors do not qualify raw fields.
+The archived campaign's median smoothing was explicit; those gradient errors
+do not qualify raw fields or the current rejected-subset seed repair.
 A black frame produces zero updates and recovers on the next normal frame.
 
 The following numbers are medians of three campaign statistics, on Intel
 Graphics LNL, Vulkan/Mesa 25.2.8, wgpu-py 0.32.0. Boundary: resident uint8 NumPy
 image to materialized NumPy field and statistics. Rendering, acquisition and
 truth scoring are excluded. B-spline, uniform weights, size/stride 16/16,
-explicit median policy and unchanged iteration ceilings are used throughout.
+median smoothing as implemented at the archived campaign revision and
+unchanged iteration ceilings are used throughout. These measurements do not
+qualify current median seed repair.
 
 .. list-table:: Temporal initialization, one streaming slot
    :header-rows: 1

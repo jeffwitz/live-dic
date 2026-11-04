@@ -76,9 +76,11 @@ For this tested affine 16/16, B-spline, two-level pipeline, **keep ``full`` as
 the default ROI policy**. Partial adds coverage without qualifying the new
 boundary strains, and visibility does not solve that limitation on this hole.
 Use partial explicitly when its additional boundary measurements have been
-qualified for the intended use. Median is useful for these smooth strain maps
-but remains an explicit smoothing choice; retain access to raw output for
-measurements where localized structure matters.
+qualified for the intended use. The archived comparison used the previous
+solver median-smoothing behavior; those smoothed strain results do not qualify
+the current failed-subset seed repair. Re-run the comparison before drawing a
+new conclusion about that policy. For display-only smoothing, use the separate
+Results post-processing recipe and retain the unsmoothed field for inspection.
 
 .. figure:: ../../benchmarks/results/plate-hole-roi-20261030/boundary_bands_225.png
    :alt: Error and coverage by distance from the hole for four mask variants.

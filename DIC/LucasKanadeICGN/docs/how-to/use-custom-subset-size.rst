@@ -51,7 +51,7 @@ weighting and the relation between subset size and stride.
 Choose a solver median neighbourhood
 ------------------------------------
 
-The calculation-time ``median`` policy has a separate neighbourhood width,
+The calculation-time ``median`` repair has a separate neighbour stencil,
 measured in grid cells rather than image pixels. Three by three remains the
 default. The shared-WGSL engines support opt-in widths up to nine by nine:
 
@@ -70,6 +70,7 @@ The same ``median_filter_size`` argument is available on ``ICGNWGPU``.
 is ``--median-filter-size 5 --outlier-policy median``. In the PWA, select the
 width under Solve before starting the calculation. Changing the width requires
 reference preparation again because it specializes the GPU pipeline. Three.js
-continues to use a fixed 3 by 3 neighbourhood. Larger filters can
-remove real local gradients or curvature; compare raw and smoothed fields on
-the specimen before using them for metrology.
+uses a fixed 3 by 3 neighbourhood. The repair changes rejected subsets only;
+it leaves accepted measurements unchanged. Compare coverage and final solver
+statuses on the specimen before using it for metrology. For display smoothing,
+use the separate Results post-processing recipe.

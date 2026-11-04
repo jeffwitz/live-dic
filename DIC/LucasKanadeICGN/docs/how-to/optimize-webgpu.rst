@@ -205,9 +205,13 @@ Workgroup barriers cannot provide the global synchronization required to
 combine them into a single arbitrary shader. GPU residency is achieved by
 retaining the intermediate resources between passes.
 
-The median stage reads raw state and writes a separate filtered state.
-Overwriting records while reading neighbours would make the answer depend
-on execution order. Distinct input/output resources give a defined operation.
+The median repair reads the raw solve state and writes a separate filtered
+state. It changes only rejected subsets, using valid permitted neighbours;
+accepted subsets pass through unchanged. At coarse pyramid levels the seed
+entry point makes repaired values transferable while keeping the original
+rejected status for diagnostics. Overwriting records while reading neighbours
+would make the answer depend on execution order. Distinct input/output
+resources give a defined operation.
 
 Treat precision and numerical shortcuts as experiments
 ------------------------------------------------------

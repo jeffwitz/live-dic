@@ -828,6 +828,7 @@ class GPURegressionTests(unittest.TestCase):
         subset_size: int = 16,
         subset_stride: int = 16,
         roi_mask: np.ndarray | None = None,
+        seed_filter: bool = False,
     ) -> np.ndarray:
         grid_side = int(np.sqrt(state.shape[0]))
         self.assertEqual(grid_side * grid_side, state.shape[0])
@@ -852,7 +853,9 @@ class GPURegressionTests(unittest.TestCase):
             encoder = engine.device.create_command_encoder(label="GPU UOD regression")
             encoder.clear_buffer(slot.buffers["filtered_state"])
             compute_pass = encoder.begin_compute_pass()
-            compute_pass.set_pipeline(engine._median_filter)
+            compute_pass.set_pipeline(
+                engine._median_seed_filter if seed_filter else engine._median_filter
+            )
             compute_pass.set_bind_group(0, slot.bind_group)
             compute_pass.dispatch_workgroups(1, 1, 1)
             compute_pass.end()
@@ -911,79 +914,134 @@ class GPURegressionTests(unittest.TestCase):
         np.testing.assert_array_equal(actual[:center], state[:center])
         np.testing.assert_array_equal(actual[center + 1 :], state[center + 1 :])
 
-    def test_pure_median_filters_every_valid_subset_without_flagging(self) -> None:
-        pattern = np.array([9, 1, 8, 2, 7, 3, 6, 4, 5], dtype=np.float32)
+    def test_median_repairs_only_rejected_subsets(self) -> None:
         for motion_model, state_width, parameter_count, status_index in (
             ("translation", 8, 6, 6),
             ("affine", 8, 6, 6),
             ("quadratic", 16, 12, 12),
         ):
             with self.subTest(motion_model=motion_model):
-                state = np.zeros((9, state_width), dtype=np.float32)
-                active_components = (
-                    (0, 3) if motion_model == "translation" else range(parameter_count)
-                )
-                for component in active_components:
-                    state[:, component] = 0.001 * (component + 1) * pattern
+                state_grid = np.zeros((3, 3, state_width), dtype=np.float32)
+                grid_y, grid_x = np.indices((3, 3), dtype=np.float32)
+                x = (grid_x - 1.0) * 16.0
+                y = (grid_y - 1.0) * 16.0
+                if motion_model == "translation":
+                    state_grid[..., 0] = 2.5
+                    state_grid[..., 3] = -1.25
+                    expected = np.array([2.5, -1.25], dtype=np.float32)
+                    active_components = (0, 3)
+                elif motion_model == "affine":
+                    ux, uy, vx, vy = 0.001, -0.002, 0.003, 0.0005
+                    state_grid[..., 0] = 2.5 + ux * x + uy * y
+                    state_grid[..., 1] = ux
+                    state_grid[..., 2] = uy
+                    state_grid[..., 3] = -1.25 + vx * x + vy * y
+                    state_grid[..., 4] = vx
+                    state_grid[..., 5] = vy
+                    expected = np.array([2.5, ux, uy, -1.25, vx, vy], dtype=np.float32)
+                    active_components = tuple(range(parameter_count))
+                else:
+                    ux, uy, vx, vy = 0.001, -0.002, 0.003, 0.0005
+                    uxx, uxy, uyy = 1e-5, -2e-5, 3e-5
+                    vxx, vxy, vyy = -1e-5, 2e-5, -0.5e-5
+                    state_grid[..., 0] = (
+                        2.5 + ux * x + uy * y + 0.5 * uxx * x**2 + uxy * x * y + 0.5 * uyy * y**2
+                    )
+                    state_grid[..., 1] = ux + uxx * x + uxy * y
+                    state_grid[..., 2] = uy + uxy * x + uyy * y
+                    state_grid[..., 3] = (
+                        -1.25 + vx * x + vy * y + 0.5 * vxx * x**2 + vxy * x * y + 0.5 * vyy * y**2
+                    )
+                    state_grid[..., 4] = vx + vxx * x + vxy * y
+                    state_grid[..., 5] = vy + vxy * x + vyy * y
+                    state_grid[..., 6:12] = np.array(
+                        [uxx, uxy, uyy, vxx, vxy, vyy], dtype=np.float32
+                    )
+                    expected = np.array(
+                        [2.5, ux, uy, -1.25, vx, vy, uxx, uxy, uyy, vxx, vxy, vyy],
+                        dtype=np.float32,
+                    )
+                    active_components = tuple(range(parameter_count))
+
+                state = state_grid.reshape(9, state_width)
                 state[:, status_index] = 1.0
                 state[:, status_index + 1] = 4.0
-
-                expected = state.copy()
-                for target_y in range(3):
-                    for target_x in range(3):
-                        samples = []
-                        for source_y in range(max(0, target_y - 1), min(3, target_y + 2)):
-                            for source_x in range(max(0, target_x - 1), min(3, target_x + 2)):
-                                values = state[3 * source_y + source_x, :parameter_count].copy()
-                                offset_x = -16.0 * (source_x - target_x)
-                                offset_y = -16.0 * (source_y - target_y)
-                                if motion_model == "quadratic":
-                                    values[0] += (
-                                        values[1] * offset_x
-                                        + values[2] * offset_y
-                                        + 0.5 * values[6] * offset_x**2
-                                        + values[7] * offset_x * offset_y
-                                        + 0.5 * values[8] * offset_y**2
-                                    )
-                                    values[1] += values[6] * offset_x + values[7] * offset_y
-                                    values[2] += values[7] * offset_x + values[8] * offset_y
-                                    values[3] += (
-                                        values[4] * offset_x
-                                        + values[5] * offset_y
-                                        + 0.5 * values[9] * offset_x**2
-                                        + values[10] * offset_x * offset_y
-                                        + 0.5 * values[11] * offset_y**2
-                                    )
-                                    values[4] += values[9] * offset_x + values[10] * offset_y
-                                    values[5] += values[10] * offset_x + values[11] * offset_y
-                                else:
-                                    values[0] += values[1] * offset_x + values[2] * offset_y
-                                    values[3] += values[4] * offset_x + values[5] * offset_y
-                                samples.append(values)
-                        target = 3 * target_y + target_x
-                        medians = np.median(np.asarray(samples), axis=0)
-                        expected[target, list(active_components)] = medians[list(active_components)]
+                state[4, :parameter_count] = 999.0
+                state[4, status_index] = -2.0
 
                 actual = self._filter_injected_state(
                     motion_model=motion_model,
                     outlier_policy="median",
                     state=state,
                 )
-
+                expected_components = (
+                    expected if motion_model == "translation" else expected[list(active_components)]
+                )
                 np.testing.assert_allclose(
-                    actual[:, :parameter_count], expected[:, :parameter_count], atol=2e-7
+                    actual[4, list(active_components)],
+                    expected_components,
+                    atol=2e-5,
                 )
-                np.testing.assert_array_equal(actual[:, status_index:], state[:, status_index:])
-                self.assertFalse(
-                    np.array_equal(actual[:, :parameter_count], state[:, :parameter_count])
+                self.assertEqual(actual[4, status_index], -2.0)
+                np.testing.assert_array_equal(
+                    actual[4, status_index + 1 :], state[4, status_index + 1 :]
                 )
+                accepted = np.ones(9, dtype=bool)
+                accepted[4] = False
+                np.testing.assert_array_equal(actual[accepted], state[accepted])
+
+    def test_median_seed_repairs_failed_subset_without_promoting_its_final_status(self) -> None:
+        state = np.zeros((9, 8), dtype=np.float32)
+        state[:, 0] = 2.5
+        state[:, 3] = -1.25
+        state[:, 6] = 1.0
+        state[:, 7] = 4.0
+        state[4, :6] = 999.0
+        state[4, 6] = -2.0
+        original = state.copy()
+
+        actual = self._filter_injected_state(
+            motion_model="affine",
+            outlier_policy="median",
+            state=state,
+            seed_filter=True,
+        )
+
+        np.testing.assert_array_equal(actual[4, [0, 3]], [2.5, -1.25])
+        self.assertEqual(actual[4, 6], 0.0)
+        np.testing.assert_array_equal(state, original)
+        accepted = np.ones(9, dtype=bool)
+        accepted[4] = False
+        np.testing.assert_array_equal(actual[accepted], original[accepted])
+
+    def test_median_does_not_fill_roi_excluded_subsets(self) -> None:
+        state = np.zeros((9, 8), dtype=np.float32)
+        state[:, 0] = 2.5
+        state[:, 3] = -1.25
+        state[:, 6] = 1.0
+        state[:, 7] = 4.0
+        state[4, :6] = 999.0
+        state[4, 6] = -2.0
+        roi = np.ones((48, 48), dtype=bool)
+        roi[16, 16] = False
+
+        actual = self._filter_injected_state(
+            motion_model="affine",
+            outlier_policy="median",
+            state=state,
+            roi_mask=roi,
+        )
+
+        np.testing.assert_array_equal(actual[4], state[4])
 
     def test_large_roi_median_keeps_disconnected_windows_separate(self) -> None:
         side = 5
         state = np.zeros((side * side, 8), dtype=np.float32)
         state[:, 0] = np.tile(np.array([1, 100, 100, 100, 100], dtype=np.float32), side)
-        state[:, 6] = 1.0
+        state[:, 6] = -1.0
+        state.reshape(side, side, 8)[:, 0, 6] = 1.0
         state[:, 7] = 4.0
+        state.reshape(side, side, 8)[2, 2, 0] = 999.0
         mask = np.ones((40, 40), dtype=bool)
         mask[:, 15] = False  # Removes the middle window column from the ROI.
 
@@ -997,11 +1055,18 @@ class GPURegressionTests(unittest.TestCase):
             roi_mask=mask,
         )
 
-        np.testing.assert_array_equal(actual.reshape(side, side, 8)[:, 0, 0], 1.0)
-        np.testing.assert_array_equal(actual.reshape(side, side, 8)[:, 1:, 0], 100.0)
+        result = actual.reshape(side, side, 8)
+        # Without the ROI permission links, four or five accepted neighbours
+        # from column zero would repair this failed point across the gap.
+        self.assertEqual(result[2, 2, 0], 999.0)
+        self.assertEqual(result[2, 2, 6], -1.0)
 
     def test_large_solver_medians_match_independent_recentered_oracle(self) -> None:
-        cases = ((5, "translation", 8, 6, 6), (7, "affine", 8, 6, 6), (9, "quadratic", 16, 12, 12))
+        cases = (
+            (5, "translation", 8, 6, 6),
+            (7, "affine", 8, 6, 6),
+            (9, "quadratic", 16, 12, 12),
+        )
         rng = np.random.default_rng(20261102)
         for filter_size, motion_model, state_width, parameter_count, status_index in cases:
             with self.subTest(filter_size=filter_size, motion_model=motion_model):
@@ -1022,44 +1087,42 @@ class GPURegressionTests(unittest.TestCase):
                 active = (0, 3) if motion_model == "translation" else tuple(range(parameter_count))
                 expected = state.copy()
                 radius = filter_size // 2
-                for target_y in range(side):
-                    for target_x in range(side):
-                        samples = []
-                        for source_y in range(
-                            max(0, target_y - radius), min(side, target_y + radius + 1)
-                        ):
-                            for source_x in range(
-                                max(0, target_x - radius), min(side, target_x + radius + 1)
-                            ):
-                                values = state[side * source_y + source_x, :parameter_count].copy()
-                                offset_x = -16.0 * (source_x - target_x)
-                                offset_y = -16.0 * (source_y - target_y)
-                                if motion_model == "quadratic":
-                                    values[0] += (
-                                        values[1] * offset_x
-                                        + values[2] * offset_y
-                                        + 0.5 * values[6] * offset_x**2
-                                        + values[7] * offset_x * offset_y
-                                        + 0.5 * values[8] * offset_y**2
-                                    )
-                                    values[1] += values[6] * offset_x + values[7] * offset_y
-                                    values[2] += values[7] * offset_x + values[8] * offset_y
-                                    values[3] += (
-                                        values[4] * offset_x
-                                        + values[5] * offset_y
-                                        + 0.5 * values[9] * offset_x**2
-                                        + values[10] * offset_x * offset_y
-                                        + 0.5 * values[11] * offset_y**2
-                                    )
-                                    values[4] += values[9] * offset_x + values[10] * offset_y
-                                    values[5] += values[10] * offset_x + values[11] * offset_y
-                                elif motion_model == "affine":
-                                    values[0] += values[1] * offset_x + values[2] * offset_y
-                                    values[3] += values[4] * offset_x + values[5] * offset_y
-                                samples.append(values)
-                        target = side * target_y + target_x
-                        medians = np.median(np.asarray(samples), axis=0)
-                        expected[target, list(active)] = medians[list(active)]
+                target_x = target_y = radius
+                target = side * target_y + target_x
+                state[target, status_index] = -2.0
+                samples = []
+                for source_y in range(side):
+                    for source_x in range(side):
+                        if source_x == target_x and source_y == target_y:
+                            continue
+                        values = state[side * source_y + source_x, :parameter_count].copy()
+                        offset_x = -16.0 * (source_x - target_x)
+                        offset_y = -16.0 * (source_y - target_y)
+                        if motion_model == "quadratic":
+                            values[0] += (
+                                values[1] * offset_x
+                                + values[2] * offset_y
+                                + 0.5 * values[6] * offset_x**2
+                                + values[7] * offset_x * offset_y
+                                + 0.5 * values[8] * offset_y**2
+                            )
+                            values[1] += values[6] * offset_x + values[7] * offset_y
+                            values[2] += values[7] * offset_x + values[8] * offset_y
+                            values[3] += (
+                                values[4] * offset_x
+                                + values[5] * offset_y
+                                + 0.5 * values[9] * offset_x**2
+                                + values[10] * offset_x * offset_y
+                                + 0.5 * values[11] * offset_y**2
+                            )
+                            values[4] += values[9] * offset_x + values[10] * offset_y
+                            values[5] += values[10] * offset_x + values[11] * offset_y
+                        elif motion_model == "affine":
+                            values[0] += values[1] * offset_x + values[2] * offset_y
+                            values[3] += values[4] * offset_x + values[5] * offset_y
+                        samples.append(values)
+                medians = np.median(np.asarray(samples), axis=0)
+                expected[target, list(active)] = medians[list(active)]
 
                 actual = self._filter_injected_state(
                     motion_model=motion_model,
@@ -1068,9 +1131,11 @@ class GPURegressionTests(unittest.TestCase):
                     median_filter_size=filter_size,
                 )
                 np.testing.assert_allclose(
-                    actual[:, :parameter_count], expected[:, :parameter_count], atol=1e-6
+                    actual[target, list(active)], expected[target, list(active)], atol=1e-6
                 )
                 np.testing.assert_array_equal(actual[:, status_index:], state[:, status_index:])
+                accepted = np.arange(side * side) != target
+                np.testing.assert_array_equal(actual[accepted], state[accepted])
 
     def test_uod_has_no_false_positives_on_a_healthy_noisy_field(self) -> None:
         reference, target = _fractional_pair(256, 256, (0.3, -0.2))

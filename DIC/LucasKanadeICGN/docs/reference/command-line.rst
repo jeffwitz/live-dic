@@ -56,14 +56,17 @@ Solver options
    Control the displacement UOD post-pass. ``replace`` detects inconsistent
    ``tx`` or ``ty`` and replaces the complete active motion state. ``flag``
    preserves raw coefficients and sets status 2. ``disabled`` omits the pass.
-   ``median`` bypasses UOD and applies a centred component median to every
-   valid subset. Default: ``replace``.
+   ``median`` bypasses UOD and repairs rejected subsets from the component-wise
+   median of valid neighbours. Coarse repairs can seed the next finer pyramid
+   level; their status remains rejected until a local solve is accepted.
+   Accepted subsets are unchanged. Default: ``replace``.
 
 ``--median-filter-size {3,5,7,9}``
    Width of the square median neighbourhood in subset-grid cells. Default:
    ``3``. Values above 3 require ``--outlier-policy median`` and
-   ``--backend webgpu-wgsl``. This is solver-time spatial smoothing, not the
-   separate post-processing recipe applied to saved fields.
+   ``--backend webgpu-wgsl``. This selects the neighbour stencil for rejected-
+   subset seed repair; it is separate from post-processing applied to saved
+   fields.
 
 ``--subset-size PIXELS``
    Select a square numerical subset width from 4 through 64. Default: ``16``.

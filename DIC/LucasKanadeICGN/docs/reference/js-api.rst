@@ -100,10 +100,10 @@ Options and native correspondence
      - Finite value in [0,1].
    * - ``outlierPolicy``
      - ``outlier_policy="replace"``
-     - Also flag, disabled, median. Median is explicit smoothing, not outlier detection.
+     - Also flag, disabled, median. Median repairs rejected subsets from accepted neighbours; coarse repairs can seed finer levels, while final status remains rejected until IC-GN accepts a solve.
    * - ``medianFilterSize``
      - ``median_filter_size=3``
-     - Shared WGSL median only: widths 3, 5, 7, 9 subset-grid cells; values above 3 require ``outlierPolicy: 'median'``.
+     - Shared WGSL median-repair stencil: widths 3, 5, 7, 9 subset-grid cells; values above 3 require ``outlierPolicy: 'median'``. Accepted subsets are not smoothed.
    * - ``spatialPropagationPasses``
      - JavaScript-only opt-in, default 0
      - Integer 0..4. Maximum extra failed-point seed-search passes per level; translation,

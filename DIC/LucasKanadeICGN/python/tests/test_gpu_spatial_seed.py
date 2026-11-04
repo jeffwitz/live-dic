@@ -3,7 +3,6 @@
 import importlib.util
 import os
 import unittest
-from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -229,16 +228,12 @@ class GpuSpatialSeedTests(unittest.TestCase):
         raw[..., 6] = 1
         raw[..., 7] = 5
         raw[2, 2, 0] = 99
+        raw[2, 2, 6] = -1
         raw[0, 0, 6] = -1
         expected = raw.copy()
-        for j in range(4):
-            for i in range(4):
-                if raw[j, i, 6] < 0.5:
-                    continue
-                block = raw[max(0, j - 1) : j + 2, max(0, i - 1) : i + 2]
-                values = block[block[..., 6] >= 0.5]
-                expected[j, i, 0] = np.median(values[:, 0])
-                expected[j, i, 3] = np.median(values[:, 3])
+        expected[2, 2, 0] = 2.0
+        expected[2, 2, 3] = 2.0
+        expected[2, 2, 6] = 0.0
         engine.device.queue.write_buffer(coarse_slot.buffers["state"], 0, raw)
         encoder = engine.device.create_command_encoder()
         compute = encoder.begin_compute_pass()
@@ -255,9 +250,6 @@ class GpuSpatialSeedTests(unittest.TestCase):
             np.frombuffer(filtered, np.float32).reshape(4, 4, 8), expected
         )
         coarse_result = coarse._result_from_raw(filtered, timing={}, config=coarse._config)
-        coarse_result = replace(
-            coarse_result, parameters=expected[..., :6], status=expected[..., 6]
-        )
         expected_seeds, _ = _transfer_pyramid_seed(
             coarse_result,
             source_available=np.ones((4, 4), bool),

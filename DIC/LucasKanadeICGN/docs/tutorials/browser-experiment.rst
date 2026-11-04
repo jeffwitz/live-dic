@@ -118,7 +118,8 @@ Choose a quantity and replay calculated fields
    it does not put an old field over an unrelated current camera image.
 2. Select **Equivalent strain**. The default analysis reads local model
    gradients. "Computed" includes the solver spatial policy shown in provenance;
-   a solver median output is already spatially smoothed.
+   median repair can change rejected parameter slots but does not smooth
+   accepted measurements.
 3. Select **Gaussian** displacement smoothing. Strain calculation switches to
    **VSG**, a plane fit to neighbouring displacements. Choose a 5 x 5 grid window
    and inspect the processing summary.

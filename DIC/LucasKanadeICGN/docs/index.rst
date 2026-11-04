@@ -87,8 +87,11 @@ Keys cubic are explicit alternatives. ROI supports translation and affine.
 
 The default spatial policy detects displacement outliers and replaces the
 complete local state. Flag-only and raw modes preserve different measurement
-contracts. Explicit ``outlier_policy="median"`` smooths valid states; it is
-not outlier detection. See :doc:`explanation/displacement-outliers`.
+contracts. ``outlier_policy="median"`` repairs rejected subsets from valid
+neighbours; at coarse pyramid levels, the repaired estimate can seed the next
+finer solve. Accepted estimates remain unchanged, and a median seed does not
+become an accepted measurement until IC-GN converges. See
+:doc:`explanation/displacement-outliers`.
 Temporal initialization, velocity prediction and finest-level stopping are
 opt-in; see :doc:`how-to/use-temporal-initialization`.
 

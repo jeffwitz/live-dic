@@ -193,7 +193,8 @@ They identify source responsibilities, not additional public Python APIs.
      - ``ICGNWGPUFullPyramid``, ``set_reference``, ``register_stream``
    * - ``shaders/icgn.wgsl``
      - Portable interpolation, IC-GN equations, and spatial post-processing
-     - ``prefilter_x``, ``solve_subset``, ``median_filter``
+     - ``prefilter_x``, ``solve_subset``, ``median_filter``,
+       ``median_filter_seed``
    * - ``shaders/full_pyramid.wgsl``
      - Target reduction and field transfer between scales
      - ``reduce_x``, ``reduce_y``, ``transfer_seed``

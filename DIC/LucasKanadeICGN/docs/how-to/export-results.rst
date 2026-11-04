@@ -61,8 +61,10 @@ model, validity and ROI provenance.
 
 Status 2 is accepted by the engine's mask, but its interpretation depends on
 ``outlierPolicy``: replaced with ``replace``, retained raw with ``flag``.
-``median`` is explicit smoothing and preserves the original solver statuses.
-Keep that policy with every field. See :doc:`../explanation/displacement-outliers`.
+``median`` repairs rejected parameter slots from valid neighbours but preserves
+their solver statuses; at coarse pyramid levels a private marker makes the
+repair seed-eligible. It does not smooth accepted measurements. Keep that
+policy with every field. See :doc:`../explanation/displacement-outliers`.
 
 The complete :download:`sequence example <../examples/register_sequence.py>`
 writes one self-contained NPZ per target, a source/configuration manifest and a

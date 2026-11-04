@@ -197,11 +197,12 @@ resets it. Reset is harmless before preparation or in zero mode.
 Spatial policies and diagnostics
 ------------------------------------------------------------
 
-The history uses raw accepted solver states for ``median``, ``flag`` and
-``disabled``. Explicit median smoothing is therefore not fed back repeatedly
-into the seeds. With ``replace``, history uses the final UOD-corrected state;
-this avoids retaining the wrong-basin value that UOD replaced. Rejected raw
-states are not made into raw seeds merely because smoothing filled a value.
+The temporal history stores accepted solver states for ``median``, ``flag`` and
+``disabled``. A median repair at an intermediate pyramid level is only an
+intra-frame seed; it enters temporal history only if a finer solve accepts it.
+With ``replace``, history uses the final UOD-corrected accepted state. A
+rejected final state is not made into temporal history merely because a
+coarse-scale seed repair supplied coefficients.
 
 Results retain their existing dense arrays and status meanings. In temporal
 mode, ``timing`` additionally includes ``temporallySeededCoarseSubsets`` and

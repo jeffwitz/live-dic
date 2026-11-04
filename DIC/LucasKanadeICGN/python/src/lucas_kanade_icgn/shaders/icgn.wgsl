@@ -69,7 +69,7 @@ override INTERPOLATION_MODE: u32 = 0u;
 override MOTION_MODEL: u32 = 0u;
 // 0: flag displacement outliers without changing parameters; 1: replace the
 // complete active motion state; 2: host-side disabled policy, which skips this
-// entry point; 3: apply a centred component median to every valid subset.
+// entry point; 3: seed rejected subsets from the component median of valid neighbours.
 override OUTLIER_POLICY: u32 = 1u;
 // Odd square neighbourhood width in subset-grid cells. UOD keeps its 3x3
 // neighbourhood; this override changes only the explicit median policy.
@@ -1183,7 +1183,7 @@ fn recentered_component(subset_index: u32, component: u32, offset_x: f32, offset
     }
 }
 
-fn median_filter_large(subset_index: u32) {
+fn median_repair_failed(subset_index: u32, median_seed_available: bool) {
     let stride = state_vec4_stride();
     let state_index = subset_index * stride;
     let own_a = state.values[state_index];
@@ -1201,7 +1201,8 @@ fn median_filter_large(subset_index: u32) {
     if MOTION_MODEL == 2u {
         own_status = own_d.x;
     }
-    if own_status < 0.5 {
+    let reference_status = metadata_value(subset_index, 1u);
+    if own_status >= 0.5 || (reference_status < 0.5 && reference_status != -4.0) {
         return;
     }
 
@@ -1232,8 +1233,6 @@ fn median_filter_large(subset_index: u32) {
         let component = component_order[active_index];
         var values: array<f32, 81>;
         var count = 0u;
-        values[count] = recentered_component(subset_index, component, 0.0, 0.0);
-        count += 1u;
         for (var dy = -radius; dy <= radius; dy += 1i) {
             for (var dx = -radius; dx <= radius; dx += 1i) {
                 if dx == 0i && dy == 0i {
@@ -1246,8 +1245,12 @@ fn median_filter_large(subset_index: u32) {
                     continue;
                 }
                 if ROI_ENABLED != 0u {
-                    let bit_index = u32((dy + 4i) * 9i + dx + 4i);
-                    let packed_word = u32(roi_permissions[bit_index / 24u]);
+                    var bit_index = u32((dy + 1i) * 3i + dx + 1i);
+                    var packed_word = u32(roi_permissions.x);
+                    if MEDIAN_FILTER_SIZE > 3u {
+                        bit_index = u32((dy + 4i) * 9i + dx + 4i);
+                        packed_word = u32(roi_permissions[bit_index / 24u]);
+                    }
                     if (packed_word & (1u << (bit_index % 24u))) == 0u {
                         continue;
                     }
@@ -1270,6 +1273,9 @@ fn median_filter_large(subset_index: u32) {
                 count += 1u;
             }
         }
+        if count < 4u {
+            return;
+        }
         filtered[component] = median_up_to_81(&values, count);
     }
 
@@ -1277,24 +1283,28 @@ fn median_filter_large(subset_index: u32) {
         filtered[0], filtered[1], filtered[2], filtered[3],
     );
     filtered_state.values[state_index + 1u] = vec4<f32>(
-        filtered[4], filtered[5], own_b.z, own_b.w,
+        filtered[4], filtered[5], filtered[6], filtered[7],
     );
     if MOTION_MODEL == 2u {
         filtered_state.values[state_index + 2u] = vec4<f32>(
             filtered[8], filtered[9], filtered[10], filtered[11],
         );
-        filtered_state.values[state_index + 3u] = own_d;
+        filtered_state.values[state_index + 3u] = vec4<f32>(
+            select(own_d.x, 0.0, median_seed_available), own_d.y, own_d.z, own_d.w,
+        );
+    } else {
+        filtered_state.values[state_index + 1u] = vec4<f32>(
+            filtered[4], filtered[5], select(own_b.z, 0.0, median_seed_available), own_b.w,
+        );
     }
 }
 
-@compute @workgroup_size(256)
-fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
-    let subset_index = global_id.x;
+fn median_filter_impl(subset_index: u32, median_seed_available: bool) {
     if subset_index >= config.grid_count {
         return;
     }
-    if OUTLIER_POLICY == 3u && MEDIAN_FILTER_SIZE > 3u {
-        median_filter_large(subset_index);
+    if OUTLIER_POLICY == 3u {
+        median_repair_failed(subset_index, median_seed_available);
         return;
     }
     let stride = state_vec4_stride();
@@ -1553,6 +1563,18 @@ fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
             filtered[4], filtered[5], 2.0, own_b.w,
         );
     }
+}
+
+@compute @workgroup_size(256)
+fn median_filter(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    median_filter_impl(global_id.x, false);
+}
+
+// Intermediate pyramid levels mark only filled estimates as seed-eligible in
+// filtered_state. The finer solve still assigns the final validity status.
+@compute @workgroup_size(256)
+fn median_filter_seed(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    median_filter_impl(global_id.x, true);
 }
 
 fn subset_half_extent() -> f32 {

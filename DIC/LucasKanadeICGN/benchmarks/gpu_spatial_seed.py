@@ -352,7 +352,7 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
                 layout=median_layout,
                 compute={
                     "module": level._shader,
-                    "entry_point": "median_filter",
+                    "entry_point": "median_filter_seed",
                     "constants": {
                         "MOTION_MODEL": 1,
                         "OUTLIER_POLICY": 3,

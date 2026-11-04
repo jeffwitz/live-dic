@@ -1340,6 +1340,15 @@ class ICGNWGPUFullPyramid:
         coarsest_index = levels_used - 1
         coarsest = self._levels[coarsest_index]
         coarsest_slot = slot.level_slots[coarsest_index]
+        outlier_policy = getattr(self, "outlier_policy", getattr(coarsest, "outlier_policy", "replace"))
+        median_pipeline = None
+        if outlier_policy != "disabled":
+            if outlier_policy == "median" and coarsest_index > 0:
+                median_pipeline = getattr(
+                    coarsest, "_median_seed_filter", getattr(coarsest, "_median_filter", None)
+                )
+            else:
+                median_pipeline = getattr(coarsest, "_median_filter", None)
         if slot.temporal is not None:
             if slot.temporal.prediction is not None:
                 compute_pass.set_pipeline(self._velocity_pipelines[0])
@@ -1367,6 +1376,7 @@ class ICGNWGPUFullPyramid:
             if slot.temporal is None and slot.fourier_seed is None
             else coarsest_slot.seeded_bind_group,
             compute_pass=compute_pass,
+            median_pipeline=median_pipeline,
         )
         for destination_index in range(coarsest_index - 1, -1, -1):
             seed_edge = slot.seed_edges[destination_index]
@@ -1387,12 +1397,23 @@ class ICGNWGPUFullPyramid:
                 compute_pass.dispatch_workgroups((seed_edge.destination_count + 255) // 256, 1, 1)
             destination = self._levels[destination_index]
             destination_slot = slot.level_slots[destination_index]
+            median_pipeline = None
+            if outlier_policy != "disabled":
+                if outlier_policy == "median" and destination_index > 0:
+                    median_pipeline = getattr(
+                        destination,
+                        "_median_seed_filter",
+                        getattr(destination, "_median_filter", None),
+                    )
+                else:
+                    median_pipeline = getattr(destination, "_median_filter", None)
             destination._encode_registration_passes(
                 encoder,
                 destination_slot,
                 destination._seeded_solver,
                 solver_bind_group=destination_slot.seeded_bind_group,
                 compute_pass=compute_pass,
+                median_pipeline=median_pipeline,
             )
         fine_slot = slot.level_slots[0]
         if slot.temporal is not None:

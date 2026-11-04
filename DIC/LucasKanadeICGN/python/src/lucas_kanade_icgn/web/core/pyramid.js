@@ -326,6 +326,25 @@ export function createPyramidHost(options = {}) {
       'DIC-RT shared safe-halo prefilter Y', 'prefilter_y', shaderModule, layout,
       { PREFILTER_CLAMP_HALO: 1 },
     ) : prefilterYFast;
+    const medianConstants = {
+      MOTION_MODEL: MOTION_MODEL_CONSTANTS[configuration.motionModel],
+      OUTLIER_POLICY: OUTLIER_POLICY_CONSTANTS[configuration.outlierPolicy],
+      MEDIAN_FILTER_SIZE: configuration.outlierPolicy === 'median'
+        ? configuration.medianFilterSize : 3,
+      ROI_ENABLED: +!!roiMask,
+      SUBSET_SIZE,
+      SUBSET_STRIDE,
+    };
+    const median = await pipeline(
+      'DIC-RT rejected-subset median repair', 'median_filter', shaderModule, layout,
+      medianConstants,
+    );
+    const medianSeed = configuration.outlierPolicy === 'median'
+      ? await pipeline(
+        'DIC-RT rejected-subset median seed repair', 'median_filter_seed', shaderModule, layout,
+        medianConstants,
+      )
+      : median;
     pipelines = {
       prefilterXFast,
       prefilterYFast,
@@ -335,18 +354,8 @@ export function createPyramidHost(options = {}) {
       seededSolvers,
       fineSolvers,
       fineSeededSolvers,
-      median: await pipeline(
-        'DIC-RT shared displacement UOD', 'median_filter', shaderModule, layout,
-        {
-          MOTION_MODEL: MOTION_MODEL_CONSTANTS[configuration.motionModel],
-          OUTLIER_POLICY: OUTLIER_POLICY_CONSTANTS[configuration.outlierPolicy],
-          MEDIAN_FILTER_SIZE: configuration.outlierPolicy === 'median'
-            ? configuration.medianFilterSize : 3,
-          ROI_ENABLED: +!!roiMask,
-          SUBSET_SIZE,
-          SUBSET_STRIDE,
-        },
-      ),
+      median,
+      medianSeed,
       reduceX: await pipeline(
         'DIC-RT pyramid reduce X', 'reduce_x', pyramidShaderModule, reduceXLayout,
       ),
@@ -688,7 +697,7 @@ export function createPyramidHost(options = {}) {
       if (slot.spatial) jobs.push({ encode: command => slot.spatial.afterLevel(command, level.index, slot.externalActive) });
       if (configuration.outlierPolicy !== 'disabled') {
         jobs.push({
-          pipeline: pipelines.median,
+          pipeline: level.index > 0 ? pipelines.medianSeed : pipelines.median,
           bindGroup: level.bindGroup,
           group: 0,
           workgroups: [Math.ceil(level.gridCount / 256), 1, 1],

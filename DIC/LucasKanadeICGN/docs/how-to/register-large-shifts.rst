@@ -124,6 +124,47 @@ the center translation, affine terms, correlation, overlap, sample count,
 per-level diagnostics, and initialization time. Treat low correlation or
 rejected local subsets as a failed registration, not as a recovered field.
 
+Recover rejected coarse subsets with median seeds
+--------------------------------------------------
+
+The shared WGSL full-pyramid engines can try a neighbour-based seed for a
+subset rejected at a coarse scale. At each intermediate level, the solver
+recentres accepted neighbours onto the rejected subset and takes the median
+of each active motion coefficient. With at least four eligible neighbours,
+that estimate may be transferred to the next finer level, where IC-GN runs
+again from the seed.
+
+For Python, select the median policy and stencil explicitly:
+
+.. code-block:: python
+
+   from lucas_kanade_icgn import ICGNWGPUFullPyramid
+
+   with ICGNWGPUFullPyramid(
+       motion_model="translation",
+       pyramid_levels=3,
+       outlier_policy="median",
+       median_filter_size=9,
+       device_type="gpu",
+   ) as engine:
+       engine.set_reference(reference)
+       result = engine.register(current)
+
+In the browser workbench, choose **Median · repair rejected subsets** in
+**Solve**, select a 3 × 3, 5 × 5, 7 × 7 or 9 × 9 stencil, and start a new
+calculation. The saved-field smoothing control in **Results** is a separate
+post-processing operation.
+
+Accepted coarse subsets are copied through unchanged. A repaired subset's
+private seed marker is not a valid measurement: the raw coarse status stays
+rejected, and only a later IC-GN solve can make the finer point valid. The
+finest-level status also remains rejected if its solve fails. Fewer than four
+valid neighbours, an invalid reference window, or an excluded ROI point leaves
+the estimate unfilled. This can expand a pyramid's recovery when a local solve
+fails, but it does not guarantee capture of arbitrary motion and does not
+replace Fourier or global-affine initialization when the starting shift is too
+large.
+
 Interpretation and limits
 -------------------------
 

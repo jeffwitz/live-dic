@@ -202,14 +202,16 @@ Four operations must be distinguished:
      - Input and action
      - Meaning of the final result
    * - Public ``outlier_policy="median"``
-     - Smooth accepted states at every executed level, including the finest.
-     - Returned measurements are filtered. Statuses are preserved and the
-       filtered field is not re-optimized. This is explicit smoothing.
+     - Repair only rejected subsets from the component median of accepted,
+       permitted neighbours. Intermediate repairs are seed-eligible for the
+       next finer level; accepted states are unchanged.
+     - A finer IC-GN solve must accept the point. Raw coarse status stays
+       rejected; a rejected final point keeps its status. This is recovery
+       initialization, not measurement smoothing.
    * - Research ``median``
-     - Apply the existing accepted-state median only before coarse-to-fine
-       transfer; the filtered buffer really supplies the seeds.
-     - The fine solve is still raw. An unavailable own coarse point is not
-       filled by this measurement-median rule.
+     - Exercises the same failed-only 3 by 3 repair and actual seed transfer
+       in the opt-in research harness.
+     - The fine solve is still raw; its result has to converge independently.
    * - Research ``seed-median``
      - Include finite, numerically admissible status-0 coarse estimates as
        well as accepted ones. Require at least four permitted stencil samples;
@@ -221,17 +223,19 @@ Four operations must be distinguished:
        selectively re-solve when it improves initialization.
      - The median is a tested proposal, not the reported measurement.
 
-In these research controls the median stencil is 3 by 3 subset-grid cells.
-The public median policy also offers larger stencils; those are a separate
-smoothing choice. See :doc:`../explanation/displacement-outliers` for exact
-public policies, recentering, validity gates and widths.
+In the research controls the median stencil is 3 by 3 subset-grid cells. The
+public shared-WGSL policy also offers 5 by 5, 7 by 7 and 9 by 9 recovery
+stencils. See :doc:`../explanation/displacement-outliers` for exact public
+policies, recentering, validity gates and widths.
 
 Status 0 is not an accepted measurement. It can still contain a finite
-estimate useful for initialization. Excluding every such estimate from a
-median is a different operation from filtering a seed field. Conversely,
-admitting it as a seed never certifies its accuracy. Independent GPU tests
-compare both coarse medians with NumPy and verify the actual transfer to fine
-seeds, so a median pass cannot appear to work while its output is ignored.
+estimate useful for initialization. The public median policy deliberately
+repairs only rejected states from accepted neighbours; the research
+``seed-median`` control separately tests admitting finite status-0 estimates
+as neighbours. Neither operation certifies the accuracy of its seed.
+Independent GPU tests compare the public repair with NumPy and verify that
+the repaired state is actually transferred to fine seeds, so a median pass
+cannot appear to work while its output is ignored.
 
 A component-wise median of :math:`u` and :math:`v` can also produce a vector
 that no neighbour had. It may attenuate a real narrow deformation band or mix

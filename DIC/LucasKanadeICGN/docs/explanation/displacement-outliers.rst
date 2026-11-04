@@ -4,9 +4,10 @@ Displacement outliers and explicit field median
 live-dic provides one deliberately narrow spatial robustness check: a universal
 outlier detection (UOD) test on the two displacement components.  It is a
 guard against subsets that converge into a wrong correlation basin.  It is
-not a denoising filter for affine gradients or quadratic curvatures.  A
-separate ``median`` policy is available when that smoothing is explicitly
-wanted.
+not a denoising filter for affine gradients or quadratic curvatures. A
+separate ``median`` policy can fill rejected subsets with a neighbour-based
+estimate so a coarse pyramid level can offer it as a seed to the next finer
+solve. It does not smooth accepted measurements.
 
 For diagrams comparing measurement smoothing, coarse median seeds and
 photometrically tested propagation, see :doc:`../reference/propagation`.
@@ -19,10 +20,10 @@ The policy is selected when the engine is created:
 
    engine = ICGNWGPUFullPyramid(outlier_policy="replace")
 
-``replace`` is the default.  ``flag`` preserves the raw solver coefficients,
-``disabled`` omits the complete post-pass, and ``median`` applies a centred
-component median to every valid subset. The median width defaults to 3 by 3
-subset-grid cells; shared-WGSL engines also accept 5 by 5, 7 by 7, and 9 by 9.
+``replace`` is the default. ``flag`` preserves the raw solver coefficients,
+``disabled`` omits the UOD post-pass, and ``median`` repairs rejected subsets
+from valid neighbours. The median width defaults to a 3 by 3 subset-grid
+stencil; shared-WGSL engines also accept 5 by 5, 7 by 7, and 9 by 9.
 
 Detection rule
 --------------
@@ -70,10 +71,11 @@ The four policies
      - raw IC-GN state and status
      - omitted
    * - ``median``
-     - none
-     - every active coefficient is replaced by its centred 3 by 3 component
-       median; solver status is preserved
-     - executed
+     - solver status is not accepted
+     - rejected target coefficients are replaced by the recentered component
+       medians of accepted, ROI-permitted neighbours; the target's rejected
+       status is preserved
+     - executed; coarse repaired states are seed-eligible
 
 Replacing the complete state is intentional.  A displacement outlier normally
 means the local optimizer converged into the wrong basin, so retaining its
@@ -83,30 +85,38 @@ metrology workflow must publish raw estimates and handle outliers downstream.
 The ``disabled`` policy is useful for raw numerical studies and for measuring
 the solver without robustness-pass cost.
 
-Explicit median smoothing
--------------------------
+Median-seeded recovery
+-----------------------
 
-The ``median`` policy deliberately bypasses the UOD score. For every valid
-subset, the subset itself and every valid neighbour in the configured square
-subset-grid stencil are expressed at the current subset centre. Each active
-translation, affine, or quadratic coefficient is then replaced independently
-by the median of those available samples. The centre is included. A fully
-populated 3 by 3 stencil has nine samples and a 9 by 9 stencil has up to 81;
-boundary stencils use the valid samples that exist.
+The ``median`` policy bypasses the UOD score and changes only subsets whose
+solver status is not accepted. The target reference window must itself be
+valid, and at least four accepted neighbours must be available. Invalid
+reference windows and ROI-excluded subsets are never filled. The failed target
+is excluded from the median; each accepted neighbour is expressed at the
+target centre before the component-wise median is computed. For a quadratic
+state, the displacement, first derivatives, and curvatures are recentered
+together. ROI neighbour permissions prevent a stencil from crossing excluded
+regions.
 
-Recentring preserves the meaning of a spatial polynomial: neighbour
-translations and first derivatives are transported to the current centre
-before their component medians are calculated.  The operation is applied at
-every executed pyramid level and the filtered coarse state seeds the next finer level.
-It leaves accepted/rejected status and iteration count unchanged; in
-particular, status 2 remains reserved for UOD detections from ``replace`` or
-``flag``.
+At each intermediate pyramid level, the repaired coefficients are written to
+the filtered state buffer with a private seed-available marker. Coarse-to-fine
+transfer can then use the estimate even though that coarse solve failed. The
+next finer level runs the normal IC-GN solve and assigns its own status. The
+raw coarse solver state and its failure status remain unchanged. At the finest
+level, repaired coefficients can be inspected, but the original non-accepted
+status is retained: this repair does not claim that the point converged or
+re-evaluate ZNCC.
 
-This policy is a nonlinear spatial low-pass filter.  It can reduce noise, but
-it can also attenuate a narrow deformation band or a real discontinuity.  Its
-output is not the raw minimizer of the local IC-GN objective, and correlation
-is not recomputed after filtering.  Accuracy and timing claims must therefore
-name the policy explicitly.
+Accepted subsets are copied through unchanged. This is not median smoothing of
+the field. The Results workbench has a separate, explicit post-processing
+recipe for spatially smoothing saved displacements.
+
+The configured stencil is measured in subset-grid cells. A 9 by 9 stencil
+contains at most 80 neighbours for a failed centre. Stencils at image or ROI
+boundaries can have fewer samples; fewer than four leaves the failed estimate
+untouched. The method can still seed a wrong basin if its valid neighbours
+belong to different motion regions, so it is an initialization aid rather
+than an acceptance rule or a convergence guarantee.
 
 Validation contracts
 --------------------
@@ -120,9 +130,10 @@ benchmark would confound:
   ``replace`` changing the complete state and ``flag`` preserving it;
 * a one-subset-wide band with true ``du/dx = 0.004`` must remain present and
   must not be flagged merely because it is spatially localized.
-* the explicit ``median`` policy must match an independent component-median
-  oracle at larger configured widths for translation, affine, and quadratic
-  states, including boundary stencils, without changing solver status.
+* the ``median`` policy must repair an injected failed subset from valid
+  neighbours for translation, affine, and quadratic states, leave accepted
+  neighbours unchanged, preserve final failure status, avoid ROI-excluded
+  targets, and make a repaired coarse estimate eligible for seed transfer.
 
 These are behavioural guards, not a full metrological qualification.  Real
 camera noise, texture variation, discontinuities, and multiple GPU vendors
@@ -138,11 +149,12 @@ analytic fields was therefore ordinary median smoothing, not demonstrated
 outlier robustness.  It also erased a localized one-subset-wide deformation
 band and could degrade gradients through quadratic recentering.
 
-Those coefficient-triggered modes are no longer public options.  If derivative
-smoothing is wanted, ``outlier_policy="median"`` now exposes it explicitly as
-a centred GPU post-pass, separate from the solver's outlier status.  A NumPy
-post-processing operation remains preferable when a different kernel or a
-fully user-controlled transfer function is required.
+That coefficient-wise smoothing behavior is no longer the solver-time
+``median`` policy. The current policy uses a median only to initialize a
+rejected point at the next pyramid scale; it never changes accepted states.
+For derivative smoothing, use the Results workbench's explicit saved-field
+recipe or a NumPy post-processing operation with a documented kernel and
+transfer function.
 
 A future all-coefficient detector would need coefficient-specific uncertainty
 floors, for example
@@ -152,6 +164,7 @@ floors, for example
    \epsilon_k = c\,\hat{\sigma}\sqrt{(H^{-1})_{kk}},
 
 and qualification of false-positive rate, injected-outlier detection, and
-localized-feature bias.  A robust recovery could then use the neighbourhood
-estimate as a seed for ``retry_seeded`` and accept the rerun according to its
-correlation score instead of overwriting a converged state.
+localized-feature bias. This future detector could use the neighbourhood
+estimate with ``retry_seeded`` and accept the rerun according to its
+correlation score. The current median seed repair is limited to subsets already
+rejected by the solver and relies on the next pyramid level to retry them.
