@@ -24,6 +24,12 @@ examples, not experimental images or benchmark measurements.
    See :doc:`../how-to/run-in-browser`, :doc:`js-api`, and :doc:`performance` for
    activation, exact scope and the distinction between native and GUI evidence.
 
+The native development host must be prepared with ``prepare_research`` and
+supports synchronous ``register`` only; its existing ``register_stream`` guard
+rejects every depth. Create a fresh host when replacing its reference so every
+research binding belongs to the same preparation. This is a development-tool
+restriction, not a change to the public native engine.
+
 .. contents:: On this page
    :local:
    :depth: 2

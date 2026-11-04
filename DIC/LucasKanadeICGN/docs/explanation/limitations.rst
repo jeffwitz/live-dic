@@ -384,6 +384,11 @@ The live companion shows sparse norm-coloured vectors over the current image,
 or the image only. ``vectorOutline`` adds optional high-contrast borders as a renderer display
 setting, off by default, not a numerical-engine option. It adds two sparse draw
 calls and cannot make an unavailable vector valid or alter stored fields.
+``vectorColourMap`` changes only the Live norm palette and legend, with the
+original palette retained by default. The sequential alternatives do not add
+spatial interpolation, recover rejected points or improve measurement accuracy.
+Their device execution is checked on the available hardware/software adapters;
+this does not qualify mobile displays or camera-to-display throughput.
 It does not compute scalar/strain maps in the live renderer.
 Preview decimation and its maximum rate are display choices, not changes to
 full-resolution fields or a guarantee of 4K60 recording. Saved-field analysis
@@ -484,6 +489,11 @@ GPU seed propagation
 --------------------
 
 The native ``benchmarks/gpu_spatial_seed.py`` host remains development tooling.
+It binds one prepared slot and supports synchronous ``register`` only;
+``register_stream`` is explicitly refused, including with depth one. Prepare it
+with ``prepare_research`` before solving and create a fresh host to replace its
+reference. These restrictions do not change the public
+``ICGNWGPUFullPyramid`` streaming or reference-replacement contracts.
 The browser's opt-in ``spatialPropagationPasses`` setting uses the same kernels
 for rejected-point search. It supports translation, B-spline, uniform full
 subsets, CPU reference preparation and one slot; GPU reference preparation is

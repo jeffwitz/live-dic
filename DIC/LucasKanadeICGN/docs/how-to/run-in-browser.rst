@@ -373,6 +373,14 @@ tips retain the measured current subset centres. Zero-length vectors remain
 dots, unavailable requested points are crosses, and ROI holes remain empty.
 The outline adds sparse drawing work, not scalar interpolation or strain fitting.
 
+In **Live**, choose a **Vector colour map** immediately to the right of the
+colourbar. **Original** preserves the existing appearance. Viridis, Cividis,
+Magma, Plasma and Inferno provide sequential alternatives; colour still encodes
+the displacement norm from zero to the displayed maximum. This display-only
+choice updates the arrows and their legend together without rebuilding the
+reference, solving a pair or altering recorded fields. In Results, use its
+separate quantity/colour controls for the saved-field analysis.
+
 The pipeline status distinguishes the displayed input, pending recording slots
 and library admissions. Computed FPS may temporarily lead committed FPS by up
 to the bounded capacity. Recording benchmarks must report committed throughput

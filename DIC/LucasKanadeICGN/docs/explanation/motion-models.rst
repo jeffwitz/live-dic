@@ -175,3 +175,45 @@ The second-order formulation follows the family described by Bai et al.,
 "A novel 2nd-order shape function based digital image correlation method for
 large deformation measurements", *Optics and Lasers in Engineering*, 90
 (2017), DOI: ``10.1016/j.optlaseng.2016.09.010``.
+
+A good centre estimate does not make a window rigid
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The global initializer supplies parameters; it does not pre-warp the target
+image into a locally rigid image. A translation-only subset can move as a whole,
+but cannot stretch, rotate or shear. A correct initial displacement at its
+centre therefore cannot remove a mismatch of the local motion model.
+
+For a teaching example, suppose the true horizontal displacement relative to
+a subset centre is ``u(x) = 20 + 0.08*x`` pixels. The centre moves 20 px and the
+displacement gradient is 0.08. A translation model can match the centre exactly
+at 20 px; an affine model can also represent the changing displacement toward
+the edges. These numbers illustrate the equations, not a measured dataset.
+
+.. list-table:: Same illustrative gradient, different nominal window widths
+   :header-rows: 1
+
+   * - Width S (pixels)
+     - Displacement spread across first/last pixel centres
+     - Edge mismatch after the correct centre translation
+   * - 4
+     - 0.24 px
+     - ±0.12 px
+   * - 16
+     - 1.20 px
+     - ±0.60 px
+   * - 32
+     - 2.48 px
+     - ±1.24 px
+
+The spread is ``0.08*(S-1)``; pixel centres span ``S-1`` coordinate intervals.
+The resulting correlation depends on texture, interpolation, weighting and
+noise; this table does not predict a ZNCC score. A smaller window reduces this
+particular modelling error while also providing less texture information.
+Use the local affine model when within-window deformation must be represented.
+
+More iterations, additional scales or neighbour proposals may improve an
+initialization basin, but do not add missing local degrees of freedom. This
+is also why DIS results with very small patches and dense aggregation must
+not be treated as an equal-window comparison with a larger translation-only
+DIC subset. See :doc:`../reference/propagation` for that distinction.

@@ -289,7 +289,13 @@ from ``DICEngine``. It accepts mode 2 (vectors) or 8 (image only), ``arrowStep``
 or null for automatic), ``scale`` (positive norm maximum in image pixels or
 null for automatic), ``opacity`` (0..1 for glyphs), and ``vectorOutline``
 (boolean, false by default) for light/dark contrast borders. The outline uses
-two additional sparse draws with the same tips and norm colours. The renderer
+two additional sparse draws with the same tips and norm colours.
+``vectorColourMap`` selects ``original`` (the unchanged default), ``viridis``,
+``cividis``, ``magma``, ``plasma`` or ``inferno``. Named maps reuse the Results
+256-colour tables and the HTML norm legend. The renderer allocates one 256 by 1
+lookup texture at construction and uploads 1 KiB only when a different named
+map is selected; it creates no pipeline or full-field transfer for this change.
+Unknown names fail explicitly. The renderer
 is permanently closed by its idempotent ``destroy()`` method; draw after close
 fails explicitly. These are presentation settings, not ``DICEngine`` options.
 It reads the existing

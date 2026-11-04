@@ -92,6 +92,11 @@ Live monitoring and saved-field analysis
 The acquisition session imports a dedicated vector renderer. A background pass
 reads only the associated current image; an instanced pass reads sparse measured
 vectors. Colour encodes their norm, while a separate length key documents gain.
+The Live colourbar offers the original palette and five sequential maps. A
+small GPU lookup texture and the HTML legend use the same colour tables;
+changing a map does not trigger correlation or saved-field analysis. Optional
+light/dark outlines improve contrast on textured images while keeping arrow
+geometry and norm colours unchanged.
 No scalar raster, interpolation or strain postprocessor runs in this path. The
 GUI initially limits presentation to 10 Hz and 1920 px width. Rate, size and
 suspension are presentation settings, independent of computing and recording.
