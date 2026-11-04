@@ -47,7 +47,7 @@ class BrowserTimingTests(unittest.TestCase):
           const info={{width:64,height:64,referenceValid:new Uint8Array(16).fill(1),grid:[4,4],config:{{motionModel:'affine'}}}};
           const engine={{device:{{lost:new Promise(()=>{{}}),addEventListener(){{}},createShaderModule:()=>({{}}),createRenderPipeline:()=>({{}}),
              createBindGroupLayout:()=>({{}}),createPipelineLayout:()=>({{}}),
-             createBuffer:()=>({{destroy(){{}}}}),createTexture:()=>({{destroy(){{}}}}),queue:{{copyExternalImageToTexture(){{}}}}}},
+             createBuffer:()=>({{destroy(){{}}}}),createTexture:()=>({{createView:()=>({{}}),destroy(){{}}}}),queue:{{copyExternalImageToTexture(){{}}}}}},
              ring:{{idle:true}},resetTemporalState(){{resets++;}},setAnalyticTruth(){{}},destroy(){{}},setReference:async()=>{{preparations++;return info;}},
              register:async()=>{{solves++;return {{width:64,height:64,grid:[4,4],config:info.config,timing:{{wallMs:0}},accepted:4,selected:16}};}},
              exportField:async()=>({{width:64,height:64,parameters:new Float32Array(96),status:new Float32Array(16),iterations:new Float32Array(16)}})}};
@@ -70,7 +70,7 @@ class BrowserTimingTests(unittest.TestCase):
           clock+=10;const final=frame();targets.push(final);
           await session.handle({{type:'frame',id:4,frame:final,comparison:{{mode:'fixed',target:{{ordinal:4}}}}}});
           await session.handle({{type:'destroy'}});
-          console.log(JSON.stringify({{before,flushed,reference,draws,presentationDidNotCalculate,preparations,timers:timers.size,closed:targets.every(t=>t.closed),numericalOptionsUnchanged:!('supervision' in engineOptions)}}));
+          console.log(JSON.stringify({{before,flushed,reference,draws,presentationDidNotCalculate,preparations,errors:messages.filter(m=>m.type==='error'),timers:timers.size,closed:targets.every(t=>t.closed),numericalOptionsUnchanged:!('supervision' in engineOptions)}}));
         """
         actual = json.loads(
             subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
@@ -85,6 +85,7 @@ class BrowserTimingTests(unittest.TestCase):
         self.assertEqual(actual["reference"]["presentation"]["width"], 64)
         self.assertEqual(actual["draws"], [32, 32, 64])
         self.assertEqual(actual["timers"], 0)
+        self.assertEqual(actual["errors"], [])
         self.assertTrue(actual["closed"])
         self.assertTrue(actual["numericalOptionsUnchanged"])
         self.assertTrue(actual["presentationDidNotCalculate"])
@@ -110,7 +111,7 @@ class BrowserTimingTests(unittest.TestCase):
               globalThis.createImageBitmap=async()=>frame();
               const info={{referenceValid:new Uint8Array([1]),grid:[1,1],config:{{}}}};
               const engine={{device:{{lost:new Promise(()=>{{}}),addEventListener(){{}},
-                  createTexture:()=>({{destroy(){{}}}}),queue:{{copyExternalImageToTexture(){{}}}}}},
+                  createTexture:()=>({{createView:()=>({{}}),destroy(){{}}}}),queue:{{copyExternalImageToTexture(){{}}}}}},
                 ring:{{idle:true}},resetTemporalState(){{}},setAnalyticTruth(){{}},destroy(){{}},
                 setReference:async()=>{{clock+=preparationMs;return info;}},
                 register:async()=>{{clock+=solveMs;return {{width:64,height:64,grid:[1,1],timing:{{wallMs:solveMs}},accepted:1,selected:1,meanIterations:4}};}}}};
