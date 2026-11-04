@@ -118,7 +118,11 @@ export function solverOptions(mode = document.body?.dataset.workspaceMode ?? 'an
   const medianFilterSize = outlierPolicy === 'median'
     ? Number(get('median-filter-size')?.value ?? 3) : 3;
   if (![3, 5, 7, 9].includes(medianFilterSize)) throw new Error('Median neighbourhood must be 3, 5, 7, or 9 subsets');
-  const spatialPropagationPasses = Number(get('spatial-propagation')?.value ?? 0);
+  const propagationSetting = get('spatial-propagation')?.value ?? 'auto';
+  const propagationCompatible = get('motion-model').value === 'translation'
+    && get('interpolation').value === 'bspline' && base.referencePreparation !== 'gpu';
+  const spatialPropagationPasses = propagationSetting === 'auto'
+    ? (propagationCompatible ? 2 : 0) : Number(propagationSetting);
   if (!Number.isInteger(spatialPropagationPasses) || spatialPropagationPasses < 0 || spatialPropagationPasses > 4) {
     throw new Error('GPU propagation must have zero to four passes per level');
   }

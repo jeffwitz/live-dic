@@ -136,7 +136,8 @@ resources and schedule each optional stage. The current boundaries are:
      - Opt-in CPU initializer; independent of the local model
    * - GPU spatial seed propagation
      - Research supervisor under ``benchmarks/``
-     - Opt-in ``spatialPropagationPasses``; translation/B-spline only
+     - Analysis/Solve uses two passes by default in compatible Translation
+       settings; the direct API defaults to zero
    * - ROI
      - Full by default; partial supports explicitly enabled
      - Full only
@@ -144,8 +145,9 @@ resources and schedule each optional stage. The current boundaries are:
      - CPU, retained across a fixed-reference sequence
      - CPU by default; experimental GPU variant is a separate opt-in
 
-The browser propagation option currently requires CPU reference preparation,
-uniform full windows and one slot. It is available in Analysis/Solve, not the
-fixed Live preset. Preparation on CPU does not mean that target correlation
-runs on CPU. See :doc:`spatial-initialization` and
+Automatic browser propagation requires CPU reference preparation, uniform
+full windows and one slot; it is available in Analysis/Solve, not the fixed
+Live preset. Incompatible settings leave automatic propagation off. Preparation
+on CPU does not mean that target correlation runs on CPU. See
+:doc:`spatial-initialization` and
 :doc:`../reference/js-api` before copying options between languages.

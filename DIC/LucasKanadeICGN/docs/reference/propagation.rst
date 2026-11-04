@@ -16,11 +16,13 @@ examples, not experimental images or benchmark measurements.
 .. important:: Availability
 
    The browser workbench now exposes experimental failed-point propagation in
-   **Analysis → Solve → custom solver → GPU seed propagation**. It uses the
-   shared WGSL, requires translation/B-spline, CPU reference preparation and one
-   slot, and is disabled by default. ``DICEngine`` exposes
-   ``spatialPropagationPasses``; the ordinary native Python constructors retain
-   their APIs, with propagation still available as a Python research host.
+   **Analysis → Solve → custom solver → GPU seed propagation**. Automatic mode
+   uses two passes by default for translation/B-spline with CPU reference
+   preparation, uniform full windows and one slot. Incompatible settings keep
+   it off; explicit unsupported requests are rejected. The direct
+   ``DICEngine`` API still defaults to zero, and ordinary native Python
+   constructors retain their APIs, with propagation available as a Python
+   research host.
    See :doc:`../how-to/run-in-browser`, :doc:`js-api`, and :doc:`performance` for
    activation, exact scope and the distinction between native and GUI evidence.
 

@@ -105,12 +105,13 @@ Options and native correspondence
      - ``median_filter_size=3``
      - Shared WGSL median-repair stencil: widths 3, 5, 7, 9 subset-grid cells; values above 3 require ``outlierPolicy: 'median'``. Accepted subsets are not smoothed.
    * - ``spatialPropagationPasses``
-     - JavaScript-only opt-in, default 0
+     - Direct API default 0; Analysis/Solve UI defaults to automatic
      - Integer 0..4. Maximum extra failed-point seed-search passes per level; translation,
        B-spline, uniform full windows, CPU reference preparation and one slot.
        Runs before the selected spatial filter; repeats stop when no seed is queued.
        See :doc:`propagation` and
-       :doc:`../how-to/run-in-browser` for activation and limitations.
+       :doc:`../how-to/run-in-browser` for the UI's compatible two-pass default
+       and limitations.
    * - ``initialization``
      - ``initialization="zero"``
      - Temporal mode is opt-in.

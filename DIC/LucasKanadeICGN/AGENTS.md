@@ -77,17 +77,20 @@ adapter; skipped GPU tests do not validate numerical execution.
   Stagnation stopping applies only to the finest level. Adaptive pyramids and
   direct interpolation have failed some qualified trajectory cases; do not
   present their speed alone as a successful optimization.
-- Browser Analysis/Solve exposes opt-in `spatialPropagationPasses` for local
-  translation/B-spline/uniform full windows, CPU reference preparation and one
-  slot. It shares canonical scoring/compact-LK kernels with native research
-  tooling; it is not a public native constructor option or a fixed Live preset.
+- Browser Analysis/Solve automatically uses two `spatialPropagationPasses` for
+  compatible local translation/B-spline/uniform full windows with CPU reference
+  preparation and one slot. The UI can disable propagation or select one to
+  four passes; incompatible settings keep it off in automatic mode. The direct
+  JavaScript `DICEngine` and native Python defaults remain zero/unchanged. This
+  is not part of the fixed Live preset. It shares canonical scoring/compact-LK
+  kernels with native research tooling.
   Preserve the separation from median smoothing and global affine initialization.
   Native research score caches use exact displacement keys within one frame/level;
   reset visited records on the first pass of every new target. Budget buffers
   before allocation and retain recomputation as the fallback. Never reuse a
   score across target frames or substitute a cached hypothesis for a final solve.
   UHD controls did not establish a useful cache gain; the browser recomputes
-  scores and must not enable this research option automatically.
+  scores and must not enable this research cache automatically.
 
 ## Numerical and performance evidence
 

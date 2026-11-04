@@ -1946,7 +1946,7 @@ compares the same two-pass propagation budget before and after omitting searches
 whose preceding pass queued no re-solves. With no state changes, repeating the
 same candidate search cannot change its result. The first search of every frame
 and level still runs. This changes neither scoring nor IC-GN, adds no CPU
-readback and does not change disabled-propagation defaults.
+readback and does not change the zero-pass defaults of the direct API.
 
 On the original UHD tensile pair, Intel LNL/Mesa 25.2.8, the repeated-search
 control measures 15.193 ms median, 16.302 ms p95 and 16.768 ms p99. Empty-work

@@ -36,26 +36,36 @@ class BrowserSpatialContractTests(unittest.TestCase):
         self.assertTrue(all(result["errors"]))
 
     def test_solve_setting_preserves_global_affine_initialization_and_is_cold(self):
+        html = (ROOT / "web-app/index.html").read_text(encoding="utf-8")
+        self.assertIn(
+            '<option value="auto" selected>Automatic · 2 passes for Translation</option>', html
+        )
         script = f"""
           import {{solverOptions,solverPreparationKey}} from {json.dumps((ROOT / "web-app/ui/workspace.js").as_uri())};
           const values={{'custom-solver':{{checked:true}},'global-affine-start':{{checked:true}},'global-affine-levels':{{value:'6'}},
             'fourier-start':{{checked:false}},'temporal-start':{{checked:false}},'subset-size':{{value:'32'}},
             'subset-stride':{{value:'16'}},'pyramid-levels':{{value:'2'}},'coarse-iterations':{{value:'8'}},
             'fine-iterations':{{value:'16'}},'motion-model':{{value:'translation'}},'interpolation':{{value:'bspline'}},
-            'outlier-policy':{{value:'median'}},'median-filter-size':{{value:'3'}},'spatial-propagation':{{value:'0'}}}};
+            'outlier-policy':{{value:'median'}},'median-filter-size':{{value:'3'}},'spatial-propagation':{{value:'auto'}},
+            'gpu-reference-preparation':{{checked:false}}}};
           globalThis.document={{body:{{dataset:{{workspaceMode:'analysis'}}}},getElementById:id=>values[id]??null}};
-          const before=solverOptions();values['spatial-propagation'].value='2';const after=solverOptions();
+          const before=solverOptions();values['spatial-propagation'].value='0';const after=solverOptions();
           const custom=solverOptions(),live=solverOptions('live');
-          values['motion-model'].value='affine';let rejected=false;try{{solverOptions();}}catch{{rejected=true;}}
-          console.log(JSON.stringify({{before,after,custom,live,rejected,cold:solverPreparationKey(before)!==solverPreparationKey(after)}}));
+          values['spatial-propagation'].value='auto';values['gpu-reference-preparation'].checked=true;const gpuPreparation=solverOptions();
+          values['gpu-reference-preparation'].checked=false;
+          values['motion-model'].value='affine';values['spatial-propagation'].value='auto';const incompatible=solverOptions();
+          values['spatial-propagation'].value='2';let rejected=false;try{{solverOptions();}}catch{{rejected=true;}}
+          console.log(JSON.stringify({{before,after,custom,live,gpuPreparation,incompatible,rejected,cold:solverPreparationKey(before)!==solverPreparationKey(after)}}));
         """
         result = json.loads(
             subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
         )
-        self.assertNotIn("spatialPropagationPasses", result["before"])
+        self.assertEqual(result["before"]["spatialPropagationPasses"], 2)
+        self.assertNotIn("spatialPropagationPasses", result["incompatible"])
+        self.assertNotIn("spatialPropagationPasses", result["gpuPreparation"])
         self.assertEqual(result["after"]["initialization"], "global-affine")
         self.assertEqual(result["after"]["motionModel"], "translation")
-        self.assertEqual(result["after"]["spatialPropagationPasses"], 2)
+        self.assertNotIn("spatialPropagationPasses", result["after"])
         self.assertTrue(result["cold"])
         self.assertTrue(result["rejected"])
         self.assertNotIn("solverWorkgroupSize", result["custom"])

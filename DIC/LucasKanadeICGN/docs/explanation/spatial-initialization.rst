@@ -10,8 +10,10 @@ a DIC pipeline. An affine initialization can place the field close to the
 solution while leaving individual subsets in the wrong attraction basin.
 Adding scales also enlarges the physical support of a fixed-size coarse patch;
 it does not guarantee recovery. Native Python experiments remain research
-harnesses. The raw-WGSL browser core and Analysis/Solve now expose failed-point
-GPU propagation as an opt-in; existing defaults remain unchanged.
+harnesses. The raw-WGSL browser core supports failed-point GPU propagation. In
+Analysis/Solve, automatic mode enables two passes for compatible translation
+settings; incompatible settings leave it off. The direct JavaScript API and
+native defaults remain unchanged.
 
 What DIS contributes
 --------------------
@@ -206,6 +208,10 @@ Browser Solve integration
 
 ``spatialPropagationPasses: 0`` keeps the existing browser graph; positive
 integers up to 4 add failed-point passes before each level's spatial filter.
+The Analysis/Solve selector defaults to automatic mode, which resolves to two
+passes for compatible Translation settings and zero otherwise. The direct
+``DICEngine`` constructor still defaults to zero; the UI's automatic default
+does not change the lower-level API.
 The browser shares ``spatial_seed.wgsl`` and ``solve_compact_translation`` with
 the native experiment. Its fallback prior is the level's initial seed, captured
 by a GPU copy before the initial solve; no intermediate CPU transfer is needed.
