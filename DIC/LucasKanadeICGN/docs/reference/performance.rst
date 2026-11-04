@@ -1966,3 +1966,42 @@ camera-to-disk 4K60 or PWA throughput. Separate browser UHD and installed-wheel
 checks cover integration. Scoring-width, sampler, subgroup, reference-cache and
 initial compaction pilots did not establish a portable improvement; their
 negative controls remain in the dated propagation experiment archives.
+
+Score memoization and monitored stability
+-----------------------------------------
+
+The `initial score-cache pilot
+<https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/propagation-score-cache-pilot-20261104>`_
+and `candidate-broadcast variant
+<https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/propagation-score-cache-broadcast-20261104>`_
+are negative controls. Both evaluate the original UHD tensile pair and a
+manufactured 14/-6 px translation with static 3-by-3 coarse seed defects.
+They preserve exact fields and the existing analytical gates, but establish no
+useful UHD speedup. The latter active-case interval crosses its predeclared
+non-regression boundary. The browser therefore continues to recompute scores;
+``cache_scores=True`` remains an explicit native research option only.
+See :doc:`propagation` for how exact memoization differs from changing the
+search, smoothing a field or relaxing convergence.
+
+Later control baselines themselves fall below 60 fields/s. Power-profile labels
+and short-pair averages do not establish a stable frequency or a sustained
+camera/recording rate. Do not merge the absolute numbers from these different
+campaigns into a before/after code-regression claim.
+
+``benchmark_spatial_soak.py`` checks field parity periodically, acceptance on
+every call, raw paired timings and process RSS over a bounded run. An optional
+Linux observer, ``benchmarks/monitor_linux_process.py --pid PID --output DIR``,
+records raw sysfs sensors and per-client DRM memory/counters alongside that
+process. It uses no GPU API or system-setting writes. Sampling is asynchronous
+and can perturb scheduling/power; its presence belongs in the protocol.
+
+Process RSS, requested driver buffers and resident driver backing are different
+quantities. Deduplicate DRM file descriptors by device/client identity; client
+sums can still share backing and must not be added to RSS as physical memory.
+The `kernel's DRM accounting contract
+<https://docs.kernel.org/gpu/drm-usage-stats.html>`_ documents those distinctions.
+Raw engine counters can temporarily go backwards; rate analysis must retain
+monotonic high-water marks. Requested and actual GT frequencies can differ:
+see `Xe frequency management
+<https://docs.kernel.org/gpu/xe/xe_gt_freq.html>`_. No untested mobile,
+all-vendor or physical-free-VRAM claim follows from this Linux diagnostic.

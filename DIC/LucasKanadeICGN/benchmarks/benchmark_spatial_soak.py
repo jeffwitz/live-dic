@@ -9,6 +9,7 @@ import csv
 import hashlib
 import importlib.metadata
 import json
+import os
 import platform
 import subprocess
 import sys
@@ -110,6 +111,7 @@ def main():
         },
         state="preparing",
         pairs=0,
+        processId=os.getpid(),
         checkpoints=[],
         boundary="resident NumPy target to materialized field/statistics; excludes decode, preparation, display, durable fields and diagnostic logging",
         schedule="One prepared hardware device, alternating per-frame AB/BA; control and candidate each have two failed-only passes",
@@ -184,6 +186,7 @@ def main():
             state="running",
         )
         start_measurement = time.perf_counter()
+        report["measurementStartedEpochSeconds"] = time.time()
         if args.duration_seconds is not None:
             deadline = start_measurement + args.duration_seconds
         if time.perf_counter() >= deadline:
@@ -235,6 +238,7 @@ def main():
                 pending.clear()
         completed = True
         report["measurementWallSeconds"] = time.perf_counter() - start_measurement
+        report["measurementFinishedEpochSeconds"] = time.time()
         report["finalRssBytesBeforeStatistics"] = rss_bytes()
     except BaseException as error:
         report["error"] = f"{type(error).__name__}: {error}"
