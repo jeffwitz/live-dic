@@ -27,6 +27,7 @@ def main():
     parser.add_argument("--site", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--software", action="store_true")
+    parser.add_argument("--solver-workgroup-size", type=int, choices=(16, 32), default=16)
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=False)
     assets = ROOT / "DIC/LucasKanadeICGN/assets/uhd_tensile"
@@ -81,6 +82,9 @@ def main():
               document.getElementById('fourier-start').checked=false;
               document.getElementById('solve-range').value='single';
               document.getElementById('custom-solver').onchange();true""")
+            browser._evaluate(
+                f"document.getElementById('solver-workgroup-size').value='{args.solver_workgroup_size}';document.getElementById('solver-workgroup-size').onchange();true"
+            )
             assert browser._evaluate(
                 "JSON.parse(document.getElementById('details').textContent).reference.prepared===false"
             )
@@ -102,6 +106,7 @@ def main():
                   const session=liveDicWorkbench.storage.session;
                   const {{field,metadata}}=await liveDicWorkbench.storage.backend.read(session.id,{count});
                   if(field.config.motionModel!=='translation')throw new Error('Unexpected local model: '+JSON.stringify(field.config));
+                  if(field.config.solverWorkgroupSize!=={args.solver_workgroup_size})throw new Error('Wrong solver workgroup width');
                   let population=0,valid=0,squared=0;const errors=[];
                   for(let i=0;i<field.status.length;i++){{
                     for(let k=0;k<6;k++)if(!Number.isFinite(field.parameters[i*6+k]))throw new Error('Nonfinite field');

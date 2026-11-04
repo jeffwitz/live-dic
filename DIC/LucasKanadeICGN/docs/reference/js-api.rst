@@ -138,8 +138,14 @@ Options and native correspondence
 
 The JS default one-slot register API does not change Python's two-slot
 ``register_stream`` default. Gaussian integration, partial ROI, ROI truncation
-and adaptive pyramid options are rejected. The portable workgroup width is 16;
-no vendor-specific solver or workgroup-width autotuning is hidden here.
+and adaptive pyramid options are rejected. ``solverWorkgroupSize`` accepts 16
+(the unchanged default) or an explicit 32. It controls GPU invocations cooperating
+on each subset, independently of subset size, stride and in-flight slots.
+The fresh, seeded, stagnation and compact propagation solvers use the selected
+width. Choose it at construction; changing it requires a new ``DICEngine``.
+There is no vendor-based choice or hidden width autotuning. Native Python
+also retains its separately qualified experimental width 128; the browser
+refuses 128.
 The application selects its latency options explicitly. Changing an execution
 configuration requires a coherent new reference; create a new engine for a
 different constructor configuration.

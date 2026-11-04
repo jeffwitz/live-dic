@@ -68,6 +68,10 @@ adapter; skipped GPU tests do not validate numerical execution.
 - Portable native widths are 16 (default), 32, and experimental 128 invocations
   per workgroup. Width, subset size, subset stride and stream depth are
   independent. Never infer the fastest width solely from a vendor name or limit.
+  The browser has explicit constructor widths 16 (unchanged default) and 32;
+  128 remains native-only. Propagate the selected width to fresh, seeded, fine
+  stagnation and compact solves. Default-16 pipeline constants stay unchanged.
+  Analysis may opt in; the fixed Live preset remains at its existing width.
 - Temporal initialization, velocity prediction, fine correction and stagnation
   stopping are opt-in. Fixed pyramids still solve all levels on every frame.
   Stagnation stopping applies only to the finest level. Adaptive pyramids and

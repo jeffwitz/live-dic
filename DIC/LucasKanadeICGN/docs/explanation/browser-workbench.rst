@@ -467,3 +467,15 @@ not from the pending form or a newer reference. Low acceptance is explicitly
 identified; neither recipe changes nor smoothing manufacture rejected results.
 ROI exclusions are not counted as requested failures. The UHD workflow qualifier
 checks these contracts with saved failed/successful fields and an applied mask.
+
+GPU cooperation versus window geometry
+--------------------------------------
+
+A window defines which image pixels constrain one local model. A workgroup
+defines how many GPU invocations share its calculations and reductions.
+Increasing the latter does not add pixels or change a translation model into
+an affine one. Analysis exposes an opt-in width of 32 alongside the default
+16. More parallelism can reduce serial work within a subset, while also
+changing register pressure, occupancy and floating-point reduction order.
+It must be measured on the actual workload rather than selected from a vendor
+name or a maximum device limit. The fixed Live preset stays unchanged.

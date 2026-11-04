@@ -131,14 +131,17 @@ class BrowserGeometryTests(unittest.TestCase):
         script = f"""
           import {{DICEngine}} from {json.dumps((CORE / "engine.js").as_uri())};
           const cases=[{{subsetSize:'16'}},{{subsetSize:3}},{{subsetSize:65}},{{pyramidLevels:true}},{{initialization:'temporal',pyramidLevels:3,temporalFineCorrection:true}},
-            {{spatialWeighting:'gaussian'}},{{roiPolicy:'partial'}},{{solverWorkgroupSize:32}},{{unknownOption:1}},{{roiPolicy:0}},{{readback:null}},{{spatialWeighting:null}},{{initialization:null}},{{pipelineDepth:null}}];
+            {{spatialWeighting:'gaussian'}},{{roiPolicy:'partial'}},{{solverWorkgroupSize:128}},{{unknownOption:1}},{{roiPolicy:0}},{{readback:null}},{{spatialWeighting:null}},{{initialization:null}},{{pipelineDepth:null}}];
           const rejected=cases.map(options=>{{try{{new DICEngine(options);return false;}}catch{{return true;}}}});
           let acceptsSix=false;try{{new DICEngine({{initialization:'global-affine',globalAffineLevels:6}});acceptsSix=true;}}catch{{}}
           let acceptsTranslationGlobalAffine=false;try{{new DICEngine({{initialization:'global-affine',globalAffineLevels:6,motionModel:'translation'}});acceptsTranslationGlobalAffine=true;}}catch{{}}
           const invalidScales=[4,9,5.5].map(value=>{{try{{new DICEngine({{initialization:'global-affine',globalAffineLevels:value}});return false;}}catch{{return true;}}}});
           let rejectsWithoutInitializer=false;try{{new DICEngine({{globalAffineLevels:6}});}}catch{{rejectsWithoutInitializer=true;}}
+          const wide=new DICEngine({{solverWorkgroupSize:32}});
+          const width=wide.host.configuration.solverWorkgroupSize;let widthFixed=false;
+          try{{wide.host.configure({{solverWorkgroupSize:16}});}}catch{{widthFixed=wide.host.configuration.solverWorkgroupSize===32;}}wide.destroy();
           const acceptsSubsetSizes=[4,7,24,64].map(subsetSize=>{{try{{new DICEngine({{subsetSize}});return true;}}catch{{return false;}}}});
-          console.log(JSON.stringify({{rejected,acceptsSix,acceptsTranslationGlobalAffine,invalidScales,rejectsWithoutInitializer,acceptsSubsetSizes}}));
+          console.log(JSON.stringify({{rejected,acceptsSix,acceptsTranslationGlobalAffine,invalidScales,rejectsWithoutInitializer,acceptsSubsetSizes,width,widthFixed}}));
         """
         results = json.loads(
             subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
@@ -149,6 +152,8 @@ class BrowserGeometryTests(unittest.TestCase):
         self.assertTrue(all(results["invalidScales"]))
         self.assertTrue(results["rejectsWithoutInitializer"])
         self.assertTrue(all(results["acceptsSubsetSizes"]))
+        self.assertEqual(results["width"], 32)
+        self.assertTrue(results["widthFixed"])
 
 
 @unittest.skipUnless(

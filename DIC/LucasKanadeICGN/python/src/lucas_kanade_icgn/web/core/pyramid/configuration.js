@@ -31,6 +31,9 @@ const TOLERANCE_SCHEDULES = {
 /** Validate and build the unchanged initial solver configuration. */
 export function createInitialConfiguration(options = {}) {
   validateTemporal(options);
+  if (options.solverWorkgroupSize !== undefined && ![16, 32].includes(options.solverWorkgroupSize)) {
+    throw new Error('solverWorkgroupSize must be 16 or 32');
+  }
   const subsetSize = Number(options.subsetSize ?? 16);
   if (!Number.isInteger(subsetSize) || subsetSize < 4 || subsetSize > 64) {
     throw new Error('subsetSize must be an integer from 4 to 64');
@@ -52,7 +55,7 @@ export function createInitialConfiguration(options = {}) {
     divergenceMinIterations: options.divergenceMinIterations ?? 4,
     pyramidPolicy: 'fixed',
     spatialWeighting: 'uniform',
-    solverWorkgroupSize: 16,
+    solverWorkgroupSize: options.solverWorkgroupSize ?? 16,
     pipelineDepth: options.pipelineDepth ?? 1,
     iterations: DEFAULT_MAX_ITERATIONS,
     tolerance: DEFAULT_TOLERANCE,
@@ -82,6 +85,10 @@ export function resolveConfiguration(
   } = {},
 ) {
   if (Object.keys(options).length === 0) return { next: { ...current }, changed: false };
+  if (options.solverWorkgroupSize !== undefined
+      && options.solverWorkgroupSize !== current.solverWorkgroupSize) {
+    throw new Error('Create a new DICEngine to change solverWorkgroupSize');
+  }
 
   const initialization = options.initialization ?? current.initialization;
   validateTemporal({ ...hostOptions, ...current, ...options, initialization });

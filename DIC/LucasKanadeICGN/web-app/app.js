@@ -897,7 +897,7 @@ $('large-shift-preset').onclick = () => {
   $('temporal-start').checked=false;$('fourier-start').checked=false;$('global-affine-start').checked=false;
   $('custom-solver').onchange();
 };
-for (const id of ['fourier-start','global-affine-start','global-affine-levels','overlap-pipeline','gpu-reference-preparation','custom-solver','motion-model','subset-size','subset-stride','interpolation','spatial-propagation','pyramid-levels','coarse-iterations','fine-iterations','outlier-policy','temporal-start']) $(id).onchange = () => {
+for (const id of ['fourier-start','global-affine-start','global-affine-levels','overlap-pipeline','gpu-reference-preparation','custom-solver','motion-model','subset-size','subset-stride','interpolation','spatial-propagation','solver-workgroup-size','pyramid-levels','coarse-iterations','fine-iterations','outlier-policy','temporal-start']) $(id).onchange = () => {
   $('solver-settings').disabled = !$('custom-solver').checked;
   $('temporal-start').disabled = !$('custom-solver').checked;
   $('global-affine-levels').disabled = !$('global-affine-start').checked;

@@ -277,6 +277,8 @@ export function createPyramidHost(options = {}) {
     const fineSeededSolvers = {};
     for (const [mode, constant] of Object.entries(INTERPOLATION_CONSTANTS)) {
       const constants = {
+        ...(configuration.solverWorkgroupSize !== 16
+          ? { SOLVER_WORKGROUP_SIZE: configuration.solverWorkgroupSize } : {}),
         INTERPOLATION_MODE: constant,
         MOTION_MODEL: MOTION_MODEL_CONSTANTS[configuration.motionModel],
         SUBSET_SIZE,
@@ -303,7 +305,10 @@ export function createPyramidHost(options = {}) {
       { PREFILTER_CLAMP_HALO: 0 },
     );
     for (const [mode, constant] of Object.entries(INTERPOLATION_CONSTANTS)) {
-      const constants = { INTERPOLATION_MODE: constant, MOTION_MODEL: MOTION_MODEL_CONSTANTS[configuration.motionModel],
+      const constants = {
+        ...(configuration.solverWorkgroupSize !== 16
+          ? { SOLVER_WORKGROUP_SIZE: configuration.solverWorkgroupSize } : {}),
+        INTERPOLATION_MODE: constant, MOTION_MODEL: MOTION_MODEL_CONSTANTS[configuration.motionModel],
         SUBSET_SIZE, SUBSET_STRIDE, ROI_ENABLED: +!!roiMask,
         DIVERGENCE_PATIENCE: options.divergencePatience ?? 0,
         DIVERGENCE_MIN_ITERATIONS: options.divergenceMinIterations ?? 4 };

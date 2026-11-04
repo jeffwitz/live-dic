@@ -29,6 +29,7 @@ def main() -> None:
     parser.add_argument("--model", choices=("translation", "affine", "quadratic"), default="affine")
     parser.add_argument("--subset-size", type=int, default=16)
     parser.add_argument("--subset-stride", type=int, default=None)
+    parser.add_argument("--solver-workgroup-size", type=int, choices=(16, 32, 128), default=16)
     parser.add_argument(
         "--outlier-policy", choices=("replace", "flag", "disabled", "median"), default="replace"
     )
@@ -43,6 +44,7 @@ def main() -> None:
         motion_model=args.model,
         subset_size=args.subset_size,
         subset_stride=args.subset_stride,
+        solver_workgroup_size=args.solver_workgroup_size,
         interpolation="bspline",
         outlier_policy=args.outlier_policy,
         median_filter_size=args.median_size,

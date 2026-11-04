@@ -29,7 +29,7 @@ export class DICEngine {
         && ((options.motionModel ?? 'affine') === 'quadratic' || (options.pipelineDepth ?? 1) !== 1)) {
       throw new Error('GPU reference preparation supports translation/affine and one slot');
     }
-    if (options.solverWorkgroupSize !== undefined && options.solverWorkgroupSize !== 16) throw new Error('The browser engine supports only solverWorkgroupSize=16');
+    if (options.solverWorkgroupSize !== undefined && ![16, 32].includes(options.solverWorkgroupSize)) throw new Error('solverWorkgroupSize must be 16 or 32');
     if (options.roiTruncation !== undefined && options.roiTruncation !== 'none') throw new Error('ROI truncation is not supported in the browser engine');
     if (options.temporalFineCorrection !== undefined && typeof options.temporalFineCorrection !== 'boolean') throw new Error('temporalFineCorrection must be boolean');
     for (const key of ['width', 'height']) if (options[key] !== undefined && (!Number.isInteger(options[key]) || options[key] < 1)) throw new Error(`${key} must be a positive integer`);

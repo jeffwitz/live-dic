@@ -84,7 +84,7 @@ export async function createSpatialGraph(device, solverModule, levels, seededLay
       const compact = await device.createComputePipelineAsync({ layout, compute: {
         module: solverModule, entryPoint: 'solve_compact_translation', constants: {
           MOTION_MODEL: 1, SUBSET_SIZE: options.subsetSize, SUBSET_STRIDE: options.subsetStride,
-          SOLVER_WORKGROUP_SIZE: 16, ROI_ENABLED: +(!!level.roi),
+          SOLVER_WORKGROUP_SIZE: options.solverWorkgroupSize ?? 16, ROI_ENABLED: +(!!level.roi),
           ...(level.index === 0 && options.divergencePatience ? {
             DIVERGENCE_PATIENCE: options.divergencePatience,
             DIVERGENCE_MIN_ITERATIONS: options.divergenceMinIterations ?? 4,

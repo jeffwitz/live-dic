@@ -509,3 +509,14 @@ median controls initialize the fine solve and do not validate an interpolated
 or filled point as a final measurement. See :doc:`spatial-initialization` and
 :doc:`../reference/performance`; timing on one analytic UHD pair does not
 qualify camera capture, recording, discontinuities or general 4K60 recovery.
+
+Opt-in browser workgroup width
+------------------------------
+
+``solverWorkgroupSize=32`` is an explicit constructor choice; 16 remains the
+default and the fixed Live preset. It changes reduction order, so numerical
+comparisons use the existing scientific error gates rather than assuming
+bit identity between widths. Default-width UHD fingerprints are checked
+separately for exact preservation. The 32-thread choice is not a universal
+speed recommendation, mobile qualification or a sustained 4K60 guarantee.
+The browser refuses width 128 and does not perform width autotuning.

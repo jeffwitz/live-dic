@@ -962,3 +962,21 @@ The Python launcher's ``BrokenPipeError`` means a browser closed an HTTP
 connection while a resource was being sent, for example during a reload. It
 is distinct from a WebGPU validation error; retain the browser console's first
 GPU error when diagnosing presentation failures.
+
+Choose an opt-in solver workgroup width
+---------------------------------------
+
+In **Analysis → Solve → Use custom settings**, **Solver workgroup** selects
+16 invocations (the unchanged default) or 32. These are GPU threads cooperating
+on one window, not pixels, a grid step or the number of images in flight.
+Changing it only stages settings; **Start calculation** constructs the selected
+pipelines and reference before the sequence. Live retains its fixed default.
+
+For direct JavaScript, pass ``solverWorkgroupSize: 32`` to ``DICEngine.create``.
+For native Python, the existing spelling is ``solver_workgroup_size=32``;
+the runnable ``docs/examples/register_sequence.py`` also accepts
+``--solver-workgroup-size 32``.
+Keep the same images, model, interpolation, windows, levels and convergence
+limits when comparing widths. Wider is not automatically faster; 128 remains
+unavailable in the browser. Benchmark your actual adapter and compare numerical
+quality as well as time. See :doc:`../reference/performance`.
