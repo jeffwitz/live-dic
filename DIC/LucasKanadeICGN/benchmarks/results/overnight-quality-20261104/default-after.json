@@ -1,0 +1,44 @@
+[
+  {
+    "name": "tensile-affine",
+    "shape": [
+      135,
+      240,
+      6
+    ],
+    "accepted": 31648,
+    "hashes": {
+      "parameters": "1536e621242639c67d6e74c1bfdf56430533eb81f2ec83270c14d3ae0e9a5ff7",
+      "status": "65016e854837451c91456a8cd5c98e57db69394c144575054505da32af9cbd75",
+      "iterations": "bbd64a47bb18b603a8c96be9f7437c18abe5908ec25470c8fc9d358688c4f3af"
+    }
+  },
+  {
+    "name": "tensile-translation",
+    "shape": [
+      134,
+      239,
+      6
+    ],
+    "accepted": 31284,
+    "hashes": {
+      "parameters": "6b35715de179501d24d28cb595ff68296c0cd37d4d0249bfc9ed534e8ad2c13e",
+      "status": "3e24a20f26ce54c38cc4ed0cfc8ce6740ec30da82d6b37e52e7c642d516d5b93",
+      "iterations": "ff591553567679d9252d48fcba655ef6aadd3312111f4b8ce4037105680ff3e4"
+    }
+  },
+  {
+    "name": "plate-roi",
+    "shape": [
+      135,
+      240,
+      6
+    ],
+    "accepted": 30794,
+    "hashes": {
+      "parameters": "0c53d6147ba3dae7ad7605c7f8f4410291a5699842b859977d6de9b0c93aca75",
+      "status": "4f1e4776ab4a5dd33319a1032f715a0716a7ae46963965e79c2a67a1b0b0ea60",
+      "iterations": "9715a98b4d1b38711b1210baae7ae40be0a99b4a51741980daedcfc6826a192e"
+    }
+  }
+]

@@ -1,0 +1,41 @@
+{
+  "codeRevision": "680366ae07042296951400757c94777dd131af89",
+  "fullSuite": {
+    "tests": 362,
+    "skipped": 0,
+    "command": "ICGN_RUN_GPU_TESTS=1 ICGN_RUN_BROWSER_TESTS=1 .venv/bin/python -m unittest discover -s tests"
+  },
+  "nativeSoftware": {
+    "tests": 10,
+    "adapter": "llvmpipe Vulkan, constructors explicitly required to report CPU"
+  },
+  "browserSoftware": {
+    "tests": 5,
+    "adapter": "SwiftShader, explicit software flags; includes width 32 and temporal correction"
+  },
+  "defaultUhdFingerprintsExact": [
+    "tensile-affine",
+    "tensile-translation",
+    "plate-roi"
+  ],
+  "packaging": {
+    "wheel": "lucas_kanade_icgn_webgl-0.1.0-py3-none-any.whl",
+    "sha256": "7744f5b99cb75625d06ac48effa635c9a88aaef8a9e05d108c3509bb20268720",
+    "filesVerifiedAgainstFinalSource": 49,
+    "freshInstalledEnvironment": "/tmp/live-dic-final32-installed",
+    "installedPython": "3.12",
+    "nativeExample": "Two original UHD targets, affine 16/16, median 5, workgroup 32, depth 2, strict JSON and non-pickle NPZ"
+  },
+  "style": {
+    "eslint": "pass",
+    "ruff": "pass, complete package/benchmarks/tools/docs",
+    "format": "111 files formatted",
+    "sphinx": "pass with -W --keep-going"
+  },
+  "limits": [
+    "Linux Intel LNL hardware, lavapipe and Chromium/SwiftShader only; no new mobile/other-OS/all-vendor qualification.",
+    "Native propagation remains a research host; browser Analysis exposes opt-in propagation and width 32.",
+    "Sustained native mean exceeds 60 fields/s in the recorded case, but p95 exceeds 16.67 ms. No camera-to-disk 4K60 claim.",
+    "No remote CI, Pages deployment or push was performed in this overnight session."
+  ]
+}
