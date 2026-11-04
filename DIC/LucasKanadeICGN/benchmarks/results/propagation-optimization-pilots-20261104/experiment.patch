@@ -1,0 +1,437 @@
+diff --git a/DIC/LucasKanadeICGN/benchmarks/gpu_spatial_seed.py b/DIC/LucasKanadeICGN/benchmarks/gpu_spatial_seed.py
+index 8f5ceb5..977fa7e 100644
+--- a/DIC/LucasKanadeICGN/benchmarks/gpu_spatial_seed.py
++++ b/DIC/LucasKanadeICGN/benchmarks/gpu_spatial_seed.py
+@@ -24,6 +24,9 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
+         passes=2,
+         sample_step=1,
+         failed_only=False,
++        compact_selection=False,
++        cache_reference=False,
++        deduplicate_candidates=False,
+         min_gain=1e-4,
+         **kwargs,
+     ):
+@@ -58,6 +61,11 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
+         self.passes = passes
+         self.sample_step = sample_step
+         self.failed_only = failed_only
++        if compact_selection and not failed_only:
++            raise ValueError("Compacted selection requires failed_only=True")
++        self.compact_selection = compact_selection
++        self.cache_reference = cache_reference
++        self.deduplicate_candidates = deduplicate_candidates
+         self.min_gain = min_gain
+         self.capture_counts = False
+         self._counts_ready = False
+@@ -97,6 +105,7 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
+             )
+             snapshot = buffer(n * 32, storage)
+             work = buffer((n + 4) * 4, storage | wgpu.BufferUsage.INDIRECT)
++            rejected = buffer((n + 4) * 4, storage | wgpu.BufferUsage.INDIRECT)
+             diagnostics = buffer(
+                 self.passes * 16, wgpu.BufferUsage.COPY_DST | wgpu.BufferUsage.COPY_SRC
+             )
+@@ -166,9 +175,11 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
+                 layout="auto",
+                 compute={
+                     "module": module,
+-                    "entry_point": "choose",
++                    "entry_point": "choose_rejected" if self.compact_selection else "choose",
+                     "constants": {
+                         "FAILED_ONLY": self.failed_only,
++                        "CACHE_REFERENCE": self.cache_reference,
++                        "DEDUPLICATE_CANDIDATES": self.deduplicate_candidates,
+                         "CANDIDATE_MODE": 1 if self.strategy == "median-candidate" else 0,
+                     },
+                 },
+@@ -176,6 +187,28 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
+             finalize = device.create_compute_pipeline(
+                 layout="auto", compute={"module": module, "entry_point": "finalize"}
+             )
++            collect = device.create_compute_pipeline(
++                layout="auto", compute={"module": module, "entry_point": "collect_rejected"}
++            )
++            rejected_finalize = device.create_compute_pipeline(
++                layout="auto", compute={"module": module, "entry_point": "finalize_rejected"}
++            )
++            collect_group = device.create_bind_group(
++                layout=collect.get_bind_group_layout(0),
++                entries=[
++                    self._buffer_resource(k, v)
++                    for k, v in (
++                        (2, config),
++                        (3, slot.buffers["state"]),
++                        (4, link_buffer),
++                        (10, rejected),
++                    )
++                ],
++            )
++            rejected_finalize_group = device.create_bind_group(
++                layout=rejected_finalize.get_bind_group_layout(0),
++                entries=[self._buffer_resource(10, rejected)],
++            )
+             merge = device.create_compute_pipeline(
+                 layout="auto", compute={"module": module, "entry_point": "retain_accepted"}
+             )
+@@ -211,7 +244,9 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
+                 ],
+             ]
+             choose_group = device.create_bind_group(
+-                layout=choose.get_bind_group_layout(0), entries=resources
++                layout=choose.get_bind_group_layout(0),
++                entries=resources
++                + ([self._buffer_resource(9, rejected)] if self.compact_selection else []),
+             )
+             finalize_group = device.create_bind_group(
+                 layout=finalize.get_bind_group_layout(0), entries=[self._buffer_resource(6, work)]
+@@ -291,6 +326,11 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
+                     merge_group=merge_group,
+                     snapshot=snapshot,
+                     work=work,
++                    rejected=rejected,
++                    collect=collect,
++                    collect_group=collect_group,
++                    rejected_finalize=rejected_finalize,
++                    rejected_finalize_group=rejected_finalize_group,
+                     diagnostics=diagnostics,
+                     median=median,
+                     scores=scores,
+@@ -365,10 +405,23 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
+                             level_slot.buffers["state"], 0, r["snapshot"], 0, r["snapshot"].size
+                         )
+                     encoder.clear_buffer(r["work"])
++                    if self.compact_selection:
++                        encoder.clear_buffer(r["rejected"])
+                     compute = encoder.begin_compute_pass()
++                    if self.compact_selection:
++                        compute.set_pipeline(r["collect"])
++                        compute.set_bind_group(0, r["collect_group"])
++                        groups = (level.grid_width * level.grid_height + 255) // 256
++                        compute.dispatch_workgroups(min(groups, 65535), (groups + 65534) // 65535)
++                        compute.set_pipeline(r["rejected_finalize"])
++                        compute.set_bind_group(0, r["rejected_finalize_group"])
++                        compute.dispatch_workgroups(1)
+                     compute.set_pipeline(r["choose"])
+                     compute.set_bind_group(0, r["choose_group"])
+-                    compute.dispatch_workgroups(level.grid_width, level.grid_height)
++                    if self.compact_selection:
++                        compute.dispatch_workgroups_indirect(r["rejected"], 4)
++                    else:
++                        compute.dispatch_workgroups(level.grid_width, level.grid_height)
+                     compute.set_pipeline(r["finalize"])
+                     compute.set_bind_group(0, r["finalize_group"])
+                     compute.dispatch_workgroups(1)
+@@ -429,6 +482,9 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
+                 else 0,
+                 "sampleStep": self.sample_step,
+                 "failedOnly": self.failed_only,
++                "compactSelection": self.compact_selection,
++                "cacheReference": self.cache_reference,
++                "deduplicateCandidates": self.deduplicate_candidates,
+                 "minimumScoreGain": self.min_gain,
+                 "minimumSeedDisplacementPx": 1e-3,
+                 "finalFieldRaw": True,
+diff --git a/DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/shaders/spatial_seed.wgsl b/DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/shaders/spatial_seed.wgsl
+index f772f49..d6ff42d 100644
+--- a/DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/shaders/spatial_seed.wgsl
++++ b/DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/shaders/spatial_seed.wgsl
+@@ -6,6 +6,9 @@ struct UintBuffer { values: array<u32> }
+ struct WorkList {
+     count: atomic<u32>, x: u32, y: u32, z: u32, indices: array<u32>,
+ }
++struct ReadWorkList {
++    count: u32, x: u32, y: u32, z: u32, indices: array<u32>,
++}
+ struct Config {
+     width: u32, height: u32, grid_width: u32, count: u32,
+     size: u32, stride: u32, sample_step: u32, padding: u32,
+@@ -21,13 +24,21 @@ struct Config {
+ @group(0) @binding(6) var<storage, read_write> work: WorkList;
+ @group(0) @binding(7) var<storage, read_write> scores: Floats;
+ @group(0) @binding(8) var<storage, read> prior: Floats;
++// Optional input compaction: no LK work is performed by this list's scan.
++@group(0) @binding(9) var<storage, read> rejected_input: ReadWorkList;
++@group(0) @binding(10) var<storage, read_write> rejected: WorkList;
+ override FAILED_ONLY: bool = false;
++override CACHE_REFERENCE: bool = false;
++override DEDUPLICATE_CANDIDATES: bool = false;
+ // 0 neighbours, 1 median hypothesis only, 2 neighbours plus median.
+ override CANDIDATE_MODE: u32 = 0u;
+ var<workgroup> candidates: array<vec4<f32>, 11>;
+ var<workgroup> sums: array<vec4<f32>, 64>;
+ var<workgroup> sum_g2: array<f32, 64>;
+ var<workgroup> best: vec4<f32>; // dx, dy, rho, own_rho
++// A bounded cache preserves the standard 16 KiB workgroup-storage budget.
++// Larger patches keep the original texture path.
++var<workgroup> reference_samples: array<f32, 1024>;
+ 
+ fn median(v: ptr<function, array<f32, 9>>, n: u32) -> f32 {
+     for (var i = 1u; i < n; i++) {
+@@ -53,11 +64,9 @@ fn linear_sample(position: vec2<f32>) -> f32 {
+     return 255.0 * mix(mix(a, b, d.x), mix(c, e, d.x), d.y) - 128.0;
+ }
+ 
+-@compute @workgroup_size(64)
+-fn choose(@builtin(workgroup_id) group: vec3<u32>,
+-          @builtin(local_invocation_index) lane: u32) {
+-    let index = group.y * config.grid_width + group.x;
++fn choose_subset(index: u32, lane: u32) {
+     if index >= config.count { return; }
++    let group = vec2<u32>(index % config.grid_width, index / config.grid_width);
+     if (permissions.values[index] & 16u) == 0u { return; }
+     if FAILED_ONLY && snapshot.values[2u * index + 1u].z >= 0.5 { return; }
+     let own = snapshot.values[2u * index].xw;
+@@ -96,12 +105,31 @@ fn choose(@builtin(workgroup_id) group: vec3<u32>,
+         if CANDIDATE_MODE != 0u && n > 0u {
+             candidates[10] = vec4<f32>(median(&us, n), median(&vs, n), 1.0, 0.0);
+         }
++        if DEDUPLICATE_CANDIDATES {
++            for (var k = 1u; k < 11u; k++) {
++                if candidates[k].z == 0.0 { continue; }
++                for (var j = 0u; j < k; j++) {
++                    if candidates[j].z != 0.0 && all(candidates[k].xy == candidates[j].xy) {
++                        candidates[k].z = 0.0;
++                        break;
++                    }
++                }
++            }
++        }
+         best = vec4<f32>(own, -2.0, -2.0);
+     }
+     workgroupBarrier();
+     let origin = vec2<f32>(group.xy * config.stride);
+     let side = (config.size + config.sample_step - 1u) / config.sample_step;
+     let total = side * side;
++    if CACHE_REFERENCE && total <= 1024u {
++        for (var pixel = lane; pixel < total; pixel += 64u) {
++            let offset = vec2<u32>(pixel % side, pixel / side) * config.sample_step;
++            reference_samples[pixel] = 255.0 * textureLoad(reference,
++                vec2<i32>(vec2<u32>(origin) + offset), 0).x - 128.0;
++        }
++        workgroupBarrier();
++    }
+     for (var k = 0u; k < 11u; k++) {
+         let candidate = workgroupUniformLoad(&candidates[k]);
+         let p = candidate.xy;
+@@ -118,7 +146,9 @@ fn choose(@builtin(workgroup_id) group: vec3<u32>,
+         var g2 = 0.0;
+         for (var pixel = lane; pixel < total; pixel += 64u) {
+             let offset = vec2<f32>(f32(pixel % side), f32(pixel / side)) * f32(config.sample_step);
+-            let f = 255.0 * textureLoad(reference, vec2<i32>(origin + offset), 0).x - 128.0;
++            var f: f32;
++            if CACHE_REFERENCE && total <= 1024u { f = reference_samples[pixel]; }
++            else { f = 255.0 * textureLoad(reference, vec2<i32>(origin + offset), 0).x - 128.0; }
+             let g = linear_sample(origin + offset + p);
+             s += vec4<f32>(f, g, f * g, f * f);
+             g2 += g * g;
+@@ -153,6 +183,40 @@ fn choose(@builtin(workgroup_id) group: vec3<u32>,
+     }
+ }
+ 
++@compute @workgroup_size(64)
++fn choose(@builtin(workgroup_id) group: vec3<u32>,
++          @builtin(local_invocation_index) lane: u32) {
++    choose_subset(group.y * config.grid_width + group.x, lane);
++}
++
++// Scan one invocation per subset, before launching expensive scoring groups.
++// A two-dimensional dispatch covers images with more than 65535*256 subsets.
++@compute @workgroup_size(256)
++fn collect_rejected(@builtin(global_invocation_id) id: vec3<u32>) {
++    let index = id.y * 65535u * 256u + id.x;
++    if index >= config.count { return; }
++    if (permissions.values[index] & 16u) == 0u
++        || snapshot.values[2u * index + 1u].z >= 0.5 { return; }
++    let ordinal = atomicAdd(&rejected.count, 1u);
++    rejected.indices[ordinal] = index;
++}
++
++@compute @workgroup_size(1)
++fn finalize_rejected() {
++    let count = atomicLoad(&rejected.count);
++    rejected.x = min(count, 65535u);
++    rejected.y = max(1u, (count + 65534u) / 65535u);
++    rejected.z = 1u;
++}
++
++@compute @workgroup_size(64)
++fn choose_rejected(@builtin(workgroup_id) group: vec3<u32>,
++                   @builtin(local_invocation_index) lane: u32) {
++    let ordinal = group.y * 65535u + group.x;
++    if ordinal >= rejected_input.count { return; }
++    choose_subset(rejected_input.indices[ordinal], lane);
++}
++
+ @compute @workgroup_size(1)
+ fn finalize() {
+     let count = atomicLoad(&work.count);
+diff --git a/DIC/LucasKanadeICGN/benchmarks/benchmark_spatial_compaction.py b/DIC/LucasKanadeICGN/benchmarks/benchmark_spatial_compaction.py
+new file mode 100644
+index 0000000..be8e472
+--- /dev/null
++++ b/DIC/LucasKanadeICGN/benchmarks/benchmark_spatial_compaction.py
+@@ -0,0 +1,163 @@
++"""Alternate equivalent dense/compacted GPU seed scoring on original UHD data."""
++
++import argparse
++import csv
++import hashlib
++import importlib.metadata
++import json
++import platform
++import subprocess
++import sys
++import time
++from pathlib import Path
++
++import numpy as np
++from PIL import Image
++
++from gpu_spatial_seed import GpuSpatialPyramid
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--output", type=Path, required=True)
++    parser.add_argument("--rounds", type=int, default=6)
++    parser.add_argument("--repeats", type=int, default=50)
++    parser.add_argument("--warmup", type=int, default=8)
++    args = parser.parse_args()
++    if min(args.rounds, args.repeats, args.warmup) < 1:
++        parser.error("Counts must be positive")
++    args.output.mkdir(parents=True, exist_ok=False)
++    project = Path(__file__).resolve().parents[1]
++    root = project.parents[1]
++    paths = [project / "assets/uhd_tensile" / name for name in ("reference.png", "frame_040.png")]
++    images = []
++    for path in paths:
++        with Image.open(path) as image:
++            images.append(np.array(image))
++    with (paths[0].parent / "machine_truth.csv").open() as stream:
++        truth = next(row for row in csv.DictReader(stream) if int(row["frame"]) == 40)
++    options = dict(
++        subset_size=32,
++        subset_stride=16,
++        device_type="gpu",
++        failed_only=True,
++        strategy="spatial",
++        passes=2,
++        tolerance_per_level=(0.005, 0.005),
++    )
++    report = dict(
++        command=[sys.executable, *sys.argv],
++        sourceCommit=subprocess.check_output(
++            ["git", "rev-parse", "HEAD"], cwd=root, text=True
++        ).strip(),
++        sourceDirty=bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=root)),
++        platform=platform.platform(),
++        versions={k: importlib.metadata.version(k) for k in ("numpy", "wgpu")},
++        inputSha256={p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in paths},
++        sourceSha256={
++            str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest()
++            for p in (
++                Path(__file__),
++                Path(__file__).with_name("gpu_spatial_seed.py"),
++                project / "python/src/lucas_kanade_icgn/shaders/spatial_seed.wgsl",
++            )
++        },
++        options=options,
++        rounds=args.rounds,
++        repeats=args.repeats,
++        warmup=args.warmup,
++        boundary="resident NumPy target to materialized NumPy field/statistics; no decode/display/storage/preparation",
++        comparison="Same candidates, scoring, acceptance and compact LK; only scoring-dispatch compaction differs",
++        rows=[],
++    )
++    engines = []
++    try:
++        expected = None
++        for compact, cache, deduplicate in ((False, False, False), (False, False, True)):
++            start = time.perf_counter()
++            engine = GpuSpatialPyramid(
++                **options,
++                compact_selection=compact,
++                cache_reference=cache,
++                deduplicate_candidates=deduplicate,
++            )
++            engines.append(engine)
++            engine.prepare_research(images[0])
++            preparation = (time.perf_counter() - start) * 1000
++            for _ in range(args.warmup):
++                result = engine.register(images[1])
++            if expected is None:
++                expected = result
++            else:
++                for attribute in ("parameters", "status", "iterations"):
++                    np.testing.assert_array_equal(
++                        getattr(result, attribute), getattr(expected, attribute)
++                    )
++            y, x = np.indices(result.status.shape)
++            x, y = x * 16 + 15.5, y * 16 + 15.5
++            population = (x >= 32) & (x < 3840 - 32) & (y >= 32) & (y < 2160 - 32)
++            accepted = population & (result.status > 0.5)
++            displacement = np.stack(
++                (
++                    (float(truth["stretch_x"]) - 1) * (x - 1920),
++                    (float(truth["stretch_y"]) - 1) * (y - 1080),
++                ),
++                axis=-1,
++            )
++            errors = np.linalg.norm(
++                result.parameters[..., [0, 3]][accepted] - displacement[accepted], axis=-1
++            )
++            quality = dict(
++                coverage=float(accepted.sum() / population.sum()),
++                vectorRmse=float(np.sqrt(np.mean(errors**2))),
++                p95Error=float(np.percentile(errors, 95)),
++                accepted=result.accepted,
++            )
++            assert quality["coverage"] >= 0.995
++            assert quality["vectorRmse"] < 0.01518230373115895
++            assert quality["p95Error"] < 0.02722860762111737
++            assert np.isfinite(result.parameters).all()
++            assert not np.any(result.parameters[..., [1, 2, 4, 5]])
++            report["adapter"] = engine.adapter_info
++            report["rows"].append(
++                dict(
++                    compact=compact,
++                    cacheReference=cache,
++                    deduplicateCandidates=deduplicate,
++                    preparationWallMs=preparation,
++                    quality=quality,
++                    samplesByRoundMs=[],
++                )
++            )
++        for round_index in range(args.rounds):
++            order = range(len(engines)) if round_index % 2 == 0 else reversed(range(len(engines)))
++            for index in order:
++                engine = engines[index]
++                for _ in range(args.warmup):
++                    engine.register(images[1])
++                samples = []
++                for _ in range(args.repeats):
++                    start = time.perf_counter()
++                    result = engine.register(images[1])
++                    samples.append((time.perf_counter() - start) * 1000)
++                    assert result.accepted == report["rows"][index]["quality"]["accepted"]
++                report["rows"][index]["samplesByRoundMs"].append(samples)
++                print(round_index, index, float(np.median(samples)), flush=True)
++        for row in report["rows"]:
++            samples = np.array(row["samplesByRoundMs"]).ravel()
++            row.update(
++                medianMs=float(np.median(samples)),
++                p95Ms=float(np.percentile(samples, 95)),
++                p99Ms=float(np.percentile(samples, 99)),
++                fps=float(1000 / np.mean(samples)),
++            )
++        (args.output / "report.json").write_text(
++            json.dumps(report, indent=2, allow_nan=False) + "\n"
++        )
++    finally:
++        for engine in engines:
++            engine.close()
++
++
++if __name__ == "__main__":
++    main()
