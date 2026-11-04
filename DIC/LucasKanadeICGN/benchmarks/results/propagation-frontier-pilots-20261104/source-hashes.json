@@ -1,0 +1,9 @@
+{
+  "live_dic_frontier.py": "01531ac50111a275c2b1bcae12cf29f36ad1e321ed4478b8a71de3a7fa99acb8",
+  "live_dic_fused.py": "b7ac607a667d8a0f18704f0d268385d772f9ae2e14f25c937d53214085713d50",
+  "live_dic_frontier2.py": "3e4aa65be49e3bb7114aa4584ecb023bfd152559a990b0d0c49bdaf434e45022",
+  "live-dic-night-frontier.wgsl": "e89e5a135c69dfcc05acedd94d03b5b7d9b5b746722e92f9a2928a8fcdadd310",
+  "live-dic-night-fused-spatial.wgsl": "045709c9772fd22c1d51441c592dde69333e4774164cea7990f2457bde0e979f",
+  "live-dic-night-fused-icgn.wgsl": "38ee077a623797fed58f438f2473f2067e6f62cb6d952ec0d01671b6f5c3bd04",
+  "live-dic-night-frontier2.wgsl": "f90cb458c9eaf166d860e0d474e3b3160f028855a4a4da7b4c8a8408f00d0d3f"
+}
