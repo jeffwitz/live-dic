@@ -1,0 +1,135 @@
+{
+  "sourceCommit": "54b09017adee33eb57733a3e00c2e7c4d971d288",
+  "private": false,
+  "shape": [
+    2160,
+    3840
+  ],
+  "adapter": {
+    "vendor": "Intel open-source Mesa driver",
+    "architecture": "",
+    "device": "Intel(R) Graphics (LNL)",
+    "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+    "stackgroup_min_size": 4,
+    "stackgroup_max_size": 128,
+    "vendor_id": 32902,
+    "device_id": 25760,
+    "adapter_type": "IntegratedGPU",
+    "backend_type": "Vulkan"
+  },
+  "scriptSha256": "3a9da02cd7368f6b780bac265fc4ecc43e8e8e552e76254887051609caccb909",
+  "inputSha256": {
+    "reference.png": "26135118b554c5996443f07abd2a89273a344154338c4c7f428ab283f85f7192",
+    "frame_095.png": "af0f4c09d2e9292beb4cbbabe01c6651a2e914c1b36b569a5861a8be431d3faf"
+  },
+  "maskSha256": "479de8439783f197fae814fee0d5513f24e192d27cf812687ead135bf7e31311",
+  "initialAffine": null,
+  "rows": [
+    {
+      "strategy": "baseline",
+      "passes": 2,
+      "accepted": 31074,
+      "selected": 31816,
+      "acceptance": 0.9766784008046266,
+      "diagnosticCounts": [],
+      "population": 30706,
+      "interiorCoverage": 1.0,
+      "vectorRmse": 0.008020840911358395,
+      "p95Error": 0.011546212125278883
+    },
+    {
+      "strategy": "median",
+      "passes": 2,
+      "accepted": 31074,
+      "selected": 31816,
+      "acceptance": 0.9766784008046266,
+      "diagnosticCounts": [],
+      "population": 30706,
+      "interiorCoverage": 1.0,
+      "vectorRmse": 0.0080211360732572,
+      "p95Error": 0.011539888562159397
+    },
+    {
+      "strategy": "seed-median",
+      "passes": 2,
+      "accepted": 31074,
+      "selected": 31816,
+      "acceptance": 0.9766784008046266,
+      "diagnosticCounts": [],
+      "population": 30706,
+      "interiorCoverage": 1.0,
+      "vectorRmse": 0.0080211360732572,
+      "p95Error": 0.011539888562159397
+    },
+    {
+      "strategy": "spatial",
+      "passes": 1,
+      "accepted": 31074,
+      "selected": 31816,
+      "acceptance": 0.9766784008046266,
+      "diagnosticCounts": [
+        [
+          [
+            0,
+            0,
+            1,
+            1
+          ]
+        ],
+        [
+          [
+            0,
+            0,
+            1,
+            1
+          ]
+        ]
+      ],
+      "population": 30706,
+      "interiorCoverage": 1.0,
+      "vectorRmse": 0.008020840911358395,
+      "p95Error": 0.011546212125278883
+    },
+    {
+      "strategy": "spatial",
+      "passes": 2,
+      "accepted": 31074,
+      "selected": 31816,
+      "acceptance": 0.9766784008046266,
+      "diagnosticCounts": [
+        [
+          [
+            0,
+            0,
+            1,
+            1
+          ],
+          [
+            0,
+            0,
+            1,
+            1
+          ]
+        ],
+        [
+          [
+            0,
+            0,
+            1,
+            1
+          ],
+          [
+            0,
+            0,
+            1,
+            1
+          ]
+        ]
+      ],
+      "population": 30706,
+      "interiorCoverage": 1.0,
+      "vectorRmse": 0.008020840911358395,
+      "p95Error": 0.011546212125278883
+    }
+  ]
+}

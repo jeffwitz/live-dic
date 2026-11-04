@@ -1,0 +1,177 @@
+{
+  "opencv": "5.0.0",
+  "threads": 8,
+  "opencl": false,
+  "platform": "Linux-7.0.0-38-generic-x86_64-with-glibc2.39",
+  "scriptSha256": "ec6ef9d37a7da6805e01045c7f7c4b1c64787a0d32d19383ef0a347e4b119f5d",
+  "rows": [
+    {
+      "name": "ultrafast",
+      "options": {
+        "FinestScale": 2,
+        "CoarsestScale": -1,
+        "PatchSize": 8,
+        "PatchStride": 4,
+        "GradientDescentIterations": 12,
+        "VariationalRefinementIterations": 0,
+        "UseSpatialPropagation": true,
+        "UseMeanNormalization": true
+      },
+      "timesMs": [
+        21.303763962350786,
+        21.168006001971662,
+        22.2221800358966,
+        20.157839986495674,
+        22.13677001418546
+      ],
+      "medianMs": 21.303763962350786,
+      "p95Ms": 22.20509803155437,
+      "fps": 46.73396856596566,
+      "interiorPopulation": 30916,
+      "vectorRmse": 0.07809404159434716,
+      "p95Error": 0.13267712580516103
+    },
+    {
+      "name": "fast",
+      "options": {
+        "FinestScale": 2,
+        "CoarsestScale": -1,
+        "PatchSize": 8,
+        "PatchStride": 4,
+        "GradientDescentIterations": 16,
+        "VariationalRefinementIterations": 5,
+        "UseSpatialPropagation": true,
+        "UseMeanNormalization": true
+      },
+      "timesMs": [
+        58.32549202023074,
+        59.859519999008626,
+        65.79788803355768,
+        63.868272001855075,
+        53.937315999064595
+      ],
+      "medianMs": 59.859519999008626,
+      "p95Ms": 65.41196482721716,
+      "fps": 16.567895058707563,
+      "interiorPopulation": 30916,
+      "vectorRmse": 0.10400336220634375,
+      "p95Error": 0.16407286378121094
+    },
+    {
+      "name": "medium",
+      "options": {
+        "FinestScale": 1,
+        "CoarsestScale": -1,
+        "PatchSize": 8,
+        "PatchStride": 3,
+        "GradientDescentIterations": 25,
+        "VariationalRefinementIterations": 5,
+        "UseSpatialPropagation": true,
+        "UseMeanNormalization": true
+      },
+      "timesMs": [
+        213.85344601003453,
+        214.34228104772046,
+        214.59863701602444,
+        214.339527010452,
+        209.40541598247364
+      ],
+      "medianMs": 214.339527010452,
+      "p95Ms": 214.54736582236364,
+      "fps": 4.688059752576266,
+      "interiorPopulation": 30916,
+      "vectorRmse": 0.02599002741593738,
+      "p95Error": 0.045463725052720644
+    },
+    {
+      "name": "user-4-2",
+      "options": {
+        "FinestScale": 0,
+        "CoarsestScale": -1,
+        "PatchSize": 4,
+        "PatchStride": 2,
+        "GradientDescentIterations": 16,
+        "VariationalRefinementIterations": 10,
+        "UseSpatialPropagation": true,
+        "UseMeanNormalization": true
+      },
+      "timesMs": [
+        1376.2515819980763,
+        1364.3497839802876,
+        1366.3595980033278,
+        1397.4980339989997,
+        1357.107554038521
+      ],
+      "medianMs": 1366.3595980033278,
+      "p95Ms": 1393.248743598815,
+      "fps": 0.7286965683556048,
+      "interiorPopulation": 30916,
+      "vectorRmse": 0.060353525612119464,
+      "p95Error": 0.11795465489418909
+    },
+    {
+      "name": "matched-32-16-no-var",
+      "options": {
+        "FinestScale": 0,
+        "CoarsestScale": 1,
+        "PatchSize": 32,
+        "PatchStride": 16,
+        "GradientDescentIterations": 16,
+        "VariationalRefinementIterations": 0,
+        "UseSpatialPropagation": true,
+        "UseMeanNormalization": true
+      },
+      "timesMs": [
+        235.50181300379336,
+        235.29261199291795,
+        248.1232499703765,
+        231.91895399941131,
+        245.4501480096951
+      ],
+      "medianMs": 235.50181300379336,
+      "p95Ms": 247.58862957824022,
+      "fps": 4.179599821907501,
+      "interiorPopulation": 30916,
+      "vectorRmse": 0.026734563249862987,
+      "p95Error": 0.04307127314656513
+    },
+    {
+      "name": "matched-32-16-var10",
+      "options": {
+        "FinestScale": 0,
+        "CoarsestScale": 1,
+        "PatchSize": 32,
+        "PatchStride": 16,
+        "GradientDescentIterations": 16,
+        "VariationalRefinementIterations": 10,
+        "UseSpatialPropagation": true,
+        "UseMeanNormalization": true
+      },
+      "timesMs": [
+        1068.8873549806885,
+        1057.3397949920036,
+        1067.9969770135358,
+        1068.4551059966907,
+        1068.7442509806715
+      ],
+      "medianMs": 1068.4551059966907,
+      "p95Ms": 1068.8587341806851,
+      "fps": 0.9378358359712973,
+      "interiorPopulation": 30916,
+      "vectorRmse": 0.03423610174457609,
+      "p95Error": 0.06279014436011743
+    }
+  ],
+  "sourceCommit": "54b09017adee33eb57733a3e00c2e7c4d971d288",
+  "inputSha256": {
+    "reference.png": "7cadf6032d7c5ac2de74ae542573a3b38069dc8c1c075ef9576641601996aeec",
+    "frame_040.png": "7477178b00acb669b34aeb2084b895076cf74475f472bc25f3af2696b2719e30"
+  },
+  "timingBoundary": "resident NumPy images -> dense full-size float32 flow; calc includes reference preparation on every call; decode/I-O/scoring excluded",
+  "notes": [
+    "CPU only, eight threads, OpenCL disabled, warmup once and five measured calls per case.",
+    "Geometry-matched means 32/16 and two levels, not identical equations, iteration budget or outputs.",
+    "Ultrafast and Fast solve only down to quarter width/height, then upscale their dense flow.",
+    "OpenCV output is dense; native output is the subset grid. No equal-work GPU speedup is inferred."
+  ]
+}

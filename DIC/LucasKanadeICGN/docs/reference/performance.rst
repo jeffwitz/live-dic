@@ -1867,3 +1867,65 @@ in coarse/fine solve stages. It is about 454 times slower in median than the
 production pyramid. This is a measured limitation of the CPU oracle and its
 orchestration, not an estimate of a GPU-resident propagation implementation.
 No camera-stream, disk-recording or live propagation performance is qualified.
+
+GPU seed selection and median controls (2026-11-04)
+---------------------------------------------------
+
+The subsequent `GPU research campaign
+<https://github.com/jeffwitz/live-dic/tree/main/DIC/LucasKanadeICGN/benchmarks/results/gpu-spatial-seed-20261104>`_
+keeps candidate scoring, atomic work-list construction and indirect IC-GN
+re-solves on the GPU. It is an experimental native supervisor under
+``benchmarks/``, not a public engine or browser option. Defaults are unchanged.
+See :doc:`../explanation/spatial-initialization` for the algorithm and the
+distinction between a median measurement and a median initialization.
+
+Same original UHD reference/frame-40 pair, translation 32/16, B-spline,
+uniform integration, two levels, caps 8/16, tolerance 0.005/0.005, ZNCC 0.8,
+raw fine field, no ROI, one synchronous slot. Intel LNL/Vulkan, Mesa 25.2.8,
+CPU governor ``powersave``. Reference preparation is excluded; resident NumPy
+target to materialized NumPy field/statistics is timed. There is no intermediate
+CPU decision/readback. Sixty samples per case, three alternating-order rounds
+after warm-up; full samples, preparation and cold diagnostics are archived.
+
+.. list-table:: GPU prototype, full-pixel candidate scoring
+   :header-rows: 1
+
+   * - Policy
+     - Median / p95 (ms)
+     - Completed fields/s
+   * - Baseline in the failed-only group
+     - 14.377 / 15.542
+     - 69.25
+   * - Failed windows only, one extra pass per level
+     - 15.010 / 16.404
+     - 66.75
+   * - Failed windows only, two extra passes per level
+     - 16.123 / 16.872
+     - 62.19
+   * - All windows, two extra passes per level
+     - 67.093 / 68.922
+     - 14.87
+
+All cases retain 100 percent of the 30,916-point analytic interior, approximately
+0.0102 px vector RMSE, finite parameters and zero local gradients. The baseline
+matches the production parameters, statuses and iterations exactly. The original
+UHD plate-hole full-ROI control additionally retains 100 percent interior
+coverage and approximately 0.00802 px vector RMSE at frame 95; no propagation
+is required on that case.
+
+Compaction avoids unnecessary re-solves; searching every window can still be
+expensive. Failed-only selection cannot improve an already-accepted wrong basin.
+Two passes average more than 60 fields/s here, but their p95 exceeds 16.67 ms.
+This short repeated-pair campaign does not qualify sustained difficult-motion
+recovery, camera capture, disk recording or all hardware at 4K60. Variability
+between campaign baselines prevents attributing sub-millisecond differences to
+an individual orchestration or median change.
+
+For comparison, OpenCV 5.0.0 CPU DIS was measured on the same resident UHD pair,
+eight threads and OpenCL disabled. ``ultrafast`` takes 21.304 ms median
+(46.73 fields/s) but solves only down to 960 x 540 before enlarging the flow.
+A 32/16, two-level, full-resolution case without variational refinement takes
+235.502 ms (4.18 fields/s). Its equations, iteration budget, dense output and
+per-call reference preparation differ from the cached-reference native DIC
+engine; these are application observations, not equal-work kernel speedups.
+The archive retains all six CPU cases, analytic errors and exact script.
