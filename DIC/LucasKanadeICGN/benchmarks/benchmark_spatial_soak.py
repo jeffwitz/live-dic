@@ -117,6 +117,7 @@ def main():
         schedule="One prepared hardware device, alternating per-frame AB/BA; control and candidate each have two failed-only passes",
         comparison="score-cache" if args.score_cache else "empty-work",
         rssNote="Process RSS includes CPU/driver mappings, not physical/free VRAM. Only the last fields and a bounded timing batch are retained.",
+        timingSnapshotNote="Checkpoint last-pair wall timers are descriptive samples, not stage percentile distributions or GPU timestamps. Some timers overlap and must not be summed.",
         rawFormat=dict(dtype="<f8", columns=["pairElapsedMs", "controlMs", "candidateMs"]),
     )
     report.update(power_context())
@@ -222,6 +223,10 @@ def main():
                             candidate=statistics(block[:, 2]),
                             pairedMedianSavingMs=float(np.median(block[:, 1] - block[:, 2])),
                             fieldParity=True,
+                            lastPairTiming={
+                                "control": dict(latest[0].timing),
+                                "candidate": dict(latest[1].timing),
+                            },
                         )
                     )
                     atomic_json(args.output / "progress.json", report)
