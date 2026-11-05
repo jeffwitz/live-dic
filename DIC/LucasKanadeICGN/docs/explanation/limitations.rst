@@ -38,7 +38,7 @@ to WebGL2.
 Python remains the primary supervisor for NumPy acquisition and complete NumPy
 fields. The standalone PWA now supplies a JavaScript supervisor for raw WebGPU
 camera/demo acquisition, bounded scheduling and GPU display. It is separate
-from Three.js. ``ICGNWebGL`` still includes the Python/Chromium process boundary;
+from Three.js. ``ICGNBrowser`` still includes the Python/Chromium process boundary;
 neither direct Three.js GPU times nor PWA worker timings are full Python-stream
 times. See :doc:`browser-portability` for the browser qualification matrix.
 

@@ -12,7 +12,7 @@ from urllib.parse import quote
 from qualify_browser_editor import protocol
 from qualify_local_sources import wait
 
-from lucas_kanade_icgn import ICGNWebGL
+from live_dic import ICGNBrowser
 from lucas_kanade_icgn.engine import _StaticServer
 
 
@@ -124,7 +124,7 @@ def main():
         else ()
     )
     try:
-        with ICGNWebGL(backend="webgpu-wgsl", chromium_args=flags, call_timeout=240) as browser:
+        with ICGNBrowser(backend="webgpu-wgsl", chromium_args=flags, call_timeout=240) as browser:
             browser._evaluate(
                 f"location.assign({json.dumps(f'http://127.0.0.1:{server.port}/{quote(site.name)}/?smoke=1&case=plate')});true"
             )

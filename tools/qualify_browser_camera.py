@@ -19,7 +19,7 @@ import numpy as np
 from PIL import Image
 from qualify_local_sources import export, wait
 
-from lucas_kanade_icgn import ICGNWebGL
+from live_dic import ICGNBrowser
 from lucas_kanade_icgn.engine import _StaticServer
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -82,7 +82,7 @@ def main():
                 f"--use-file-for-fake-video-capture={capture}",
                 "--window-size=1600,1200",
             )
-            with ICGNWebGL(
+            with ICGNBrowser(
                 backend="webgpu-wgsl", startup_timeout=60, call_timeout=240, chromium_args=flags
             ) as browser:
                 url = f"http://127.0.0.1:{server.port}/{quote(site.name)}/?smoke=1&case=plate"

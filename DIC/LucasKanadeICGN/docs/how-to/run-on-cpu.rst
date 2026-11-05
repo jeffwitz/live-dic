@@ -41,7 +41,7 @@ Recreate the engine and prepare the reference again to change devices.
 
 .. code-block:: python
 
-   from lucas_kanade_icgn import ICGNWGPUFullPyramid
+   from live_dic import ICGNWGPUFullPyramid
 
    with ICGNWGPUFullPyramid(
        device_type="cpu",
@@ -134,7 +134,7 @@ The image-to-field benchmark supports the same selection:
 
 The benchmark's standard inputs are changing tiled fixtures. They differ from
 the analytic noise experiment below and should not be treated as the same
-accuracy qualification. The browser CLI ``icgn-webgl`` remains a browser
+accuracy qualification. The browser CLI ``live-dic`` remains a browser
 adapter; ``device_type`` is a native Python engine option, not a Chromium flag.
 
 A 2026-10-30 analytic UHD experiment on the Intel Core Ultra 5 228V measured

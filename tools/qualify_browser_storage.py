@@ -24,7 +24,7 @@ import numpy as np
 from qualify_browser_editor import protocol
 from qualify_local_sources import choose_files, wait
 
-from lucas_kanade_icgn import ICGNWebGL
+from live_dic import ICGNBrowser
 from lucas_kanade_icgn.engine import _StaticServer
 
 MIB = 1024**2
@@ -68,7 +68,7 @@ def main():
     )
     report = {"software": args.software, "build": json.loads((site / "build.json").read_text())}
     try:
-        with ICGNWebGL(
+        with ICGNBrowser(
             backend="webgpu-wgsl",
             startup_timeout=60,
             chromium_args=(*flags, "--window-size=1600,1200"),

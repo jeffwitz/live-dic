@@ -12,7 +12,7 @@ For Python-supervised NumPy input and output, use the native wgpu-py engine:
 
 .. code-block:: python
 
-   from lucas_kanade_icgn import ICGNWGPUFullPyramid
+   from live_dic import ICGNWGPUFullPyramid
 
    with ICGNWGPUFullPyramid() as engine:
        engine.set_reference(reference)
@@ -23,15 +23,15 @@ WebGPU implementations:
 
 .. code-block:: python
 
-   from lucas_kanade_icgn import ICGNWebGL
+   from live_dic import ICGNBrowser
 
    # Independent Three.js/TSL WebGPU solver
-   with ICGNWebGL(backend="three-tsl") as engine:
+   with ICGNBrowser(backend="three-tsl") as engine:
        engine.set_reference(reference)
        result = engine.register(target)
 
    # Browser adapter using the shared WGSL kernel
-   with ICGNWebGL(backend="webgpu-wgsl") as engine:
+   with ICGNBrowser(backend="webgpu-wgsl") as engine:
        engine.set_reference(reference)
        result = engine.register(target)
 
@@ -43,22 +43,22 @@ different solver.
 Update older calls
 ------------------
 
-Remove ``backend="gpuio"`` from ``ICGNWebGL`` and the CLI. The default
-``ICGNWebGL()`` remains the Three.js/TSL WebGPU implementation:
+Remove ``backend="gpuio"`` from ``ICGNBrowser`` and the CLI. The default
+``ICGNBrowser()`` remains the Three.js/TSL WebGPU implementation:
 
 .. code-block:: python
 
    # Before: no longer supported
-   engine = ICGNWebGL(backend="gpuio")
+   engine = ICGNBrowser(backend="gpuio")
 
    # After: WebGPU required
-   engine = ICGNWebGL(backend="three-tsl")
+   engine = ICGNBrowser(backend="three-tsl")
 
 The command-line equivalent is:
 
 .. code-block:: console
 
-   $ icgn-webgl --backend three-tsl reference.png target.png
+   $ live-dic --backend three-tsl reference.png target.png
 
 Review numerical compatibility
 -------------------------------

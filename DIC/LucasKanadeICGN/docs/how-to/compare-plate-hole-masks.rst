@@ -16,7 +16,7 @@ From the repository root:
 
    import numpy as np
    from PIL import Image
-   from lucas_kanade_icgn import ICGNWGPUFullPyramid
+   from live_dic import ICGNWGPUFullPyramid
 
    assets = "DIC/LucasKanadeICGN/assets/uhd_plate_hole/"
    reference = np.asarray(Image.open(assets + "reference.png"))

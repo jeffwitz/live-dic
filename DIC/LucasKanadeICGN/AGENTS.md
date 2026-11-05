@@ -51,15 +51,16 @@ adapter; skipped GPU tests do not validate numerical execution.
   `ICGNWGPUFullPyramid` is recommended and has two fixed levels by default.
   `ICGNWGPU` is single-scale by default; selective retry is a distinct optional
   compatibility path. Do not silently substitute one policy for another.
-- `ICGNWebGL` and the existing CLI retain their browser defaults. Raw
+- `ICGNBrowser` and both CLI names retain their browser defaults. Raw
   `webgpu-wgsl` supports full ROI; Three.js rejects masks. Browser partial
   supports/truncation/Gaussian integration remain unsupported. The standalone
   PWA implements a JavaScript supervisor around `web/core`; it does not add a
   Three.js stream layer or WebGL fallback. Keep both the Python shim and PWA
   on the same canonical core and WGSL sources.
-- The distribution is `lucas-kanade-icgn-webgl`, the import is
-  `lucas_kanade_icgn`, and the CLI is `icgn-webgl`. Keep these stable unless a
-  separate migration is requested. `wgpu` is a standard dependency.
+- Canonical public names are distribution and CLI `live-dic`, import package
+  `live_dic`, and browser-control class `ICGNBrowser`. Compatibility aliases
+  remain available as legacy import package `lucas_kanade_icgn`, class
+  `ICGNWebGL`, and command `icgn-webgl`. `wgpu` is a standard dependency.
 - No first-party native extension or external shader compiler is required.
   Preserve the pure-Python wheel with packaged WGSL and local browser assets.
 - Use context managers or `close()`. Native close is permanent and idempotent;
@@ -131,8 +132,9 @@ source.** Only host orchestration is ported to JavaScript.
 
 ### Non-goals
 
-- No change to Python defaults, the native engine's numerical behaviour, or
-  public Python names.
+- No change to Python defaults or native numerical behaviour. The public
+  naming migration uses `live_dic` and preserves the legacy package, browser
+  class and CLI as compatibility aliases.
 - No GPU-IO, and no Three.js/TSL or WebGL2 path in the new app. Without WebGPU,
   the app shows a clear unsupported-browser message. Three.js stays a separate
   legacy browser backend for Python.
@@ -153,7 +155,7 @@ source.** Only host orchestration is ported to JavaScript.
 | `full_pyramid_backend.py` | **Reference specification** for the host orchestration to port: slot ring, temporal buffers and reset/expiry, `_create_temporal_pipelines`, `_prepare_temporal_state`, `reset_temporal_state`, `_create_temporal_slot`, velocity prediction, fine correction, divergence stopping, counter readback, encode order. |
 | `roi.py`, `partial.py` | ROI validation, `reduce_mask`, `seed_permissions`, ROI seed links. Port `full` policy only in this task. |
 | `assets/uhd_tensile/`, `assets/uhd_plate_hole/` | Demo mode and parity fixtures. |
-| `engine.py` `ICGNWebGL` (Chromium driven via subprocess + DevTools) | Existing headless-browser harness. Reuse it for JS parity tests; do not add Playwright unless the harness cannot do the job, and justify it if you do. |
+| `engine.py` `ICGNBrowser` (Chromium driven via subprocess + DevTools) | Existing headless-browser harness. Reuse it for JS parity tests; do not add Playwright unless the harness cannot do the job, and justify it if you do. |
 
 ### Target architecture
 
@@ -179,7 +181,7 @@ DIC/LucasKanadeICGN/
 
 - `core/` is plain ES modules with no bundler requirement and no npm runtime
   dependency. It must run in a page **and** in a dedicated Worker.
-- The Python `ICGNWebGL(backend="webgpu-wgsl")` page must be rebuilt on top of
+- The Python `ICGNBrowser(backend="webgpu-wgsl")` page must be rebuilt on top of
   `core/`. **The browser code tested by Python is then the code shipped on
   Pages.** This is the main reuse lever. Keep `BinaryTransport` as the Python
   adapter around `core/`, outside it.

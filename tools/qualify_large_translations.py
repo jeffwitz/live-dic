@@ -19,7 +19,7 @@ import numpy as np
 from PIL import Image
 from qualify_local_sources import choose_files, export, wait
 
-from lucas_kanade_icgn import ICGNWebGL, ICGNWGPUFullPyramid
+from live_dic import ICGNBrowser, ICGNWGPUFullPyramid
 from lucas_kanade_icgn.engine import _StaticServer
 from lucas_kanade_icgn.full_pyramid_backend import _DEFAULT_ITERATION_SCHEDULES
 
@@ -146,7 +146,7 @@ def browser_cases(reference, args):
         visible = Path.home() / "snap/chromium/common"
         with (
             tempfile.TemporaryDirectory(dir=visible if visible.is_dir() else None) as temporary,
-            ICGNWebGL(backend="webgpu-wgsl", chromium_args=flags, call_timeout=300) as browser,
+            ICGNBrowser(backend="webgpu-wgsl", chromium_args=flags, call_timeout=300) as browser,
         ):
             paths = []
             for index, image in enumerate(

@@ -15,7 +15,7 @@ Create ``sequence_loop.py`` in the repository root:
 
    import numpy as np
 
-   from lucas_kanade_icgn import ICGNWGPUFullPyramid
+   from live_dic import ICGNWGPUFullPyramid
 
 
    asset_dir = Path("DIC/LucasKanadeICGN/assets")
@@ -66,7 +66,7 @@ ordered one-frame-at-a-time behavior as a convenience method; its default
 two-slot configuration instead improves sustained throughput. An explicit
 loop remains useful when frames arrive interactively over time.
 
-``ICGNWebGL`` can replace the native class when a browser-controlled WebGPU
+``ICGNBrowser`` can replace the native class when a browser-controlled WebGPU
 deployment is the requirement. Its binary transport is suitable
 for qualification, but every frame and field still crosses the
 Python/Chromium boundary. A high-throughput Three.js deployment needs the
@@ -86,7 +86,7 @@ For an iterable of acquired NumPy images:
 
    from pathlib import Path
 
-   from lucas_kanade_icgn import ICGNWGPUFullPyramid
+   from live_dic import ICGNWGPUFullPyramid
 
    frames = iter(frame_source)
    output = Path("fields")
@@ -121,7 +121,7 @@ Use already acquired contiguous NumPy images to measure the resident-image
 boundary used by the live numerical benchmarks. Reference preparation remains
 a separate one-time cost.
 
-When explicitly using ``ICGNWebGL``, additional binary loopback transfer into
+When explicitly using ``ICGNBrowser``, additional binary loopback transfer into
 Chromium and back is included. Targets are not PNG-encoded and their fields do
 not return as JSON. Browser adapter timing must not be described as the native
 in-process path.
@@ -139,7 +139,7 @@ next frame overlap Python handling of the previous packed readback:
 
 .. code-block:: python
 
-   from lucas_kanade_icgn import ICGNWGPUFullPyramid
+   from live_dic import ICGNWGPUFullPyramid
 
    with ICGNWGPUFullPyramid() as engine:
        engine.set_reference(reference_frame)

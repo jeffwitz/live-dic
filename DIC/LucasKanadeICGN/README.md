@@ -92,7 +92,8 @@ as displacement measurements.
 
 | Path | Responsibility |
 |---|---|
-| `python/src/lucas_kanade_icgn/` | Public API, native engines, ROI, CLI and result types |
+| `python/src/live_dic/` | Canonical public import facade |
+| `python/src/lucas_kanade_icgn/` | Solver implementation, browser assets, and legacy import path |
 | `python/src/lucas_kanade_icgn/shaders/` | Canonical portable WGSL and native subgroup specialization |
 | `python/src/lucas_kanade_icgn/web/` | Packaged shared JS core, compatibility adapters and local vendor modules |
 | `web-app/` | Standalone camera/demo PWA; assembled with the canonical core and WGSL |
@@ -113,7 +114,7 @@ unrelated to subset size, stream depth or pyramid levels.
 
 `ICGNWGPUFullPyramid` is recommended for Python NumPy streams.
 `ICGNWGPU` is single-scale by default, with the older selective-recovery path
-available explicitly. `ICGNWebGL` retains Three.js as its browser default and
+available explicitly. `ICGNBrowser` retains Three.js as its browser default and
 requires WebGPU; it has no WebGL2 fallback. Raw browser WGSL has a full pyramid;
 Three.js is single-scale. Raw WGSL supports full ROI; Three.js rejects masks.
 The retired GPU-IO/WebGL implementation and its standalone demonstration have

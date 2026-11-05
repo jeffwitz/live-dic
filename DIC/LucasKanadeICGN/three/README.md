@@ -37,9 +37,9 @@ prefiltering.
 ## Python compatibility entry point
 
 ```python
-from lucas_kanade_icgn import ICGNWebGL
+from live_dic import ICGNBrowser
 
-with ICGNWebGL() as engine:
+with ICGNBrowser() as engine:
     result = engine.register_pair(reference, target)
 ```
 

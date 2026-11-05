@@ -915,7 +915,7 @@ class ICGNWGPU:
         except ImportError as error:
             raise ICGNError(
                 "The native backend requires the 'wgpu' package. "
-                "Reinstall lucas-kanade-icgn-webgl with its declared dependencies."
+                "Reinstall live-dic with its declared dependencies."
             ) from error
 
         adapter = _select_adapter(

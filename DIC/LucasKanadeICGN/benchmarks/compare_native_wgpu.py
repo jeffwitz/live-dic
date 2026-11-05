@@ -15,7 +15,7 @@ from typing import Any
 import numpy as np
 from PIL import Image
 
-from lucas_kanade_icgn import ICGNWGPU, ICGNWebGL, RegistrationResult
+from live_dic import ICGNWGPU, ICGNBrowser, RegistrationResult
 
 
 def _arguments() -> argparse.Namespace:
@@ -151,7 +151,7 @@ def main() -> int:
             "platform": platform.platform(),
             "numpy": np.__version__,
             "wgpu": _installed_version("wgpu"),
-            "dic_rt": _installed_version("lucas-kanade-icgn-webgl"),
+            "live_dic": _installed_version("live-dic"),
         },
         "inputs": {
             "reference": str(args.reference.resolve()),
@@ -200,7 +200,7 @@ def main() -> int:
                 if backend == "webgpu-wgsl"
                 else {}
             )
-            with ICGNWebGL(
+            with ICGNBrowser(
                 backend=backend,
                 startup_timeout=120,
                 call_timeout=600,

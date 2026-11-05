@@ -14,7 +14,7 @@ import time
 
 import numpy as np
 
-from lucas_kanade_icgn import ICGNWGPUFullPyramid
+from live_dic import ICGNWGPUFullPyramid
 
 
 def _arguments() -> argparse.Namespace:

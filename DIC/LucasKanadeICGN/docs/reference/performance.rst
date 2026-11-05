@@ -128,9 +128,9 @@ Current backend policy
   :doc:`../explanation/supervision`.
 * ``ICGNWGPUFullPyramid()`` with two levels is the recommended product
   configuration for that boundary.
-* ``ICGNWebGL(backend="webgpu-wgsl")`` executes the same two-level
+* ``ICGNBrowser(backend="webgpu-wgsl")`` executes the same two-level
   full-pyramid WGSL graph in Chromium.
-* ``ICGNWebGL()`` is the Python-controlled browser compatibility entry point
+* ``ICGNBrowser()`` is the Python-controlled browser compatibility entry point
   and selects the optimized Three.js/TSL single-scale WebGPU solver. It is not
   the low-latency NumPy recommendation and has no WebGL fallback.
 * Both native engines expose bounded sequence execution. ``ICGNWGPU()`` is

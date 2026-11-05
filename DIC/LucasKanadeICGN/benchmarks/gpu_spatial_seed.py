@@ -11,7 +11,7 @@ from importlib.resources import files
 
 import numpy as np
 
-from lucas_kanade_icgn import ICGNWGPUFullPyramid
+from live_dic import ICGNWGPUFullPyramid
 from lucas_kanade_icgn.roi import prepare_roi
 from lucas_kanade_icgn.wgpu_backend import _reduce_half
 

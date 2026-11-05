@@ -14,7 +14,7 @@ import numpy as np
 from PIL import Image
 from qualify_local_sources import choose_files, export, wait
 
-from lucas_kanade_icgn import ICGNWebGL
+from live_dic import ICGNBrowser
 from lucas_kanade_icgn.engine import _StaticServer
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -44,7 +44,7 @@ def main():
         visible = Path.home() / "snap/chromium/common"
         with (
             tempfile.TemporaryDirectory(dir=visible if visible.is_dir() else None) as temporary,
-            ICGNWebGL(backend="webgpu-wgsl", chromium_args=flags, call_timeout=300) as browser,
+            ICGNBrowser(backend="webgpu-wgsl", chromium_args=flags, call_timeout=300) as browser,
         ):
             browser._evaluate(
                 f"location.assign({json.dumps(f'http://127.0.0.1:{server.port}/{quote(site.name)}/?smoke=1&case=manual')});true"

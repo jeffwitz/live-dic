@@ -15,8 +15,8 @@ import numpy as np
 from .engine import (
     BenchmarkResult,
     EngineInfo,
+    ICGNBrowser,
     ICGNError,
-    ICGNWebGL,
     ReferenceInfo,
     RegistrationResult,
 )
@@ -39,7 +39,7 @@ def _subset_size_argument(value: str) -> int:
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="icgn-webgl",
+        prog="live-dic",
         description="Run IC-GN registration through a headless browser GPU backend.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -318,7 +318,7 @@ def _save_benchmark(path: Path, target: Path, result: BenchmarkResult) -> None:
 
 
 def _run_benchmark(
-    engine: ICGNWebGL,
+    engine: ICGNBrowser,
     info: EngineInfo,
     args: argparse.Namespace,
 ) -> dict[str, Any]:
@@ -357,7 +357,7 @@ def _run_benchmark(
 
 
 def _run_sequence(
-    engine: ICGNWebGL,
+    engine: ICGNBrowser,
     info: EngineInfo,
     args: argparse.Namespace,
 ) -> dict[str, Any]:
@@ -395,7 +395,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("--median-filter-size greater than 3 requires --backend webgpu-wgsl")
 
     try:
-        with ICGNWebGL(
+        with ICGNBrowser(
             initialization=args.initialization,
             global_affine_levels=args.global_affine_levels,
             repo_root=args.repo_root,
@@ -422,7 +422,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 else _run_sequence(engine, info, args)
             )
     except (ICGNError, OSError, ValueError) as error:
-        print(f"icgn-webgl: {error}", file=sys.stderr)
+        print(f"live-dic: {error}", file=sys.stderr)
         return 2
 
     print(json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False))

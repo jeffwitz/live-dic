@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from lucas_kanade_icgn import ICGNWebGL, ICGNWGPUFullPyramid
+from live_dic import ICGNBrowser, ICGNWGPUFullPyramid
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "python/tests"))
@@ -56,7 +56,7 @@ def main():
     )
     rows = []
     configurations = []
-    with ICGNWebGL(backend="webgpu-wgsl", startup_timeout=60, chromium_args=flags) as browser:
+    with ICGNBrowser(backend="webgpu-wgsl", startup_timeout=60, chromium_args=flags) as browser:
         for model in ("translation", "affine"):
             for depth in (1, 2):
                 options = dict(

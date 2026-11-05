@@ -14,7 +14,7 @@ import numpy as np
 from PIL import Image
 
 from gpu_spatial_seed import GpuSpatialPyramid
-from lucas_kanade_icgn import ICGNWGPUFullPyramid
+from live_dic import ICGNWGPUFullPyramid
 
 
 def main():

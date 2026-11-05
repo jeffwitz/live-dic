@@ -1,8 +1,10 @@
 # Developing live-dic
 
-The maintained Python project is under `DIC/LucasKanadeICGN/`. Keep the
-distribution `lucas-kanade-icgn-webgl`, import `lucas_kanade_icgn` and CLI
-`icgn-webgl` stable. Preserve a precise methodological acknowledgment of
+The maintained Python project is under `DIC/LucasKanadeICGN/`. Its canonical
+distribution, import, browser class and CLI are `live-dic`, `live_dic`,
+`ICGNBrowser` and `live-dic`. Preserve the compatibility import
+`lucas_kanade_icgn`, class alias `ICGNWebGL` and command alias `icgn-webgl`.
+Preserve a precise methodological acknowledgment of
 Pierre Margerit's prior GPU-DIC and Three.js/WebGPU prototype work without
 implying that the current solver is his code or reuses Strobox source.
 
@@ -87,7 +89,7 @@ python3 -m venv /tmp/live-dic-install
 
 Use a fresh output directory containing one wheel. Then change to a directory
 outside the checkout and import the installed package, inspect its packaged
-resources, run `icgn-webgl --help`, and execute an available native registration
+resources, run `live-dic --help`, and execute an available native registration
 plus NPZ export. For release validation, also run the portable suite with that
 environment's interpreter using the absolute path to `python/tests`.
 

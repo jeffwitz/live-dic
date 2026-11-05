@@ -16,7 +16,7 @@ from urllib.parse import quote
 import numpy as np
 from PIL import Image
 
-from lucas_kanade_icgn import ICGNWebGL, ICGNWGPUFullPyramid
+from live_dic import ICGNBrowser, ICGNWGPUFullPyramid
 from lucas_kanade_icgn.engine import _StaticServer
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -108,7 +108,7 @@ def main():
             tempfile.TemporaryDirectory(
                 prefix="live-dic-local-input-", dir=snap_common if snap_common.is_dir() else None
             ) as temp,
-            ICGNWebGL(
+            ICGNBrowser(
                 backend="webgpu-wgsl",
                 startup_timeout=60,
                 chromium_args=(*flags, "--window-size=1600,1200"),

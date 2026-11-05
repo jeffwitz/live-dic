@@ -17,19 +17,19 @@ Supervision contract
 The public API is designed for a persistent Python supervisor. The application
 owns engine lifetime, reference changes, bounded frame scheduling, timing,
 errors, and NumPy result consumption. ``ICGNWGPUFullPyramid`` is the
-recommended engine for resident NumPy streams. ``ICGNWebGL`` controls a
+recommended engine for resident NumPy streams. ``ICGNBrowser`` controls a
 separate browser process and is intended for compatibility, qualification, and
 browser-specific deployments. See :doc:`../explanation/supervision`.
 
 Public package
 --------------
 
-.. automodule:: lucas_kanade_icgn
+.. automodule:: live_dic
 
 Browser control engine
 ----------------------
 
-.. autoclass:: lucas_kanade_icgn.ICGNWebGL
+.. autoclass:: live_dic.ICGNBrowser
    :members: start, info, set_reference, register, register_pair, register_many, benchmark, close
 
 For ``backend="webgpu-wgsl"``, ``pyramid_levels`` accepts one to six levels
@@ -117,7 +117,7 @@ report the actual choice. Native result configuration includes ``deviceType``
 and ``executionDeviceType``. Selection is performed at construction and does
 not handle a device loss during a sequence. See :doc:`../how-to/run-on-cpu`.
 
-.. autoclass:: lucas_kanade_icgn.ICGNWGPU
+.. autoclass:: live_dic.ICGNWGPU
    :members: set_reference, register, register_stream, register_many, close
 
 The standard package includes the native engine. It returns the same
@@ -146,7 +146,7 @@ normal pyramid.
 Full-pyramid native engine
 --------------------------
 
-.. autoclass:: lucas_kanade_icgn.ICGNWGPUFullPyramid
+.. autoclass:: live_dic.ICGNWGPUFullPyramid
    :members: set_reference, register, register_stream, reset_temporal_state, close
 
 This is the recommended native coarse-to-fine backend. It runs every configured
@@ -172,7 +172,7 @@ can fit over a supplied mask. It samples image pixels on five CPU pyramid
 scales by default. Set
 ``global_affine_levels`` to an integer from 5 to 8 to control the scale count;
 six to eight are experimental wider-capture settings. Pass the option to
-``ICGNWebGL`` or ``register_pair``. The selected fit seeds each local subset;
+``ICGNBrowser`` or ``register_pair``. The selected fit seeds each local subset;
 the local model still determines the parameters estimated and returned at
 each subset. With ``motion_model="translation"``, the affine fit is evaluated
 at each subset centre and only its displacement initializes the two-parameter
@@ -272,45 +272,45 @@ collected at owner close, outside steady-state registration timing.
 One-shot registration
 ---------------------
 
-.. autofunction:: lucas_kanade_icgn.register_pair
+.. autofunction:: live_dic.register_pair
 
 Results
 -------
 
-.. autoclass:: lucas_kanade_icgn.EngineInfo
+.. autoclass:: live_dic.EngineInfo
    :members:
 
-.. autoclass:: lucas_kanade_icgn.ReferenceInfo
+.. autoclass:: live_dic.ReferenceInfo
    :members:
 
-.. autoclass:: lucas_kanade_icgn.RegistrationResult
+.. autoclass:: live_dic.RegistrationResult
    :members: displacement, accepted_mask, flagged, outlier_mask, replaced_mask, rmse
 
-.. autoclass:: lucas_kanade_icgn.BenchmarkResult
+.. autoclass:: live_dic.BenchmarkResult
    :members:
 
 Exceptions
 ----------
 
-.. autoexception:: lucas_kanade_icgn.ICGNError
+.. autoexception:: live_dic.ICGNError
 
 Constants and input types
 -------------------------
 
-.. autodata:: lucas_kanade_icgn.PARAMETER_ORDER
+.. autodata:: live_dic.PARAMETER_ORDER
 
-.. autodata:: lucas_kanade_icgn.AFFINE_PARAMETER_ORDER
+.. autodata:: live_dic.AFFINE_PARAMETER_ORDER
 
-.. autodata:: lucas_kanade_icgn.QUADRATIC_PARAMETER_ORDER
+.. autodata:: live_dic.QUADRATIC_PARAMETER_ORDER
 
-.. autodata:: lucas_kanade_icgn.MOTION_MODELS
+.. autodata:: live_dic.MOTION_MODELS
 
-.. autodata:: lucas_kanade_icgn.OUTLIER_POLICIES
+.. autodata:: live_dic.OUTLIER_POLICIES
 
-.. autodata:: lucas_kanade_icgn.DEFAULT_IN_FLIGHT_FRAMES
+.. autodata:: live_dic.DEFAULT_IN_FLIGHT_FRAMES
 
-.. autodata:: lucas_kanade_icgn.DEFAULT_PYRAMID_LEVELS
+.. autodata:: live_dic.DEFAULT_PYRAMID_LEVELS
 
-.. autodata:: lucas_kanade_icgn.DEFAULT_FULL_PYRAMID_LEVELS
+.. autodata:: live_dic.DEFAULT_FULL_PYRAMID_LEVELS
 
-.. autodata:: lucas_kanade_icgn.ImageInput
+.. autodata:: live_dic.ImageInput

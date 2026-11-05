@@ -16,7 +16,7 @@ from typing import Any
 import numpy as np
 from PIL import Image
 
-from lucas_kanade_icgn import ICGNWGPU, ICGNWebGL
+from live_dic import ICGNWGPU, ICGNBrowser
 
 UHD_WIDTH = 3840
 UHD_HEIGHT = 2160
@@ -91,7 +91,7 @@ def _browser_report(
     truth: tuple[int, int],
     motion_model: str,
 ) -> dict[str, Any]:
-    with ICGNWebGL(
+    with ICGNBrowser(
         backend=backend,
         pyramid_levels=pyramid_levels,
         startup_timeout=120,

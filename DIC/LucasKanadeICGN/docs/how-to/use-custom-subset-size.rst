@@ -11,7 +11,7 @@ For example, this uses 24 x 24 pixel supports sampled every 12 pixels:
 
 .. code-block:: python
 
-   from lucas_kanade_icgn import ICGNWGPUFullPyramid
+   from live_dic import ICGNWGPUFullPyramid
 
    with ICGNWGPUFullPyramid(
        subset_size=24,
@@ -29,7 +29,7 @@ individual solve cheaper. For image width ``W``, subset width ``S`` and stride
 ``D``, the grid contains ``1 + floor((W - S) / D)`` columns when ``W >= S``.
 
 Both ``ICGNWGPU`` and ``ICGNWGPUFullPyramid`` support custom widths. The
-``ICGNWebGL(backend="webgpu-wgsl")`` adapter and the standalone WebGPU
+``ICGNBrowser(backend="webgpu-wgsl")`` adapter and the standalone WebGPU
 workbench use the same portable kernel family. Three.js/TSL retains its 8, 16
 and 32 pixel limits; the Python wrapper
 rejects a custom width for those backends instead of silently substituting a
@@ -66,7 +66,7 @@ default. The shared-WGSL engines support opt-in widths up to nine by nine:
        result = engine.register(target)
 
 The same ``median_filter_size`` argument is available on ``ICGNWGPU``.
-``ICGNWebGL(backend="webgpu-wgsl")`` accepts the option as well; its CLI form
+``ICGNBrowser(backend="webgpu-wgsl")`` accepts the option as well; its CLI form
 is ``--median-filter-size 5 --outlier-policy median``. In the PWA, select the
 width under Solve before starting the calculation. Changing the width requires
 reference preparation again because it specializes the GPU pipeline. Three.js

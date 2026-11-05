@@ -16,7 +16,7 @@ from urllib.parse import quote
 import numpy as np
 from qualify_local_sources import choose_files, wait
 
-from lucas_kanade_icgn import ICGNWebGL
+from live_dic import ICGNBrowser
 from lucas_kanade_icgn.engine import _StaticServer
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -49,7 +49,7 @@ def main():
         shared = Path.home() / "snap/chromium/common"
         with (
             tempfile.TemporaryDirectory(dir=shared if shared.is_dir() else None) as temporary,
-            ICGNWebGL(
+            ICGNBrowser(
                 backend="webgpu-wgsl", chromium_args=flags, startup_timeout=90, call_timeout=300
             ) as browser,
         ):

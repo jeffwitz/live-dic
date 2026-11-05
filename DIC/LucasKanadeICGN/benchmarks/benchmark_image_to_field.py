@@ -24,7 +24,7 @@ from typing import Any
 import numpy as np
 from PIL import Image
 
-from lucas_kanade_icgn import ICGNWebGL, ICGNWGPUFullPyramid
+from live_dic import ICGNBrowser, ICGNWGPUFullPyramid
 from lucas_kanade_icgn.subset import MAX_SUBSET_SIZE, MIN_SUBSET_SIZE
 
 DEFAULT_BACKENDS = ("native-pyramid", "webgpu-wgsl", "three-tsl")
@@ -218,7 +218,7 @@ def _engine(
             spatial_weighting=spatial_weighting,
             gaussian_sigma=gaussian_sigma,
         )
-    return ICGNWebGL(
+    return ICGNBrowser(
         backend="webgpu-wgsl" if backend == "webgpu-wgsl" else "three-tsl",
         pyramid_levels=pyramid_levels if backend == "webgpu-wgsl" else None,
         interpolation=interpolation,

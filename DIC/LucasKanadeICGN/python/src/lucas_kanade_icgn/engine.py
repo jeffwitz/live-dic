@@ -856,13 +856,13 @@ def _run_async_blocking(coroutine: Coroutine[Any, Any, _T]) -> _T:
             # Future.result() re-raises this exception in the calling thread.
             result.set_exception(error)
 
-    thread = threading.Thread(target=runner, name="icgn-webgl-async", daemon=True)
+    thread = threading.Thread(target=runner, name="live-dic-async", daemon=True)
     thread.start()
     thread.join()
     return result.result()
 
 
-class ICGNWebGL:
+class ICGNBrowser:
     """Persistent affine IC-GN browser GPU backend with no visible UI.
 
     The object owns a loopback HTTP server and one headless Chromium process.
@@ -1025,7 +1025,7 @@ class ICGNWebGL:
         self.roi = None
         self.reference_valid = None
 
-    def start(self) -> ICGNWebGL:
+    def start(self) -> ICGNBrowser:
         """Start Chromium and wait until the JavaScript headless API is ready."""
 
         if self._process is not None:
@@ -1040,7 +1040,7 @@ class ICGNWebGL:
         self._server.start()
         devtools_port = _free_port()
         self._devtools_origin = f"http://127.0.0.1:{devtools_port}"
-        self._temporary = tempfile.TemporaryDirectory(prefix="icgn-webgl-")
+        self._temporary = tempfile.TemporaryDirectory(prefix="live-dic-")
         log_path = Path(self._temporary.name) / "chromium.log"
         self._log_handle = log_path.open("wb")
         page_url = f"http://127.0.0.1:{self._server.port}/{self._headless_path}?headless=1"
@@ -1505,7 +1505,7 @@ class ICGNWebGL:
         self._devtools_origin = None
         self._reference_ready = False
 
-    def __enter__(self) -> ICGNWebGL:
+    def __enter__(self) -> ICGNBrowser:
         return self.start()
 
     def __exit__(
@@ -1515,6 +1515,10 @@ class ICGNWebGL:
         traceback: TracebackType | None,
     ) -> None:
         self.close()
+
+
+# Backwards-compatible name retained for existing Python callers.
+ICGNWebGL = ICGNBrowser
 
 
 def register_pair(
@@ -1547,7 +1551,7 @@ def register_pair(
     if roi_mask is not None or roi_policy != "full" or roi_truncation != "none":
         raise ValueError("ROI requires ICGNWGPU or ICGNWGPUFullPyramid")
 
-    with ICGNWebGL(
+    with ICGNBrowser(
         repo_root=repo_root,
         chromium=chromium,
         backend=backend,

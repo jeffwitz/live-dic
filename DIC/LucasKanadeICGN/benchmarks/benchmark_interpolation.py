@@ -9,7 +9,7 @@ from typing import Any
 
 import numpy as np
 
-from lucas_kanade_icgn import ICGNWGPU, ICGNWebGL, ICGNWGPUFullPyramid
+from live_dic import ICGNWGPU, ICGNBrowser, ICGNWGPUFullPyramid
 
 
 def _arguments() -> argparse.Namespace:
@@ -137,7 +137,7 @@ def main() -> int:
                 if args.tolerance_per_level is not None:
                     options["tolerance_per_level"] = tuple(args.tolerance_per_level)
         else:
-            engine_type = ICGNWebGL
+            engine_type = ICGNBrowser
             if args.backend == "webgpu-wgsl":
                 options.update(backend="webgpu-wgsl", pyramid_levels=args.levels)
                 if args.iterations_per_level is not None:

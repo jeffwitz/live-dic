@@ -11,7 +11,7 @@ from typing import Any
 import numpy as np
 from PIL import Image
 
-from lucas_kanade_icgn import ICGNWGPU, ICGNWGPUFullPyramid
+from live_dic import ICGNWGPU, ICGNWGPUFullPyramid
 
 TRUTH = (4.0, -2.0)
 

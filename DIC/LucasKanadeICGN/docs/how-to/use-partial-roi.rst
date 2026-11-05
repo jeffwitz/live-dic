@@ -10,7 +10,7 @@ preprocessing scope, the dense grid and the basic export API.
 
 .. code-block:: python
 
-   from lucas_kanade_icgn import ICGNWGPUFullPyramid
+   from live_dic import ICGNWGPUFullPyramid
 
    with ICGNWGPUFullPyramid(motion_model="affine", device_type="gpu") as engine:
        info = engine.set_reference(

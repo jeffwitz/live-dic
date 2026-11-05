@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 from urllib.parse import quote
 
-from lucas_kanade_icgn import ICGNWebGL
+from live_dic import ICGNBrowser
 from lucas_kanade_icgn.engine import _StaticServer
 
 
@@ -46,7 +46,7 @@ def main():
         else ()
     )
     try:
-        browser = ICGNWebGL(
+        browser = ICGNBrowser(
             backend="webgpu-wgsl", startup_timeout=60, chromium_args=flags, call_timeout=180
         )
         with browser:

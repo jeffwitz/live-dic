@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from lucas_kanade_icgn import ICGNWebGL, ICGNWGPUFullPyramid
+from live_dic import ICGNBrowser, ICGNWGPUFullPyramid
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -38,7 +38,7 @@ def main():
     tensile[160:2000, 160:3680] = True
     tensile[880:1200, 1800:2040] = False
     rows = []
-    with ICGNWebGL(backend="webgpu-wgsl", outlier_policy="median") as browser:
+    with ICGNBrowser(backend="webgpu-wgsl", outlier_policy="median") as browser:
         for fixture, target_name, mask in [
             ("uhd_tensile", "frame_040.png", tensile),
             ("uhd_plate_hole", "frame_095.png", plate),

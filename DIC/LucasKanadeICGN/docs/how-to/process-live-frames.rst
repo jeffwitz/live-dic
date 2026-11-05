@@ -4,8 +4,8 @@ Process live NumPy frames
 Use one processing thread and one persistent engine instance. The engines are
 intentionally not thread-safe. For NumPy camera frames and a normal
 coarse-to-fine solve, prefer
-:class:`~lucas_kanade_icgn.ICGNWGPUFullPyramid`; use
-:class:`~lucas_kanade_icgn.ICGNWebGL` when a Python-controlled browser WebGPU
+:class:`~live_dic.ICGNWGPUFullPyramid`; use
+:class:`~live_dic.ICGNBrowser` when a Python-controlled browser WebGPU
 backend is the deployment requirement.
 
 This loop is the Python supervisor: it owns frame timestamps, backpressure,
@@ -49,7 +49,7 @@ array:
 
    import numpy as np
 
-   from lucas_kanade_icgn import ICGNWGPUFullPyramid
+   from live_dic import ICGNWGPUFullPyramid
 
 
    def process_frames(reference: np.ndarray, frames: Iterable[np.ndarray]) -> None:

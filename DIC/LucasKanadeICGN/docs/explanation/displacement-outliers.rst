@@ -18,7 +18,7 @@ The policy is selected when the engine is created:
 
 .. code-block:: python
 
-   from lucas_kanade_icgn import ICGNWGPUFullPyramid
+   from live_dic import ICGNWGPUFullPyramid
 
    engine = ICGNWGPUFullPyramid(outlier_policy="replace")
 

@@ -41,7 +41,7 @@ Verify the command-line interface:
 
 .. code-block:: console
 
-   $ .venv-icgn/bin/icgn-webgl --help
+   $ .venv-icgn/bin/live-dic --help
 
 Verify a native registration using :doc:`../tutorials/first-registration`.
 That tutorial uses ``ICGNWGPUFullPyramid`` and does not start Chromium.
@@ -50,7 +50,7 @@ requires Chromium:
 
 .. code-block:: console
 
-   $ .venv-icgn/bin/icgn-webgl \
+   $ .venv-icgn/bin/live-dic \
        DIC/LucasKanadeICGN/assets/frame_000.png \
        DIC/LucasKanadeICGN/assets/frame_010.png \
        --truth 2 -1
@@ -70,23 +70,23 @@ For Python-supervised NumPy processing, select the native full pyramid:
 
 .. code-block:: python
 
-   from lucas_kanade_icgn import ICGNWGPUFullPyramid
+   from live_dic import ICGNWGPUFullPyramid
 
 
    engine = ICGNWGPUFullPyramid()
 
-Three.js/TSL is the default only within the ``ICGNWebGL`` browser-control
+Three.js/TSL is the default only within the ``ICGNBrowser`` browser-control
 class. A browser compatibility engine selects it as follows:
 
 .. code-block:: python
 
-   from lucas_kanade_icgn import ICGNWebGL
+   from live_dic import ICGNBrowser
 
 
-   engine = ICGNWebGL()
+   engine = ICGNBrowser()
 
 Select the canonical portable WGSL
-with ``ICGNWebGL(backend="webgpu-wgsl")`` or ``--backend webgpu-wgsl``. This
+with ``ICGNBrowser(backend="webgpu-wgsl")`` or ``--backend webgpu-wgsl``. This
 raw WebGPU adapter executes the same IC-GN and full-pyramid shader files as
 wgpu-py and defaults to two levels; pass ``pyramid_levels=1`` for the original
 single-scale graph. Three.js keeps the faster subgroup-specialized path. On
@@ -113,13 +113,13 @@ pyramid explicitly:
 
 .. code-block:: python
 
-   from lucas_kanade_icgn import ICGNWGPUFullPyramid
+   from live_dic import ICGNWGPUFullPyramid
 
    engine = ICGNWGPUFullPyramid()
 
 ``ICGNWGPUFullPyramid`` sends contiguous NumPy grayscale bytes directly to a
 native ``r8unorm`` texture and keeps both scales on the GPU. It returns the
-same ``RegistrationResult`` layout as ``ICGNWebGL``. Use ``ICGNWGPU()``
+same ``RegistrationResult`` layout as ``ICGNBrowser``. Use ``ICGNWGPU()``
 instead when a single-scale graph, automatic subgroup tuning, or selective
 recovery is required. Both native engines expose ``register_stream``. Native
 engines are selected explicitly and are not currently used by the command-line
@@ -146,7 +146,7 @@ where Chromium is needed only for browser backends, then run:
    $ python3 -m pip install \
        --no-index \
        --find-links wheelhouse \
-       lucas-kanade-icgn-webgl
+       live-dic
 
 No CDN or package index is contacted during subsequent registrations.
 
@@ -169,21 +169,21 @@ If automatic browser discovery fails, pass the executable path:
 
 .. code-block:: python
 
-   from lucas_kanade_icgn import ICGNWebGL
+   from live_dic import ICGNBrowser
 
-   engine = ICGNWebGL(chromium="/usr/bin/chromium")
+   engine = ICGNBrowser(chromium="/usr/bin/chromium")
 
 The equivalent command-line option is ``--chromium``.
 
 Chromium sandbox
 ----------------
 
-``ICGNWebGL`` passes ``--no-sandbox`` by default for container compatibility.
+``ICGNBrowser`` passes ``--no-sandbox`` by default for container compatibility.
 On a system with a working Chromium sandbox, prefer:
 
 .. code-block:: python
 
-   engine = ICGNWebGL(no_sandbox=False)
+   engine = ICGNBrowser(no_sandbox=False)
 
 Use ``--enable-chromium-sandbox`` on the command line.
 

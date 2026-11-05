@@ -105,7 +105,7 @@ Set the portable workgroup width when constructing either native engine:
 
 .. code-block:: python
 
-   from lucas_kanade_icgn import ICGNWGPUFullPyramid
+   from live_dic import ICGNWGPUFullPyramid
 
    with ICGNWGPUFullPyramid(solver_workgroup_size=32) as engine:
        preparation = engine.set_reference(reference)
@@ -160,7 +160,7 @@ Install the package and select the native engine explicitly:
 
 .. code-block:: python
 
-   from lucas_kanade_icgn import ICGNWGPU
+   from live_dic import ICGNWGPU
 
    with ICGNWGPU() as engine:
        preparation = engine.set_reference(reference)
@@ -273,7 +273,7 @@ Iterations and tolerances are specified from coarse to fine. For example:
 
 .. code-block:: python
 
-   from lucas_kanade_icgn import ICGNWGPUFullPyramid
+   from live_dic import ICGNWGPUFullPyramid
 
    with ICGNWGPUFullPyramid() as engine:
        engine.set_reference(reference)

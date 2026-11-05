@@ -18,7 +18,7 @@ Create ``first_registration.py``:
 
    import numpy as np
    from PIL import Image
-   from lucas_kanade_icgn import ICGNWGPUFullPyramid
+   from live_dic import ICGNWGPUFullPyramid
 
    reference = np.array(Image.open("DIC/LucasKanadeICGN/assets/frame_000.png").convert("L"))
    target = np.array(Image.open("DIC/LucasKanadeICGN/assets/frame_010.png").convert("L"))
@@ -72,7 +72,7 @@ Optional browser compatibility
 -------------------------------
 
 If the deployment requires a browser, install Chromium separately and use
-``ICGNWebGL`` instead. Its Three.js solver requires WebGPU; its algorithmic and
+``ICGNBrowser`` instead. Its Three.js solver requires WebGPU; its algorithmic and
 ROI coverage differ from the native full pyramid. See
 :doc:`../explanation/backend-selection` before comparing results or timings.
 

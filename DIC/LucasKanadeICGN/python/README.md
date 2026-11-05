@@ -46,13 +46,16 @@ python3 -m pip install -e DIC/LucasKanadeICGN/python
 | Name | Value |
 |---|---|
 | Project | live-dic |
-| Python distribution | `lucas-kanade-icgn-webgl` |
-| Import | `lucas_kanade_icgn` |
-| Existing browser CLI | `icgn-webgl` |
+| Python distribution | `live-dic` |
+| Import | `live_dic` |
+| Browser-control CLI | `live-dic` |
 
-The `webgl` suffix in the distribution and CLI names is historical and retained
-for compatibility. The maintained native Python engine uses `wgpu-py` and
-WebGPU; these identifiers do not select a WebGL backend.
+Compatibility names remain available: `from lucas_kanade_icgn import ...`
+still works, `lucas_kanade_icgn.ICGNWebGL` aliases `live_dic.ICGNBrowser`, and
+the `icgn-webgl` command calls the same CLI. They do not select or imply a
+WebGL backend. New code should use the canonical names in the table above.
+The first PyPI release has not been published yet; until then, install from this
+checkout or build a wheel locally using the commands above.
 
 The standard dependencies are NumPy, Pillow, websockets and wgpu-py. The
 project wheel contains Python, WGSL and vendored browser resources. It has no
@@ -72,7 +75,7 @@ Run this example from the repository root:
 ```python
 import numpy as np
 from PIL import Image
-from lucas_kanade_icgn import ICGNWGPUFullPyramid
+from live_dic import ICGNWGPUFullPyramid
 
 reference = np.array(Image.open("DIC/LucasKanadeICGN/assets/frame_000.png").convert("L"))
 target = np.array(Image.open("DIC/LucasKanadeICGN/assets/frame_010.png").convert("L"))
@@ -190,7 +193,7 @@ the API does not silently map an arbitrary 12/16-bit range.
 
 ## Browser compatibility and CLI
 
-`ICGNWebGL()` selects Three.js/TSL and requires WebGPU; there is no WebGL2
+`ICGNBrowser()` selects Three.js/TSL and requires WebGPU; there is no WebGL2
 fallback. `backend="webgpu-wgsl"` selects the shared WGSL full pyramid.
 The retired GPU-IO runtime and demonstration have been removed from the
 repository. Browser targets use binary transport, but images and full fields
@@ -198,12 +201,12 @@ still cross between Python and Chromium. A separate standalone PWA supplies a
 JavaScript supervisor for the shared raw-WebGPU core. It consumes
 browser-local frames and keeps the field on GPU for display.
 
-The one-shot `register_pair()` and existing `icgn-webgl` CLI retain their
+The one-shot `register_pair()` and existing `live-dic` CLI retain their
 browser defaults. Native applications should use the persistent classes.
 
 ```bash
-icgn-webgl --help
-icgn-webgl DIC/LucasKanadeICGN/assets/frame_000.png \
+live-dic --help
+live-dic DIC/LucasKanadeICGN/assets/frame_000.png \
   DIC/LucasKanadeICGN/assets/frame_010.png --truth 2 -1 --output result.npz
 ```
 

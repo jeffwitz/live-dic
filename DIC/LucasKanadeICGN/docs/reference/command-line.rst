@@ -1,7 +1,7 @@
 Command-line reference
 ======================
 
-``icgn-webgl`` is the browser-control command used for compatibility,
+``live-dic`` is the browser-control command used for compatibility,
 qualification, and offline file processing. live-dic's primary deployment is a
 Python supervisor using ``ICGNWGPUFullPyramid`` for resident NumPy streams.
 The command-line default must therefore be read as the default *browser*
@@ -13,7 +13,7 @@ Synopsis
 
 .. code-block:: text
 
-   icgn-webgl [options] reference target [target ...]
+   live-dic [options] reference target [target ...]
 
 Positional arguments
 --------------------

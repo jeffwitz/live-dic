@@ -52,13 +52,13 @@ stable workload:
 
 .. code-block:: python
 
-   from lucas_kanade_icgn import ICGNWebGL
+   from live_dic import ICGNBrowser
 
 
    reference = "DIC/LucasKanadeICGN/assets/frame_000.png"
    target = "DIC/LucasKanadeICGN/assets/frame_010.png"
 
-   with ICGNWebGL() as engine:
+   with ICGNBrowser() as engine:
        preparation = engine.set_reference(reference)
        benchmark = engine.benchmark_target(target, repeats=30, warmups=3)
 
@@ -84,7 +84,7 @@ The command-line equivalent is:
 
 .. code-block:: console
 
-   $ icgn-webgl reference.png target.png \
+   $ live-dic reference.png target.png \
        --benchmark --repeats 30 --warmups 3
 
 Interpret the timers

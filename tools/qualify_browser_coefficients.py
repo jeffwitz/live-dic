@@ -22,7 +22,7 @@ from PIL import Image
 from qualify_browser_editor import protocol
 from qualify_local_sources import choose_files, wait
 
-from lucas_kanade_icgn import ICGNWebGL, ICGNWGPUFullPyramid
+from live_dic import ICGNBrowser, ICGNWGPUFullPyramid
 from lucas_kanade_icgn.engine import _StaticServer
 from lucas_kanade_icgn.motion import parameter_order
 
@@ -115,7 +115,7 @@ def main():
             tempfile.TemporaryDirectory(
                 prefix="live-dic-coefficients-", dir=visible if visible.is_dir() else None
             ) as temp,
-            ICGNWebGL(
+            ICGNBrowser(
                 backend="webgpu-wgsl",
                 startup_timeout=60,
                 call_timeout=240,

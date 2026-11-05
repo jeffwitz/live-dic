@@ -14,7 +14,7 @@ from time import perf_counter
 
 import numpy as np
 
-from lucas_kanade_icgn import ICGNWGPUFullPyramid
+from live_dic import ICGNWGPUFullPyramid
 
 
 def main() -> None:

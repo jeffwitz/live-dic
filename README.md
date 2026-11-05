@@ -92,7 +92,7 @@ for offline installation and software CPU adapters.
 ```python
 import numpy as np
 from PIL import Image
-from lucas_kanade_icgn import ICGNWGPUFullPyramid
+from live_dic import ICGNWGPUFullPyramid
 
 reference = np.array(Image.open("DIC/LucasKanadeICGN/assets/frame_000.png").convert("L"))
 target = np.array(Image.open("DIC/LucasKanadeICGN/assets/frame_010.png").convert("L"))
@@ -182,17 +182,18 @@ and [result contract](DIC/LucasKanadeICGN/docs/reference/result-layout.rst).
 |---|---|---|
 | Python NumPy images and full fields | **`ICGNWGPUFullPyramid()`** | Native WebGPU, two fixed levels |
 | Native single-scale studies | `ICGNWGPU()` | Single scale; optional selective recovery |
-| Browser compatibility | `ICGNWebGL()` | Three.js/TSL on WebGPU; no WebGL2 fallback |
-| Shared-WGSL browser qualification | `ICGNWebGL(backend="webgpu-wgsl")` | Two-level full pyramid |
+| Browser compatibility | `ICGNBrowser()` | Three.js/TSL on WebGPU; no WebGL2 fallback |
+| Shared-WGSL browser qualification | `ICGNBrowser(backend="webgpu-wgsl")` | Two-level full pyramid |
 
 The retired GPU-IO/WebGL backend and standalone demonstration have been removed
 from the repository. See the [migration guide](DIC/LucasKanadeICGN/docs/how-to/migrate-from-gpuio.rst)
 for replacements.
 
-The **CLI `icgn-webgl` and one-shot `register_pair()` retain their browser
+The **CLI `live-dic` and one-shot `register_pair()` retain their browser
 behavior**. For native production streams use the classes above. The Python
-distribution is still `lucas-kanade-icgn-webgl`, imported as
-`lucas_kanade_icgn`; the project name is live-dic.
+distribution and project name are both `live-dic`; import the public API from
+`live_dic`. The former `lucas_kanade_icgn` import and `icgn-webgl` command
+remain compatibility aliases.
 
 Browser calls transfer images and fields between Python and Chromium. Binary
 transport removes per-frame PNG/JSON encoding, but does not share NumPy memory.

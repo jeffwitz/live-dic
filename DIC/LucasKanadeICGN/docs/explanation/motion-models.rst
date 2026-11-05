@@ -5,7 +5,7 @@ The motion model describes the displacement inside each subset. It is fixed
 when an engine is created because it changes the reference Jacobian, Hessian,
 GPU state layout, and compute pipelines::
 
-   from lucas_kanade_icgn import ICGNWGPUFullPyramid
+   from live_dic import ICGNWGPUFullPyramid
 
    engine = ICGNWGPUFullPyramid(motion_model="quadratic")
 

@@ -20,7 +20,7 @@ from urllib.parse import quote
 import numpy as np
 from qualify_local_sources import choose_files, wait
 
-from lucas_kanade_icgn import ICGNWebGL
+from live_dic import ICGNBrowser
 from lucas_kanade_icgn.engine import _StaticServer
 
 
@@ -101,7 +101,7 @@ def main():
             tempfile.TemporaryDirectory(
                 prefix="live-dic-review-", dir=visible if visible.is_dir() else None
             ) as temp,
-            ICGNWebGL(
+            ICGNBrowser(
                 backend="webgpu-wgsl",
                 startup_timeout=60,
                 call_timeout=180,

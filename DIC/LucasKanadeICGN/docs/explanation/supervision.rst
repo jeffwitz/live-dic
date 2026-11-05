@@ -26,7 +26,7 @@ one packed result in Python. This is the architecture used by the current
 Why the browser adapter remains slower
 --------------------------------------
 
-``ICGNWebGL`` keeps Chromium persistent and now transfers targets and results
+``ICGNBrowser`` keeps Chromium persistent and now transfers targets and results
 as binary data. It no longer encodes each target as PNG, sends an image
 through DevTools, decodes it in JavaScript, or returns the field as large JSON
 arrays. Those changes reduce the complete UHD call from hundreds of
@@ -105,7 +105,7 @@ Decision rule
      - Keeps the stream and result consumers in the browser process; this
        supervisor is implemented by the PWA. Three.js remains a separate Python backend.
    * - NumPy input with browser compatibility required
-     - Python + ``ICGNWebGL``
+     - Python + ``ICGNBrowser``
      - Functional and useful for qualification, but the binary process copies
        remain in the complete latency.
 

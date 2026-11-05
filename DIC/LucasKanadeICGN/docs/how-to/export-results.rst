@@ -8,7 +8,7 @@ Use ``--output`` to write a compressed NumPy archive:
 
 .. code-block:: console
 
-   $ icgn-webgl \
+   $ live-dic \
        DIC/LucasKanadeICGN/assets/frame_000.png \
        DIC/LucasKanadeICGN/assets/frame_001.png \
        DIC/LucasKanadeICGN/assets/frame_005.png \

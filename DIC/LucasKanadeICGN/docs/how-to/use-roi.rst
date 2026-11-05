@@ -10,7 +10,7 @@ the reference, all in-flight slots, and their results.
 .. code-block:: python
 
    import numpy as np
-   from lucas_kanade_icgn import ICGNWGPUFullPyramid
+   from live_dic import ICGNWGPUFullPyramid
 
    mask = np.ones(reference.shape[:2], dtype=bool)
    mask[:120] = False
@@ -160,7 +160,7 @@ checks correctness; its times do not qualify hardware GPU real-time operation.
 Raw browser core
 ----------------
 
-``ICGNWebGL(backend="webgpu-wgsl")`` also accepts ``roi_mask`` with full policy
+``ICGNBrowser(backend="webgpu-wgsl")`` also accepts ``roi_mask`` with full policy
 at reference preparation. Its results and NPZ exports retain the same static
 ROI plan. The standalone JavaScript engine accepts row-major 0/1 Uint8Array
 masks; its UI builds these from a polygon or rectangle. Both use the canonical

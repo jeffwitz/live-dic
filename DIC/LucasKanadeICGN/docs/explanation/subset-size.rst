@@ -19,7 +19,7 @@ geometry and fast path.
 
 .. code-block:: python
 
-   from lucas_kanade_icgn import ICGNWGPUFullPyramid
+   from live_dic import ICGNWGPUFullPyramid
 
    with ICGNWGPUFullPyramid(subset_size=24, subset_stride=12) as engine:
        info = engine.set_reference(reference)
@@ -156,7 +156,7 @@ Backend support
 Independent stride is implemented by the shared WGSL family:
 
 * ``ICGNWGPU`` and ``ICGNWGPUFullPyramid`` through native ``wgpu-py``;
-* ``ICGNWebGL(backend="webgpu-wgsl")`` in Chromium.
+* ``ICGNBrowser(backend="webgpu-wgsl")`` in Chromium.
 
 It works with one to six pyramid levels and with translation, affine, and
 quadratic motion models. Three.js/TSL currently requires

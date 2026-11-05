@@ -18,7 +18,7 @@ from pathlib import Path
 
 import lucas_kanade_icgn
 from benchmark_image_to_field import _aggregate_campaigns, _measure
-from lucas_kanade_icgn import ICGNWGPU, ICGNWGPUFullPyramid
+from live_dic import ICGNWGPU, ICGNWGPUFullPyramid
 
 # Reuse exactly the same offline full-resolution fixtures as the regressions.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "python/tests"))

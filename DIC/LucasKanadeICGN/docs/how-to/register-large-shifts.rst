@@ -11,7 +11,7 @@ Python
 
 .. code-block:: python
 
-   from lucas_kanade_icgn import ICGNWGPUFullPyramid
+   from live_dic import ICGNWGPUFullPyramid
 
    with ICGNWGPUFullPyramid(
        initialization="fourier", motion_model="affine", device_type="gpu"
@@ -56,7 +56,7 @@ on each target sequence.
 The JavaScript API uses ``DICEngine.create({initialization:'fourier', ...})``.
 Both CPU and experimental GPU reference preparation support it, including
 ``registerPair``. For Python browser supervision, use
-``ICGNWebGL(backend="webgpu-wgsl", initialization="fourier")``; the browser
+``ICGNBrowser(backend="webgpu-wgsl", initialization="fourier")``; the browser
 CLI accepts ``--backend webgpu-wgsl --initialization fourier``. Three.js
 explicitly refuses this option.
 
@@ -102,7 +102,7 @@ mask is optional; when supplied, only reference samples inside its white ROI
 are used by the global fit. The mask is fixed in reference coordinates.
 
 Python supervision can request six scales with
-``ICGNWebGL(backend="webgpu-wgsl", initialization="global-affine",
+``ICGNBrowser(backend="webgpu-wgsl", initialization="global-affine",
 motion_model="translation", global_affine_levels=6)``. Use
 ``motion_model="affine"`` when the local solve should also estimate
 deformation. The ``webgpu-wgsl`` CLI accepts
@@ -138,7 +138,7 @@ For Python, select the median policy and stencil explicitly:
 
 .. code-block:: python
 
-   from lucas_kanade_icgn import ICGNWGPUFullPyramid
+   from live_dic import ICGNWGPUFullPyramid
 
    with ICGNWGPUFullPyramid(
        motion_model="translation",

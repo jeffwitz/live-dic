@@ -61,7 +61,7 @@ are the default; every configured level runs for every target. Native
 retained as a separate compatibility strategy. Both support bounded streaming.
 One slot minimizes result age; the API default of two prioritizes throughput.
 
-``ICGNWebGL()`` retains Three.js/TSL as its browser default and requires
+``ICGNBrowser()`` retains Three.js/TSL as its browser default and requires
 WebGPU; no WebGL2 fallback is provided. Raw browser ``webgpu-wgsl`` loads the
 common WGSL full pyramid. The retired GPU-IO runtime and standalone demo have
 been removed. Full ROI is supported by the raw WGSL core; Three.js still

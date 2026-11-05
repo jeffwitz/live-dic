@@ -8,7 +8,7 @@ Its default remains ``initialization="zero"``.
 
 .. code-block:: python
 
-   from lucas_kanade_icgn import ICGNWGPUFullPyramid
+   from live_dic import ICGNWGPUFullPyramid
 
    with ICGNWGPUFullPyramid(
        initialization="temporal",

@@ -15,7 +15,7 @@ from urllib.parse import quote
 from qualify_browser_editor import protocol
 from qualify_local_sources import choose_files, wait
 
-from lucas_kanade_icgn import ICGNWebGL
+from live_dic import ICGNBrowser
 from lucas_kanade_icgn.engine import _StaticServer
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -45,7 +45,7 @@ def main():
         visible = Path.home() / "snap/chromium/common"
         with (
             tempfile.TemporaryDirectory(dir=visible if visible.is_dir() else None) as temporary,
-            ICGNWebGL(
+            ICGNBrowser(
                 backend="webgpu-wgsl",
                 chromium_args=(*flags, "--window-size=1600,1200"),
                 call_timeout=300,
