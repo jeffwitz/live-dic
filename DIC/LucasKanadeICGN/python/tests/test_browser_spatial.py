@@ -44,26 +44,30 @@ class BrowserSpatialContractTests(unittest.TestCase):
             '<option value="auto" selected>Automatic · 2 passes for Translation or Affine</option>',
             html,
         )
+        self.assertLess(html.index('id="spatial-propagation"'), html.index('id="solver-settings"'))
         script = f"""
           import {{solverOptions,solverPreparationKey}} from {json.dumps((ROOT / "web-app/ui/workspace.js").as_uri())};
-          const values={{'custom-solver':{{checked:true}},'global-affine-start':{{checked:true}},'global-affine-levels':{{value:'6'}},
+          const values={{'custom-solver':{{checked:false}},'global-affine-start':{{checked:false}},'global-affine-levels':{{value:'6'}},
             'fourier-start':{{checked:false}},'temporal-start':{{checked:false}},'subset-size':{{value:'32'}},
             'subset-stride':{{value:'16'}},'pyramid-levels':{{value:'2'}},'coarse-iterations':{{value:'8'}},
-            'fine-iterations':{{value:'16'}},'motion-model':{{value:'translation'}},'interpolation':{{value:'bspline'}},
+            'fine-iterations':{{value:'16'}},'motion-model':{{value:'affine'}},'interpolation':{{value:'bspline'}},
             'outlier-policy':{{value:'median'}},'median-filter-size':{{value:'3'}},'spatial-propagation':{{value:'auto'}},
             'gpu-reference-preparation':{{checked:false}}}};
           globalThis.document={{body:{{dataset:{{workspaceMode:'analysis'}}}},getElementById:id=>values[id]??null}};
-          const before=solverOptions();values['spatial-propagation'].value='0';const after=solverOptions();
+          const defaultPreset=solverOptions();values['custom-solver'].checked=true;values['motion-model'].value='translation';
+          values['global-affine-start'].checked=true;const before=solverOptions();values['spatial-propagation'].value='0';const after=solverOptions();
           const custom=solverOptions(),live=solverOptions('live');
           values['spatial-propagation'].value='auto';values['gpu-reference-preparation'].checked=true;const gpuPreparation=solverOptions();
           values['gpu-reference-preparation'].checked=false;
           values['motion-model'].value='affine';values['spatial-propagation'].value='auto';const affineAutomatic=solverOptions();
           values['gpu-reference-preparation'].checked=true;values['spatial-propagation'].value='2';let rejected=false;try{{solverOptions();}}catch{{rejected=true;}}
-          console.log(JSON.stringify({{before,after,custom,live,gpuPreparation,affineAutomatic,rejected,cold:solverPreparationKey(before)!==solverPreparationKey(after)}}));
+          console.log(JSON.stringify({{defaultPreset,before,after,custom,live,gpuPreparation,affineAutomatic,rejected,cold:solverPreparationKey(before)!==solverPreparationKey(after)}}));
         """
         result = json.loads(
             subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
         )
+        self.assertEqual(result["defaultPreset"]["profile"], "portable")
+        self.assertEqual(result["defaultPreset"]["spatialPropagationPasses"], 2)
         self.assertEqual(result["before"]["spatialPropagationPasses"], 2)
         self.assertEqual(result["affineAutomatic"]["spatialPropagationPasses"], 2)
         self.assertNotIn("spatialPropagationPasses", result["gpuPreparation"])

@@ -107,8 +107,25 @@ export function solverOptions(mode = document.body?.dataset.workspaceMode ?? 'an
   if (fourier && globalAffine) throw new Error('Choose either Fourier or global affine initialization');
   if (fourier) Object.assign(base,{initialization:'fourier',temporalPrediction:'none',temporalFineCorrection:false,divergencePatience:null});
   if (globalAffine) Object.assign(base,{initialization:'global-affine',globalAffineLevels:Number(get('global-affine-levels')?.value??5),temporalPrediction:'none',temporalFineCorrection:false,divergencePatience:null});
-  if (fourier || globalAffine || get('custom-solver').checked || base.referencePreparation) base.profile = 'custom';
-  if (!get('custom-solver').checked) return base;
+  const customSolver = !!get('custom-solver')?.checked;
+  if (fourier || globalAffine || customSolver || base.referencePreparation) base.profile = 'custom';
+  const propagationSetting = get('spatial-propagation')?.value ?? 'auto';
+  const motionModel = customSolver ? get('motion-model').value : 'affine';
+  const interpolation = customSolver ? get('interpolation').value : 'bspline';
+  const propagationCompatible = ['translation', 'affine'].includes(motionModel)
+    && interpolation === 'bspline' && base.referencePreparation !== 'gpu';
+  const spatialPropagationPasses = propagationSetting === 'auto'
+    ? (propagationCompatible ? 2 : 0) : Number(propagationSetting);
+  if (!Number.isInteger(spatialPropagationPasses) || spatialPropagationPasses < 0 || spatialPropagationPasses > 4) {
+    throw new Error('GPU propagation must have zero to four passes per level');
+  }
+  if (spatialPropagationPasses && (!['translation', 'affine'].includes(motionModel)
+      || interpolation !== 'bspline' || base.referencePreparation === 'gpu')) {
+    throw new Error('GPU propagation needs Translation or Affine, B-spline and CPU reference preparation; initialization is independent');
+  }
+  if (spatialPropagationPasses) base.spatialPropagationPasses = spatialPropagationPasses;
+  if (propagationSetting !== 'auto') base.profile = 'custom';
+  if (!customSolver) return base;
   const size = Number(get('subset-size').value), stride = Number(get('subset-stride').value);
   const levels = Number(get('pyramid-levels').value), coarse = Number(get('coarse-iterations').value), fine = Number(get('fine-iterations').value);
   if (!Number.isInteger(size) || size < 4 || size > 64) throw new Error('Window width must be an integer from 4 to 64 pixels');
@@ -123,20 +140,7 @@ export function solverOptions(mode = document.body?.dataset.workspaceMode ?? 'an
     ? (get('median-filter-scope')?.value ?? 'rejected') : 'rejected';
   if (![3, 5, 7, 9].includes(medianFilterSize)) throw new Error('Median neighbourhood must be 3, 5, 7, or 9 subsets');
   if (!['rejected', 'all'].includes(medianFilterScope)) throw new Error('Median application must be rejected-only or all-subsets');
-  const propagationSetting = get('spatial-propagation')?.value ?? 'auto';
-  const propagationCompatible = ['translation', 'affine'].includes(get('motion-model').value)
-    && get('interpolation').value === 'bspline' && base.referencePreparation !== 'gpu';
-  const spatialPropagationPasses = propagationSetting === 'auto'
-    ? (propagationCompatible ? 2 : 0) : Number(propagationSetting);
-  if (!Number.isInteger(spatialPropagationPasses) || spatialPropagationPasses < 0 || spatialPropagationPasses > 4) {
-    throw new Error('GPU propagation must have zero to four passes per level');
-  }
-  if (spatialPropagationPasses && (!['translation', 'affine'].includes(get('motion-model').value)
-      || get('interpolation').value !== 'bspline' || base.referencePreparation === 'gpu')) {
-    throw new Error('GPU propagation needs Translation or Affine, B-spline and CPU reference preparation; initialization is independent');
-  }
   return { ...base, subsetSize: size, subsetStride: stride, motionModel: get('motion-model').value,
-    ...(spatialPropagationPasses ? { spatialPropagationPasses } : {}),
     interpolation: get('interpolation').value, outlierPolicy, medianFilterSize, medianFilterScope,
     pyramidLevels: levels, iterationsPerLevel: levels === 1 ? [fine] : [coarse, ...(levels === 3 ? [4] : Array(Math.max(0, levels - 2)).fill(8)), fine],
     initialization: fourier ? 'fourier' : globalAffine ? 'global-affine' : temporal ? 'temporal' : 'zero', temporalPrediction: temporal ? 'velocity' : 'none',

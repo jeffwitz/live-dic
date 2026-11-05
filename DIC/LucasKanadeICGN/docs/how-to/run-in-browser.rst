@@ -587,13 +587,15 @@ GPU seed propagation in Analysis
 
 In **Analysis → Solve**:
 
-1. Enable **Use custom settings** and select the **Translation** or **Affine**
-   local model.
+1. The default **Affine** preset already uses propagation. To choose the local
+   model, enable **Use custom settings** and select **Translation** or
+   **Affine**.
 2. Keep **B-spline** interpolation and leave **Experimental GPU reference
    preparation** unchecked. CPU reference preparation is the existing default;
    the subsequent correlation and propagation still run on the GPU.
-3. Leave **GPU seed propagation** on **Automatic**. For this compatible setup,
-   the workbench applies two passes per level by default. You can choose
+3. Leave **GPU seed propagation** on **Automatic**. For the default preset and
+   these compatible custom settings, the workbench applies two passes per
+   level. You can choose
    **Disabled** or explicitly select one to four passes. More attempts cost
    more work and are not a convergence or frame-rate guarantee. The GPU skips
    further searches once an empty work list proves that the state has not

@@ -214,10 +214,11 @@ Browser Solve integration
 
 ``spatialPropagationPasses: 0`` keeps the existing browser graph; positive
 integers up to 4 add failed-point passes before each level's spatial filter.
-The Analysis/Solve selector defaults to automatic mode, which resolves to two
-passes for compatible Translation or Affine settings and zero otherwise. The
-direct ``DICEngine`` constructor still defaults to zero; the UI's automatic
-default does not change the lower-level API.
+The Analysis/Solve selector defaults to automatic mode and is available even
+when custom solver settings are off. It applies two passes to the default
+Affine/B-spline preset and to compatible custom Translation or Affine settings,
+and zero otherwise. The direct ``DICEngine`` constructor still defaults to
+zero; the UI's automatic default does not change the lower-level API.
 The browser shares ``spatial_seed.wgsl`` and ``solve_compact_spatial`` with
 the native experiment. Its fallback prior is the level's initial seed, captured
 by a GPU copy before the initial solve; no intermediate CPU transfer is needed.

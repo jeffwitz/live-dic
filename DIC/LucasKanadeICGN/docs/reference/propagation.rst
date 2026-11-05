@@ -16,8 +16,9 @@ examples, not experimental images or benchmark measurements.
 .. important:: Availability
 
    The browser workbench uses failed-point propagation in
-   **Analysis → Solve → custom solver → GPU seed propagation**. Automatic mode
-   uses two passes by default for translation or affine with B-spline, CPU
+   **Analysis → Solve → GPU seed propagation**. The control remains available
+   with custom solver settings off; its default Analysis preset uses two passes
+   for affine with B-spline and CPU
    reference preparation, uniform full windows and one slot. Incompatible
    settings keep it off; explicit unsupported requests are rejected. Affine
    retries seed only tx/ty from a neighbour, reset local gradients to zero and
