@@ -14,9 +14,9 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from lucas_kanade_icgn.roi import prepare_roi, reduce_mask, seed_permissions
+from live_dic.roi import prepare_roi, reduce_mask, seed_permissions
 
-CORE = Path(str(files("lucas_kanade_icgn").joinpath("web/core")))
+CORE = Path(str(files("live_dic").joinpath("web/core")))
 UHD_TENSILE = Path(__file__).resolve().parents[2] / "assets" / "uhd_tensile"
 
 
@@ -161,7 +161,7 @@ class BrowserGeometryTests(unittest.TestCase):
 )
 class BrowserCoreExecutionTests(unittest.TestCase):
     def test_device_negotiates_large_reference_and_preserves_injected_ownership(self):
-        from lucas_kanade_icgn import ICGNWebGL
+        from live_dic import ICGNBrowser
 
         flags = (
             (
@@ -173,7 +173,7 @@ class BrowserCoreExecutionTests(unittest.TestCase):
             if os.environ.get("ICGN_BROWSER_SOFTWARE") == "1"
             else ()
         )
-        with ICGNWebGL(backend="webgpu-wgsl", chromium_args=flags, call_timeout=300) as browser:
+        with ICGNBrowser(backend="webgpu-wgsl", chromium_args=flags, call_timeout=300) as browser:
             result = browser._evaluate("""(async()=>{
               const {DICEngine}=await import('../core/engine.js'),width=4112,height=3008,required=width*height*16;
               const adapter=await navigator.gpu.requestAdapter(),injected=await adapter.requestDevice({requiredLimits:{maxStorageBuffersPerShaderStage:8}});
@@ -203,9 +203,9 @@ class BrowserCoreExecutionTests(unittest.TestCase):
             self.assertIn("GPU adapter maxStorageBufferBindingSize", result["reason"])
 
     def test_core_is_instantiable_without_page_globals_and_destroy_is_idempotent(self):
-        from lucas_kanade_icgn import ICGNWebGL
+        from live_dic import ICGNBrowser
 
-        with ICGNWebGL(
+        with ICGNBrowser(
             backend="webgpu-wgsl",
             startup_timeout=60,
             chromium_args=(
@@ -235,9 +235,9 @@ class BrowserCoreExecutionTests(unittest.TestCase):
         self.assertGreater(value["accepted"], 0)
 
     def test_integer_bt709_conversion_and_gpu_only_results(self):
-        from lucas_kanade_icgn import ICGNWebGL
+        from live_dic import ICGNBrowser
 
-        with ICGNWebGL(
+        with ICGNBrowser(
             backend="webgpu-wgsl",
             startup_timeout=60,
             chromium_args=(
@@ -276,9 +276,9 @@ class BrowserCoreExecutionTests(unittest.TestCase):
         self.assertEqual(actual, dict(matches=True, noField=True, finite=True))
 
     def test_full_roi_empty_and_missing_coarse_seed(self):
-        from lucas_kanade_icgn import ICGNWebGL
+        from live_dic import ICGNBrowser
 
-        with ICGNWebGL(
+        with ICGNBrowser(
             backend="webgpu-wgsl",
             startup_timeout=60,
             chromium_args=(
@@ -312,7 +312,7 @@ class BrowserCoreExecutionTests(unittest.TestCase):
         self.assertTrue(actual["partial"])
 
     def test_global_affine_seed_runs_through_the_gpu_pyramid(self):
-        from lucas_kanade_icgn import ICGNWebGL
+        from live_dic import ICGNBrowser
 
         flags = (
             (
@@ -324,7 +324,7 @@ class BrowserCoreExecutionTests(unittest.TestCase):
             if os.environ.get("ICGN_BROWSER_SOFTWARE") == "1"
             else ()
         )
-        with ICGNWebGL(backend="webgpu-wgsl", chromium_args=flags, call_timeout=180) as browser:
+        with ICGNBrowser(backend="webgpu-wgsl", chromium_args=flags, call_timeout=180) as browser:
             actual = browser._evaluate(
                 """(async () => {
                   const {DICEngine}=await import('../core/engine.js');
@@ -402,7 +402,7 @@ class BrowserCoreExecutionTests(unittest.TestCase):
         self.assertLess(actual["quadratic"]["maxCurvature"], 0.02)
 
     def test_global_affine_initialization_seeds_uhd_translation_solver(self):
-        from lucas_kanade_icgn import ICGNWebGL
+        from live_dic import ICGNBrowser
 
         with Image.open(UHD_TENSILE / "reference.png") as image:
             reference = np.asarray(image, dtype=np.uint8)
@@ -423,7 +423,7 @@ class BrowserCoreExecutionTests(unittest.TestCase):
             if os.environ.get("ICGN_BROWSER_SOFTWARE") == "1"
             else ()
         )
-        with ICGNWebGL(
+        with ICGNBrowser(
             backend="webgpu-wgsl",
             motion_model="translation",
             initialization="global-affine",
@@ -469,7 +469,7 @@ class BrowserCoreExecutionTests(unittest.TestCase):
         self.assertLess(float(np.max(np.abs(result.parameters[..., (1, 2, 4, 5)]))), 1e-8)
 
     def test_decimated_readback_is_a_gpu_sample_of_the_complete_field(self):
-        from lucas_kanade_icgn import ICGNWebGL
+        from live_dic import ICGNBrowser
 
         flags = (
             (
@@ -481,7 +481,7 @@ class BrowserCoreExecutionTests(unittest.TestCase):
             if os.environ.get("ICGN_BROWSER_SOFTWARE") == "1"
             else ()
         )
-        with ICGNWebGL(backend="webgpu-wgsl", chromium_args=flags) as browser:
+        with ICGNBrowser(backend="webgpu-wgsl", chromium_args=flags) as browser:
             actual = browser._evaluate("""(async()=>{
               const {DICEngine}=await import('../core/engine.js');
               const width=640,height=480,pixels=Uint8Array.from({length:width*height},(_,i)=>(i*7+i*i)%251);

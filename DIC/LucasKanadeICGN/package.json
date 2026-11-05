@@ -7,7 +7,7 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "lint": "eslint web-app python/src/lucas_kanade_icgn/web three/LucasKanadeICGNThree.js"
+    "lint": "eslint web-app python/src/live_dic/web three/LucasKanadeICGNThree.js"
   },
   "devDependencies": {
     "eslint": "^10.14.0",

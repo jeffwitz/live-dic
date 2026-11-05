@@ -14,7 +14,7 @@ import unittest
 from importlib.resources import files
 from pathlib import Path
 
-CORE = Path(str(files("lucas_kanade_icgn").joinpath("web/core")))
+CORE = Path(str(files("live_dic").joinpath("web/core")))
 
 
 @unittest.skipUnless(shutil.which("node"), "Node is needed to execute ES modules")
@@ -45,7 +45,7 @@ class GpuReferenceContractTests(unittest.TestCase):
 class GpuReferenceExecutionTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        from lucas_kanade_icgn import ICGNWebGL
+        from live_dic import ICGNBrowser
 
         flags = (
             (
@@ -57,7 +57,7 @@ class GpuReferenceExecutionTests(unittest.TestCase):
             if os.environ.get("ICGN_BROWSER_SOFTWARE") == "1"
             else ()
         )
-        cls.browser = ICGNWebGL(
+        cls.browser = ICGNBrowser(
             backend="webgpu-wgsl", chromium_args=flags, startup_timeout=60, call_timeout=240
         )
         cls.browser.__enter__()

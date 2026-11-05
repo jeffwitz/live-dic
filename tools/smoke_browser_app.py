@@ -11,7 +11,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 from live_dic import ICGNBrowser
-from lucas_kanade_icgn.engine import _StaticServer
+from live_dic.engine import _StaticServer
 
 
 def main():

@@ -209,7 +209,7 @@ class BrowserStorageTests(unittest.TestCase):
         self.assertEqual(result["values"], np_values)
 
     def test_gpu_api_resource_accounting_deduplicates_handles_and_keeps_vram_unknown(self):
-        module = UI.parents[1] / "python/src/lucas_kanade_icgn/web/core/gpu-memory.js"
+        module = UI.parents[1] / "python/src/live_dic/web/core/gpu-memory.js"
         result = javascript(
             f"import {{gpuMemoryUsage}} from {json.dumps(module.as_uri())};"
             + """

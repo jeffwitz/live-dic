@@ -12,8 +12,8 @@ from unittest import mock
 import numpy as np
 from test_gpu_regressions import _fractional_pair, _quadratic_pair
 
-from lucas_kanade_icgn import ICGNWGPU, ICGNWebGL, ICGNWGPUFullPyramid, register_pair
-from lucas_kanade_icgn.roi import prepare_roi, reduce_mask, seed_permissions, validate_roi
+from live_dic import ICGNWGPU, ICGNBrowser, ICGNWGPUFullPyramid, register_pair
+from live_dic.roi import prepare_roi, reduce_mask, seed_permissions, validate_roi
 
 
 class RoiGeometryTests(unittest.TestCase):
@@ -135,7 +135,7 @@ class RoiGeometryTests(unittest.TestCase):
         self.assertTrue(np.any((flags & 15) == 0))
 
     def test_browser_rejects_roi_before_startup(self):
-        engine = ICGNWebGL()
+        engine = ICGNBrowser()
         with self.assertRaises(ValueError):
             engine.set_reference(np.ones((64, 64), np.uint8), roi_mask=np.ones((64, 64), bool))
         with self.assertRaises(ValueError):

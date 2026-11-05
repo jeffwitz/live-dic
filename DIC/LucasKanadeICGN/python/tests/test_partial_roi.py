@@ -12,16 +12,16 @@ from unittest import mock
 import numpy as np
 from test_gpu_regressions import _fractional_pair, _quadratic_pair
 
-from lucas_kanade_icgn import ICGNWGPU, ICGNWGPUFullPyramid
-from lucas_kanade_icgn.partial import prepare_partial_reference
-from lucas_kanade_icgn.roi import (
+from live_dic import ICGNWGPU, ICGNWGPUFullPyramid
+from live_dic.partial import prepare_partial_reference
+from live_dic.roi import (
     _visibility_paths,
     pack_support,
     prepare_roi,
     unpack_support,
     validate_roi,
 )
-from lucas_kanade_icgn.wgpu_backend import _reference_arrays
+from live_dic.wgpu_backend import _reference_arrays
 
 
 def _bilinear(image, x, y):

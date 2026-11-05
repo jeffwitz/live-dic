@@ -12,8 +12,8 @@ from importlib.resources import files
 import numpy as np
 
 from live_dic import ICGNWGPUFullPyramid
-from lucas_kanade_icgn.roi import prepare_roi
-from lucas_kanade_icgn.wgpu_backend import _reduce_half
+from live_dic.roi import prepare_roi
+from live_dic.wgpu_backend import _reduce_half
 
 
 class GpuSpatialPyramid(ICGNWGPUFullPyramid):
@@ -88,7 +88,7 @@ class GpuSpatialPyramid(ICGNWGPUFullPyramid):
         self.set_reference(reference, roi_mask=roi_mask)
         device, wgpu = self.device, self._wgpu
         module = device.create_shader_module(
-            code=files("lucas_kanade_icgn").joinpath("shaders/spatial_seed.wgsl").read_text()
+            code=files("live_dic").joinpath("shaders/spatial_seed.wgsl").read_text()
         )
         images = [reference]
         for _ in range(1, self.pyramid_levels):

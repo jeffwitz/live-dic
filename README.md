@@ -192,8 +192,7 @@ for replacements.
 The **CLI `live-dic` and one-shot `register_pair()` retain their browser
 behavior**. For native production streams use the classes above. The Python
 distribution and project name are both `live-dic`; import the public API from
-`live_dic`. The former `lucas_kanade_icgn` import and `icgn-webgl` command
-remain compatibility aliases.
+`live_dic`. The browser-control class is `ICGNBrowser`.
 
 Browser calls transfer images and fields between Python and Chromium. Binary
 transport removes per-frame PNG/JSON encoding, but does not share NumPy memory.

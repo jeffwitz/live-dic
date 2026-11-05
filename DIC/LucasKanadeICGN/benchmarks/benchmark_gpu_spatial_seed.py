@@ -40,7 +40,7 @@ def main():
         Path(__file__),
         Path(__file__).with_name("gpu_spatial_seed.py"),
         *[
-            project / "python/src/lucas_kanade_icgn/shaders" / name
+            project / "python/src/live_dic/shaders" / name
             for name in ("icgn.wgsl", "spatial_seed.wgsl", "full_pyramid.wgsl")
         ],
     ]

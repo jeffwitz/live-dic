@@ -25,7 +25,7 @@ from qualify_browser_editor import protocol
 from qualify_local_sources import choose_files, wait
 
 from live_dic import ICGNBrowser
-from lucas_kanade_icgn.engine import _StaticServer
+from live_dic.engine import _StaticServer
 
 MIB = 1024**2
 

@@ -2,7 +2,7 @@ import globals from "globals";
 
 const firstPartyJavaScript = [
   "web-app/**/*.js",
-  "python/src/lucas_kanade_icgn/web/**/*.js",
+  "python/src/live_dic/web/**/*.js",
   "three/LucasKanadeICGNThree.js",
 ];
 
@@ -52,7 +52,7 @@ export default [
     },
   },
   {
-    files: ["python/src/lucas_kanade_icgn/web/core/**/*.js"],
+    files: ["python/src/live_dic/web/core/**/*.js"],
     rules: {
       // The same core runs in a page and in a dedicated Worker.
       "no-restricted-globals": ["error", "window", "document"],

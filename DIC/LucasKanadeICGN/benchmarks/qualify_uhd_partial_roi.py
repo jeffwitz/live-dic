@@ -16,7 +16,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-import lucas_kanade_icgn
+import live_dic
 from benchmark_image_to_field import _aggregate_campaigns, _measure
 from live_dic import ICGNWGPU, ICGNWGPUFullPyramid
 
@@ -97,7 +97,7 @@ def main() -> None:
             f"{args.scene}: {size}/{model}/{interpolation}/{policy}/{factory.__name__}",
             flush=True,
         )
-    source = Path(lucas_kanade_icgn.__file__).parent
+    source = Path(live_dic.__file__).parent
     helpers = Path(__file__).resolve().parents[1] / "python/tests"
     report = {
         "commit": subprocess.check_output(

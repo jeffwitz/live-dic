@@ -9,7 +9,7 @@ bind groups, and dispatches, first read :doc:`webgpu-fundamentals` and
 The portable WebGPU path follows one rule: the IC-GN equations are defined
 once, while each host owns only resource allocation, transfers,
 dispatch, and result conversion. The canonical sources are
-``lucas_kanade_icgn/shaders/icgn.wgsl`` and ``full_pyramid.wgsl``. Both the raw
+``live_dic/shaders/icgn.wgsl`` and ``full_pyramid.wgsl``. Both the raw
 browser WebGPU adapter and wgpu-py load those files without generating or
 translating shader code.
 

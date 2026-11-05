@@ -20,7 +20,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-import lucas_kanade_icgn
+import live_dic
 from live_dic import ICGNWGPUFullPyramid
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -282,7 +282,7 @@ def main():
         writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)
-    source = Path(lucas_kanade_icgn.__file__).parent
+    source = Path(live_dic.__file__).parent
     report = {
         "command": sys.argv,
         "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),

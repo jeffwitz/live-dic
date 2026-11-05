@@ -20,7 +20,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-import lucas_kanade_icgn
+import live_dic
 from live_dic import ICGNWGPUFullPyramid
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -197,7 +197,7 @@ def main():
     )
     if hashes != manifest["tensile_target_pixel_sha256"]:
         raise ValueError("Target pixels differ from the qualified trajectory")
-    source = Path(lucas_kanade_icgn.__file__).resolve().parent
+    source = Path(live_dic.__file__).resolve().parent
 
     def git(*command):
         return subprocess.check_output(["git", "-C", str(source), *command], text=True).strip()

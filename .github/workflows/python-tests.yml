@@ -79,7 +79,7 @@ jobs:
           python -m pip wheel --no-deps ./DIC/LucasKanadeICGN/python --wheel-dir wheel-dist
           python tools/check_repository.py --wheel-dir wheel-dist
           python -c "import pathlib, subprocess, sys; wheel = next(pathlib.Path('wheel-dist').glob('*.whl')); subprocess.run([sys.executable, '-m', 'pip', 'install', '--force-reinstall', '--no-deps', str(wheel)], check=True)"
-          python -I -c "import lucas_kanade_icgn; from importlib.resources import files; assert files('lucas_kanade_icgn').joinpath('shaders/icgn.wgsl').is_file(); print(lucas_kanade_icgn.__file__)"
+          python -I -c "import live_dic; from importlib.resources import files; assert files('live_dic').joinpath('shaders/icgn.wgsl').is_file(); print(live_dic.__file__)"
 
       - name: Run portable unit tests
         run: >-

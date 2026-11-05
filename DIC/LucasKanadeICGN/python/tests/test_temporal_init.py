@@ -8,7 +8,7 @@ from PIL import Image
 from temporal_cases import FIXTURES, tensile_stretches, warp
 from test_gpu_regressions import _fractional_pair
 
-from lucas_kanade_icgn import ICGNWGPUFullPyramid
+from live_dic import ICGNWGPUFullPyramid
 
 
 class TemporalArgumentsTests(unittest.TestCase):

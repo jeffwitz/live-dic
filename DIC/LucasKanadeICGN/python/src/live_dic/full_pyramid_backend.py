@@ -376,7 +376,7 @@ class ICGNWGPUFullPyramid:
     def _create_temporal_pipelines(self) -> None:
         """Compile opt-in orchestration only; the IC-GN equations are unchanged."""
         shader = self.device.create_shader_module(
-            code=files("lucas_kanade_icgn").joinpath("shaders/full_pyramid.wgsl").read_text()
+            code=files("live_dic").joinpath("shaders/full_pyramid.wgsl").read_text()
         )
         layouts = (
             (
@@ -822,7 +822,7 @@ class ICGNWGPUFullPyramid:
 
     def _create_orchestration_pipelines(self) -> None:
         wgpu = self._wgpu
-        shader_path = files("lucas_kanade_icgn").joinpath("shaders/full_pyramid.wgsl")
+        shader_path = files("live_dic").joinpath("shaders/full_pyramid.wgsl")
         shader = self.device.create_shader_module(code=shader_path.read_text(encoding="utf-8"))
         self._empty_layout = self.device.create_bind_group_layout(entries=[])
         self._reduce_x_layout = self.device.create_bind_group_layout(
@@ -1270,7 +1270,7 @@ class ICGNWGPUFullPyramid:
         """Build immutable transfer resources once, shared by all stream slots."""
         if self._roi_seed_pipeline is None:
             shader = self.device.create_shader_module(
-                code=files("lucas_kanade_icgn")
+                code=files("live_dic")
                 .joinpath("shaders/full_pyramid.wgsl")
                 .read_text(encoding="utf-8")
             )

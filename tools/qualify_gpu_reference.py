@@ -17,7 +17,7 @@ from pathlib import Path
 from qualify_local_sources import wait
 
 from live_dic import ICGNBrowser
-from lucas_kanade_icgn.engine import _StaticServer
+from live_dic.engine import _StaticServer
 
 ROOT = Path(__file__).resolve().parents[1]
 PROJECT = ROOT / "DIC/LucasKanadeICGN"
@@ -67,7 +67,7 @@ def main():
             script = r"""(async()=>{
               const request=__OPTIONS__;
               if(!['translation','affine'].includes(request.motionModel))throw new Error('Explicit qualification motion model required');
-              const {DICEngine}=await import('/DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/engine.js');
+              const {DICEngine}=await import('/DIC/LucasKanadeICGN/python/src/live_dic/web/core/engine.js');
               const width=request.resolution==='3840x2160'?3840:1920,height=width===3840?2160:1080;
               const load=async name=>{
                 const blob=await(await fetch('/DIC/LucasKanadeICGN/assets/uhd_tensile/'+name)).blob();
@@ -143,8 +143,8 @@ def main():
         hashes={
             str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
             for folder in [
-                PROJECT / "python/src/lucas_kanade_icgn/web/core",
-                PROJECT / "python/src/lucas_kanade_icgn/shaders",
+                PROJECT / "python/src/live_dic/web/core",
+                PROJECT / "python/src/live_dic/shaders",
             ]
             for p in sorted(folder.glob("*"))
             if p.is_file()

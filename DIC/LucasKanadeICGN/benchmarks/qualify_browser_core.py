@@ -196,8 +196,8 @@ def main():
         versions={name: metadata.version(name) for name in ("numpy", "wgpu", "Pillow")},
         source_sha256={
             str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
-            for path in sorted((ROOT / "python/src/lucas_kanade_icgn/web/core").glob("*.js"))
-            + sorted((ROOT / "python/src/lucas_kanade_icgn/shaders").glob("*.wgsl"))
+            for path in sorted((ROOT / "python/src/live_dic/web/core").glob("*.js"))
+            + sorted((ROOT / "python/src/live_dic/shaders").glob("*.wgsl"))
         },
         reference_sha256=hashlib.sha256(ref).hexdigest(),
         mask_sha256=hashlib.sha256(mask).hexdigest(),

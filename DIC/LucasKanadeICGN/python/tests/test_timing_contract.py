@@ -7,9 +7,9 @@ from unittest import mock
 
 import numpy as np
 
-from lucas_kanade_icgn.engine import RegistrationResult
-from lucas_kanade_icgn.full_pyramid_backend import ICGNWGPUFullPyramid, _FullPyramidSlot
-from lucas_kanade_icgn.wgpu_backend import (
+from live_dic.engine import RegistrationResult
+from live_dic.full_pyramid_backend import ICGNWGPUFullPyramid, _FullPyramidSlot
+from live_dic.wgpu_backend import (
     ICGNWGPU,
     _PendingRegistration,
     _RegistrationSlot,
@@ -125,7 +125,7 @@ class NativeTimingTests(unittest.TestCase):
             with self.subTest(pyramid_levels=levels):
                 clock = _Clock()
                 engine = _engine(clock, pyramid_levels=levels)
-                with mock.patch("lucas_kanade_icgn.wgpu_backend.time.perf_counter", clock):
+                with mock.patch("live_dic.wgpu_backend.time.perf_counter", clock):
                     result = engine.register(np.zeros((16, 16), dtype=np.uint8))
 
                 self.assertAlmostEqual(result.timing["totalWallMs"], expected_ms)
@@ -147,7 +147,7 @@ class NativeTimingTests(unittest.TestCase):
                     config=dict(engine._config),
                     frame=np.zeros((16, 16), dtype=np.uint8),
                 )
-                with mock.patch("lucas_kanade_icgn.wgpu_backend.time.perf_counter", clock):
+                with mock.patch("live_dic.wgpu_backend.time.perf_counter", clock):
                     result = engine._retire_slot(pending)
 
                 self.assertAlmostEqual(result.timing["pipelineLatencyWallMs"], 17.0)
@@ -186,7 +186,7 @@ class NativeTimingTests(unittest.TestCase):
         engine._encode_reductions = lambda command_encoder, edges, **kwargs: None
         engine._full_slots = [_FullPyramidSlot((slot,), [], {})]
 
-        with mock.patch("lucas_kanade_icgn.full_pyramid_backend.time.perf_counter", clock):
+        with mock.patch("live_dic.full_pyramid_backend.time.perf_counter", clock):
             result = engine.register(np.zeros((16, 16), dtype=np.uint8))
 
         self.assertAlmostEqual(result.timing["totalWallMs"], 23.0)
@@ -289,7 +289,7 @@ class SeededPipelineTests(unittest.TestCase):
             object(),
         )
         previous = engine._result_from_raw(_raw_result(), timing={"totalWallMs": 10.0}, config={})
-        with mock.patch("lucas_kanade_icgn.wgpu_backend.time.perf_counter", clock):
+        with mock.patch("live_dic.wgpu_backend.time.perf_counter", clock):
             result = engine._retry_seeded(
                 slot,
                 np.zeros((1, 1, 8), dtype=np.float32),

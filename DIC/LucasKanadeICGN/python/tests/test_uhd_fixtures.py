@@ -20,7 +20,7 @@ from uhd_partial_cases import (
     translation_pair,
 )
 
-from lucas_kanade_icgn import ICGNWGPU, ICGNWGPUFullPyramid
+from live_dic import ICGNWGPU, ICGNWGPUFullPyramid
 
 FIXTURES = Path(__file__).resolve().parents[2] / "assets" / "uhd_tensile"
 
@@ -443,7 +443,7 @@ class UHDRegistrationRegressionTests(unittest.TestCase):
 )
 class UHDFourierBrowserRegressionTests(unittest.TestCase):
     def test_large_fractional_motion_uses_shared_browser_core(self):
-        from lucas_kanade_icgn import ICGNWebGL
+        from live_dic import ICGNBrowser
 
         flags = (
             (
@@ -461,7 +461,7 @@ class UHDFourierBrowserRegressionTests(unittest.TestCase):
         for model in ("translation", "affine"):
             with (
                 self.subTest(model=model),
-                ICGNWebGL(
+                ICGNBrowser(
                     backend="webgpu-wgsl",
                     initialization="fourier",
                     motion_model=model,

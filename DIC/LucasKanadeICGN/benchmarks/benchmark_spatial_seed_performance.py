@@ -24,8 +24,8 @@ import numpy as np
 from PIL import Image
 
 from live_dic import ICGNWGPU, ICGNWGPUFullPyramid
-from lucas_kanade_icgn.roi import prepare_roi
-from lucas_kanade_icgn.wgpu_backend import _reduce_half, _transfer_pyramid_seed
+from live_dic.roi import prepare_roi
+from live_dic.wgpu_backend import _reduce_half, _transfer_pyramid_seed
 from spatial_seed_reference import select_translation_candidates
 
 

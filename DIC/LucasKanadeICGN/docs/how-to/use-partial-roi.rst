@@ -191,7 +191,7 @@ preparations are exported separately. Read all arrays with ``allow_pickle=False`
 
 .. code-block:: python
 
-   from lucas_kanade_icgn.roi import unpack_support
+   from live_dic.roi import unpack_support
 
    ordinal = 0
    local_mask = unpack_support(info.roi.support_words[ordinal], engine.subset_size)

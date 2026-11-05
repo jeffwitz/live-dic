@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import numpy as np
 
-from lucas_kanade_icgn.wgpu_backend import _transfer_pyramid_seed
+from live_dic.wgpu_backend import _transfer_pyramid_seed
 
 PATH = Path(__file__).resolve().parents[2] / "benchmarks/gpu_spatial_seed.py"
 SPEC = importlib.util.spec_from_file_location("gpu_spatial_seed", PATH)

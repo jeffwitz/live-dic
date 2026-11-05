@@ -976,13 +976,13 @@ class ICGNWGPU:
         self._solver_preference = prefer_subgroups
         self.solver_tuning_ms: dict[str, float] = {}
         self.solver_validation: dict[str, dict[str, bool | float | int | str | None]] = {}
-        shader_path = files("lucas_kanade_icgn").joinpath("shaders/icgn.wgsl")
+        shader_path = files("live_dic").joinpath("shaders/icgn.wgsl")
         shader_source = shader_path.read_text(encoding="utf-8")
         shader = self.device.create_shader_module(code=shader_source)
         self._shader = shader
         subgroup_shader = None
         if subgroup_configuration_supported and self.subgroup_width >= DEFAULT_SUBSET_SIZE:
-            subgroup_path = files("lucas_kanade_icgn").joinpath("shaders/icgn_subgroup.wgsl")
+            subgroup_path = files("live_dic").joinpath("shaders/icgn_subgroup.wgsl")
             try:
                 subgroup_shader = self.device.create_shader_module(
                     label="DIC-RT WGSL subgroup compute solver",
@@ -1241,7 +1241,7 @@ class ICGNWGPU:
         """Compile and execute the native WGSL subgroup qualification probe."""
 
         wgpu = self._wgpu
-        probe_path = files("lucas_kanade_icgn").joinpath("shaders/subgroup_probe.wgsl")
+        probe_path = files("live_dic").joinpath("shaders/subgroup_probe.wgsl")
         shader = self.device.create_shader_module(
             label="DIC-RT WGSL subgroup qualification probe",
             code=probe_path.read_text(encoding="utf-8"),

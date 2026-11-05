@@ -92,10 +92,9 @@ as displacement measurements.
 
 | Path | Responsibility |
 |---|---|
-| `python/src/live_dic/` | Canonical public import facade |
-| `python/src/lucas_kanade_icgn/` | Solver implementation, browser assets, and legacy import path |
-| `python/src/lucas_kanade_icgn/shaders/` | Canonical portable WGSL and native subgroup specialization |
-| `python/src/lucas_kanade_icgn/web/` | Packaged shared JS core, compatibility adapters and local vendor modules |
+| `python/src/live_dic/` | Public API, native engines, browser assets, ROI and result types |
+| `python/src/live_dic/shaders/` | Canonical portable WGSL and native subgroup specialization |
+| `python/src/live_dic/web/` | Packaged shared JS core, compatibility adapters and local vendor modules |
 | `web-app/` | Standalone camera/demo PWA; assembled with the canonical core and WGSL |
 | `three/` | Checkout entry point delegating to the packaged Three.js source |
 | `python/tests/` | Portable, GPU and analytic-UHD regression tests |

@@ -25,7 +25,7 @@ import numpy as np
 from PIL import Image
 
 from live_dic import ICGNBrowser, ICGNWGPUFullPyramid
-from lucas_kanade_icgn.subset import MAX_SUBSET_SIZE, MIN_SUBSET_SIZE
+from live_dic.subset import MAX_SUBSET_SIZE, MIN_SUBSET_SIZE
 
 DEFAULT_BACKENDS = ("native-pyramid", "webgpu-wgsl", "three-tsl")
 TARGET_FIXTURES = (
@@ -546,9 +546,9 @@ def main() -> int:
                 **_aggregate_campaigns(campaigns),
             }
 
-    import lucas_kanade_icgn
+    import live_dic
 
-    source_dir = Path(lucas_kanade_icgn.__file__).parent
+    source_dir = Path(live_dic.__file__).parent
     revision = subprocess.check_output(
         ["git", "rev-parse", "HEAD"], cwd=source_dir, text=True
     ).strip()

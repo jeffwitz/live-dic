@@ -104,9 +104,9 @@ def main():
                 Path(__file__),
                 Path(__file__).with_name("gpu_spatial_seed.py"),
                 Path(__file__).with_name("benchmark_spatial_chain.py"),
-                project / "python/src/lucas_kanade_icgn/shaders/spatial_seed.wgsl",
-                project / "python/src/lucas_kanade_icgn/shaders/icgn.wgsl",
-                project / "python/src/lucas_kanade_icgn/shaders/full_pyramid.wgsl",
+                project / "python/src/live_dic/shaders/spatial_seed.wgsl",
+                project / "python/src/live_dic/shaders/icgn.wgsl",
+                project / "python/src/live_dic/shaders/full_pyramid.wgsl",
             )
         },
         state="preparing",

@@ -16,8 +16,8 @@ from typing import Any
 
 import numpy as np
 
-from lucas_kanade_icgn import ICGNWGPU, ICGNError, ICGNWGPUFullPyramid
-from lucas_kanade_icgn.wgpu_backend import (
+from live_dic import ICGNWGPU, ICGNError, ICGNWGPUFullPyramid
+from live_dic.wgpu_backend import (
     FIR_RADIUS,
     FIR_RUNTIME_RADIUS,
     _compare_solver_outputs,

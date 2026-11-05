@@ -8,7 +8,7 @@ import test_temporal_init
 from PIL import Image
 from temporal_cases import FIXTURES
 
-from lucas_kanade_icgn import ICGNWGPUFullPyramid
+from live_dic import ICGNWGPUFullPyramid
 
 
 class CorrectionArgumentsTests(unittest.TestCase):

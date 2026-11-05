@@ -4,8 +4,8 @@ on:
     branches: [main]
     paths:
       - 'DIC/LucasKanadeICGN/web-app/**'
-      - 'DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/web/core/**'
-      - 'DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn/shaders/**'
+      - 'DIC/LucasKanadeICGN/python/src/live_dic/web/core/**'
+      - 'DIC/LucasKanadeICGN/python/src/live_dic/shaders/**'
       - 'DIC/LucasKanadeICGN/assets/uhd_plate_hole/**'
       - 'tools/build_pages.py'
       - '.github/workflows/pages.yml'

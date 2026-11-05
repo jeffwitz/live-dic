@@ -6,7 +6,7 @@ import subprocess
 import unittest
 from importlib.resources import files
 
-MODULE = files("lucas_kanade_icgn").joinpath("web/core/device.js")
+MODULE = files("live_dic").joinpath("web/core/device.js")
 
 
 @unittest.skipUnless(shutil.which("node"), "Node is required for WebGPU limit contracts")

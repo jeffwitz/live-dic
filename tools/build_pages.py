@@ -11,7 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PROJECT = ROOT / "DIC/LucasKanadeICGN"
-PACKAGE = PROJECT / "python/src/lucas_kanade_icgn"
+PACKAGE = PROJECT / "python/src/live_dic"
 
 
 def assemble(output: Path) -> dict:

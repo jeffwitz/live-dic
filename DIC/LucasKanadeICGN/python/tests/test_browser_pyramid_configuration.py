@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 class BrowserPyramidConfigurationTests(unittest.TestCase):
     def test_configuration_defaults_and_level_schedules_are_unchanged(self):
-        module = (ROOT / "python/src/lucas_kanade_icgn/web/core/pyramid.js").as_uri()
+        module = (ROOT / "python/src/live_dic/web/core/pyramid.js").as_uri()
         script = f"""
           import {{createPyramidHost}} from {json.dumps(module)};
           const host = createPyramidHost();
@@ -30,7 +30,7 @@ class BrowserPyramidConfigurationTests(unittest.TestCase):
         self.assertEqual(result["changed"]["tolerancePerLevel"], [0.01, 0.005, 0.005])
 
     def test_invalid_configuration_does_not_mutate_the_current_settings(self):
-        module = (ROOT / "python/src/lucas_kanade_icgn/web/core/pyramid.js").as_uri()
+        module = (ROOT / "python/src/live_dic/web/core/pyramid.js").as_uri()
         script = f"""
           import {{createPyramidHost}} from {json.dumps(module)};
           const host = createPyramidHost();

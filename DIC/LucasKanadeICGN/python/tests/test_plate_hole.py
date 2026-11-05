@@ -19,7 +19,7 @@ from plate_hole_reference import (
     von_mises_strain,
 )
 
-from lucas_kanade_icgn import ICGNWGPUFullPyramid
+from live_dic import ICGNWGPUFullPyramid
 
 ASSETS = Path(__file__).resolve().parents[2] / "assets/uhd_plate_hole"
 

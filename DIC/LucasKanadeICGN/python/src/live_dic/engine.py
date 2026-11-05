@@ -600,9 +600,7 @@ def _direct_runtime_assets(root: Path, backend: str = "three-tsl") -> _RuntimeAs
     if all((root / filename).is_file() for filename in required):
         if backend == "three-tsl":
             packaged_common = root.parent / "common/ReferencePreparation.js"
-            checkout_common = (
-                root.parent / "python/src/lucas_kanade_icgn/web/common/ReferencePreparation.js"
-            )
+            checkout_common = root.parent / "python/src/live_dic/web/common/ReferencePreparation.js"
             if packaged_common.is_file() or checkout_common.is_file():
                 return _RuntimeAssets(root=root.parent, headless_path="three/headless.html")
         if backend == "webgpu-wgsl":
@@ -629,7 +627,7 @@ def _checkout_runtime_assets(root: Path, backend: str = "three-tsl") -> _Runtime
         if _direct_runtime_assets(root / relative, backend) is not None:
             return _RuntimeAssets(root=root, headless_path=str(relative / "headless.html"))
     else:
-        package_root = relative / "python/src/lucas_kanade_icgn"
+        package_root = relative / "python/src/live_dic"
         runtime = package_root / "web/webgpu"
         if _direct_runtime_assets(root / runtime, backend) is not None:
             return _RuntimeAssets(
@@ -1515,10 +1513,6 @@ class ICGNBrowser:
         traceback: TracebackType | None,
     ) -> None:
         self.close()
-
-
-# Backwards-compatible name retained for existing Python callers.
-ICGNWebGL = ICGNBrowser
 
 
 def register_pair(

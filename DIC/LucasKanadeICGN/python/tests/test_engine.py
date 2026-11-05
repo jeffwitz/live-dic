@@ -16,12 +16,12 @@ from unittest import mock
 import numpy as np
 from PIL import Image
 
-from lucas_kanade_icgn.cli import _parser
-from lucas_kanade_icgn.engine import (
+from live_dic.cli import _parser
+from live_dic.engine import (
     PARAMETER_ORDER,
     BenchmarkResult,
+    ICGNBrowser,
     ICGNError,
-    ICGNWebGL,
     RegistrationResult,
     _array_data_url,
     _as_uint8_gray,
@@ -263,16 +263,14 @@ class BinaryTransportServerTests(unittest.TestCase):
 
 class NotebookLoopTests(unittest.TestCase):
     def test_devtools_keepalive_respects_long_computation_deadline(self) -> None:
-        engine = ICGNWebGL(call_timeout=600)
+        engine = ICGNBrowser(call_timeout=600)
         engine._websocket_url = "ws://127.0.0.1:12345/devtools/page/test"
         engine._devtools_origin = "http://127.0.0.1:12345"
         socket = mock.AsyncMock()
         socket.recv.return_value = '{"id": 1, "result": {"result": {"value": true}}}'
         connection = mock.MagicMock()
         connection.__aenter__.return_value = socket
-        with mock.patch(
-            "lucas_kanade_icgn.engine.websockets.connect", return_value=connection
-        ) as connect:
+        with mock.patch("live_dic.engine.websockets.connect", return_value=connection) as connect:
             self.assertTrue(asyncio.run(engine._evaluate_async("true")))
         self.assertEqual(connect.call_args.kwargs["ping_timeout"], 600)
         self.assertEqual(connect.call_args.kwargs["open_timeout"], 600)
@@ -305,17 +303,17 @@ class RuntimeAssetTests(unittest.TestCase):
                 self.subTest(subset_size=subset_size),
                 self.assertRaisesRegex(ValueError, "subset_size"),
             ):
-                ICGNWebGL(subset_size=subset_size)
+                ICGNBrowser(subset_size=subset_size)
 
-        engine = ICGNWebGL(subset_size=32)
+        engine = ICGNBrowser(subset_size=32)
         self.assertEqual(engine.subset_size, 32)
-        generic = ICGNWebGL(backend="webgpu-wgsl", subset_size=24, subset_stride=12)
+        generic = ICGNBrowser(backend="webgpu-wgsl", subset_size=24, subset_stride=12)
         self.assertEqual(generic.subset_size, 24)
         self.assertEqual(generic.subset_stride, 12)
-        odd = ICGNWebGL(backend="webgpu-wgsl", subset_size=31, subset_stride=16)
+        odd = ICGNBrowser(backend="webgpu-wgsl", subset_size=31, subset_stride=16)
         self.assertEqual(odd.subset_size, 31)
         with self.assertRaisesRegex(ValueError, "require backend='webgpu-wgsl'"):
-            ICGNWebGL(backend="three-tsl", subset_size=31)
+            ICGNBrowser(backend="three-tsl", subset_size=31)
 
     def test_browser_subset_stride_is_validated_and_scoped(self) -> None:
         for subset_stride in (0, 33, True, 16.0):
@@ -323,33 +321,33 @@ class RuntimeAssetTests(unittest.TestCase):
                 self.subTest(subset_stride=subset_stride),
                 self.assertRaisesRegex(ValueError, "subset_stride"),
             ):
-                ICGNWebGL(
+                ICGNBrowser(
                     backend="webgpu-wgsl",
                     subset_size=32,
                     subset_stride=subset_stride,
                 )
-        engine = ICGNWebGL(
+        engine = ICGNBrowser(
             backend="webgpu-wgsl",
             subset_size=32,
             subset_stride=16,
         )
         self.assertEqual(engine.subset_stride, 16)
         with self.assertRaisesRegex(ValueError, "webgpu-wgsl"):
-            ICGNWebGL(backend="three-tsl", subset_size=32, subset_stride=16)
+            ICGNBrowser(backend="three-tsl", subset_size=32, subset_stride=16)
 
     def test_browser_discovery_is_lazy(self) -> None:
         with mock.patch(
-            "lucas_kanade_icgn.engine._find_chromium",
+            "live_dic.engine._find_chromium",
             side_effect=AssertionError("browser discovery must wait for start()"),
         ):
-            engine = ICGNWebGL()
+            engine = ICGNBrowser()
         self.assertIsNone(engine.chromium)
 
     def test_missing_browser_does_not_allocate_runtime_resources(self) -> None:
-        engine = ICGNWebGL()
+        engine = ICGNBrowser()
         with (
             mock.patch(
-                "lucas_kanade_icgn.engine._find_chromium",
+                "live_dic.engine._find_chromium",
                 side_effect=ICGNError("missing browser"),
             ),
             self.assertRaisesRegex(ICGNError, "missing browser"),
@@ -368,7 +366,7 @@ class RuntimeAssetTests(unittest.TestCase):
 
     def test_browser_discovery_uses_platform_candidates(self) -> None:
         with mock.patch(
-            "lucas_kanade_icgn.engine.shutil.which",
+            "live_dic.engine.shutil.which",
             side_effect=lambda name: "C:/Chrome/chrome.exe" if name == "chrome.exe" else None,
         ):
             self.assertEqual(_find_chromium(None, platform="win32"), "C:/Chrome/chrome.exe")
@@ -389,7 +387,7 @@ class RuntimeAssetTests(unittest.TestCase):
     def test_browser_profile_cleanup_waits_for_late_child_writes(self) -> None:
         temporary = mock.Mock()
         temporary.cleanup.side_effect = [OSError(errno.ENOTEMPTY, "late Chromium write"), None]
-        with mock.patch("lucas_kanade_icgn.engine.time.sleep"):
+        with mock.patch("live_dic.engine.time.sleep"):
             _cleanup_browser_profile(temporary)
         self.assertEqual(temporary.cleanup.call_count, 2)
 
@@ -398,7 +396,7 @@ class RuntimeAssetTests(unittest.TestCase):
             with self.subTest(code=code):
                 temporary = mock.Mock()
                 temporary.cleanup.side_effect = OSError(code, "cleanup failed")
-                with mock.patch("lucas_kanade_icgn.engine.time.sleep"), self.assertRaises(OSError):
+                with mock.patch("live_dic.engine.time.sleep"), self.assertRaises(OSError):
                     _cleanup_browser_profile(temporary)
                 self.assertEqual(temporary.cleanup.call_count, attempts)
 
@@ -409,22 +407,22 @@ class RuntimeAssetTests(unittest.TestCase):
 
     def test_unknown_backend_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "webgpu-wgsl"):
-            ICGNWebGL(backend="unknown")
+            ICGNBrowser(backend="unknown")
 
     def test_benchmark_target_requires_prepared_reference(self) -> None:
-        engine = ICGNWebGL()
+        engine = ICGNBrowser()
         with self.assertRaisesRegex(ICGNError, "set_reference"):
             engine.benchmark_target(np.zeros((64, 64), dtype=np.uint8))
 
     def test_public_api_defaults_to_three_tsl(self) -> None:
-        engine_default = inspect.signature(ICGNWebGL).parameters["backend"].default
+        engine_default = inspect.signature(ICGNBrowser).parameters["backend"].default
         one_shot_default = inspect.signature(register_pair).parameters["backend"].default
         self.assertEqual(engine_default, "three-tsl")
         self.assertEqual(one_shot_default, "three-tsl")
         self.assertIn("pyramid_levels", inspect.signature(register_pair).parameters)
 
     def test_shared_wgsl_backend_defaults_to_two_pyramid_levels(self) -> None:
-        engine = ICGNWebGL(backend="webgpu-wgsl")
+        engine = ICGNBrowser(backend="webgpu-wgsl")
         self.assertEqual(engine.pyramid_levels, 2)
         self.assertIsNone(engine.iterations_per_level)
         self.assertEqual(
@@ -435,7 +433,7 @@ class RuntimeAssetTests(unittest.TestCase):
     def test_interpolation_mode_is_validated_and_forwarded(self) -> None:
         for mode in ("bspline", "linear", "cubic"):
             with self.subTest(mode=mode):
-                engine = ICGNWebGL(backend="webgpu-wgsl", interpolation=mode)
+                engine = ICGNBrowser(backend="webgpu-wgsl", interpolation=mode)
                 self.assertEqual(engine.interpolation, mode)
                 self.assertEqual(
                     engine._options(iterations=None, tolerance=None, zncc_min=None)[
@@ -444,24 +442,24 @@ class RuntimeAssetTests(unittest.TestCase):
                     mode,
                 )
         with self.assertRaisesRegex(ValueError, "interpolation"):
-            ICGNWebGL(interpolation="nearest")
+            ICGNBrowser(interpolation="nearest")
         with self.assertRaisesRegex(ValueError, "backend must be"):
-            ICGNWebGL(backend="gpuio", interpolation="linear")
+            ICGNBrowser(backend="gpuio", interpolation="linear")
 
     def test_browser_pyramid_options_are_validated(self) -> None:
-        four = ICGNWebGL(backend="webgpu-wgsl", pyramid_levels=4)
+        four = ICGNBrowser(backend="webgpu-wgsl", pyramid_levels=4)
         self.assertEqual(four.pyramid_levels, 4)
-        five = ICGNWebGL(backend="webgpu-wgsl", pyramid_levels=5)
-        six = ICGNWebGL(backend="webgpu-wgsl", pyramid_levels=6)
+        five = ICGNBrowser(backend="webgpu-wgsl", pyramid_levels=5)
+        six = ICGNBrowser(backend="webgpu-wgsl", pyramid_levels=6)
         self.assertEqual(five.pyramid_levels, 5)
         self.assertEqual(six.pyramid_levels, 6)
         for levels in (0, 7, 1.5, True):
             with self.subTest(levels=levels), self.assertRaisesRegex(ValueError, "pyramid_levels"):
-                ICGNWebGL(backend="webgpu-wgsl", pyramid_levels=levels)
+                ICGNBrowser(backend="webgpu-wgsl", pyramid_levels=levels)
         with self.assertRaisesRegex(ValueError, "only.*webgpu-wgsl"):
-            ICGNWebGL(backend="three-tsl", pyramid_levels=2)
+            ICGNBrowser(backend="three-tsl", pyramid_levels=2)
         with self.assertRaisesRegex(ValueError, "one value per pyramid level"):
-            ICGNWebGL(
+            ICGNBrowser(
                 backend="webgpu-wgsl",
                 pyramid_levels=3,
                 iterations_per_level=(8, 20),
@@ -471,7 +469,7 @@ class RuntimeAssetTests(unittest.TestCase):
                 self.subTest(schedule=schedule),
                 self.assertRaisesRegex(ValueError, "iterations_per_level"),
             ):
-                ICGNWebGL(
+                ICGNBrowser(
                     backend="webgpu-wgsl",
                     pyramid_levels=2,
                     iterations_per_level=schedule,
@@ -480,7 +478,7 @@ class RuntimeAssetTests(unittest.TestCase):
     def test_global_affine_scale_option_is_validated_and_forwarded(self) -> None:
         for levels in range(5, 9):
             with self.subTest(levels=levels):
-                engine = ICGNWebGL(
+                engine = ICGNBrowser(
                     backend="webgpu-wgsl",
                     initialization="global-affine",
                     global_affine_levels=levels,
@@ -496,12 +494,12 @@ class RuntimeAssetTests(unittest.TestCase):
                 self.subTest(levels=levels),
                 self.assertRaisesRegex(ValueError, "global_affine_levels"),
             ):
-                ICGNWebGL(
+                ICGNBrowser(
                     backend="webgpu-wgsl",
                     initialization="global-affine",
                     global_affine_levels=levels,
                 )
-        translation = ICGNWebGL(
+        translation = ICGNBrowser(
             backend="webgpu-wgsl",
             initialization="global-affine",
             motion_model="translation",
@@ -511,30 +509,30 @@ class RuntimeAssetTests(unittest.TestCase):
             "translation",
         )
         with self.assertRaisesRegex(ValueError, "requires initialization"):
-            ICGNWebGL(backend="webgpu-wgsl", global_affine_levels=6)
+            ICGNBrowser(backend="webgpu-wgsl", global_affine_levels=6)
 
     def test_browser_motion_model_is_validated_and_forwarded(self) -> None:
         with self.assertRaisesRegex(ValueError, "motion_model"):
-            ICGNWebGL(motion_model="rigid")
+            ICGNBrowser(motion_model="rigid")
         with self.assertRaisesRegex(ValueError, "backend must be"):
-            ICGNWebGL(backend="gpuio", motion_model="translation")
+            ICGNBrowser(backend="gpuio", motion_model="translation")
 
-        engine = ICGNWebGL(backend="three-tsl", motion_model="translation")
+        engine = ICGNBrowser(backend="three-tsl", motion_model="translation")
         options = engine._options(iterations=30, tolerance=1e-3, zncc_min=0.8)
         self.assertEqual(options["motionModel"], "translation")
 
-        quadratic = ICGNWebGL(backend="webgpu-wgsl", motion_model="quadratic")
+        quadratic = ICGNBrowser(backend="webgpu-wgsl", motion_model="quadratic")
         self.assertEqual(
             quadratic._options(iterations=None, tolerance=None, zncc_min=None)["motionModel"],
             "quadratic",
         )
         with self.assertRaisesRegex(ValueError, "requires backend='webgpu-wgsl'"):
-            ICGNWebGL(backend="three-tsl", motion_model="quadratic")
+            ICGNBrowser(backend="three-tsl", motion_model="quadratic")
 
     def test_browser_outlier_policy_is_validated_and_forwarded(self) -> None:
         for policy in ("replace", "flag", "disabled", "median"):
             with self.subTest(policy=policy):
-                engine = ICGNWebGL(backend="webgpu-wgsl", outlier_policy=policy)
+                engine = ICGNBrowser(backend="webgpu-wgsl", outlier_policy=policy)
                 self.assertEqual(engine.outlier_policy, policy)
                 self.assertEqual(
                     engine._options(iterations=None, tolerance=None, zncc_min=None)[
@@ -543,8 +541,8 @@ class RuntimeAssetTests(unittest.TestCase):
                     policy,
                 )
         with self.assertRaisesRegex(ValueError, "outlier_policy"):
-            ICGNWebGL(outlier_policy="all")
-        engine = ICGNWebGL(
+            ICGNBrowser(outlier_policy="all")
+        engine = ICGNBrowser(
             backend="webgpu-wgsl",
             outlier_policy="median",
             median_filter_scope="all",
@@ -555,18 +553,18 @@ class RuntimeAssetTests(unittest.TestCase):
             "all",
         )
         with self.assertRaisesRegex(ValueError, "requires backend='webgpu-wgsl'"):
-            ICGNWebGL(outlier_policy="median", median_filter_scope="all")
+            ICGNBrowser(outlier_policy="median", median_filter_scope="all")
         self.assertIn("outlier_policy", inspect.signature(register_pair).parameters)
 
     def test_three_tsl_no_longer_exposes_a_webgl_fallback(self) -> None:
-        engine = ICGNWebGL(backend="three-tsl")
+        engine = ICGNBrowser(backend="three-tsl")
         self.assertFalse(hasattr(engine, "force_three_webgl"))
         with self.assertRaises(TypeError):
-            ICGNWebGL(backend="three-tsl", force_three_webgl=True)
+            ICGNBrowser(backend="three-tsl", force_three_webgl=True)
 
     def test_gpuio_backend_is_not_available(self) -> None:
         with self.assertRaisesRegex(ValueError, "backend must be"):
-            ICGNWebGL(backend="gpuio")
+            ICGNBrowser(backend="gpuio")
 
     def test_explicit_direct_asset_directory_is_supported(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -650,7 +648,7 @@ class RuntimeAssetTests(unittest.TestCase):
         module_root = Path(__file__).resolve().parents[2]
         entry_point = module_root / "three/LucasKanadeICGNThree.js"
         source = entry_point.read_text(encoding="utf-8")
-        self.assertIn("python/src/lucas_kanade_icgn/web/three", source)
+        self.assertIn("python/src/live_dic/web/three", source)
         self.assertEqual(source.count("import "), 1)
 
 

@@ -1,9 +1,8 @@
 # Developing live-dic
 
 The maintained Python project is under `DIC/LucasKanadeICGN/`. Its canonical
-distribution, import, browser class and CLI are `live-dic`, `live_dic`,
-`ICGNBrowser` and `live-dic`. Preserve the compatibility import
-`lucas_kanade_icgn`, class alias `ICGNWebGL` and command alias `icgn-webgl`.
+distribution and CLI are `live-dic`, its import package is `live_dic`, and its
+Python-controlled browser class is `ICGNBrowser`.
 Preserve a precise methodological acknowledgment of
 Pierre Margerit's prior GPU-DIC and Three.js/WebGPU prototype work without
 implying that the current solver is his code or reuses Strobox source.

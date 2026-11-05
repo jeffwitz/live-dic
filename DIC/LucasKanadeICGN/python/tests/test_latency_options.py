@@ -7,7 +7,7 @@ import numpy as np
 import test_temporal_init
 from test_gpu_regressions import _fractional_pair
 
-from lucas_kanade_icgn import ICGNWGPUFullPyramid
+from live_dic import ICGNWGPUFullPyramid
 
 
 class LatencyArgumentsTests(unittest.TestCase):

@@ -155,7 +155,7 @@ class SolverControlTests(unittest.TestCase):
 
     def test_preset_is_unchanged_and_custom_combinations_reach_the_core(self):
         ui = ROOT / "web-app/ui/workspace.js"
-        core = ROOT / "python/src/lucas_kanade_icgn/web/core/engine.js"
+        core = ROOT / "python/src/live_dic/web/core/engine.js"
         script = f"""
           import {{solverOptions}} from {json.dumps(ui.as_uri())};
           import {{DICEngine}} from {json.dumps(core.as_uri())};
@@ -178,7 +178,7 @@ class SolverControlTests(unittest.TestCase):
 
     def test_median_neighbourhood_is_a_cold_setting_and_reaches_the_core(self):
         ui = ROOT / "web-app/ui/workspace.js"
-        core = ROOT / "python/src/lucas_kanade_icgn/web/core/engine.js"
+        core = ROOT / "python/src/live_dic/web/core/engine.js"
         script = f"""
           import {{solverOptions,solverPreparationKey}} from {json.dumps(ui.as_uri())};
           import {{DICEngine}} from {json.dumps(core.as_uri())};

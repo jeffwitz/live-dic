@@ -14,7 +14,7 @@ from urllib.parse import unquote, urlsplit
 from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
-PACKAGE = ROOT / "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn"
+PACKAGE = ROOT / "DIC/LucasKanadeICGN/python/src/live_dic"
 
 
 def check_links() -> list[str]:
@@ -63,14 +63,14 @@ def check_wheel(path: Path) -> list[str]:
         for source in PACKAGE.rglob("*"):
             if not source.is_file() or "__pycache__" in source.parts:
                 continue
-            name = f"lucas_kanade_icgn/{source.relative_to(PACKAGE).as_posix()}"
+            name = f"live_dic/{source.relative_to(PACKAGE).as_posix()}"
             expected_package_files.add(name)
             checked += 1
             if name not in names:
                 errors.append(f"{path}: missing package file {name}")
             elif wheel.read(name) != source.read_bytes():
                 errors.append(f"{path}: packaged file differs from its source: {name}")
-        packaged_files = {name for name in names if name.startswith("lucas_kanade_icgn/")}
+        packaged_files = {name for name in names if name.startswith("live_dic/")}
         for name in sorted(packaged_files - expected_package_files):
             errors.append(f"{path}: unexpected packaged file {name}")
         for name in names:

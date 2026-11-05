@@ -50,10 +50,6 @@ python3 -m pip install -e DIC/LucasKanadeICGN/python
 | Import | `live_dic` |
 | Browser-control CLI | `live-dic` |
 
-Compatibility names remain available: `from lucas_kanade_icgn import ...`
-still works, `lucas_kanade_icgn.ICGNWebGL` aliases `live_dic.ICGNBrowser`, and
-the `icgn-webgl` command calls the same CLI. They do not select or imply a
-WebGL backend. New code should use the canonical names in the table above.
 The first PyPI release has not been published yet; until then, install from this
 checkout or build a wheel locally using the commands above.
 

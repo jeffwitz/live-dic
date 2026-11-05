@@ -9,7 +9,7 @@
 
 This directory is a checkout entry point for live-dic's browser backend.
 The canonical implementation is packaged at
-[`../python/src/lucas_kanade_icgn/web/three/`](../python/src/lucas_kanade_icgn/web/three/).
+[`../python/src/live_dic/web/three/`](../python/src/live_dic/web/three/).
 The checkout JavaScript module delegates there, so numerical changes belong
 in the packaged source rather than in a second implementation.
 

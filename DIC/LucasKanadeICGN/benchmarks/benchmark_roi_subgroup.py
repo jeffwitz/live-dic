@@ -10,7 +10,7 @@ from pathlib import Path
 
 import numpy as np
 
-import lucas_kanade_icgn
+import live_dic
 from benchmark_image_to_field import _fixtures, _measure
 from live_dic import ICGNWGPU
 
@@ -46,7 +46,7 @@ def main():
             )
             for _ in range(3)
         ]
-        source = Path(lucas_kanade_icgn.__file__).parent
+        source = Path(live_dic.__file__).parent
         report = {
             "command": sys.argv,
             "python": sys.version,

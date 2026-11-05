@@ -285,7 +285,7 @@ class BrowserPostprocessTests(unittest.TestCase):
         import base64
         import io
 
-        from lucas_kanade_icgn.motion import parameter_order
+        from live_dic.motion import parameter_order
 
         archive_module = MODULE.with_name("archive.js")
         result = javascript(f"""
@@ -307,7 +307,7 @@ class BrowserPostprocessTests(unittest.TestCase):
         import base64
         import io
 
-        from lucas_kanade_icgn.motion import parameter_order
+        from live_dic.motion import parameter_order
 
         parameters = np.arange(8 * 8 * 6, dtype=np.float32).reshape(8, 8, 6) / 1000
         output = io.BytesIO()

@@ -174,7 +174,7 @@ Use this page as a lookup reference. For a first explanation, start with
 Where to find the implementation
 -------------------------------------
 
-Paths below are relative to ``DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn``.
+Paths below are relative to ``DIC/LucasKanadeICGN/python/src/live_dic``.
 They identify source responsibilities, not additional public Python APIs.
 
 .. list-table:: Reading map

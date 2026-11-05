@@ -11,8 +11,8 @@ from importlib.resources import files
 
 import numpy as np
 
-from lucas_kanade_icgn import ICGNWebGL, ICGNWGPUFullPyramid
-from lucas_kanade_icgn.fourier import FourierInitializer
+from live_dic import ICGNBrowser, ICGNWGPUFullPyramid
+from live_dic.fourier import FourierInitializer
 
 
 def texture(size=256):
@@ -72,10 +72,10 @@ class FourierTests(unittest.TestCase):
     def test_public_modes_validate_before_acquiring_gpu_or_browser(self):
         for backend in ["three-tsl"]:
             with self.assertRaisesRegex(ValueError, "webgpu-wgsl"):
-                ICGNWebGL(backend=backend, initialization="fourier")
+                ICGNBrowser(backend=backend, initialization="fourier")
         with self.assertRaisesRegex(ValueError, "translation and affine"):
             ICGNWGPUFullPyramid(initialization="fourier", motion_model="quadratic")
-        browser = ICGNWebGL(backend="webgpu-wgsl", initialization="fourier")
+        browser = ICGNBrowser(backend="webgpu-wgsl", initialization="fourier")
         self.assertEqual(
             browser._options(iterations=None, tolerance=None, zncc_min=None)["initialization"],
             "fourier",
@@ -86,7 +86,7 @@ class FourierTests(unittest.TestCase):
         image = texture()
         target = shift(image, 64, -32)
         expected = FourierInitializer(image).estimate(target)
-        module = files("lucas_kanade_icgn").joinpath("web/core/fourier.js")
+        module = files("live_dic").joinpath("web/core/fourier.js")
         script = f"""import {{FourierInitializer}} from {json.dumps(module.as_uri())};
         const a=Uint8Array.from({json.dumps(image.ravel().tolist())}),b=Uint8Array.from({json.dumps(target.ravel().tolist())});
         const f=new FourierInitializer(a,256,256),estimate=f.estimate(b);let rejected=false;
@@ -159,7 +159,7 @@ class FourierBrowserTests(unittest.TestCase):
             if os.environ.get("ICGN_BROWSER_SOFTWARE") == "1"
             else ()
         )
-        with ICGNWebGL(backend="webgpu-wgsl", chromium_args=flags, call_timeout=240) as browser:
+        with ICGNBrowser(backend="webgpu-wgsl", chromium_args=flags, call_timeout=240) as browser:
             actual = browser._evaluate("""(async()=>{
               const {DICEngine}=await import('../core/engine.js');
               const n=512,a=new Uint8Array(n*n),b=new Uint8Array(n*n);let seed=1;

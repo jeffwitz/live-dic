@@ -7,8 +7,8 @@ from pathlib import Path
 
 import numpy as np
 
-from lucas_kanade_icgn.cli import _save_benchmark, _save_registrations
-from lucas_kanade_icgn.engine import BenchmarkResult, RegistrationResult
+from live_dic.cli import _save_benchmark, _save_registrations
+from live_dic.engine import BenchmarkResult, RegistrationResult
 
 
 def _registration(policy: str = "median") -> RegistrationResult:

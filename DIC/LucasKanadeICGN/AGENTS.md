@@ -5,8 +5,8 @@ Instructions for work in `DIC/LucasKanadeICGN/`. See the root
 
 ## Project conventions
 
-- The Python package lives in `python/src/lucas_kanade_icgn/`. Canonical WGSL
-  is in `python/src/lucas_kanade_icgn/shaders/`. It is shared by native wgpu-py
+- The Python package lives in `python/src/live_dic/`. Canonical WGSL
+  is in `python/src/live_dic/shaders/`. It is shared by native wgpu-py
   and the raw `webgpu-wgsl` browser backend, so a shader change affects both.
 - `python/build/` and `python/.venv/` are generated. Never edit them.
 - Write code, docs, and commit messages in English. Match the surrounding style:
@@ -58,9 +58,8 @@ adapter; skipped GPU tests do not validate numerical execution.
   Three.js stream layer or WebGL fallback. Keep both the Python shim and PWA
   on the same canonical core and WGSL sources.
 - Canonical public names are distribution and CLI `live-dic`, import package
-  `live_dic`, and browser-control class `ICGNBrowser`. Compatibility aliases
-  remain available as legacy import package `lucas_kanade_icgn`, class
-  `ICGNWebGL`, and command `icgn-webgl`. `wgpu` is a standard dependency.
+  `live_dic`, and browser-control class `ICGNBrowser`. `wgpu` is a standard
+  dependency.
 - No first-party native extension or external shader compiler is required.
   Preserve the pure-Python wheel with packaged WGSL and local browser assets.
 - Use context managers or `close()`. Native close is permanent and idempotent;
@@ -127,14 +126,14 @@ adapter; skipped GPU tests do not validate numerical execution.
 Ship a static, installable web application (PWA) that runs live DIC on a phone,
 tablet or laptop camera, and on archived fixtures, from GitHub Pages. Reuse
 the qualified numerical engine instead of creating a third one. **The canonical
-WGSL in `python/src/lucas_kanade_icgn/shaders/` stays the single numerical
+WGSL in `python/src/live_dic/shaders/` stays the single numerical
 source.** Only host orchestration is ported to JavaScript.
 
 ### Non-goals
 
-- No change to Python defaults or native numerical behaviour. The public
-  naming migration uses `live_dic` and preserves the legacy package, browser
-  class and CLI as compatibility aliases.
+- No change to Python defaults or native numerical behaviour. The canonical
+  Python distribution and CLI are `live-dic`, the import package is `live_dic`,
+  and the Python-controlled browser class is `ICGNBrowser`.
 - No GPU-IO, and no Three.js/TSL or WebGL2 path in the new app. Without WebGPU,
   the app shows a clear unsupported-browser message. Three.js stays a separate
   legacy browser backend for Python.
@@ -161,8 +160,8 @@ source.** Only host orchestration is ported to JavaScript.
 
 ```
 DIC/LucasKanadeICGN/
-  python/src/lucas_kanade_icgn/shaders/*.wgsl   # single source (unchanged location)
-  python/src/lucas_kanade_icgn/web/
+  python/src/live_dic/shaders/*.wgsl   # single source (unchanged location)
+  python/src/live_dic/web/
     core/                      # NEW: dic-rt-core, dependency-free ES modules
       device.js                #   adapter/device acquisition, limits/feature probe, capability report
       shaders.js               #   load WGSL by URL relative to import.meta.url, compile, report errors

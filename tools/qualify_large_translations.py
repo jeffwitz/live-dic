@@ -20,8 +20,8 @@ from PIL import Image
 from qualify_local_sources import choose_files, export, wait
 
 from live_dic import ICGNBrowser, ICGNWGPUFullPyramid
-from lucas_kanade_icgn.engine import _StaticServer
-from lucas_kanade_icgn.full_pyramid_backend import _DEFAULT_ITERATION_SCHEDULES
+from live_dic.engine import _StaticServer
+from live_dic.full_pyramid_backend import _DEFAULT_ITERATION_SCHEDULES
 
 ROOT = Path(__file__).resolve().parents[1]
 REFERENCE = ROOT / "DIC/LucasKanadeICGN/assets/uhd_tensile/reference.png"
@@ -256,7 +256,7 @@ def main():
             for p in [
                 Path(__file__),
                 *[
-                    ROOT / "DIC/LucasKanadeICGN/python/src/lucas_kanade_icgn" / name
+                    ROOT / "DIC/LucasKanadeICGN/python/src/live_dic" / name
                     for name in [
                         "fourier.py",
                         "full_pyramid_backend.py",

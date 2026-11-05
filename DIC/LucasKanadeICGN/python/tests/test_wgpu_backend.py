@@ -10,7 +10,7 @@ from unittest import mock
 
 import numpy as np
 
-from lucas_kanade_icgn import (
+from live_dic import (
     DEFAULT_FULL_PYRAMID_LEVELS,
     DEFAULT_IN_FLIGHT_FRAMES,
     DEFAULT_PYRAMID_LEVELS,
@@ -18,24 +18,24 @@ from lucas_kanade_icgn import (
     ICGNWGPUFullPyramid,
     RegistrationResult,
 )
-from lucas_kanade_icgn.full_pyramid_backend import (
+from live_dic.full_pyramid_backend import (
     _DEFAULT_ITERATION_SCHEDULES,
     _DEFAULT_TOLERANCES,
     _schedule,
 )
-from lucas_kanade_icgn.outlier import (
+from live_dic.outlier import (
     normalize_median_filter_scope,
     normalize_median_filter_size,
     normalize_outlier_policy,
 )
-from lucas_kanade_icgn.subset import (
+from live_dic.subset import (
     MAX_SUBSET_SIZE,
     MIN_SUBSET_SIZE,
     normalize_subset_size,
     normalize_subset_stride,
     subset_grid_shape,
 )
-from lucas_kanade_icgn.wgpu_backend import (
+from live_dic.wgpu_backend import (
     FIR_RADIUS,
     FIR_RUNTIME_RADIUS,
     ICGNWGPU,
@@ -712,10 +712,10 @@ class NativeReferenceTests(unittest.TestCase):
         engine._close_pyramid_engines.assert_not_called()
 
     def test_shader_is_packaged_as_a_runtime_resource(self) -> None:
-        shader = files("lucas_kanade_icgn").joinpath("shaders/icgn.wgsl")
-        subgroup_source = files("lucas_kanade_icgn").joinpath("shaders/icgn_subgroup.wgsl")
-        probe_source = files("lucas_kanade_icgn").joinpath("shaders/subgroup_probe.wgsl")
-        pyramid_shader = files("lucas_kanade_icgn").joinpath("shaders/full_pyramid.wgsl")
+        shader = files("live_dic").joinpath("shaders/icgn.wgsl")
+        subgroup_source = files("live_dic").joinpath("shaders/icgn_subgroup.wgsl")
+        probe_source = files("live_dic").joinpath("shaders/subgroup_probe.wgsl")
+        pyramid_shader = files("live_dic").joinpath("shaders/full_pyramid.wgsl")
         shader_text = shader.read_text(encoding="utf-8")
         self.assertIn("fn solve", shader_text)
         self.assertIn("override PREFILTER_CLAMP_HALO", shader_text)
@@ -741,7 +741,7 @@ class NativeReferenceTests(unittest.TestCase):
             "subgroup_probe.comp",
             "subgroup_probe.spv",
         ):
-            self.assertFalse(files("lucas_kanade_icgn").joinpath("shaders", retired_name).is_file())
+            self.assertFalse(files("live_dic").joinpath("shaders", retired_name).is_file())
         pyramid_text = pyramid_shader.read_text(encoding="utf-8")
         for entry_point in ("reduce_x", "reduce_y", "transfer_seed"):
             self.assertIn(f"fn {entry_point}", pyramid_text)

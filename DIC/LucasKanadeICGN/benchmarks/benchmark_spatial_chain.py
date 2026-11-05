@@ -47,7 +47,7 @@ def power_context():
 def prepare_shared_variants(engine):
     """Cold calibration helper: both finalizers share the same prepared device."""
     module = engine.device.create_shader_module(
-        code=files("lucas_kanade_icgn").joinpath("shaders/spatial_seed.wgsl").read_text()
+        code=files("live_dic").joinpath("shaders/spatial_seed.wgsl").read_text()
     )
     legacy = engine.device.create_compute_pipeline(
         layout="auto", compute={"module": module, "entry_point": "finalize"}
@@ -138,7 +138,7 @@ def main():
             for p in (
                 Path(__file__),
                 Path(__file__).with_name("gpu_spatial_seed.py"),
-                project / "python/src/lucas_kanade_icgn/shaders/spatial_seed.wgsl",
+                project / "python/src/live_dic/shaders/spatial_seed.wgsl",
             )
         },
         options=options,

@@ -25,7 +25,7 @@ class BrowserTimingTests(unittest.TestCase):
         self.addCleanup(runtime.cleanup)
         root = Path(runtime.name)
         (root / "package.json").write_text('{"type":"module"}')
-        shutil.copytree(PROJECT / "python/src/lucas_kanade_icgn/web/core", root / "web/core")
+        shutil.copytree(PROJECT / "python/src/live_dic/web/core", root / "web/core")
         shutil.copytree(PROJECT / "web-app/ui", root / "ui")
         shutil.copytree(PROJECT / "web-app/render", root / "render")
         script = f"""
@@ -96,7 +96,7 @@ class BrowserTimingTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "package.json").write_text('{"type":"module"}')
-            shutil.copytree(PROJECT / "python/src/lucas_kanade_icgn/web/core", root / "web/core")
+            shutil.copytree(PROJECT / "python/src/live_dic/web/core", root / "web/core")
             (root / "ui").mkdir()
             shutil.copytree(PROJECT / "web-app/render", root / "render")
             for name in ("session.js", "plate-truth.js", "supervision.js"):
