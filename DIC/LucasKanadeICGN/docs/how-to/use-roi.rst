@@ -87,9 +87,13 @@ is allowed. Decimation uses source coordinates ``(2*x, 2*y)``. A full-window
 selection is then performed on that conservative coarse mask.
 
 Excluded windows cannot supply seeds, participate in UOD/median filtering, or
-be activated by selective recovery. A selected fine window with no admissible
-coarse seed still runs from zero. A thin ROI can therefore reduce the useful
-capture range without removing its fine measurements.
+be activated by selective recovery. If the four ordinary coarse interpolation
+corners are excluded, preparation records the nearest admissible coarse window
+in a bounded 6 x 6 neighbourhood. Its centre-to-centre link must pass the same
+mask test below. At runtime it is used only when its coarse solve was accepted;
+its motion is transported to the fine centre before the fine solve. If there
+is no usable candidate, the selected fine window still runs from zero. A thin
+ROI can therefore reduce capture range without removing its fine measurements.
 
 Links are also screened in reference coordinates to prevent averaging across
 a crack between selected windows. The implementation conservatively requires
@@ -100,7 +104,10 @@ For cross-level links both centres are mapped to the original full-resolution
 mask. Global component labels are not used as a substitute for this check.
 These permissions are static. If UOD lacks its existing minimum number of
 admissible neighbours it preserves the solver result; the pure median uses
-its existing available-neighbour rule. Excluded windows are never filled.
+its existing available-neighbour rule. For a rejected ROI point, the 3 x 3
+median can use three valid neighbours on the interior side of a boundary. The
+repaired value retains its rejected status until a subsequent solve accepts it.
+Excluded windows are never filled.
 
 The GPU receives per-window permissions during preparation, not an image mask
 per frame. The full-pyramid path keeps its single submission and final readback;

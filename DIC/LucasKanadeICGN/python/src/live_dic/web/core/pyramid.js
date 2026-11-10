@@ -1,7 +1,7 @@
 import { acquireDevice, imageRequirements, assertImageLimits } from './device.js';
 import { createTargetSlot, attachExternalInput } from './ring.js';
 import { createTemporalGraph } from './temporal.js';
-import { validateMask, planRoi, reduceMask, seedPermissions, hashMask } from './roi.js';
+import { validateMask, planRoi, reduceMask, seedPermissions, createLinkTest, hashMask } from './roi.js';
 import { decodePacked, createResultReader, decodeCounters } from './result.js';
 import { loadShader } from './shaders.js';
 import { createGpuReferenceGraph } from './reference-gpu.js';
@@ -520,6 +520,7 @@ export function createPyramidHost(options = {}) {
       });
     }
 
+    const roiSeedLinkTest = roiMask ? createLinkTest(roiMask, width, height) : null;
     for (let destinationIndex = levelCount - 2; destinationIndex >= 0; --destinationIndex) {
       const source = levels[destinationIndex + 1];
       const destination = levels[destinationIndex];
@@ -536,7 +537,7 @@ export function createPyramidHost(options = {}) {
       );
       const links = roiMask ? createBufferWithData('ROI seed links', seedPermissions(
         source.roi, destination.roi, 2 ** source.index, 2 ** destination.index,
-        SUBSET_SIZE, SUBSET_STRIDE, roiMask, FRAME_WIDTH, FRAME_HEIGHT), GPUBufferUsage.STORAGE) : null;
+        SUBSET_SIZE, SUBSET_STRIDE, roiMask, FRAME_WIDTH, FRAME_HEIGHT, roiSeedLinkTest), GPUBufferUsage.STORAGE) : null;
       seedEdges.set(destinationIndex, {
         config, links,
         bindGroup: device.createBindGroup({

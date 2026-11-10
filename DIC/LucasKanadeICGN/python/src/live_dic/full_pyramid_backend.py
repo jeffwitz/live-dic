@@ -34,7 +34,7 @@ from .outlier import (
     normalize_median_filter_size,
     normalize_outlier_policy,
 )
-from .roi import reduce_mask, seed_permissions, validate_roi
+from .roi import integral, reduce_mask, seed_permissions, validate_roi
 from .subset import DEFAULT_SUBSET_SIZE, normalize_subset_size, normalize_subset_stride
 from .weighting import (
     normalize_gaussian_sigma,
@@ -523,7 +523,9 @@ class ICGNWGPUFullPyramid:
                 },
             )
 
-    def _prepare_temporal_state(self, mask: np.ndarray | None) -> None:
+    def _prepare_temporal_state(
+        self, mask: np.ndarray | None, *, reference_prefix: np.ndarray | None = None
+    ) -> None:
         """Allocate one history for the engine, shared across all target slots."""
         root, coarse = self._root, self._levels[-1]
         count = root.grid_width * root.grid_height
@@ -547,7 +549,11 @@ class ICGNWGPUFullPyramid:
             usage=usage.UNIFORM,
         )
         permissions = np.full(coarse.grid_width * coarse.grid_height, 31, dtype=np.uint32)
-        if mask is not None and not mask.all():
+        if root.roi is not None and root.roi.effective:
+            if mask is None:
+                raise RuntimeError("An effective ROI plan requires its reference mask")
+            if reference_prefix is None:
+                reference_prefix = integral(mask)
             permissions = seed_permissions(
                 root.roi,
                 coarse.roi,
@@ -556,6 +562,7 @@ class ICGNWGPUFullPyramid:
                 size=self.subset_size,
                 stride=self.subset_stride,
                 reference_mask=mask,
+                reference_prefix=reference_prefix,
             )
         self._temporal_buffers["links"] = self.device.create_buffer_with_data(
             data=permissions,
@@ -1164,8 +1171,16 @@ class ICGNWGPUFullPyramid:
             if level_index:
                 self._levels.append(engine)
 
-        if mask is not None and not mask.all() and self.pyramid_levels > 1:
-            self._prepare_roi_links(mask)
+        needs_roi_prefix = (
+            self._root.roi is not None
+            and self._root.roi.effective
+            and (self.pyramid_levels > 1 or self.initialization == "temporal")
+        )
+        if needs_roi_prefix and mask is None:
+            raise RuntimeError("An effective ROI plan requires its reference mask")
+        roi_reference_prefix = integral(mask) if needs_roi_prefix and mask is not None else None
+        if self.pyramid_levels > 1 and roi_reference_prefix is not None:
+            self._prepare_roi_links(mask, reference_prefix=roi_reference_prefix)
         self.roi = self._root.roi
         self.reference_valid = self._root.reference_valid
         self._root._roi_level_counts = [
@@ -1194,7 +1209,7 @@ class ICGNWGPUFullPyramid:
                 divergenceLevels="finest",
             )
         if self.initialization == "temporal":
-            self._prepare_temporal_state(mask)
+            self._prepare_temporal_state(mask, reference_prefix=roi_reference_prefix)
             self._root._pyramid_config.update(
                 initialization="temporal",
                 temporalMaxAge=self.temporal_max_age,
@@ -1266,7 +1281,7 @@ class ICGNWGPUFullPyramid:
             reference_valid=fine.reference_valid,
         )
 
-    def _prepare_roi_links(self, mask: np.ndarray) -> None:
+    def _prepare_roi_links(self, mask: np.ndarray, *, reference_prefix: np.ndarray) -> None:
         """Build immutable transfer resources once, shared by all stream slots."""
         if self._roi_seed_pipeline is None:
             shader = self.device.create_shader_module(
@@ -1311,6 +1326,7 @@ class ICGNWGPUFullPyramid:
                 size=self.subset_size,
                 stride=self.subset_stride,
                 reference_mask=mask,
+                reference_prefix=reference_prefix,
             )
             self._roi_link_buffers[index] = self.device.create_buffer_with_data(
                 data=flags, usage=self._wgpu.BufferUsage.STORAGE

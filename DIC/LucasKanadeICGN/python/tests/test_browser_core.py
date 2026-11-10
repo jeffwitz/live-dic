@@ -91,13 +91,16 @@ class BrowserGeometryTests(unittest.TestCase):
                 reference_mask=mask,
             )
             script = f"""
-              import {{ planRoi, reduceMask, seedPermissions }} from {json.dumps((CORE / "roi.js").as_uri())};
+              import {{ planRoi, reduceMask, seedPermissions, createLinkTest }} from {json.dumps((CORE / "roi.js").as_uri())};
               const mask = new Uint8Array({json.dumps(mask.astype(int).ravel().tolist())});
               const fine = planRoi(mask, 111, 93, {size}, {stride});
               const r = reduceMask(mask, 111, 93);
               const coarse = planRoi(r.mask, r.width, r.height, {size}, {stride});
+              const clear = createLinkTest(mask, 111, 93);
+              const sharedLinks = seedPermissions(coarse, fine, 2, 1, {size}, {stride}, mask, 111, 93, clear);
+              const defaultLinks = seedPermissions(coarse, fine, 2, 1, {size}, {stride}, mask, 111, 93);
               console.log(JSON.stringify({{ selected: [...fine.selected], neighbours: [...fine.neighbours],
-                reduced: [...r.mask], links: [...seedPermissions(coarse, fine, 2, 1, {size}, {stride}, mask, 111, 93)] }}));
+                reduced: [...r.mask], links: [...sharedLinks], defaultLinks: [...defaultLinks] }}));
             """
             output = subprocess.check_output(
                 ["node", "--input-type=module"], input=script, text=True
@@ -107,6 +110,7 @@ class BrowserGeometryTests(unittest.TestCase):
             np.testing.assert_array_equal(actual["neighbours"], fine.neighbour_bits.ravel())
             np.testing.assert_array_equal(actual["reduced"], reduced.ravel())
             np.testing.assert_array_equal(actual["links"], links.ravel())
+            np.testing.assert_array_equal(actual["defaultLinks"], links.ravel())
 
     def test_slot_ring_starts_both_slots_and_delivers_in_order(self):
         script = f"""
@@ -310,6 +314,44 @@ class BrowserCoreExecutionTests(unittest.TestCase):
         self.assertTrue(actual["excluded"])
         self.assertGreater(actual["accepted"], 0)
         self.assertTrue(actual["partial"])
+
+    def test_roi_edge_seed_on_browser_gpu(self):
+        from live_dic import ICGNBrowser
+
+        with Image.open(UHD_TENSILE / "reference.png") as image:
+            reference = np.array(image)[256:768, :512]
+        target = np.roll(reference, (0, 8), axis=(0, 1))
+        mask = np.ones_like(reference, bool)
+        mask[:, :63] = False
+        flags = (
+            (
+                "--use-angle=swiftshader",
+                "--enable-unsafe-webgpu",
+                "--use-webgpu-adapter=swiftshader",
+                "--use-vulkan=swiftshader",
+            )
+            if os.environ.get("ICGN_BROWSER_SOFTWARE") == "1"
+            else ()
+        )
+        with ICGNBrowser(
+            backend="webgpu-wgsl",
+            chromium_args=flags,
+            startup_timeout=60,
+            motion_model="translation",
+            pyramid_levels=2,
+            iterations_per_level=(12, 12),
+            tolerance_per_level=(0.005, 0.005),
+            outlier_policy="disabled",
+            subset_size=16,
+            subset_stride=16,
+        ) as browser:
+            info = browser.set_reference(reference, roi_mask=mask)
+            result = browser.register(target)
+        selected = info.roi_selected[2:-2, 4]
+        accepted = result.accepted_mask[2:-2, 4] & selected
+        self.assertGreater(accepted.sum() / selected.sum(), 0.90)
+        error = np.linalg.norm(result.displacement[2:-2, 4][accepted] - (8, 0), axis=-1)
+        self.assertLess(float(np.sqrt(np.mean(error**2))), 0.05)
 
     def test_global_affine_seed_runs_through_the_gpu_pyramid(self):
         from live_dic import ICGNBrowser

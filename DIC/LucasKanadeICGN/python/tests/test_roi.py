@@ -13,7 +13,7 @@ import numpy as np
 from test_gpu_regressions import _fractional_pair, _quadratic_pair
 
 from live_dic import ICGNWGPU, ICGNBrowser, ICGNWGPUFullPyramid, register_pair
-from live_dic.roi import prepare_roi, reduce_mask, seed_permissions, validate_roi
+from live_dic.roi import integral, prepare_roi, reduce_mask, seed_permissions, validate_roi
 
 
 class RoiGeometryTests(unittest.TestCase):
@@ -95,6 +95,20 @@ class RoiGeometryTests(unittest.TestCase):
         self.assertFalse(bool(plan.neighbour_bits[1, 1] & (1 << 5)))
         self.assertTrue(bool(plan.neighbour_bits[1, 0] & (1 << 5)))
 
+    def test_roi_preparation_reuses_one_prefix_and_skips_it_for_full_mask(self):
+        mask = np.ones((96, 112), bool)
+        mask[:, 47] = False
+        with mock.patch("live_dic.roi.integral", wraps=integral) as build_prefix:
+            plan = prepare_roi(mask, 16, 8)
+        self.assertEqual(build_prefix.call_count, 1)
+        self.assertTrue(plan.effective)
+
+        with mock.patch("live_dic.roi.integral", side_effect=AssertionError("unexpected prefix")):
+            full = prepare_roi(np.ones_like(mask), 16, 8, median_filter_size=9)
+        self.assertFalse(full.effective)
+        self.assertTrue(full.selected.all())
+        self.assertIsNotNone(full.median_neighbour_words)
+
     def test_large_median_links_cover_the_requested_window_without_crossing_cracks(self):
         mask = np.ones((112, 112), bool)
         plan = prepare_roi(mask, 8, 8, median_filter_size=9)
@@ -131,8 +145,50 @@ class RoiGeometryTests(unittest.TestCase):
             stride=16,
             reference_mask=mask,
         )
+        reference_prefix = integral(mask)
+        with mock.patch("live_dic.roi.integral", side_effect=AssertionError("unexpected prefix")):
+            shared_prefix_flags = seed_permissions(
+                coarse,
+                fine,
+                source_scale=2,
+                destination_scale=1,
+                size=16,
+                stride=16,
+                reference_mask=mask,
+                reference_prefix=reference_prefix,
+            )
+        np.testing.assert_array_equal(shared_prefix_flags, flags)
         np.testing.assert_array_equal((flags >> 4) != 0, fine.selected)
         self.assertTrue(np.any((flags & 15) == 0))
+
+    def test_fallback_seeds_stay_inside_mask_and_do_not_cross_cracks(self):
+        mask = np.ones((256, 256), bool)
+        mask[:, :63] = False
+        mask[:, 159] = False
+        fine = prepare_roi(mask, 16, 16)
+        coarse = prepare_roi(reduce_mask(mask), 16, 16)
+        flags = seed_permissions(
+            coarse,
+            fine,
+            source_scale=2,
+            destination_scale=1,
+            size=16,
+            stride=16,
+            reference_mask=mask,
+        )
+        y, x = np.nonzero(flags >> np.uint32(5))
+        self.assertGreater(len(x), 0)
+        for gy, gx in zip(y, x, strict=True):
+            index = int(flags[gy, gx] >> np.uint32(5)) - 1
+            sy, sx = divmod(index, coarse.selected.shape[1])
+            self.assertTrue(coarse.selected[sy, sx])
+            ax, ay = 7.5 + gx * 16, 7.5 + gy * 16
+            bx, by = 2 * (7.5 + sx * 16), 2 * (7.5 + sy * 16)
+            x0 = max(0, int(np.ceil(min(ax, bx) - 0.5)))
+            y0 = max(0, int(np.ceil(min(ay, by) - 0.5)))
+            x1 = min(mask.shape[1], int(np.floor(max(ax, bx) + 0.5)) + 1)
+            y1 = min(mask.shape[0], int(np.floor(max(ay, by) + 0.5)) + 1)
+            self.assertTrue(mask[y0:y1, x0:x1].all())
 
     def test_browser_rejects_roi_before_startup(self):
         engine = ICGNBrowser()
@@ -261,6 +317,37 @@ class RoiGPURegressionTests(unittest.TestCase):
             self.assertEqual(filtered[1, 1, 0], 3)
             self.assertEqual(filtered[1, 1, 6], -1)
             np.testing.assert_array_equal(filtered[..., 6], packed[..., 6])
+
+    def test_gpu_median_uses_three_valid_neighbours_at_roi_edge(self):
+        reference, _ = _fractional_pair(128, 128, (0, 0))
+        mask = np.ones(reference.shape, bool)
+        mask[:, :32] = False
+        with ICGNWGPU(
+            motion_model="translation",
+            subset_size=16,
+            subset_stride=16,
+            outlier_policy="median",
+            prefer_subgroups=False,
+        ) as engine:
+            info = engine.set_reference(reference, roi_mask=mask)
+            packed = np.zeros((engine.grid_height, engine.grid_width, 8), np.float32)
+            packed[..., 6] = np.where(info.roi_selected, 0, -3)
+            packed[3, 2, 0] = 100
+            packed[2:5, 3, 0] = [2, 3, 4]
+            packed[2:5, 3, 6] = 1
+            engine.device.queue.write_buffer(engine._buffers["state"], 0, packed)
+            encoder = engine.device.create_command_encoder()
+            compute = encoder.begin_compute_pass()
+            compute.set_pipeline(engine._median_filter)
+            compute.set_bind_group(0, engine._bind_group)
+            compute.dispatch_workgroups(1)
+            compute.end()
+            engine.device.queue.submit([encoder.finish()])
+            filtered = np.frombuffer(
+                engine.device.queue.read_buffer(engine._buffers["filtered_state"]), np.float32
+            ).reshape(packed.shape)
+            self.assertEqual(filtered[3, 2, 0], 3)
+            self.assertEqual(filtered[3, 2, 6], 0)
 
     def test_retained_reference_data_and_invalid_preparation_are_transactional(self):
         reference, _ = _fractional_pair(128, 128, (0, 0))

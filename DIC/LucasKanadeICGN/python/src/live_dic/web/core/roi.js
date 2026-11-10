@@ -32,12 +32,14 @@ export function reduceMask(mask, width, height) {
   }
   return { mask: values, width: w, height: h };
 }
-function linkTest(mask, width, height) {
-  const box = prefix(mask, width, height);
+function linkTest(box, width, height) {
   return (ax, ay, bx, by) => box(Math.max(0, Math.ceil(Math.min(ax, bx) - .5)),
     Math.max(0, Math.ceil(Math.min(ay, by) - .5)),
     Math.min(width, Math.floor(Math.max(ax, bx) + .5) + 1),
     Math.min(height, Math.floor(Math.max(ay, by) + .5) + 1));
+}
+export function createLinkTest(mask, width, height) {
+  return linkTest(prefix(mask, width, height), width, height);
 }
 export function planRoi(mask, width, height, size, stride, medianFilterSize = 3) {
   if (![3, 5, 7, 9].includes(medianFilterSize)) {
@@ -45,7 +47,7 @@ export function planRoi(mask, width, height, size, stride, medianFilterSize = 3)
   }
   const gx = 1 + Math.floor((width - size) / stride), gy = 1 + Math.floor((height - size) / stride);
   const selected = new Uint8Array(gx * gy), neighbours = new Uint32Array(gx * gy);
-  const box = prefix(mask, width, height), clear = linkTest(mask, width, height);
+  const box = prefix(mask, width, height), clear = linkTest(box, width, height);
   const center = (size - 1) / 2;
   for (let y = 0; y < gy; y++) for (let x = 0; x < gx; x++) {
     selected[y * gx + x] = +box(x * stride, y * stride, x * stride + size, y * stride + size);
@@ -82,9 +84,11 @@ export function planRoi(mask, width, height, size, stride, medianFilterSize = 3)
     medianNeighbourWords,
     count: selected.reduce((a, b) => a + b, 0) };
 }
-export function seedPermissions(source, destination, sourceScale, destinationScale, size, stride, mask, width, height) {
+export function seedPermissions(source, destination, sourceScale, destinationScale, size, stride,
+  mask, width, height, clear = null) {
   const bits = new Uint32Array(destination.selected.length), center = size / 2;
-  const clear = linkTest(mask, width, height), pixelCenter = (size - 1) / 2;
+  clear ??= createLinkTest(mask, width, height);
+  const pixelCenter = (size - 1) / 2;
   for (let y = 0; y < destination.gridHeight; y++) for (let x = 0; x < destination.gridWidth; x++) {
     const index = y * destination.gridWidth + x;
     if (!destination.selected[index]) continue;
@@ -98,6 +102,22 @@ export function seedPermissions(source, destination, sourceScale, destinationSca
       if (nx < source.gridWidth && ny < source.gridHeight && source.selected[ny * source.gridWidth + nx]
           && clear(destinationScale * (pixelCenter + x * stride), destinationScale * (pixelCenter + y * stride),
             sourceScale * (pixelCenter + nx * stride), sourceScale * (pixelCenter + ny * stride))) bits[index] |= 1 << corner;
+    }
+    if (sourceScale > destinationScale && (bits[index] & 15) === 0
+        && source.selected.length < 2 ** 27 - 1) {
+      let best = Infinity, chosen = 0;
+      for (let dy = -2; dy <= 3; dy++) for (let dx = -2; dx <= 3; dx++) {
+        const nx = lx + dx, ny = ly + dy;
+        if (nx < 0 || ny < 0 || nx >= source.gridWidth || ny >= source.gridHeight
+            || !source.selected[ny * source.gridWidth + nx]) continue;
+        const distance = (sx - (center + nx * stride)) ** 2 + (sy - (center + ny * stride)) ** 2;
+        if (distance < best && clear(destinationScale * (pixelCenter + x * stride),
+          destinationScale * (pixelCenter + y * stride), sourceScale * (pixelCenter + nx * stride),
+          sourceScale * (pixelCenter + ny * stride))) {
+          best = distance; chosen = ny * source.gridWidth + nx + 1;
+        }
+      }
+      bits[index] |= chosen << 5;
     }
   }
   return bits;

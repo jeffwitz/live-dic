@@ -41,6 +41,54 @@ class CorrectedTemporalTests(test_temporal_init.TemporalGpuTests):
 
 @unittest.skipUnless(os.environ.get("ICGN_RUN_GPU_TESTS") == "1", "GPU tests explicitly disabled")
 class UHDFusionTests(unittest.TestCase):
+    def test_uhd_roi_edge_affine_with_overlapping_subsets(self):
+        with Image.open(FIXTURES / "reference.png") as image:
+            reference = np.array(image)
+        target = np.roll(reference, (0, 8), axis=(0, 1))
+        mask = np.ones(reference.shape, bool)
+        mask[:, :63] = False
+        with ICGNWGPUFullPyramid(
+            motion_model="affine",
+            pyramid_levels=2,
+            iterations_per_level=(12, 12),
+            tolerance_per_level=(0.005, 0.005),
+            initialization="zero",
+            outlier_policy="disabled",
+            subset_size=32,
+            subset_stride=16,
+        ) as engine:
+            info = engine.set_reference(reference, roi_mask=mask)
+            result = engine.register(target)
+            selected = info.roi_selected[2:-2, 4]
+            accepted = result.accepted_mask[2:-2, 4] & selected
+            self.assertGreater(accepted.sum() / selected.sum(), 0.90)
+            error = np.linalg.norm(result.displacement[2:-2, 4][accepted] - (8, 0), axis=-1)
+            self.assertLess(float(np.sqrt(np.mean(error**2))), 0.05)
+
+    def test_uhd_roi_edge_initialization_for_large_translation(self):
+        with Image.open(FIXTURES / "reference.png") as image:
+            reference = np.array(image)
+        target = np.roll(reference, (0, 8), axis=(0, 1))
+        mask = np.ones(reference.shape, bool)
+        mask[:, :63] = False
+        with ICGNWGPUFullPyramid(
+            motion_model="translation",
+            pyramid_levels=2,
+            iterations_per_level=(12, 12),
+            tolerance_per_level=(0.005, 0.005),
+            initialization="zero",
+            outlier_policy="disabled",
+            subset_size=16,
+            subset_stride=16,
+        ) as engine:
+            info = engine.set_reference(reference, roi_mask=mask)
+            result = engine.register(target)
+            selected = info.roi_selected[2:-2, 4]
+            accepted = result.accepted_mask[2:-2, 4] & selected
+            self.assertGreater(accepted.sum() / selected.sum(), 0.90)
+            error = np.linalg.norm(result.displacement[2:-2, 4][accepted] - (8, 0), axis=-1)
+            self.assertLess(float(np.sqrt(np.mean(error**2))), 0.05)
+
     def test_native_uhd_models_and_roi_preserve_scientific_accuracy(self):
         with Image.open(FIXTURES / "reference.png") as image:
             reference = np.array(image)

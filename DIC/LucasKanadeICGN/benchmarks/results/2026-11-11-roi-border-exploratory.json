@@ -1,0 +1,277 @@
+{
+  "purpose": "Exploratory native 4K ROI seed fallback timing; no FPS qualification",
+  "git_head": "d3a57680dde39d999ae091e560b88241eb77ab48",
+  "git_dirty": true,
+  "adapter": "Intel(R) Graphics (LNL), Vulkan, Mesa 25.2.8",
+  "wgpu": "0.32.0",
+  "numpy": "2.4.6",
+  "reference_sha256": "7cadf6032d7c5ac2de74ae542573a3b38069dc8c1c075ef9576641601996aeec",
+  "shader_sha256": "caec69cd3c53c6bb1f85c0d8aa62b6db0f9fb6bff719b901b8194c9288c533bd",
+  "roi_code_sha256": "19a24335f80a2f4f4ace5887aec8ed9e685b4b3b5232fc480fe8c58c027c6a78",
+  "reference": "assets/uhd_tensile/reference.png",
+  "target": "numpy.roll(reference, (0,1), axis=(0,1))",
+  "mask": "all true except columns 0 through 62",
+  "settings": {
+    "model": "translation",
+    "subset_size": 16,
+    "subset_stride": 16,
+    "pyramid_levels": 2,
+    "iterations_per_level": [
+      12,
+      12
+    ],
+    "tolerance_per_level": [
+      0.005,
+      0.005
+    ],
+    "outlier_policy": "disabled",
+    "warmups": 3,
+    "samples": 15
+  },
+  "measurement": "wall time of synchronous register from resident NumPy target to materialized result",
+  "method": "ABBA separate processes; old differs only by removing the new fallback block from full_pyramid.wgsl; both use current ROI preparation. Short runs, no camera, no throughput or thermal qualification.",
+  "quality_cases": {
+    "uhd_translation_8px": {
+      "definition": "same ROI and settings as timing except target shift is 8 pixels; first selected grid column includes all 135 rows",
+      "edge_selected": 135,
+      "accepted_before": 45,
+      "accepted_after": 130,
+      "rmse_accepted_after_pixels": 0.00002895796290325623
+    },
+    "uhd_affine_8px": {
+      "definition": "same as uhd_translation_8px with affine motion model",
+      "edge_selected": 135,
+      "accepted_before": 3,
+      "accepted_after": 96,
+      "rmse_accepted_after_pixels": 0.00007797634829903316
+    },
+    "uhd_32_stride16_8px": {
+      "definition": "same shift and edge ROI as above, 32 pixel subset with stride 16; all 134 rows",
+      "translation": {"edge_accepted_before": 65, "edge_accepted_after": 132, "rmse_accepted_after_pixels": 0.000028091048198592547},
+      "affine": {"edge_accepted_before": 14, "edge_accepted_after": 131, "rmse_accepted_after_pixels": 0.000012163655281607268}
+    },
+    "pydic_tension": {
+      "repository": "https://gitlab.com/damien.andre/pydic",
+      "revision": "e77a186c1127254c8939cbb07fcd227c7124cec7",
+      "reference": "examples/tension-test/img/0001.bmp",
+      "reference_sha256": "f9e5c2272cf9562910f5c4f0770dba861de260aecfee32f0df3ce50e39eb724f",
+      "target": "examples/tension-test/img/0004.bmp",
+      "target_sha256": "0a8f7efc1ad71721f07191e3de04f1e5c58f721e27a22f9ebf4b0321d21e7660",
+      "mask": "zeros except rows [280,1600) and columns [128,2432)",
+      "configuration": "translation, 32x32, stride 16, two levels, 12 iterations each, tolerance 0.005, zero initialization, median disabled",
+      "edge_population": "selected subset centres less than 48 pixels from rectangle boundary",
+      "edge_selected": 1171,
+      "edge_accepted_before": 1005,
+      "edge_accepted_after": 1164,
+      "interior_population": "selected subset centres at least 96 pixels from rectangle boundary",
+      "interior_selected": 9170,
+      "interior_accepted_before": 9170,
+      "interior_accepted_after": 9170,
+      "limitation": "No displacement ground truth is available for these experimental images; acceptance is not accuracy.",
+      "affine_same_configuration": {
+        "edge_accepted_before": 870,
+        "edge_accepted_after": 1143,
+        "interior_accepted_before": 9168,
+        "interior_accepted_after": 9168
+      }
+    }
+  },
+  "runs": [
+    {
+      "variant": "old",
+      "none": {
+        "prepare_ms": 1032.1050570346415,
+        "samples_ms": [
+          8.674947079271078,
+          9.195946040563285,
+          8.96328897215426,
+          9.154191939160228,
+          8.566308999434114,
+          9.612051886506379,
+          8.492149994708598,
+          8.511506952345371,
+          8.178498013876379,
+          9.171131998300552,
+          9.002182981930673,
+          8.666870999149978,
+          8.054719073697925,
+          8.793156943283975,
+          8.196691051125526
+        ],
+        "median_ms": 8.674947079271078,
+        "p95_ms": 9.320777794346213,
+        "accepted": 31654
+      },
+      "roi": {
+        "prepare_ms": 1220.7600419642404,
+        "samples_ms": [
+          8.834972977638245,
+          8.321854984387755,
+          8.315157960169017,
+          8.60106898471713,
+          9.180954075418413,
+          8.95363895688206,
+          8.843466988764703,
+          8.958762045949697,
+          9.538974962197244,
+          8.948232978582382,
+          8.92834400292486,
+          9.19507397338748,
+          9.008794091641903,
+          9.041142999194562,
+          9.156654006801546
+        ],
+        "median_ms": 8.95363895688206,
+        "p95_ms": 9.298244270030409,
+        "accepted": 31255
+      }
+    },
+    {
+      "variant": "new",
+      "none": {
+        "prepare_ms": 1037.705474998802,
+        "samples_ms": [
+          8.4518309449777,
+          8.282610913738608,
+          8.534254971891642,
+          8.400920080021024,
+          8.572697057388723,
+          8.87555896770209,
+          9.639419964514673,
+          8.189372951164842,
+          8.428002009168267,
+          8.993724011816084,
+          8.566381991840899,
+          8.386192028410733,
+          7.818390033207834,
+          7.989581092260778,
+          8.866167045198381
+        ],
+        "median_ms": 8.4518309449777,
+        "p95_ms": 9.187432797625661,
+        "accepted": 31654
+      },
+      "roi": {
+        "prepare_ms": 1226.2446660315618,
+        "samples_ms": [
+          9.118275018408895,
+          9.168382035568357,
+          8.881537010893226,
+          8.624532027170062,
+          8.847281918860972,
+          8.856006083078682,
+          8.389908005483449,
+          8.58129106927663,
+          9.104851982556283,
+          9.209285955876112,
+          8.35006299894303,
+          8.324875961989164,
+          8.943211054429412,
+          8.891829987987876,
+          8.461277931928635
+        ],
+        "median_ms": 8.856006083078682,
+        "p95_ms": 9.180653211660683,
+        "accepted": 31255
+      }
+    },
+    {
+      "variant": "new",
+      "none": {
+        "prepare_ms": 1018.812439055182,
+        "samples_ms": [
+          9.109335020184517,
+          9.15668299421668,
+          9.225612971931696,
+          9.649781975895166,
+          9.517987025901675,
+          9.188925032503903,
+          10.41816605720669,
+          9.005476022139192,
+          10.007623001001775,
+          9.548095986247063,
+          10.27213002089411,
+          9.94388700928539,
+          9.395904024131596,
+          10.148586938157678,
+          9.151867008768022
+        ],
+        "median_ms": 9.517987025901675,
+        "p95_ms": 10.315940831787884,
+        "accepted": 31654
+      },
+      "roi": {
+        "prepare_ms": 1395.2014530077577,
+        "samples_ms": [
+          8.668220019899309,
+          9.740496054291725,
+          8.20347701665014,
+          9.189525968395174,
+          9.44822293240577,
+          8.908742922358215,
+          9.551584022119641,
+          9.283127961680293,
+          9.584328043274581,
+          9.233957971446216,
+          9.608109015971422,
+          9.299381985329092,
+          8.927867049351335,
+          8.762532961554825,
+          8.925443049520254
+        ],
+        "median_ms": 9.233957971446216,
+        "p95_ms": 9.647825127467513,
+        "accepted": 31255
+      }
+    },
+    {
+      "variant": "old",
+      "none": {
+        "prepare_ms": 988.8642249861732,
+        "samples_ms": [
+          8.255233988165855,
+          8.1429349957034,
+          8.364724926650524,
+          8.430643007159233,
+          8.23048292659223,
+          8.316686027683318,
+          8.441100013442338,
+          8.43981804791838,
+          8.211865089833736,
+          8.531917002983391,
+          8.209840976633132,
+          8.532540989108384,
+          8.065609028562903,
+          8.115431992337108,
+          8.28996195923537
+        ],
+        "median_ms": 8.28996195923537,
+        "p95_ms": 8.532104198820889,
+        "accepted": 31654
+      },
+      "roi": {
+        "prepare_ms": 1220.7101839594543,
+        "samples_ms": [
+          8.083970053121448,
+          7.989931968040764,
+          8.085715002380311,
+          8.454174036160111,
+          8.115048985928297,
+          8.16766801290214,
+          8.664718945510685,
+          8.24149907566607,
+          8.350817020982504,
+          8.367802947759628,
+          8.195764035917819,
+          8.909578085877001,
+          8.623257046565413,
+          8.864571922458708,
+          8.390122908167541
+        ],
+        "median_ms": 8.350817020982504,
+        "p95_ms": 8.878073771484196,
+        "accepted": 31255
+      }
+    }
+  ]
+}

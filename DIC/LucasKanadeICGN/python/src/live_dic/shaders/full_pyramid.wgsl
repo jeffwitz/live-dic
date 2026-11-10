@@ -367,6 +367,24 @@ fn interpolate_subset_seed(destination_index: u32, permissions: u32) -> SeedEsti
             &weight_sum,
         );
     }
+    // A geometrically admissible neighbour can lie just beyond the four
+    // bilinear corners at an ROI boundary. Use it only if its solve succeeded.
+    let fallback = permissions >> 5u;
+    if weight_sum == 0.0 && fallback != 0u {
+        let source_index = fallback - 1u;
+        let stride = select(2u, 4u, MOTION_MODEL == 2u);
+        var source_status = source_state.values[source_index * stride + 1u].z;
+        if MOTION_MODEL == 2u {
+            source_status = source_state.values[source_index * stride + 3u].x;
+        }
+        if source_status >= 0.5 {
+            let source_grid = vec2<u32>(source_index % seed_config.source_grid_width,
+                source_index / seed_config.source_grid_width);
+            let source_center = vec2<f32>(0.5 * SUBSET_SIZE) + SUBSET_STRIDE * vec2<f32>(source_grid);
+            accumulate_seed(source_index, 1.0, source_center, source_coordinate, translation_scale,
+                &accumulated_a, &accumulated_b, &accumulated_c, &weight_sum);
+        }
+    }
     let has_seed = weight_sum > 0.0;
     if has_seed {
         accumulated_a /= weight_sum;

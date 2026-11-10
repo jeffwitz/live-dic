@@ -1288,7 +1288,13 @@ fn median_filter_motion_state(
                 count += 1u;
             }
         }
-        if count < 4u {
+        // A rejected point on a straight ROI boundary has only the three
+        // neighbours on the interior side in a 3x3 stencil. Its status is
+        // preserved below, so this estimate is not promoted to a measurement.
+        let minimum_count = select(
+            4u, 3u, ROI_ENABLED != 0u && MEDIAN_FILTER_SIZE == 3u && own_status < 0.5,
+        );
+        if count < minimum_count {
             return;
         }
         filtered[component] = median_up_to_81(&values, count);

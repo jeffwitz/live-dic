@@ -587,6 +587,43 @@ class NativeReferenceTests(unittest.TestCase):
         self.assertEqual(int(active[0, 0]), 1)
         self.assertEqual(float(seeds[0, 0, 0]), 8.0)
 
+    def test_pyramid_transfer_fallback_requires_a_valid_source(self) -> None:
+        parameters = np.zeros((2, 2, 6), dtype=np.float32)
+        parameters[0, 1, 0] = 4
+        status = np.zeros((2, 2), dtype=np.float32)
+        status[0, 1] = 1
+        result = RegistrationResult(
+            parameters=parameters,
+            status=status,
+            iterations=np.zeros((2, 2), dtype=np.float32),
+            accepted=1,
+            replaced=0,
+            mean_translation=None,
+            mean_iterations=None,
+            timing={},
+            config={},
+            width=32,
+            height=32,
+            subset_size=16,
+        )
+        requested = np.zeros((2, 2), dtype=bool)
+        requested[1, 1] = True
+        permissions = np.zeros((2, 2), dtype=np.uint32)
+        permissions[1, 1] = 16 | (2 << 5)
+        kwargs = dict(
+            source_available=np.ones((2, 2), dtype=bool),
+            source_scale=2,
+            destination_scale=1,
+            destination_grid=(2, 2),
+            requested=requested,
+            permissions=permissions,
+        )
+        seeds, _ = _transfer_pyramid_seed(result, **kwargs)
+        self.assertEqual(seeds[1, 1, 0], 8)
+        status[0, 1] = 0
+        seeds, _ = _transfer_pyramid_seed(result, **kwargs)
+        np.testing.assert_array_equal(seeds[1, 1], 0)
+
     def test_pyramid_transfer_falls_back_to_zero_seed(self) -> None:
         result = RegistrationResult(
             parameters=np.zeros((2, 2, 6), dtype=np.float32),

@@ -38,7 +38,15 @@ from .outlier import (
     normalize_outlier_policy,
 )
 from .partial import filter_and_support_data, prepare_partial_reference
-from .roi import RoiPlan, immutable, prepare_roi, reduce_mask, seed_permissions, validate_roi
+from .roi import (
+    RoiPlan,
+    immutable,
+    integral,
+    prepare_roi,
+    reduce_mask,
+    seed_permissions,
+    validate_roi,
+)
 from .subset import (
     DEFAULT_SUBSET_SIZE,
     normalize_subset_size,
@@ -380,15 +388,28 @@ def _transfer_pyramid_seed(
     fraction_y = np.clip(grid_y - lower_y, 0.0, 1.0)
     accumulated = np.zeros((destinations.shape[0], component_count), dtype=np.float64)
     weight_sum = np.zeros(destinations.shape[0], dtype=np.float64)
-    for corner in range(4):
-        source_x = lower_x + (corner & 1)
-        source_y = lower_y + (corner >> 1)
-        valid = (result.status[source_y, source_x] >= -0.5) & source_available[source_y, source_x]
-        if permissions is not None:
-            valid &= (permissions[destination_y, destination_x] & (1 << corner)) != 0
-        weight_x = fraction_x if corner & 1 else 1.0 - fraction_x
-        weight_y = fraction_y if corner & 2 else 1.0 - fraction_y
-        weight = weight_x * weight_y * valid
+    for corner in range(5):
+        if corner == 4:
+            if permissions is None:
+                break
+            fallback = permissions[destination_y, destination_x] >> np.uint32(5)
+            index = np.maximum(fallback.astype(np.int64) - 1, 0)
+            source_x = index % source_width
+            source_y = index // source_width
+            valid = (fallback != 0) & (weight_sum == 0) & source_available[source_y, source_x]
+            valid &= result.status[source_y, source_x] >= 0.5
+            weight = valid.astype(np.float64)
+        else:
+            source_x = lower_x + (corner & 1)
+            source_y = lower_y + (corner >> 1)
+            valid = (result.status[source_y, source_x] >= -0.5) & source_available[
+                source_y, source_x
+            ]
+            if permissions is not None:
+                valid &= (permissions[destination_y, destination_x] & (1 << corner)) != 0
+            weight_x = fraction_x if corner & 1 else 1.0 - fraction_x
+            weight_y = fraction_y if corner & 2 else 1.0 - fraction_y
+            weight = weight_x * weight_y * valid
         parameters = result.parameters[source_y, source_x]
         delta_x = x - (center_offset + subset_stride * source_x)
         delta_y = y - (center_offset + subset_stride * source_y)
@@ -2290,6 +2311,7 @@ class ICGNWGPU:
             for level in levels
         ]
         if self.roi is not None and self.roi.effective:
+            reference_prefix = integral(self.roi.mask)
             for index, (destination, source) in enumerate(
                 zip(levels[:-1], levels[1:], strict=True)
             ):
@@ -2301,6 +2323,7 @@ class ICGNWGPU:
                     size=self.subset_size,
                     stride=self.subset_stride,
                     reference_mask=self.roi.mask,
+                    reference_prefix=reference_prefix,
                 )
 
     def set_reference(
