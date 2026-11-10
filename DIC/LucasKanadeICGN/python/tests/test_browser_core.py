@@ -134,7 +134,7 @@ class BrowserGeometryTests(unittest.TestCase):
     def test_constructor_rejects_unported_or_invalid_options_without_a_gpu(self):
         script = f"""
           import {{DICEngine}} from {json.dumps((CORE / "engine.js").as_uri())};
-          const cases=[{{subsetSize:'16'}},{{subsetSize:3}},{{subsetSize:65}},{{pyramidLevels:true}},{{initialization:'temporal',pyramidLevels:3,temporalFineCorrection:true}},
+          const cases=[{{subsetSize:'16'}},{{subsetSize:3}},{{subsetSize:46341}},{{pyramidLevels:true}},{{initialization:'temporal',pyramidLevels:3,temporalFineCorrection:true}},
             {{spatialWeighting:'gaussian'}},{{roiPolicy:'partial'}},{{solverWorkgroupSize:128}},{{unknownOption:1}},{{roiPolicy:0}},{{readback:null}},{{spatialWeighting:null}},{{initialization:null}},{{pipelineDepth:null}}];
           const rejected=cases.map(options=>{{try{{new DICEngine(options);return false;}}catch{{return true;}}}});
           let acceptsSix=false;try{{new DICEngine({{initialization:'global-affine',globalAffineLevels:6}});acceptsSix=true;}}catch{{}}
@@ -144,7 +144,7 @@ class BrowserGeometryTests(unittest.TestCase):
           const wide=new DICEngine({{solverWorkgroupSize:32}});
           const width=wide.host.configuration.solverWorkgroupSize;let widthFixed=false;
           try{{wide.host.configure({{solverWorkgroupSize:16}});}}catch{{widthFixed=wide.host.configuration.solverWorkgroupSize===32;}}wide.destroy();
-          const acceptsSubsetSizes=[4,7,24,64].map(subsetSize=>{{try{{new DICEngine({{subsetSize}});return true;}}catch{{return false;}}}});
+          const acceptsSubsetSizes=[4,7,24,64,80].map(subsetSize=>{{try{{new DICEngine({{subsetSize}});return true;}}catch{{return false;}}}});
           console.log(JSON.stringify({{rejected,acceptsSix,acceptsTranslationGlobalAffine,invalidScales,rejectsWithoutInitializer,acceptsSubsetSizes,width,widthFixed}}));
         """
         results = json.loads(

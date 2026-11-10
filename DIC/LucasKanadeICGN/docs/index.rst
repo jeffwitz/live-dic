@@ -81,9 +81,9 @@ Current numerical scope
 -----------------------
 
 Native engines estimate translation, six-parameter affine motion (default),
-or twelve-parameter quadratic motion. Native subset widths are any integer
-from 4 through 64, with independently configurable stride and uniform or
-Gaussian integration. B-spline is the default interpolator; bilinear and
+or twelve-parameter quadratic motion. Native subset widths are integer-valued
+from 4 through the 46,340-pixel WGSL indexing limit, with independently
+configurable stride and uniform or Gaussian integration. B-spline is the default interpolator; bilinear and
 Keys cubic are explicit alternatives. ROI supports translation and affine.
 
 The default spatial policy detects displacement outliers and replaces the

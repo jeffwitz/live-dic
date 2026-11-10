@@ -388,7 +388,7 @@ class NativeReferenceTests(unittest.TestCase):
         self.assertEqual(default, 1)
 
     def test_subset_size_is_validated_before_gpu_creation(self) -> None:
-        for value in range(MIN_SUBSET_SIZE, MAX_SUBSET_SIZE + 1):
+        for value in (MIN_SUBSET_SIZE, 5, 16, 64, 80, MAX_SUBSET_SIZE):
             with self.subTest(value=value):
                 self.assertEqual(normalize_subset_size(value), value)
         for engine_type in (ICGNWGPU, ICGNWGPUFullPyramid):
@@ -432,15 +432,18 @@ class NativeReferenceTests(unittest.TestCase):
         np.testing.assert_allclose(metadata_rows[..., 14], expected_means, atol=1e-5)
 
     def test_reference_layout_supports_all_subset_sizes(self) -> None:
-        image = np.arange(64 * 96, dtype=np.uint8).reshape(64, 96)
-        for subset_size in range(MIN_SUBSET_SIZE, MAX_SUBSET_SIZE + 1):
+        height, width = 96, 128
+        image = np.arange(height * width, dtype=np.uint8).reshape(height, width)
+        for subset_size in (4, 7, 16, 31, 64, 80):
             with self.subTest(subset_size=subset_size):
                 reference, inverse, metadata = _reference_arrays(
                     image,
                     subset_size=subset_size,
                 )
-                grid_count = (96 // subset_size) * (64 // subset_size)
-                self.assertEqual(reference.shape, (64 * 96 * 4,))
+                grid_width = 1 + (width - subset_size) // subset_size
+                grid_height = 1 + (height - subset_size) // subset_size
+                grid_count = grid_width * grid_height
+                self.assertEqual(reference.shape, (height * width * 4,))
                 self.assertEqual(inverse.shape, (grid_count * 36,))
                 self.assertEqual(metadata.shape, (grid_count * 16,))
                 self.assertTrue(np.isfinite(reference).all())

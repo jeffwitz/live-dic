@@ -831,7 +831,8 @@ class ICGNWGPU:
     qualification. Direct ``linear`` and Keys ``cubic`` interpolation omit
     target FIR passes and use the portable solver; ``bspline`` is the
     historical default. The portable solver accepts every integer subset
-    width from 4 to 64; ``subset_stride`` independently selects field spacing.
+    width from 4 to 46,340; ``subset_stride`` independently selects field
+    spacing. Practical limits are set by the image, adapter, and available memory.
     ``spatial_weighting="gaussian"`` applies centred Gaussian integration with
     ``gaussian_sigma`` expressed in pixels. The subgroup WGSL path requires
     size and stride 16 plus uniform integration. The portable solver accepts

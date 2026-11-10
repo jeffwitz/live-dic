@@ -47,7 +47,9 @@ Geometry and input
 
 * All current backends support dynamic frame dimensions and have been validated
   at 3840 x 2160. Reference and target dimensions must match.
-* Native and raw browser shared-WGSL support subset widths from 4 through 64.
+* Native and raw browser shared-WGSL accept integer subset widths from 4 to
+  46,340 (the solver's signed 32-bit pixel-index limit). Actual image size,
+  pyramid depth, adapter limits, and memory constrain practical choices.
   ``subset_stride`` defaults to the selected size and can be
   reduced to create overlapping subsets. Three.js/TSL supports widths 8, 16,
   and 32 and requires stride equal to size.

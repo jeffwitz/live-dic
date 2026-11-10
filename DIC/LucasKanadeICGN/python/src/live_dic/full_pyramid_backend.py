@@ -167,7 +167,7 @@ class ICGNWGPUFullPyramid:
     device and are encoded into one command buffer. ``linear`` and ``cubic``
     interpolation omit the per-level prefilters; ``bspline`` remains the
     compatibility default. ``subset_size`` accepts every integer width from
-    4 to 64; odd widths have an exact pixel centre and even widths have a
+    4 to 46,340; odd widths have an exact pixel centre and even widths have a
     half-pixel centre. ``subset_stride`` independently selects field spacing.
     ``spatial_weighting="gaussian"`` enables a centred weighted least-squares
     window with a configurable ``gaussian_sigma`` in pixels. Uniform

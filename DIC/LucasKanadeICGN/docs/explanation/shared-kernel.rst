@@ -93,8 +93,9 @@ Numerical contract
 Geometry
 ~~~~~~~~
 
-* shared-WGSL subset width ``S``: any integer from 4 through 64 pixels,
-  default 16;
+* shared-WGSL subset width ``S``: any integer from 4 through 46,340 pixels,
+  default 16. The upper bound keeps ``S × S`` and packed support indexing
+  inside signed 32-bit shader arithmetic; image and adapter limits are lower;
 * shared-WGSL subset stride ``D``: integer from 1 through ``S``, default ``S``;
 * grid dimensions: ``1 + floor((width - S) / D)`` by
   ``1 + floor((height - S) / D)``;

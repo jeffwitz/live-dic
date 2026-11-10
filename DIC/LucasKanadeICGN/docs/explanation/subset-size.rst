@@ -2,14 +2,17 @@ Subset size and stride
 ======================
 
 The native wgpu-py solver and the raw ``webgpu-wgsl`` browser core accept any
-integer ``subset_size`` from 4 through 64 pixels. The portable WGSL solver
+integer ``subset_size`` from 4 through 46,340 pixels. The portable WGSL solver
 specializes its pipelines for the requested size and distributes its flattened
 pixel loop over the configured workgroup lanes. This removes the old allowlist
 of a few hand-selected widths. The default remains 16. Four is the lower bound
 because the largest supported local model has twelve parameters and a 4 x 4
-support supplies at least twelve pixel samples. Sixty-four is the API bound for
-small windows; work and reference storage grow with the square of the width.
-Sizes outside this bounded range are rejected before GPU work begins.
+support supplies at least twelve pixel samples. The theoretical upper bound
+keeps ``S × S`` and packed-support arithmetic within signed 32-bit shader
+indices. It is not a promise that a 46,340-pixel window is practical: image
+dimensions, selected pyramid depth, GPU adapter limits, and available memory
+impose much tighter limits when the reference is prepared. Work per subset
+also grows with the square of its width.
 
 Odd widths provide an exact centre pixel; even widths have a half-pixel
 geometric centre. ``subset_stride`` independently selects the distance, in
@@ -28,6 +31,29 @@ geometry and fast path.
    assert info.subset_size == 24
    assert info.subset_stride == 12
    assert result.subset_stride == 12
+
+PyDIC's common ``correl_wind_size=(80, 80)`` and
+``correl_grid_size=(20, 20)`` geometry maps to an 80-pixel subset and a
+20-pixel centre spacing:
+
+.. code-block:: python
+
+   from live_dic import ICGNWGPUFullPyramid
+
+   with ICGNWGPUFullPyramid(
+       subset_size=80,
+       subset_stride=20,
+       motion_model="translation",
+       pyramid_levels=2,
+       device_type="gpu",
+   ) as engine:
+       engine.set_reference(reference)
+       result = engine.register(target)
+
+This matches the window and grid spacing, not PyDIC's OpenCV solver, image
+selection, ROI, or post-processing. A 2-level pyramid requires each coarsest
+image dimension to remain at least 80 pixels. More levels increase the
+capture range only while that size constraint and image texture allow it.
 
 Geometry contract
 -----------------
@@ -159,12 +185,13 @@ Independent stride is implemented by the shared WGSL family:
 * ``ICGNBrowser(backend="webgpu-wgsl")`` in Chromium.
 
 It works with one to six pyramid levels and with translation, affine, and
-quadratic motion models. Three.js/TSL currently requires
+quadratic motion models, provided the coarsest level remains at least as wide
+and tall as the subset. Three.js/TSL currently requires
 ``subset_stride == subset_size`` and rejects a non-default stride instead of
 silently changing its geometry.
 
-Every integer width from 4 through 64 is available in native wgpu and the raw
-browser ``webgpu-wgsl`` path. The specialized native subgroup solver remains
+Every integer width from 4 through 46,340 is available in native wgpu and the
+raw browser ``webgpu-wgsl`` path. The specialized native subgroup solver remains
 restricted to affine B-spline, uniform integration, and size/stride 16; all
 other combinations use the portable workgroup solver. Centred Gaussian
 integration is currently exposed by the native engines; browser engines retain
@@ -191,12 +218,17 @@ can approach four times the default. It does not make one subset cheaper.
    produces a denser field than stride 24 while retaining 24 x 24 pixels of
    local support.
 
-Any integer from 4 to 64
-   Is accepted by the portable shared-WGSL engines. This is functional
-   generality, not a claim that every width has been performance-qualified.
-   Measure accuracy, acceptance and end-to-end latency for the intended
-   material, texture, motion model and stride before choosing a production
-   setting.
+``subset_size=80, subset_stride=20``
+   Matches the commonly used PyDIC subset/grid geometry and uses the portable
+   shared-WGSL solver. It is supported when image and pyramid dimensions fit;
+   it is not a claim of numerical equivalence with PyDIC.
+
+Any integer from 4 to 46,340
+   Is accepted by the portable shared-WGSL engines, subject to image,
+   pyramid, adapter, and memory constraints. This is functional generality,
+   not a claim that every width has been performance-qualified. Measure
+   accuracy, acceptance and end-to-end latency for the intended material,
+   texture, motion model and stride before choosing a production setting.
 
 ``subset_size=32, subset_stride=16``
    Keeps the conditioning and larger support of a 32-pixel window while

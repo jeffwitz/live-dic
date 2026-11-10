@@ -78,7 +78,7 @@ references without changing the solver or its defaults. See
 Algorithm mapping
 -----------------
 
-The native backend uses any selectable integer width from 4 through 64 and an
+The native backend uses any selectable integer width from 4 through 46,340 and an
 independent stride from 1 through the selected size. Odd widths provide an
 exact centre pixel; stride defaults to size. Uniform least-squares integration
 is the default, with centred Gaussian integration and sigma available as

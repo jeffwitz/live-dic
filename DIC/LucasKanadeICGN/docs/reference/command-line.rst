@@ -69,7 +69,10 @@ Solver options
    fields.
 
 ``--subset-size PIXELS``
-   Select a square numerical subset width from 4 through 64. Default: ``16``.
+   Select a square numerical subset width from 4 through 46,340. Default: ``16``.
+   The upper value is a shader-index arithmetic limit, not a practical image size.
+   The image, pyramid levels, adapter limits, and available memory impose lower
+   limits during reference preparation.
    Arbitrary widths require ``--backend webgpu-wgsl``; Three.js accepts only
    8, 16, or 32.
 

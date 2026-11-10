@@ -7,15 +7,18 @@ import operator
 DEFAULT_SUBSET_SIZE = 16
 # A 4 x 4 support provides at least twelve samples for the quadratic model.
 MIN_SUBSET_SIZE = 4
-# Bound the per-subset pixel loop and reference storage for this small-window API.
-MAX_SUBSET_SIZE = 64
+# The WGSL solver indexes a flattened subset with signed 32-bit arithmetic.
+# Keep S*S and S*S+31 representable; actual image and adapter limits are lower.
+MAX_SUBSET_SIZE = 46_340
 
 
 def normalize_subset_size(value: int) -> int:
     """Return a valid square subset width for the portable WGSL solver.
 
-    The flattened pixel loop distributes any 4-to-64-pixel square over the
-    configured workgroup. The workgroup width and subset width are independent.
+    The flattened pixel loop distributes the square over the configured
+    workgroup. Its 32-bit pixel indexing limits the theoretical width to 46,340;
+    image dimensions, adapter limits, and available memory impose tighter
+    practical limits at reference preparation.
     """
 
     try:

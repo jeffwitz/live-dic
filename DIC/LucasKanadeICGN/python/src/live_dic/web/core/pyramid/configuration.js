@@ -10,6 +10,8 @@ export const INTERPOLATION_CONSTANTS = { bspline: 0, linear: 1, cubic: 2 };
 export const MOTION_MODEL_CONSTANTS = { affine: 0, translation: 1, quadratic: 2 };
 export const OUTLIER_POLICY_CONSTANTS = { flag: 0, replace: 1, disabled: 2, median: 3 };
 export const MEDIAN_FILTER_SCOPE_CONSTANTS = { rejected: 0, all: 1 };
+// The shared solver uses signed 32-bit arithmetic for the flattened S × S loop.
+export const MAX_SUBSET_SIZE = 46_340;
 
 const ITERATION_SCHEDULES = {
   1: [30],
@@ -36,8 +38,8 @@ export function createInitialConfiguration(options = {}) {
     throw new Error('solverWorkgroupSize must be 16 or 32');
   }
   const subsetSize = Number(options.subsetSize ?? 16);
-  if (!Number.isInteger(subsetSize) || subsetSize < 4 || subsetSize > 64) {
-    throw new Error('subsetSize must be an integer from 4 to 64');
+  if (!Number.isInteger(subsetSize) || subsetSize < 4 || subsetSize > MAX_SUBSET_SIZE) {
+    throw new Error(`subsetSize must be an integer from 4 to ${MAX_SUBSET_SIZE}`);
   }
   const subsetStride = Number(options.subsetStride ?? subsetSize);
   if (!Number.isInteger(subsetStride) || subsetStride < 1 || subsetStride > subsetSize) {

@@ -574,8 +574,8 @@ class GPURegressionTests(unittest.TestCase):
         truth = (0.3, -0.2)
         reference, target = _fractional_pair(192, 192, truth)
         engine = ICGNWGPU(
-            subset_size=23,
-            subset_stride=11,
+            subset_size=80,
+            subset_stride=20,
             motion_model="translation",
             interpolation="linear",
             outlier_policy="disabled",
@@ -584,9 +584,30 @@ class GPURegressionTests(unittest.TestCase):
             info = engine.set_reference(reference)
             self.assertEqual(engine.solver, "portable-workgroup")
             result = engine.register(target)
-            self.assertEqual(info.subset_size, 23)
-            self.assertEqual(info.subset_stride, 11)
-            self.assertEqual(result.parameters.shape[:2], (16, 16))
+            self.assertEqual(info.subset_size, 80)
+            self.assertEqual(info.subset_stride, 20)
+            self.assertEqual(result.parameters.shape[:2], (6, 6))
+            self.assertGreater(result.accepted, 0)
+            self.assertLess(result.rmse(truth), 0.08)
+        finally:
+            engine.close()
+
+    def test_80_pixel_window_runs_native_two_level_translation(self) -> None:
+        truth = (0.3, -0.2)
+        reference, target = _fractional_pair(256, 256, truth)
+        engine = ICGNWGPUFullPyramid(
+            pyramid_levels=2,
+            subset_size=80,
+            subset_stride=20,
+            motion_model="translation",
+            outlier_policy="disabled",
+        )
+        try:
+            info = engine.set_reference(reference)
+            result = engine.register(target)
+            self.assertEqual(info.subset_size, 80)
+            self.assertEqual(info.subset_stride, 20)
+            self.assertEqual(result.parameters.shape[:2], (9, 9))
             self.assertGreater(result.accepted, 0)
             self.assertLess(result.rmse(truth), 0.08)
         finally:

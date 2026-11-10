@@ -94,7 +94,7 @@ Execution mappings are independent of pyramid depth
 Three separate sizes appear in the implementation and should not be
 conflated:
 
-* a numerical subset has any integer square width from 4 through 64 in the
+* a numerical subset has any integer square width from 4 through 46,340 in the
   native and raw shared-WGSL paths, with 16 x 16 as the default. Three.js/TSL
   retains the discrete widths 8, 16 and 32. Stride controls centre-to-centre
   distance independently and can create overlapping windows;

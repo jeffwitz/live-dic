@@ -172,9 +172,40 @@ class SolverControlTests(unittest.TestCase):
                 ["node", "--input-type=module"], input=script, text=True, encoding="utf-8"
             )
         )
-        self.assertEqual(result["preset"], {"profile": "portable"})
+        self.assertEqual(
+            result["preset"],
+            {"profile": "portable", "spatialPropagationPasses": 2},
+        )
         self.assertEqual(result["errors"], [])
         self.assertEqual(result["count"], 192)
+
+    def test_pydic_80_pixel_window_reaches_browser_core(self):
+        ui = ROOT / "web-app/ui/workspace.js"
+        core = ROOT / "python/src/live_dic/web/core/engine.js"
+        html = (ROOT / "web-app/index.html").read_text(encoding="utf-8")
+        self.assertIn('id="subset-size" type="number" min="4" max="46340"', html)
+        script = f"""
+          import {{solverOptions}} from {json.dumps(ui.as_uri())};
+          import {{DICEngine}} from {json.dumps(core.as_uri())};
+          const values={{'custom-solver':{{checked:true}},'subset-size':{{value:'80'}},
+            'subset-stride':{{value:'20'}},'pyramid-levels':{{value:'2'}},
+            'coarse-iterations':{{value:'8'}},'fine-iterations':{{value:'16'}},
+            'temporal-start':{{checked:false}},'motion-model':{{value:'translation'}},
+            interpolation:{{value:'bspline'}},'outlier-policy':{{value:'disabled'}}}};
+          globalThis.document={{getElementById:id=>values[id]??null}};
+          const options=solverOptions();const {{profile,...coreOptions}}=options;
+          const engine=new DICEngine({{...coreOptions,width:256,height:256}});
+          const configuration=engine.host.configuration;engine.destroy();
+          console.log(JSON.stringify({{subsetSize:configuration.subsetSize,
+            subsetStride:configuration.subsetStride,motionModel:configuration.motionModel}}));
+        """
+        actual = json.loads(
+            subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
+        )
+        self.assertEqual(
+            actual,
+            {"subsetSize": 80, "subsetStride": 20, "motionModel": "translation"},
+        )
 
     def test_median_neighbourhood_is_a_cold_setting_and_reaches_the_core(self):
         ui = ROOT / "web-app/ui/workspace.js"

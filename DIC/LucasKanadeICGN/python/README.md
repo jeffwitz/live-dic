@@ -168,9 +168,11 @@ set status 2. `result.flagged` and `outlier_mask` describe UOD detection under
 
 - `motion_model`: `affine` (default), `translation`, `quadratic`.
 - `interpolation`: `bspline` (default), `linear`, `cubic`.
-- Native `subset_size`: any integer from 4 through 64 (default: 16), with an
-  independent `subset_stride` that defaults to size. Raw browser shared-WGSL
-  supports the same range; Three.js remains limited to 8, 16 and 32.
+- Native `subset_size`: any integer from 4 through 46,340 (default: 16), with an
+  independent `subset_stride` that defaults to size. The upper value is a
+  shader-index arithmetic limit; image and adapter dimensions and available
+  memory impose practical limits. Raw browser shared-WGSL supports the same
+  range; Three.js remains limited to 8, 16 and 32.
   Spatial integration is uniform by default, with optional Gaussian weighting.
 - `device_type`: `auto` (default), `gpu`, `cpu`. CPU requires an installed
   software WebGPU adapter; no driver is downloaded at runtime.

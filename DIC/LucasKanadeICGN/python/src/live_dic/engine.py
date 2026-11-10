@@ -872,7 +872,7 @@ class ICGNBrowser:
 
     ``interpolation`` selects ``"bspline"`` (historical default), direct
     ``"linear"``, or direct Keys ``"cubic"`` reconstruction. The shared-WGSL
-    backend accepts every integer subset width from 4 to 64; Three.js is
+    backend accepts every integer subset width from 4 to 46,340; Three.js is
     limited to 8, 16, or 32. ``subset_stride`` independently selects field
     spacing.
     """

@@ -289,7 +289,15 @@ class RuntimeAssetTests(unittest.TestCase):
         )
         self.assertEqual(arguments.subset_size, 23)
 
-        for value in ("3", "65", "16.5"):
+        self.assertEqual(
+            _parser()
+            .parse_args(
+                ["reference.png", "target.png", "--backend", "webgpu-wgsl", "--subset-size", "80"]
+            )
+            .subset_size,
+            80,
+        )
+        for value in ("3", "46341", "16.5"):
             with (
                 self.subTest(value=value),
                 contextlib.redirect_stderr(io.StringIO()),
@@ -298,7 +306,7 @@ class RuntimeAssetTests(unittest.TestCase):
                 _parser().parse_args(["reference.png", "target.png", "--subset-size", value])
 
     def test_browser_subset_size_is_validated_without_starting_chromium(self) -> None:
-        for subset_size in (3, 65, True, 16.0, "16"):
+        for subset_size in (3, 46341, True, 16.0, "16"):
             with (
                 self.subTest(subset_size=subset_size),
                 self.assertRaisesRegex(ValueError, "subset_size"),
@@ -312,6 +320,9 @@ class RuntimeAssetTests(unittest.TestCase):
         self.assertEqual(generic.subset_stride, 12)
         odd = ICGNBrowser(backend="webgpu-wgsl", subset_size=31, subset_stride=16)
         self.assertEqual(odd.subset_size, 31)
+        large = ICGNBrowser(backend="webgpu-wgsl", subset_size=80, subset_stride=20)
+        self.assertEqual(large.subset_size, 80)
+        self.assertEqual(large.subset_stride, 20)
         with self.assertRaisesRegex(ValueError, "require backend='webgpu-wgsl'"):
             ICGNBrowser(backend="three-tsl", subset_size=31)
 

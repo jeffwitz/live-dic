@@ -77,9 +77,9 @@ override MEDIAN_FILTER_SIZE: u32 = 3u;
 // 0 repairs rejected subsets only; 1 also smooths accepted subsets at each
 // pyramid level before their state is transferred to the next finer level.
 override MEDIAN_FILTER_SCOPE: u32 = 0u;
-// Square subset width. The portable hosts specialize any integer width from
-// 4 to 64 while preserving 16 as the default pipeline constant. Pixel work is
-// distributed over SOLVER_WORKGROUP_SIZE lanes.
+// Square subset width. The portable hosts specialize integer widths up to the
+// signed 32-bit pixel-index limit while preserving 16 as the default constant.
+// Pixel work is distributed over SOLVER_WORKGROUP_SIZE lanes.
 override SUBSET_SIZE: i32 = 16;
 // Distance in pixels between adjacent subset centres. It equals SUBSET_SIZE
 // in the historical non-overlapping configuration.

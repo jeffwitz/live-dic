@@ -125,7 +125,7 @@ class GpuReferenceExecutionTests(unittest.TestCase):
 
     def test_custom_subset_size_runs_shared_browser_solver(self):
         actual = self.evaluate("""
-          const width=192,height=192,dx=.3,dy=-.2;
+          const width=256,height=256,dx=.3,dy=-.2;
           const image=(shiftX,shiftY)=>{
             const values=new Uint8Array(width*height);
             for(let y=0;y<height;y++)for(let x=0;x<width;x++) {
@@ -136,7 +136,7 @@ class GpuReferenceExecutionTests(unittest.TestCase):
             }
             return values;
           };
-          const engine=await DICEngine.create({width,height,subsetSize:23,subsetStride:11,
+          const engine=await DICEngine.create({width,height,subsetSize:80,subsetStride:20,
             pyramidLevels:2,motionModel:'affine',interpolation:'linear',outlierPolicy:'disabled'});
           try {
             await engine.setReference(image(0,0));
@@ -150,7 +150,7 @@ class GpuReferenceExecutionTests(unittest.TestCase):
               rmse:Math.sqrt(squaredError/(2*count)),finite:result.parameters.every(Number.isFinite)};
           } finally {engine.destroy();}
         """)
-        self.assertEqual(actual["grid"], [16, 16])
+        self.assertEqual(actual["grid"], [9, 9])
         self.assertEqual(actual["count"], actual["accepted"])
         self.assertGreater(actual["accepted"], 0)
         self.assertTrue(actual["finite"])
