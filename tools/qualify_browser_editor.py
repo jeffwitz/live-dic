@@ -240,9 +240,10 @@ def main():
               }
               return document.getElementById('view-zoom-label').textContent;
             })()""")
-            assert browser._evaluate(
-                "document.getElementById('view-zoom-label').textContent"
-            ) == "400%"
+            assert (
+                browser._evaluate("document.getElementById('view-zoom-label').textContent")
+                == "400%"
+            )
             browser._evaluate("new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))")
             zoom = browser._evaluate(
                 "(()=>{const v=document.getElementById('image-viewport');return {width:v.clientWidth,height:v.clientHeight,scrollWidth:v.scrollWidth,scrollHeight:v.scrollHeight,left:v.scrollLeft,top:v.scrollTop,canvas:document.getElementById('field').getBoundingClientRect().toJSON()};})()"
