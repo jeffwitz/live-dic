@@ -114,6 +114,9 @@ def main():
                 browser._evaluate(
                     f"document.getElementById('shape').value={json.dumps(tool)};document.getElementById('shape').onchange();true"
                 )
+                browser._evaluate(
+                    "document.getElementById('roi').scrollIntoView({block:'center'});true"
+                )
                 box = browser._evaluate(
                     "(()=>{const b=document.getElementById('roi').getBoundingClientRect();return {x:b.x,y:b.y,width:b.width,height:b.height};})()"
                 )
