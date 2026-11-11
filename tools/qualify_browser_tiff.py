@@ -68,11 +68,17 @@ def main():
             mask[800:1200, 1600:2000] = 0
             mask_path = Path(temporary) / "mask.tif"
             Image.fromarray(mask).save(mask_path, compression="packbits")
-            corrupt_path = Path(temporary) / "corrupt_deflate.tif"
-            corrupt = bytearray(paths[16][0].read_bytes())
+            corrupt_path = Path(temporary) / "truncated.tif"
+            corrupt = paths[16][0].read_bytes()
             with Image.open(paths[16][0]) as image:
-                corrupt[image.tag_v2[273][0]] ^= 255
-            corrupt_path.write_bytes(corrupt)
+                block_ends = [
+                    offset + count
+                    for offset, count in zip(image.tag_v2[273], image.tag_v2[279], strict=True)
+                ]
+            # A flipped compressed byte can still form a valid Deflate stream
+            # and silently alter pixels. Truncate inside the final strip so
+            # malformed input is rejected deterministically by TIFF bounds.
+            corrupt_path.write_bytes(corrupt[: max(block_ends) - 1])
             browser._evaluate(
                 f"location.assign({json.dumps(f'http://127.0.0.1:{server.port}/{quote(site.name)}/?smoke=1&case=manual&offline=1')});true"
             )
@@ -93,10 +99,10 @@ def main():
               const mask=await masks.decodeMaskImage(files[4],3840,2160),abort=new AbortController();
               const pending=media.decodeImage(files[0],null,abort.signal).catch(e=>e.name);abort.abort();
               const mismatch=await media.decodeImage(files[0],[32,32]).catch(e=>e.message);
-              const corrupt=await media.decodeImage(files[5]).then(bitmap=>{bitmap.close();return null;},e=>e.message);
+              const truncated=await media.decodeImage(files[5]).then(bitmap=>{bitmap.close();return null;},e=>e.message);
               const WorkerClass=globalThis.Worker;let noWorker;
               try{globalThis.Worker=undefined;noWorker=await media.decodeImage(files[0]).catch(e=>e.message);}finally{globalThis.Worker=WorkerClass;}
-              return {rows,maskHash:await hash(mask),cancelled:await pending,mismatch,noWorker,corrupt};
+              return {rows,maskHash:await hash(mask),cancelled:await pending,mismatch,noWorker,truncated};
             })()""")
             for row in decoded["rows"]:
                 assert row["sha256"] == pixel_hashes[row["name"]], row
@@ -104,7 +110,7 @@ def main():
             assert decoded["cancelled"] == "AbortError"
             assert "never resized" in decoded["mismatch"]
             assert "requires browser Workers" in decoded["noWorker"]
-            assert "Cannot decode corrupt_deflate.tif" in decoded["corrupt"]
+            assert "Cannot decode truncated.tif" in decoded["truncated"]
             # Baseline and TIFF targets go through the real source and Solve UI.
             runs = []
             for name, inputs in [
