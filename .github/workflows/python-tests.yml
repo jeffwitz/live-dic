@@ -155,6 +155,15 @@ jobs:
           -p test_gpu_regressions.py
           -v
 
+      - name: Run affine seeded and frontier contracts on lavapipe
+        env:
+          ICGN_RUN_GPU_TESTS: "1"
+          ICGN_TEST_DEVICE_TYPE: "cpu"
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: |
+          python -m unittest discover -s DIC/LucasKanadeICGN/python/tests -p test_public_seeded.py -v
+          python -m unittest discover -s DIC/LucasKanadeICGN/python/tests -p test_affine_frontier.py -v
+
       - name: Run native UHD image and ROI regressions on lavapipe
         env:
           ICGN_RUN_GPU_TESTS: "1"

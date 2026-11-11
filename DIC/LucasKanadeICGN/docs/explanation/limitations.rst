@@ -546,6 +546,14 @@ rejected explicitly. The score is not proof that a correspondence is correct.
 
 ``affine_frontier_seeds`` uses host arrays, performs one snapshot pass, and
 does not enforce displacement or gradient consistency, track provenance, or
-identify material discontinuities. Its median policy differs from the
+identify material discontinuities absent from the reference mask. Prepared
+region-of-interest links prevent transport across known masked cracks. Its
+median policy differs from the
 two-neighbor policy used by some WGPU-Matching qualifications. It is opt-in
 and does not change the browser or default propagation behavior.
+
+An active ``ICGNWGPU.register_stream`` owns the solver until the iterator is
+exhausted, closed, or terminates with an error. The standalone registration,
+seeded solve, and affine-frontier calls reject concurrent use with
+``ICGNError``. This does not imply arbitrary concurrent reference or engine
+lifecycle operations are supported.

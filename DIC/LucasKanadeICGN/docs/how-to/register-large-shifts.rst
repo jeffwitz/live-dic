@@ -244,4 +244,8 @@ result.parameters, result.status == 1)`` transports the accepted neighbors
 to adjacent unresolved subsets. These values are initial guesses: run
 ``engine.register_seeded(target, seeds, active)`` and apply the application's
 consistency and retry policy before treating any new state as reliable. The
-method transfers arrays through the host and does not identify cracks.
+method transfers arrays through the host and reuses the prepared region-of-interest
+links to avoid crossing masked cracks. It cannot identify an unmasked crack.
+A running ``register_stream`` owns the solver until exhausted or explicitly
+closed; seeded, frontier and independent registration calls fail while it is
+active.

@@ -11,10 +11,12 @@ from __future__ import annotations
 import gc
 import operator
 import struct
+import threading
 import time
 from collections import deque
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
+from functools import wraps
 from importlib.resources import files
 from statistics import median
 from typing import Any
@@ -821,6 +823,36 @@ def _reference_arrays(
     )
 
 
+def _exclusive_call(method):
+    """Prevent a synchronous solve or seed pass from sharing an active slot."""
+
+    @wraps(method)
+    def guarded(self, *args, **kwargs):
+        if not self._registration_lock.acquire(blocking=False):
+            raise ICGNError("Another registration or registration stream is active.")
+        try:
+            return method(self, *args, **kwargs)
+        finally:
+            self._registration_lock.release()
+
+    return guarded
+
+
+def _exclusive_stream(method):
+    """Hold the slot lock until the iterator is exhausted or closed."""
+
+    @wraps(method)
+    def guarded(self, *args, **kwargs):
+        if not self._registration_lock.acquire(blocking=False):
+            raise ICGNError("Another registration or registration stream is active.")
+        try:
+            yield from method(self, *args, **kwargs)
+        finally:
+            self._registration_lock.release()
+
+    return guarded
+
+
 class ICGNWGPU:
     """Persistent native WebGPU IC-GN engine with direct NumPy transfers.
 
@@ -956,6 +988,7 @@ class ICGNWGPU:
         self._wgpu = wgpu
         self._owns_device = True
         self._closed = False
+        self._registration_lock = threading.Lock()
         self.adapter = adapter
         required_features = []
         if (
@@ -1158,6 +1191,7 @@ class ICGNWGPU:
         level = object.__new__(ICGNWGPU)
         level._owns_device = False
         level._closed = False
+        level._registration_lock = threading.Lock()
         for name in (
             "_wgpu",
             "adapter",
@@ -2633,6 +2667,7 @@ class ICGNWGPU:
             reference_valid=getattr(self, "reference_valid", None),
         )
 
+    @_exclusive_call
     def affine_frontier_seeds(
         self, parameters: npt.ArrayLike, accepted: npt.ArrayLike
     ) -> tuple[np.ndarray, np.ndarray]:
@@ -2669,6 +2704,8 @@ class ICGNWGPU:
             for dx in range(-1, 2):
                 neighbor = padded[1 + dy : 1 + dy + shape[0], 1 + dx : 1 + dx + shape[1]]
                 permissions |= (valid & neighbor).astype(np.uint32) << ((dy + 1) * 3 + dx + 1)
+        if self.roi is not None:
+            permissions &= self.roi.neighbour_bits
         count = int(np.prod(shape))
         config_data = struct.pack(
             "8I4f",
@@ -2733,6 +2770,7 @@ class ICGNWGPU:
             for buffer in (config, source, links, output, work):
                 buffer.destroy()
 
+    @_exclusive_call
     def register_seeded(
         self,
         target: ImageInput,
@@ -2851,6 +2889,7 @@ class ICGNWGPU:
             self.grid_height, self.grid_width
         )
 
+    @_exclusive_call
     def register(
         self,
         target: ImageInput,
@@ -2954,6 +2993,7 @@ class ICGNWGPU:
         }
         return result
 
+    @_exclusive_stream
     def register_stream(
         self,
         targets: Iterable[ImageInput],

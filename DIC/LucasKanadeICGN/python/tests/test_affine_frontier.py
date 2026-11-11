@@ -13,10 +13,40 @@ from live_dic import ICGNWGPU
 
 @unittest.skipUnless(os.environ.get("ICGN_RUN_GPU_TESTS") == "1", "GPU tests disabled")
 class AffineFrontierTests(unittest.TestCase):
+    def test_prepared_roi_links_block_a_mask_crack(self):
+        image = np.random.default_rng(48).integers(0, 256, (128, 128), dtype=np.uint8)
+        roi = np.ones_like(image, bool)
+        roi[:, 63] = False
+        engine = ICGNWGPU(
+            device_type=os.environ.get("ICGN_TEST_DEVICE_TYPE", "auto"),
+            subset_size=16,
+            subset_stride=16,
+            interpolation="linear",
+            outlier_policy="disabled",
+        )
+        self.addCleanup(engine.close)
+        engine.set_reference(image, roi_mask=roi, roi_policy="partial")
+        shape = (engine.grid_height, engine.grid_width)
+        self.assertTrue(engine.roi.selected[2, 3])
+        self.assertTrue(engine.roi.selected[2, 4])
+        params = np.zeros((*shape, 6), np.float32)
+        accepted = np.zeros(shape, bool)
+        accepted[2, 3] = True
+        _, active = engine.affine_frontier_seeds(params, accepted)
+        self.assertTrue(active[2, 2])
+        self.assertFalse(active[2, 4])
+        self.assertFalse(active[1, 4])
+        self.assertFalse(active[3, 4])
+        accepted[2, 3] = False
+        accepted[2, 4] = True
+        _, active = engine.affine_frontier_seeds(params, accepted)
+        self.assertTrue(active[2, 5])
+        self.assertFalse(active[2, 3])
+
     def test_public_frontier_feeds_seeded_solver(self):
         image = np.random.default_rng(46).integers(0, 256, (128, 128), dtype=np.uint8)
         engine = ICGNWGPU(
-            device_type="gpu",
+            device_type=os.environ.get("ICGN_TEST_DEVICE_TYPE", "auto"),
             subset_size=16,
             subset_stride=16,
             interpolation="linear",
@@ -40,7 +70,7 @@ class AffineFrontierTests(unittest.TestCase):
             engine.affine_frontier_seeds(params, accepted.astype(np.uint8))
 
     def test_first_order_transport_matches_numpy(self):
-        engine = ICGNWGPU(device_type="gpu")
+        engine = ICGNWGPU(device_type=os.environ.get("ICGN_TEST_DEVICE_TYPE", "auto"))
         self.addCleanup(engine.close)
         device = engine.device
         shader = device.create_shader_module(

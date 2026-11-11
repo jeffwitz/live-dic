@@ -112,6 +112,7 @@ A high score alone does not establish material correspondence.
 
 The opt-in affine-frontier kernel transports each accepted neighbor's local
 affine field to the destination center and takes a componentwise median over
-the available eight neighbors. One call reads a fixed snapshot and supplies
+the available eight neighbors, using prepared region-of-interest links. One
+call reads a fixed snapshot and supplies
 only candidate seeds; it does not certify convergence, implement a retry
 limit, or impose continuity across known material boundaries.

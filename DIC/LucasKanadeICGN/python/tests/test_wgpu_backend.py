@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sys
+import threading
 import unittest
 from importlib.resources import files
 from inspect import signature
@@ -710,6 +711,8 @@ class NativeReferenceTests(unittest.TestCase):
     def test_pipeline_depth_is_a_positive_integer(self) -> None:
         for engine_type in (ICGNWGPU, ICGNWGPUFullPyramid):
             engine = object.__new__(engine_type)
+            if engine_type is ICGNWGPU:
+                engine._registration_lock = threading.Lock()
             engine._reference_ready = True
             for depth in (0, -1, 1.5, True):
                 with (

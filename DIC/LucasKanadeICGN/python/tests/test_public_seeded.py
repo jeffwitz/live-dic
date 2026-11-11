@@ -5,15 +5,51 @@ import unittest
 
 import numpy as np
 
-from live_dic import ICGNWGPU
+from live_dic import ICGNWGPU, ICGNError
 
 
 @unittest.skipUnless(os.environ.get("ICGN_RUN_GPU_TESTS") == "1", "GPU tests disabled")
 class SeededSolveTests(unittest.TestCase):
+    def test_stream_owns_slot_until_exhausted_or_closed(self):
+        image = np.random.default_rng(49).integers(0, 256, (128, 128), dtype=np.uint8)
+        engine = ICGNWGPU(
+            device_type=os.environ.get("ICGN_TEST_DEVICE_TYPE", "auto"),
+            subset_size=16,
+            subset_stride=16,
+            interpolation="linear",
+            outlier_policy="disabled",
+        )
+        self.addCleanup(engine.close)
+        engine.set_reference(image)
+        shape = (engine.grid_height, engine.grid_width)
+        params = np.zeros((*shape, 6), np.float32)
+        active = np.zeros(shape, bool)
+        active[3, 3] = True
+        stream = engine.register_stream([image, image, image], pipeline_depth=2)
+        next(stream)
+        with self.assertRaisesRegex(ICGNError, "stream is active"):
+            engine.register_seeded(image, params, active)
+        with self.assertRaisesRegex(ICGNError, "stream is active"):
+            engine.affine_frontier_seeds(params, active)
+        with self.assertRaisesRegex(ICGNError, "stream is active"):
+            engine.register(image)
+        competing = engine.register_stream([image])
+        with self.assertRaisesRegex(ICGNError, "stream is active"):
+            next(competing)
+        stream.close()
+        self.assertEqual(engine.register_seeded(image, params, active).status[3, 3], 1)
+        self.assertEqual(len(list(engine.register_stream([image]))), 1)
+        self.assertEqual(engine.register_seeded(image, params, active).status[3, 3], 1)
+        failed = engine.register_stream([image, np.zeros((4, 4), np.uint8)], pipeline_depth=1)
+        next(failed)
+        with self.assertRaises(ValueError):
+            next(failed)
+        self.assertEqual(engine.register_seeded(image, params, active).status[3, 3], 1)
+
     def test_keys_cubic_final_zncc_on_identity(self):
         image = np.random.default_rng(137).integers(0, 256, (128, 128), dtype=np.uint8)
         engine = ICGNWGPU(
-            device_type="gpu",
+            device_type=os.environ.get("ICGN_TEST_DEVICE_TYPE", "auto"),
             subset_size=16,
             subset_stride=16,
             interpolation="cubic",
@@ -35,7 +71,7 @@ class SeededSolveTests(unittest.TestCase):
             255,
         ).astype(np.uint8)
         engine = ICGNWGPU(
-            device_type="gpu",
+            device_type=os.environ.get("ICGN_TEST_DEVICE_TYPE", "auto"),
             subset_size=16,
             subset_stride=16,
             interpolation="linear",
@@ -69,7 +105,11 @@ class SeededSolveTests(unittest.TestCase):
 
     def test_inactive_windows_remain_inactive_with_default_outlier_policy(self):
         image = np.random.default_rng(46).integers(0, 256, (128, 128), dtype=np.uint8)
-        engine = ICGNWGPU(device_type="gpu", subset_size=16, subset_stride=16)
+        engine = ICGNWGPU(
+            device_type=os.environ.get("ICGN_TEST_DEVICE_TYPE", "auto"),
+            subset_size=16,
+            subset_stride=16,
+        )
         self.addCleanup(engine.close)
         engine.set_reference(image)
         shape = (engine.grid_height, engine.grid_width)
@@ -96,7 +136,10 @@ class SeededSolveTests(unittest.TestCase):
         roi = np.zeros_like(image, dtype=bool)
         roi[:, :64] = True
         engine = ICGNWGPU(
-            device_type="gpu", subset_size=16, subset_stride=16, outlier_policy="disabled"
+            device_type=os.environ.get("ICGN_TEST_DEVICE_TYPE", "auto"),
+            subset_size=16,
+            subset_stride=16,
+            outlier_policy="disabled",
         )
         self.addCleanup(engine.close)
         engine.set_reference(image, roi_mask=roi)
@@ -111,7 +154,7 @@ class SeededSolveTests(unittest.TestCase):
         image = np.random.default_rng(41).integers(0, 256, (128, 128), dtype=np.uint8)
         target = np.roll(image, (1, -2), axis=(0, 1))
         engine = ICGNWGPU(
-            device_type="gpu",
+            device_type=os.environ.get("ICGN_TEST_DEVICE_TYPE", "auto"),
             subset_size=16,
             subset_stride=16,
             interpolation="linear",
