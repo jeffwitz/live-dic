@@ -233,9 +233,16 @@ def main():
             browser._evaluate("document.getElementById('pause').onclick().then(()=>true)")
             second = browser._evaluate("liveDicStatus.results.at(-1).plateScore")
             assert second["coverage"] >= 0.90 and second["displacementRmsePx"] < 0.05, second
-            browser._evaluate(
-                "document.getElementById('zoom').value=4;document.getElementById('zoom').onchange();document.getElementById('centre-view').onclick();true"
-            )
+            browser._evaluate("""(async()=>{
+              for(let i=0;i<4;i++){
+                document.getElementById('view-zoom-in').click();
+                await new Promise(requestAnimationFrame);
+              }
+              return document.getElementById('view-zoom-label').textContent;
+            })()""")
+            assert browser._evaluate(
+                "document.getElementById('view-zoom-label').textContent"
+            ) == "400%"
             browser._evaluate("new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))")
             zoom = browser._evaluate(
                 "(()=>{const v=document.getElementById('image-viewport');return {width:v.clientWidth,height:v.clientHeight,scrollWidth:v.scrollWidth,scrollHeight:v.scrollHeight,left:v.scrollLeft,top:v.scrollTop,canvas:document.getElementById('field').getBoundingClientRect().toJSON()};})()"
