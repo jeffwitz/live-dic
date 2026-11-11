@@ -334,7 +334,8 @@ starts from a full-size all-excluded mask; added domains mark the pixels to keep
 Undo snapshots retain an immutable base reference, not a copied full image per edit.
 Only paused edits rasterize or compose masks. PNG import/export does not change
 IC-GN equations or add a pixel mask in the solver loop. Preparing a new ROI
-reuses the core's full-window selection, conservative links and canonical hash.
+reuses the core's full/partial support selection, conservative links and canonical hash.
+Analysis defaults to partial supports; full-window selection remains available.
 A failed import leaves the existing geometry/calculation intact. Source and
 reference operations share one admission gate, drain pending work and invalidate
 stale video seeks before replacing resources.

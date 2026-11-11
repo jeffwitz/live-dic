@@ -438,12 +438,15 @@ zoom keeps the current viewport centre; scrollbars remain available for
 fine panning. These controls change presentation only: image coordinates,
 masks and the DIC grid remain at the original resolution.
 
-The square of every retained subset must lie entirely inside the mask; holes
-exclude complete crossing subsets. Nothing tests the moving target against the
-fixed mask. Conservative seed/neighbour links and the preprocessing guarantee
-are documented in :doc:`use-roi`. Browser partial ROI and geometric truncation
-remain explicitly unsupported. Export metadata retains both the full binary
-mask and the applied vector geometry, allowing the mask to be reconstructed.
+The Analysis workspace defaults to centre-connected partial supports at mask
+boundaries, so a small mask can still retain informative windows. Choose
+**Full window** to require every nominal subset pixel to lie inside the mask;
+holes then exclude complete crossing subsets. Nothing tests the moving target
+against the fixed mask. Conservative seed/neighbour links and preprocessing
+scope are documented in :doc:`use-roi` and :doc:`use-partial-roi`. Browser
+visibility truncation remains unsupported. Export metadata retains both the
+full binary mask and the applied vector geometry, allowing the mask to be
+reconstructed.
 
 Import or download a black/white mask
 -------------------------------------

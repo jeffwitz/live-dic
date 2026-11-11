@@ -12,7 +12,7 @@ function prefix(mask, width, height) {
     - p[y1 * (width + 1) + x0] + p[y0 * (width + 1) + x0] === 0;
 }
 export function validateMask(mask, width, height, policy = 'full', model = 'affine') {
-  if (policy !== 'full') throw new Error('partial ROI is not supported in the browser engine');
+  if (!['full', 'partial'].includes(policy)) throw new Error("roiPolicy must be 'full' or 'partial'");
   if (mask == null) return null;
   if (!['translation', 'affine'].includes(model)) throw new Error('ROI supports only translation and affine motion models');
   if (!(mask instanceof Uint8Array) || mask.length !== width * height || mask.some((v) => v > 1)) {
@@ -41,16 +41,67 @@ function linkTest(box, width, height) {
 export function createLinkTest(mask, width, height) {
   return linkTest(prefix(mask, width, height), width, height);
 }
-export function planRoi(mask, width, height, size, stride, medianFilterSize = 3) {
+function centralSupport(mask, width, x0, y0, size) {
+  const center = size >> 1;
+  const seeds = size % 2
+    ? [[center, center]]
+    : [[center - 1, center - 1], [center, center - 1], [center - 1, center], [center, center]];
+  if (seeds.some(([x, y]) => !mask[(y0 + y) * width + x0 + x])) return null;
+  const support = new Uint8Array(size * size), queue = new Uint32Array(size * size);
+  let head = 0, tail = 0;
+  for (const [x, y] of seeds) {
+    const index = y * size + x;
+    if (!support[index]) { support[index] = 1; queue[tail++] = index; }
+  }
+  while (head < tail) {
+    const index = queue[head++], x = index % size, y = Math.floor(index / size);
+    for (const [nx, ny] of [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]]) {
+      if (nx < 0 || ny < 0 || nx >= size || ny >= size) continue;
+      const next = ny * size + nx;
+      if (support[next] || !mask[(y0 + ny) * width + x0 + nx]) continue;
+      support[next] = 1; queue[tail++] = next;
+    }
+  }
+  return support;
+}
+export function planRoi(mask, width, height, size, stride, medianFilterSize = 3, policy = 'full') {
   if (![3, 5, 7, 9].includes(medianFilterSize)) {
     throw new Error('medianFilterSize must be 3, 5, 7, or 9');
   }
   const gx = 1 + Math.floor((width - size) / stride), gy = 1 + Math.floor((height - size) / stride);
+  if (!['full', 'partial'].includes(policy)) throw new Error("roiPolicy must be 'full' or 'partial'");
   const selected = new Uint8Array(gx * gy), neighbours = new Uint32Array(gx * gy);
   const box = prefix(mask, width, height), clear = linkTest(box, width, height);
   const center = (size - 1) / 2;
   for (let y = 0; y < gy; y++) for (let x = 0; x < gx; x++) {
     selected[y * gx + x] = +box(x * stride, y * stride, x * stride + size, y * stride + size);
+  }
+  const fullSelected = selected.slice();
+  const partial = new Uint8Array(gx * gy), partialIndices = [], supportRows = [], supportBoxes = [];
+  const coverage = new Float32Array(gx * gy);
+  for (let i = 0; i < selected.length; i++) if (selected[i]) coverage[i] = 1;
+  if (policy === 'partial') {
+    const wordsPerSupport = Math.ceil(size * size / 32);
+    for (let i = 0; i < selected.length; i++) {
+      if (fullSelected[i]) continue;
+      const x0 = (i % gx) * stride, y0 = Math.floor(i / gx) * stride;
+      const support = centralSupport(mask, width, x0, y0, size);
+      if (!support) continue;
+      let count = 0, minX = size, minY = size, maxX = -1, maxY = -1;
+      const words = new Uint32Array(wordsPerSupport);
+      for (let p = 0; p < support.length; p++) if (support[p]) {
+        count++;
+        const px = p % size, py = Math.floor(p / size);
+        minX = Math.min(minX, px); minY = Math.min(minY, py);
+        maxX = Math.max(maxX, px); maxY = Math.max(maxY, py);
+        words[p >>> 5] |= 1 << (p & 31);
+      }
+      if (!count) continue;
+      selected[i] = 1; partial[i] = 1; partialIndices.push(i);
+      for (const word of words) supportRows.push(word);
+      supportBoxes.push(minX, minY, maxX, maxY);
+      coverage[i] = count / (size * size);
+    }
   }
   for (let y = 0; y < gy; y++) for (let x = 0; x < gx; x++) {
     if (!selected[y * gx + x]) continue;
@@ -82,6 +133,9 @@ export function planRoi(mask, width, height, size, stride, medianFilterSize = 3)
   }
   return { mask, width, height, gridWidth: gx, gridHeight: gy, selected, neighbours,
     medianNeighbourWords,
+    partial, partialIndices: Uint32Array.from(partialIndices),
+    supportWords: Uint32Array.from(supportRows), supportBoxes: Float32Array.from(supportBoxes),
+    coverage, policy, fullCount: fullSelected.reduce((a, b) => a + b, 0),
     count: selected.reduce((a, b) => a + b, 0) };
 }
 export function seedPermissions(source, destination, sourceScale, destinationScale, size, stride,

@@ -82,7 +82,7 @@ export function createSession(send) {
     referenceSourceKind = sourceKind;
     activeOptions = structuredClone(options);
     analysisEpoch = crypto.randomUUID();
-    const info = await engine.setReference(frame, { roiMask: mask });
+    const info = await engine.setReference(frame, { roiMask: mask, roiPolicy: options.roiPolicy ?? 'full' });
     referenceAdmissible = [...info.referenceValid].reduce((n,v,i)=>n+ +(v && (!info.roiSelected || info.roiSelected[i])),0);
     lastComparison = null;
     renderer = canvas ? new FieldRenderer(engine.device, canvas) : null;
@@ -136,7 +136,7 @@ export function createSession(send) {
             const gpuPair = !!message.referenceFrame && activeOptions.referencePreparation === 'gpu';
             if (message.referenceFrame && !gpuPair) {
               const started = performance.now();
-              const info = await engine.setReference(message.referenceFrame,{roiMask:mask});
+              const info = await engine.setReference(message.referenceFrame,{roiMask:mask,roiPolicy:activeOptions.roiPolicy??'full'});
               preparationMs = performance.now()-started;
               referenceAdmissible = [...info.referenceValid].reduce((n,v,i)=>n+ +(v && (!info.roiSelected || info.roiSelected[i])),0);
             }

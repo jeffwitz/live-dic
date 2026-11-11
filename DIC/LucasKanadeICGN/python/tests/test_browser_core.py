@@ -112,6 +112,28 @@ class BrowserGeometryTests(unittest.TestCase):
             np.testing.assert_array_equal(actual["links"], links.ravel())
             np.testing.assert_array_equal(actual["defaultLinks"], links.ravel())
 
+    def test_partial_roi_geometry_matches_native_support_and_central_component(self):
+        mask = np.zeros((48, 53), bool)
+        mask[12:36, 14:38] = True
+        mask[18:22, 22:27] = False
+        for size, stride in ((16, 8), (17, 8), (24, 12)):
+            expected = prepare_roi(mask, size, stride, policy="partial")
+            script = f"""
+              import {{ planRoi }} from {json.dumps((CORE / "roi.js").as_uri())};
+              const mask = new Uint8Array({json.dumps(mask.astype(int).ravel().tolist())});
+              const plan = planRoi(mask, 53, 48, {size}, {stride}, 3, 'partial');
+              console.log(JSON.stringify({{selected:[...plan.selected], partial:[...plan.partialIndices],
+                support:[...plan.supportWords], boxes:[...plan.supportBoxes], coverage:[...plan.coverage]}}));
+            """
+            actual = json.loads(
+                subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
+            )
+            np.testing.assert_array_equal(actual["selected"], expected.selected.ravel())
+            np.testing.assert_array_equal(actual["partial"], expected.partial_indices)
+            np.testing.assert_array_equal(actual["support"], expected.support_words.ravel())
+            np.testing.assert_array_equal(actual["boxes"], expected.support_boxes.ravel())
+            np.testing.assert_allclose(actual["coverage"], expected.coverage.ravel())
+
     def test_slot_ring_starts_both_slots_and_delivers_in_order(self):
         script = f"""
           import {{ SlotRing }} from {json.dumps((CORE / "ring.js").as_uri())};
@@ -135,7 +157,7 @@ class BrowserGeometryTests(unittest.TestCase):
         script = f"""
           import {{DICEngine}} from {json.dumps((CORE / "engine.js").as_uri())};
           const cases=[{{subsetSize:'16'}},{{subsetSize:3}},{{subsetSize:46341}},{{pyramidLevels:true}},{{initialization:'temporal',pyramidLevels:3,temporalFineCorrection:true}},
-            {{spatialWeighting:'gaussian'}},{{roiPolicy:'partial'}},{{solverWorkgroupSize:128}},{{unknownOption:1}},{{roiPolicy:0}},{{readback:null}},{{spatialWeighting:null}},{{initialization:null}},{{pipelineDepth:null}}];
+            {{spatialWeighting:'gaussian'}},{{roiPolicy:'unknown'}},{{solverWorkgroupSize:128}},{{unknownOption:1}},{{roiPolicy:0}},{{readback:null}},{{spatialWeighting:null}},{{initialization:null}},{{pipelineDepth:null}}];
           const rejected=cases.map(options=>{{try{{new DICEngine(options);return false;}}catch{{return true;}}}});
           let acceptsSix=false;try{{new DICEngine({{initialization:'global-affine',globalAffineLevels:6}});acceptsSix=true;}}catch{{}}
           let acceptsTranslationGlobalAffine=false;try{{new DICEngine({{initialization:'global-affine',globalAffineLevels:6,motionModel:'translation'}});acceptsTranslationGlobalAffine=true;}}catch{{}}
@@ -279,7 +301,7 @@ class BrowserCoreExecutionTests(unittest.TestCase):
             })()""")
         self.assertEqual(actual, dict(matches=True, noField=True, finite=True))
 
-    def test_full_roi_empty_and_missing_coarse_seed(self):
+    def test_small_partial_roi_recovers_boundary_windows_on_browser_gpu(self):
         from live_dic import ICGNBrowser
 
         with ICGNBrowser(
@@ -298,22 +320,42 @@ class BrowserCoreExecutionTests(unittest.TestCase):
         ) as browser:
             actual = browser._evaluate("""(async () => {
               const {DICEngine}=await import('../core/engine.js');
-              const pixels=Uint8Array.from({length:16384},(_,i)=>(i*7+i*i)%251);
-              const engine=await DICEngine.create({width:128,height:128});
-              await engine.setReference(pixels,{roiMask:new Uint8Array(16384)});
+              const width=128,height=128,pixels=new Uint8Array(width*height),mask=new Uint8Array(width*height);
+              for(let y=0;y<height;y++)for(let x=0;x<width;x++)pixels[y*width+x]=Math.round(128+38*Math.sin(x*.17)+31*Math.sin(y*.13)+24*Math.sin((x+y)*.21));
+              const engine=await DICEngine.create({width,height,subsetSize:16,subsetStride:8,pyramidLevels:1,motionModel:'translation',outlierPolicy:'disabled'});
+              const emptyMask=new Uint8Array(width*height);
+              await engine.setReference(pixels,{roiMask:emptyMask});
               const empty=await engine.register(pixels);
               const excluded=empty.status.every(v=>v===-3);
-              const band=new Uint8Array(16384);band.fill(1,32*128,64*128);
-              await engine.setReference(pixels,{roiMask:band});band.fill(0);
-              const result=await engine.register(pixels);
-              let partial=false;
-              try{await engine.setReference(pixels,{roiPolicy:'partial'});}catch(error){partial=error.message.includes('not supported');}
+              for(let y=52;y<76;y++)for(let x=52;x<76;x++)mask[y*width+x]=1;
+              const full=await engine.setReference(pixels,{roiMask:mask,roiPolicy:'full'});
+              const fullResult=await engine.register(pixels);
+              const partial=await engine.setReference(pixels,{roiMask:mask,roiPolicy:'partial'});
+              const partialResult=await engine.register(pixels);
               engine.destroy();
-              return {excluded,accepted:result.accepted,partial};
+              const wideEngine=await DICEngine.create({width,height,subsetSize:80,subsetStride:16,pyramidLevels:1,motionModel:'translation',outlierPolicy:'disabled'});
+              const wide=await wideEngine.setReference(pixels,{roiMask:mask,roiPolicy:'partial'});
+              const wideResult=await wideEngine.register(pixels);
+              wideEngine.destroy();
+              return {excluded,fullSelected:full.roiSelected.reduce((a,b)=>a+b,0),
+                partialSelected:partial.roiSelected.reduce((a,b)=>a+b,0),
+                fullAccepted:fullResult.accepted,partialAccepted:partialResult.accepted,
+                referenceAdmissible:[...partial.referenceValid].reduce((a,b,i)=>a+ +(b&&partial.roiSelected[i]),0),
+                wideSelected:wide.roiSelected.reduce((a,b)=>a+b,0),
+                wideFull:wide.config.roi.full,widePartial:wide.config.roi.partial,
+                wideAccepted:wideResult.accepted,
+                wideAdmissible:[...wide.referenceValid].reduce((a,b,i)=>a+ +(b&&wide.roiSelected[i]),0)};
             })()""")
         self.assertTrue(actual["excluded"])
-        self.assertGreater(actual["accepted"], 0)
-        self.assertTrue(actual["partial"])
+        self.assertEqual(actual["fullSelected"], 1)
+        self.assertEqual(actual["partialSelected"], 9)
+        self.assertEqual(actual["fullAccepted"], 1)
+        self.assertGreater(actual["referenceAdmissible"], actual["fullAccepted"])
+        self.assertEqual(actual["partialAccepted"], actual["referenceAdmissible"])
+        self.assertGreater(actual["wideSelected"], 0)
+        self.assertEqual(actual["wideFull"], 0)
+        self.assertEqual(actual["widePartial"], actual["wideSelected"])
+        self.assertEqual(actual["wideAccepted"], actual["wideAdmissible"])
 
     def test_roi_edge_seed_on_browser_gpu(self):
         from live_dic import ICGNBrowser

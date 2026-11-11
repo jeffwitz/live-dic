@@ -122,7 +122,7 @@ var<workgroup> shared_linear: vec4<f32>;
 var<workgroup> shared_curvature: array<f32, 6>;
 var<workgroup> shared_status: vec2<f32>;
 var<workgroup> prefilter_tile: array<f32, 496>;
-var<workgroup> partial_support_words: array<u32, 35>;
+var<workgroup> partial_support_words: array<u32, (SUBSET_SIZE * SUBSET_SIZE + 31) / 32>;
 var<workgroup> partial_subset: u32;
 
 fn mirror_coordinate(coordinate: i32, size: i32) -> i32 {

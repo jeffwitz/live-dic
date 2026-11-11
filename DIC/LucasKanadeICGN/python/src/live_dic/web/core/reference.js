@@ -309,6 +309,116 @@ export const prepareReferenceGray = (
   return { reference, inverseHessian, metadata };
 };
 
+/** Prepare fixed boundary supports once, using the same stored gradients as IC-GN. */
+export function preparePartialReference(prepared, roi, {
+  width, height, subsetSize, subsetStride, motionModel,
+}) {
+  if (!['translation', 'affine'].includes(motionModel)) {
+    throw new Error('Partial ROI supports only translation and affine motion models');
+  }
+  const gridWidth = roi.gridWidth, wordsPerSupport = Math.ceil(subsetSize * subsetSize / 32);
+  const active = motionModel === 'translation' ? [0, 3] : [0, 1, 2, 3, 4, 5];
+  const normalizedScale = [1, 1 / subsetSize, 1 / subsetSize, 1, 1 / subsetSize, 1 / subsetSize];
+  const matrixNorm = (matrix, n) => {
+    let maximum = 0;
+    for (let row = 0; row < n; row++) {
+      let sum = 0;
+      for (let column = 0; column < n; column++) sum += Math.abs(matrix[row * n + column]);
+      maximum = Math.max(maximum, sum);
+    }
+    return maximum;
+  };
+  const invert = (matrix, n) => {
+    const augmented = new Float64Array(n * 2 * n);
+    for (let row = 0; row < n; row++) {
+      for (let column = 0; column < n; column++) augmented[row * 2 * n + column] = matrix[row * n + column];
+      augmented[row * 2 * n + n + row] = 1;
+    }
+    for (let column = 0; column < n; column++) {
+      let pivot = column;
+      for (let row = column + 1; row < n; row++) {
+        if (Math.abs(augmented[row * 2 * n + column]) > Math.abs(augmented[pivot * 2 * n + column])) pivot = row;
+      }
+      const value = augmented[pivot * 2 * n + column];
+      if (!(Math.abs(value) > Number.EPSILON) || !Number.isFinite(value)) return null;
+      if (pivot !== column) for (let j = 0; j < 2 * n; j++) {
+        const a = column * 2 * n + j, b = pivot * 2 * n + j;
+        [augmented[a], augmented[b]] = [augmented[b], augmented[a]];
+      }
+      for (let j = 0; j < 2 * n; j++) augmented[column * 2 * n + j] /= value;
+      for (let row = 0; row < n; row++) if (row !== column) {
+        const factor = augmented[row * 2 * n + column];
+        for (let j = 0; j < 2 * n; j++) augmented[row * 2 * n + j] -= factor * augmented[column * 2 * n + j];
+      }
+    }
+    const inverse = new Float64Array(n * n);
+    for (let row = 0; row < n; row++) for (let column = 0; column < n; column++) {
+      inverse[row * n + column] = augmented[row * 2 * n + n + column];
+    }
+    return inverse;
+  };
+  for (let ordinal = 0; ordinal < roi.partialIndices.length; ordinal++) {
+    const index = roi.partialIndices[ordinal], gx = index % gridWidth, gy = Math.floor(index / gridWidth);
+    const hessian = new Float64Array(active.length * active.length);
+    const jtReference = new Float64Array(6), sumJ = new Float64Array(6);
+    const samples = [];
+    let weightSum = 0, meanNumerator = 0;
+    for (let pixel = 0; pixel < subsetSize * subsetSize; pixel++) {
+      if (((roi.supportWords[ordinal * wordsPerSupport + (pixel >>> 5)] >>> (pixel & 31)) & 1) === 0) continue;
+      const column = pixel % subsetSize, row = Math.floor(pixel / subsetSize);
+      const x = gx * subsetStride + column, y = gy * subsetStride + row;
+      const value = prepared.reference[4 * (y * width + x)];
+      samples.push({ column, row, value, gx: prepared.reference[4 * (y * width + x) + 1],
+        gy: prepared.reference[4 * (y * width + x) + 2] });
+      weightSum++;
+      meanNumerator += value;
+    }
+    if (!weightSum) continue;
+    const mean = meanNumerator / weightSum;
+    let energy = 0;
+    for (const sample of samples) {
+      const lx = sample.column - (subsetSize - 1) / 2;
+      const ly = sample.row - (subsetSize - 1) / 2;
+      const f = sample.value - mean;
+      const jacobian = [sample.gx, sample.gx * lx, sample.gx * ly,
+        sample.gy, sample.gy * lx, sample.gy * ly];
+      energy += f * f;
+      for (let row = 0; row < 6; row++) {
+        jtReference[row] += jacobian[row] * f;
+        sumJ[row] += jacobian[row];
+      }
+      for (let r = 0; r < active.length; r++) for (let c = 0; c < active.length; c++) {
+        hessian[r * active.length + c] += jacobian[active[r]] * jacobian[active[c]];
+      }
+    }
+    const n = active.length, normalized = new Float64Array(n * n);
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+      normalized[r * n + c] = hessian[r * n + c]
+        * normalizedScale[active[r]] * normalizedScale[active[c]];
+    }
+    const inverse = invert(hessian, n), normalizedInverse = invert(normalized, n);
+    const condition = inverse && normalizedInverse
+      ? matrixNorm(normalized, n) * matrixNorm(normalizedInverse, n) : Infinity;
+    const valid = samples.length > n && Math.sqrt(energy / weightSum) >= 1
+      && Number.isFinite(condition) && condition <= 1e8;
+    const metadataOffset = index * 16;
+    prepared.metadata[metadataOffset] = Math.sqrt(energy);
+    prepared.metadata[metadataOffset + 1] = valid ? -4 : 0;
+    for (let component = 0; component < 6; component++) {
+      prepared.metadata[metadataOffset + 2 + component] = jtReference[component];
+      prepared.metadata[metadataOffset + 8 + component] = sumJ[component];
+    }
+    prepared.metadata[metadataOffset + 14] = mean;
+    prepared.metadata[metadataOffset + 15] = weightSum;
+    const inverseOffset = index * 36;
+    prepared.inverseHessian.fill(0, inverseOffset, inverseOffset + 36);
+    if (valid) for (let row = 0; row < n; row++) for (let column = 0; column < n; column++) {
+      prepared.inverseHessian[inverseOffset + active[row] * 6 + active[column]] = inverse[row * n + column];
+    }
+  }
+  return prepared;
+}
+
 export const prepareReferenceData = (
   image,
   {

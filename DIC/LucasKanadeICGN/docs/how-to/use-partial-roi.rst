@@ -1,11 +1,18 @@
 Measure with partial subsets near ROI boundaries
 =================================================
 
-``roi_policy="full"`` remains the default. Use ``partial`` explicitly when
-measurements near a boundary justify using fewer pixels and a separate masked
-solver. It is available in both native engines for translation and affine
+The native Python API keeps ``roi_policy="full"`` as its default. Use
+``partial`` there when measurements near a boundary justify using fewer pixels
+and a separate masked solver. It is available in both native engines for
+translation and affine
 models, with the existing interpolants, subset sizes, strides and spatial
-weights. See :doc:`use-roi` first for reference coordinates, image conversion,
+weights. The raw browser WebGPU core and PWA also support partial windows with
+CPU reference preparation and uniform integration; boundary truncation is not
+available there. Analysis defaults to partial supports when a mask is used;
+choose ``Full window`` in the mask controls to restore complete-window
+selection. This UI default prevents small masks from losing every window whose
+nominal square crosses the boundary. See
+:doc:`use-roi` first for reference coordinates, image conversion,
 preprocessing scope, the dense grid and the basic export API.
 
 .. code-block:: python

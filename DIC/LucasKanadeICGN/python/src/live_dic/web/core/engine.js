@@ -67,8 +67,8 @@ export class DICEngine {
     if (options.spatialWeighting !== undefined && options.spatialWeighting !== 'uniform') {
       throw new Error('Gaussian weighting is not supported in the browser engine');
     }
-    if (options.roiPolicy !== undefined && options.roiPolicy !== 'full') {
-      throw new Error('partial ROI is not supported in the browser engine');
+    if (options.roiPolicy !== undefined && !['full', 'partial'].includes(options.roiPolicy)) {
+      throw new Error("roiPolicy must be 'full' or 'partial'");
     }
     if (!['full', 'decimated', 'none'].includes(options.readback === undefined ? 'full' : options.readback)) throw new Error('Unknown readback mode');
     this.options = Object.freeze({ readback: 'full', ...options });

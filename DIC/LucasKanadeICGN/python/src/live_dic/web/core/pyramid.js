@@ -27,6 +27,7 @@ import {
 import {
   imageToGray,
   makeFIRWeights,
+  preparePartialReference,
   prepareReferenceGray,
   reduceHalfGray,
 } from './reference.js';
@@ -39,6 +40,7 @@ export function createPyramidHost(options = {}) {
   const SUBSET_STRIDE = configuration.subsetStride;
 
   let roiMask = null;
+  let roiPolicy = 'full';
   let roiPlans = [];
   let temporal = null;
   let gpuReference = null;
@@ -70,6 +72,7 @@ export function createPyramidHost(options = {}) {
   let runtimePyramidLevels = 0;
   let runtimeMotionModel = null;
   let runtimeOutlierPolicy = null;
+  let runtimeRoiPolicy = null;
   let FRAME_WIDTH = 0;
   let FRAME_HEIGHT = 0;
   let PIXEL_COUNT = 0;
@@ -118,6 +121,7 @@ export function createPyramidHost(options = {}) {
     seedEdges = new Map();
     runtimePyramidLevels = 0;
     runtimeMotionModel = null;
+    runtimeRoiPolicy = null;
     sourceTexture = null;
     buffers = null;
     querySet = null;
@@ -158,6 +162,9 @@ export function createPyramidHost(options = {}) {
       throw new Error(`Image dimensions must be integers of at least ${SUBSET_SIZE} pixels`);
     }
     const levelCount = configuration.pyramidLevels;
+    const partialSupportEnabled = Boolean(roiMask && roiPolicy === 'partial');
+    const hasPartialSupports = partialSupportEnabled && roiPlans.some((plan) => plan.partialIndices.length);
+    const runtimePolicy = roiMask ? roiPolicy : 'none';
     const coarsestScale = 2 ** (levelCount - 1);
     if (Math.floor(width / coarsestScale) < SUBSET_SIZE
         || Math.floor(height / coarsestScale) < SUBSET_SIZE) {
@@ -166,7 +173,8 @@ export function createPyramidHost(options = {}) {
     if (buffers && width === FRAME_WIDTH && height === FRAME_HEIGHT
         && runtimePyramidLevels === levelCount
         && runtimeMotionModel === configuration.motionModel
-        && runtimeOutlierPolicy === configuration.outlierPolicy) return false;
+        && runtimeOutlierPolicy === configuration.outlierPolicy
+        && runtimeRoiPolicy === runtimePolicy) return false;
     await ensureDevice({width,height,roiMask});
     destroyRuntimeResources();
     FRAME_WIDTH = width;
@@ -276,6 +284,8 @@ export function createPyramidHost(options = {}) {
     const seededSolvers = {};
     const fineSolvers = {};
     const fineSeededSolvers = {};
+    const partialSolvers = {};
+    const partialSeededSolvers = {};
     for (const [mode, constant] of Object.entries(INTERPOLATION_CONSTANTS)) {
       const constants = {
         ...(configuration.solverWorkgroupSize !== 16
@@ -296,6 +306,16 @@ export function createPyramidHost(options = {}) {
         seededLayout,
         constants,
       ) : null;
+      if (hasPartialSupports) {
+        const partialConstants = { ...constants, ROI_ENABLED: 1, PARTIAL_SUPPORT: 1 };
+        partialSolvers[mode] = await pipeline(
+          `DIC-RT partial ${mode} solver`, 'solve_partial', shaderModule, layout, partialConstants,
+        );
+        partialSeededSolvers[mode] = await pipeline(
+          `DIC-RT seeded partial ${mode} solver`, 'solve_partial_seeded', shaderModule,
+          seededLayout, partialConstants,
+        );
+      }
     }
     const prefilterXFast = await pipeline(
       'DIC-RT shared prefilter X', 'prefilter_x', shaderModule, layout,
@@ -356,6 +376,8 @@ export function createPyramidHost(options = {}) {
       seededSolvers,
       fineSolvers,
       fineSeededSolvers,
+      partialSolvers,
+      partialSeededSolvers,
       median,
       medianSeed,
       reduceX: await pipeline(
@@ -378,6 +400,7 @@ export function createPyramidHost(options = {}) {
     const parameterCount = configuration.motionModel === 'quadratic' ? 12 : 6;
     const stateStride = configuration.motionModel === 'quadratic' ? 16 : 8;
     const metadataStride = configuration.motionModel === 'quadratic' ? 28 : 16;
+    const roiTailFloats = (roiMask ? 4 : 0) + (partialSupportEnabled ? 4 : 0);
     for (let levelIndex = 0; levelIndex < levelCount; ++levelIndex) {
       const scale = 2 ** levelIndex;
       const levelWidth = Math.floor(width / scale);
@@ -387,7 +410,7 @@ export function createPyramidHost(options = {}) {
       const gridHeight = 1 + Math.floor((levelHeight - SUBSET_SIZE) / SUBSET_STRIDE);
       const gridCount = gridWidth * gridHeight;
       for (const bytes of [pixelCount * 16, pixelCount * 8,
-        gridCount * (metadataStride + (roiMask ? 4 : 0) + parameterCount * parameterCount) * 4,
+        gridCount * (metadataStride + roiTailFloats + parameterCount * parameterCount) * 4,
         gridCount * stateStride * 4]) {
         if (bytes > device.limits.maxStorageBufferBindingSize || bytes > device.limits.maxBufferSize) {
           throw new Error(`Subset geometry at level ${levelIndex} exceeds the device buffer limits`);
@@ -419,7 +442,7 @@ export function createPyramidHost(options = {}) {
         }),
         metadata: device.createBuffer({
           label: `DIC-RT metadata and inverse Hessians level ${levelIndex}`,
-          size: gridCount * (metadataStride + (roiMask ? 4 : 0) + parameterCount * parameterCount) * 4,
+          size: gridCount * (metadataStride + roiTailFloats + parameterCount * parameterCount) * 4,
           usage: storage | GPUBufferUsage.COPY_DST | (hostOptions.referencePreparation==='gpu'?GPUBufferUsage.COPY_SRC:0),
         }),
         state: device.createBuffer({
@@ -429,7 +452,19 @@ export function createPyramidHost(options = {}) {
         }),
         fir: createBufferWithData(
           `DIC-RT FIR weights level ${levelIndex}`,
-          makeFIRWeights(FIR_RADIUS),
+          (() => {
+            const weights = makeFIRWeights(FIR_RADIUS);
+            const plan = roiPlans[levelIndex];
+            if (!partialSupportEnabled || !plan?.partialIndices?.length) return weights;
+            const wordsPerSupport = Math.ceil(SUBSET_SIZE * SUBSET_SIZE / 32);
+            const payload = new Uint32Array(32 + plan.partialIndices.length
+              + plan.partialIndices.length * wordsPerSupport);
+            payload.set(new Uint32Array(weights.buffer, weights.byteOffset, weights.length));
+            payload[31] = plan.partialIndices.length;
+            payload.set(plan.partialIndices, 32);
+            payload.set(plan.supportWords, 32 + plan.partialIndices.length);
+            return payload;
+          })(),
           storage,
         ),
         filteredState: device.createBuffer({
@@ -484,7 +519,7 @@ export function createPyramidHost(options = {}) {
         buffers: levelBuffers,
         bindGroup: levelBindGroup,
         roi: roiPlans[levelIndex] ?? null,
-        inverseOffset: gridCount * (metadataStride + (roiMask ? 4 : 0)) / 4,
+        inverseOffset: gridCount * (metadataStride + roiTailFloats) / 4,
         seededBindGroup,
         prefilterBindGroup,
       });
@@ -564,6 +599,7 @@ export function createPyramidHost(options = {}) {
     runtimePyramidLevels = levelCount;
     runtimeMotionModel = configuration.motionModel;
     runtimeOutlierPolicy = configuration.outlierPolicy;
+    runtimeRoiPolicy = runtimePolicy;
     if (timestampQueries) {
       const passCount = 7 * levelCount - 3;
       querySet = device.createQuerySet({ type: 'timestamp', count: 2 * passCount });
@@ -698,6 +734,16 @@ export function createPyramidHost(options = {}) {
         workgroups: [level.gridWidth, level.gridHeight, 1],
       });
       if (slot.spatial) jobs.push({ encode: command => slot.spatial.afterLevel(command, level.index, slot.externalActive) });
+      if (level.roi?.partialIndices?.length) {
+        const seededPipeline = seeded ? pipelines.partialSeededSolvers : pipelines.partialSolvers;
+        jobs.push({
+          pipeline: seededPipeline[configuration.interpolation],
+          bindGroup: seeded ? level.seededBindGroup : level.bindGroup,
+          group: 0,
+          workgroups: [Math.min(level.roi.partialIndices.length, 65535),
+            Math.ceil(level.roi.partialIndices.length / 65535), 1],
+        });
+      }
       if (configuration.outlierPolicy !== 'disabled') {
         jobs.push({
           pipeline: level.index > 0 ? pipelines.medianSeed : pipelines.median,
@@ -866,17 +912,34 @@ export function createPyramidHost(options = {}) {
   };
 
   const setReference = async (dataUrl, referenceOptions = {}) => {
-    const options = { ...hostOptions, ...referenceOptions };
-    configure(options, true);
+    const { roiMask: requestedMask, roiPolicy: requestedPolicy, roiTruncation, ...solverOptions } = referenceOptions;
+    const options = { ...hostOptions, ...solverOptions };
+    configure(solverOptions, true);
+    roiPolicy = requestedPolicy ?? hostOptions.roiPolicy ?? 'full';
+    if (!['full', 'partial'].includes(roiPolicy)) throw new Error("roiPolicy must be 'full' or 'partial'");
+    if (roiTruncation !== undefined && roiTruncation !== 'none') {
+      throw new Error('ROI truncation is not supported in the browser engine');
+    }
     const image = typeof dataUrl === 'string' ? await loadImage(dataUrl) : dataUrl;
     let fourierPixels=image.pixels;
     let spatialReferences = null;
+    let ownedMask;
+    try {
+      ownedMask = validateMask(requestedMask, image.width, image.height, roiPolicy, configuration.motionModel);
+    } catch (error) {
+      image.close?.();
+      throw error;
+    }
+    const hasExcludedPixels = ownedMask && !ownedMask.every(Boolean);
+    if (roiPolicy === 'partial' && hasExcludedPixels && hostOptions.referencePreparation === 'gpu') {
+      image.close?.();
+      throw new Error('Partial ROI requires CPU reference preparation in the browser engine');
+    }
     try {await ensureDevice({...options,width:image.width,height:image.height});}
     catch(error){if(typeof dataUrl==='string')image.close?.();throw error;}
     const started = performance.now();
-    const ownedMask = validateMask(options.roiMask, image.width, image.height, options.roiPolicy ?? 'full', configuration.motionModel);
     const maskSha256 = ownedMask ? await hashMask(ownedMask, image.width, image.height) : null;
-    roiMask = ownedMask && !ownedMask.every(Boolean) ? ownedMask : null;
+    roiMask = hasExcludedPixels ? ownedMask : null;
     roiPlans = [];
     if (roiMask) {
       let reduced = { mask: roiMask, width: image.width, height: image.height };
@@ -888,6 +951,7 @@ export function createPyramidHost(options = {}) {
           SUBSET_SIZE,
           SUBSET_STRIDE,
           configuration.outlierPolicy === 'median' ? configuration.medianFilterSize : 3,
+          roiPolicy,
         ));
         if (i + 1 < configuration.pyramidLevels) reduced = reduceMask(reduced.mask, reduced.width, reduced.height);
       }
@@ -896,8 +960,10 @@ export function createPyramidHost(options = {}) {
     destroyRuntimeResources();
     await createRuntime(image.width, image.height);
     delete configuration.roi;
-    if (ownedMask) configuration.roi = { policy: 'full', maskShape: [image.height, image.width], maskSha256,
+    if (ownedMask) configuration.roi = { policy: roiPolicy, maskShape: [image.height, image.width], maskSha256,
       selected: roiPlans[0]?.count ?? GRID_COUNT, excluded: GRID_COUNT - (roiPlans[0]?.count ?? GRID_COUNT),
+      full: roiPlans[0]?.fullCount ?? GRID_COUNT,
+      partial: roiPlans[0]?.partialIndices?.length ?? 0,
       gridTotal: GRID_COUNT, levelSelectedCounts: levels.map((level) => level.roi?.count ?? level.gridCount) };
     const runtimeBuildWallMs = performance.now() - runtimeStarted;
     const referenceStarted = performance.now();
@@ -944,11 +1010,20 @@ export function createPyramidHost(options = {}) {
           interpolation: configuration.interpolation,
           motionModel: configuration.motionModel,
         });
+        if (level.roi?.partialIndices?.length) {
+          preparePartialReference(prepared, level.roi, {
+            width: source.width, height: source.height, subsetSize: SUBSET_SIZE,
+            subsetStride: SUBSET_STRIDE, motionModel: configuration.motionModel,
+          });
+        }
         device.queue.writeBuffer(level.buffers.reference, 0, prepared.reference);
-        level.referenceValid = Uint8Array.from({ length: level.gridCount }, (_, i) => +(prepared.metadata[i * (configuration.motionModel === 'quadratic' ? 28 : 16) + 1] > .5));
+        level.referenceValid = Uint8Array.from({ length: level.gridCount }, (_, i) => {
+          const validity = prepared.metadata[i * (configuration.motionModel === 'quadratic' ? 28 : 16) + 1];
+          return +(validity > .5 || validity === -4);
+        });
         let metadata = prepared.metadata;
         if (level.roi) {
-          metadata = new Float32Array(prepared.metadata.length + level.gridCount * 4);
+          metadata = new Float32Array(prepared.metadata.length + level.gridCount * (roiPolicy === 'partial' ? 8 : 4));
           metadata.set(prepared.metadata);
           const metaStride = configuration.motionModel === 'quadratic' ? 28 : 16;
           for (let i = 0; i < level.gridCount; i++) {
@@ -961,6 +1036,13 @@ export function createPyramidHost(options = {}) {
               );
             } else {
               metadata[prepared.metadata.length + i * 4] = level.roi.neighbours[i];
+            }
+          }
+          if (roiPolicy === 'partial') {
+            const boxesOffset = prepared.metadata.length + level.gridCount * 4;
+            for (let ordinal = 0; ordinal < level.roi.partialIndices.length; ordinal++) {
+              const index = level.roi.partialIndices[ordinal];
+              metadata.set(level.roi.supportBoxes.subarray(ordinal * 4, ordinal * 4 + 4), boxesOffset + index * 4);
             }
           }
           if (level.roi.count === 0) {

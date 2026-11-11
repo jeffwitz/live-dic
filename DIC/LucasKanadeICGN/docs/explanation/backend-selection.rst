@@ -139,8 +139,8 @@ resources and schedule each optional stage. The current boundaries are:
      - Analysis/Solve uses two passes by default in compatible Translation or
        Affine settings; the direct API defaults to zero
    * - ROI
-     - Full by default; partial supports explicitly enabled
-     - Full only
+     - Full by default in direct APIs; partial supports explicitly enabled
+     - Full and partial (CPU reference preparation, uniform weights)
    * - Reference preparation
      - CPU, retained across a fixed-reference sequence
      - CPU by default; experimental GPU variant is a separate opt-in

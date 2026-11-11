@@ -103,6 +103,7 @@ export function solverOptions(mode = document.body?.dataset.workspaceMode ?? 'an
       temporalFineCorrection: true, divergencePatience: 3 };
   }
   if (mode !== 'analysis') throw new Error("Workspace mode must be 'live' or 'analysis'");
+  base.roiPolicy = get('roi-policy')?.value ?? 'partial';
   if (get('gpu-reference-preparation')?.checked) base.referencePreparation = 'gpu';
   const fourier = !!get('fourier-start')?.checked;
   const globalAffine = !!get('global-affine-start')?.checked;

@@ -1249,12 +1249,10 @@ class ICGNBrowser:
         array = _as_uint8_gray(image)
         mask = None
         if self.backend == "webgpu-wgsl":
-            if roi_policy != "full" or roi_truncation != "none":
-                raise ValueError(
-                    "partial ROI and truncation are not supported in the browser engine"
-                )
+            if roi_truncation != "none":
+                raise ValueError("ROI truncation is not supported in the browser engine")
             mask = validate_roi(roi_mask, roi_policy, array.shape, self.motion_model)
-        plan = prepare_roi(mask, self.subset_size, self.subset_stride)
+        plan = prepare_roi(mask, self.subset_size, self.subset_stride, policy=roi_policy)
         data_url = _array_data_url(array)
         encoding_wall_ms = (time.perf_counter() - encoding_start) * 1_000.0
         options = self._options(iterations=iterations, tolerance=tolerance, zncc_min=zncc_min)

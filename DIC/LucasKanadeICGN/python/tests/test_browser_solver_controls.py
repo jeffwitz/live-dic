@@ -174,7 +174,7 @@ class SolverControlTests(unittest.TestCase):
         )
         self.assertEqual(
             result["preset"],
-            {"profile": "portable", "spatialPropagationPasses": 2},
+            {"profile": "portable", "roiPolicy": "partial", "spatialPropagationPasses": 2},
         )
         self.assertEqual(result["errors"], [])
         self.assertEqual(result["count"], 192)
@@ -184,6 +184,7 @@ class SolverControlTests(unittest.TestCase):
         core = ROOT / "python/src/live_dic/web/core/engine.js"
         html = (ROOT / "web-app/index.html").read_text(encoding="utf-8")
         self.assertIn('id="subset-size" type="number" min="4" max="46340"', html)
+        self.assertIn("Window widths above 64 px are supported", html)
         script = f"""
           import {{solverOptions}} from {json.dumps(ui.as_uri())};
           import {{DICEngine}} from {json.dumps(core.as_uri())};
@@ -206,6 +207,39 @@ class SolverControlTests(unittest.TestCase):
             actual,
             {"subsetSize": 80, "subsetStride": 20, "motionModel": "translation"},
         )
+
+    def test_analysis_roi_policy_defaults_to_partial_and_full_remains_selectable(self):
+        html = (ROOT / "web-app/index.html").read_text(encoding="utf-8")
+        self.assertIn(
+            '<option value="partial" selected>Keep informative support centred in the mask</option>',
+            html,
+        )
+        ui = ROOT / "web-app/ui/workspace.js"
+        script = f"""
+          import {{solverOptions}} from {json.dumps(ui.as_uri())};
+          const policy={{value:'partial'}};
+          globalThis.document={{body:{{dataset:{{workspaceMode:'analysis'}}}},
+            getElementById:id=>id==='roi-policy'?policy:null}};
+          const partial=solverOptions();policy.value='full';const full=solverOptions();
+          document.body.dataset.workspaceMode='live';
+          console.log(JSON.stringify({{partial,full,live:solverOptions()}}));
+        """
+        actual = json.loads(
+            subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
+        )
+        self.assertEqual(actual["partial"]["roiPolicy"], "partial")
+        self.assertEqual(actual["full"]["roiPolicy"], "full")
+        self.assertNotIn("roiPolicy", actual["live"])
+
+    def test_partial_ui_default_does_not_block_gpu_reference_prep_without_a_mask(self):
+        core = ROOT / "python/src/live_dic/web/core/engine.js"
+        script = f"""
+          import {{DICEngine}} from {json.dumps(core.as_uri())};
+          const engine=new DICEngine({{width:32,height:32,roiPolicy:'partial',referencePreparation:'gpu'}});
+          engine.destroy();console.log('ok');
+        """
+        result = subprocess.check_output(["node", "--input-type=module"], input=script, text=True)
+        self.assertEqual(result.strip(), "ok")
 
     def test_median_neighbourhood_is_a_cold_setting_and_reaches_the_core(self):
         ui = ROOT / "web-app/ui/workspace.js"

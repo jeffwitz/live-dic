@@ -226,8 +226,10 @@ are checked and the seeded layout fits eight storage buffers, but formal
 limits do not guarantee adequate memory or sustained UHD speed on a phone.
 The portable width is 16; subgroups are not required.
 
-Full ROI supports translation and affine. Browser partial supports, truncation,
-Gaussian integration and adaptive pyramids are explicitly rejected. The app
+Full and partial ROI support translation and affine in the native Python and
+raw browser WebGPU cores. Browser partial ROI requires CPU reference
+preparation; visibility truncation and Gaussian integration remain unsupported.
+Adaptive pyramids are explicitly rejected. The app
 uses an explicit median/temporal latency configuration; core and Python
 defaults have not changed. Minimal and cubic trajectory profiles are not
 presented as qualified alternatives.

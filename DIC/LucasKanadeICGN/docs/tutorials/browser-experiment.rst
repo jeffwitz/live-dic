@@ -61,8 +61,10 @@ Choose the experiment and inspect its reference
    creates a hole; a domain inside a hole restores an island. Outer domains can
    be separate. Rectangle, ellipse, circle and polygon are available.
 5. Use **Cancel edits** to restore the applied mask, or **Apply mask** to prepare
-   the edited geometry. Start calculation again in Solve to use it. The selection accepts only complete nominal windows
-   inside white pixels. Numerical failures stay distinct from ROI exclusions.
+   the edited geometry. Start calculation again in Solve to use it. Analysis
+   uses partial supports by default at the mask boundary; switch to full-window
+   selection if every nominal pixel must be inside white pixels. Numerical
+   failures stay distinct from ROI exclusions.
 
 Define the mask from specimen geometry. The saved-field **Status** display makes failed
 measurements visible without removing them from the requested ROI. A black/white

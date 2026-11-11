@@ -143,8 +143,11 @@ Options and native correspondence
      - full, decimated, none; native always materializes its NumPy result.
 
 The JS default one-slot register API does not change Python's two-slot
-``register_stream`` default. Gaussian integration, partial ROI, ROI truncation
-and adaptive pyramid options are rejected. ``solverWorkgroupSize`` accepts 16
+``register_stream`` default. Partial ROI is supported for translation and
+affine with CPU reference preparation and uniform weights. Gaussian integration,
+ROI truncation and adaptive pyramid options are rejected. The standalone
+Analysis workbench defaults to partial support at mask boundaries, while direct
+engine calls default to full windows. ``solverWorkgroupSize`` accepts 16
 (the unchanged default) or an explicit 32. It controls GPU invocations cooperating
 on each subset, independently of subset size, stride and in-flight slots.
 The fresh, seeded, stagnation and compact propagation solvers use the selected
@@ -160,12 +163,18 @@ Reference and ROI
 -----------------
 
 ``await engine.setReference(source, { roiMask, roiPolicy: 'full' })`` prepares
-all levels and resets temporal history. ``roiMask`` is null or a Uint8Array of
+all levels and resets temporal history. ``roiPolicy`` may be ``'full'`` or
+``'partial'``; the direct-engine default is ``'full'``. ``roiMask`` is null or a Uint8Array of
 exactly ``width*height`` bytes, each 0 or 1. It is copied at preparation.
 No resize, threshold, geometric margin or moving-target mask test is implicit.
-A square is retained only if every nominal pixel is True. All-True uses the
-unmasked solver. All-False is valid, produces no measurements and launches no
-IC-GN iterations. Partial ROI throws even with an absent mask.
+``full`` retains a square only if every nominal pixel is True. ``partial`` is
+also supported by the raw browser WebGPU core for translation and affine with
+CPU reference preparation. It keeps the 4-connected white support anchored at
+the subset centre, prepares its Hessian once, and skips the partial window if
+the support is untextured or ill-conditioned. It uses no per-frame mask
+transfer. GPU reference preparation and support truncation remain unsupported
+for partial windows. All-True uses the unmasked solver. All-False is valid,
+produces no measurements and launches no IC-GN iterations.
 
 The reference result includes geometry, configuration, preparation costs,
 reference validity, ROI selection and mask provenance. Hashes use the same

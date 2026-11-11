@@ -15,8 +15,9 @@ Instructions for work in `DIC/LucasKanadeICGN/`. See the root
 - Documentation is Sphinx with the Diátaxis layout under `docs/`. Every new
   option needs API reference, how-to, explanation, and an update to
   `docs/explanation/limitations.rst`.
-- **Do not change any default.** Existing defaults must stay bit-for-bit
-  identical. New behaviour is opt-in.
+- **Preserve defaults unless the user explicitly requests a default change.**
+  Existing engine/API defaults stay unchanged; new behaviour is opt-in unless
+  the task explicitly makes it the UI default.
 - **Report honestly.** Publish measured numbers with their exact timing boundary
   (resident NumPy image → materialized NumPy field). Keep throughput and result
   age separate. Show failures and limitations instead of hiding them behind a
@@ -52,8 +53,9 @@ adapter; skipped GPU tests do not validate numerical execution.
   `ICGNWGPU` is single-scale by default; selective retry is a distinct optional
   compatibility path. Do not silently substitute one policy for another.
 - `ICGNBrowser` and both CLI names retain their browser defaults. Raw
-  `webgpu-wgsl` supports full ROI; Three.js rejects masks. Browser partial
-  supports/truncation/Gaussian integration remain unsupported. The standalone
+  `webgpu-wgsl` supports full and partial ROI; Three.js rejects masks. Browser
+  partial supports require CPU reference preparation and uniform integration;
+  truncation/Gaussian integration remain unsupported. The standalone
   PWA implements a JavaScript supervisor around `web/core`; it does not add a
   Three.js stream layer or WebGL fallback. Keep both the Python shim and PWA
   on the same canonical core and WGSL sources.
@@ -435,9 +437,12 @@ qualification rather than infer mobile coverage from desktop results.
   UHD configurations and alternating native A/B within declared repeatability.
 - `web/core` is packaged and used by both the Python raw-WGSL shim and PWA.
   Temporal history/velocity/fine correction, bounded slots, GPU input,
-  full ROI and small/decimated/full readback are implemented. Partial ROI,
-  truncation, Gaussian integration and adaptive browser pyramids reject
-  explicitly. Three.js remains an independent WebGPU implementation.
+  full/partial ROI and small/decimated/full readback are implemented. Partial
+  support requires CPU reference preparation and uniform integration. The
+  Analysis UI defaults to partial for a supplied mask; direct engine and native
+  API defaults remain full. Truncation, Gaussian integration and adaptive
+  browser pyramids reject explicitly. Three.js remains an independent WebGPU
+  implementation.
 - Hardware and software browser parity each cover 240 frame rows, with no
   predeclared-tolerance exceedance. Actual UHD tensile/plate-hole full-ROI
   checks and external-image conversion are recorded. The native defaults and

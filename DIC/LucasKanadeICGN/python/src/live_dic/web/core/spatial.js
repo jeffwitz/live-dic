@@ -50,7 +50,8 @@ export async function createSpatialGraph(device, solverModule, levels, seededLay
       const { width, height, gridWidth, gridHeight, gridCount, buffers } = level;
       const links = new Uint32Array(gridCount);
       for (let index = 0; index < gridCount; index++) {
-        if (!level.referenceValid[index] || (level.roi && !level.roi.selected[index])) continue;
+        if (!level.referenceValid[index] || (level.roi && !level.roi.selected[index])
+            || level.roi?.partial?.[index]) continue;
         if (level.roi) links[index] = level.roi.neighbours[index];
         else {
           const x = index % gridWidth, y = Math.floor(index / gridWidth);

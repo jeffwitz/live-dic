@@ -36,8 +36,9 @@ Start here
 * :doc:`tutorials/realtime-sequence` and :doc:`how-to/process-live-frames` for
   persistent NumPy streams.
 * :doc:`how-to/use-roi` for a boolean reference mask; white/True retains pixels.
-  The default full-window policy rejects any subset touching a forbidden pixel.
-  :doc:`how-to/use-partial-roi` covers explicit boundary supports.
+  Native Python defaults to complete windows. Analysis defaults to informative
+  partial supports at mask boundaries; both modes are explained in
+  :doc:`how-to/use-partial-roi`.
 * :doc:`how-to/register-large-shifts` for opt-in Fourier and global-affine initialization of sparse pairs.
 * :doc:`how-to/smooth-median-each-pyramid-level` to choose between failed-subset repair and whole-field median smoothing.
 * :doc:`reference/api` for exact defaults and public interfaces.
