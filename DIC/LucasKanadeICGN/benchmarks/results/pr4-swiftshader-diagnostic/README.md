@@ -1,8 +1,8 @@
 # SwiftShader demo playback-rate diagnostic
 
-The CI smoke test runs the compressed 1080p demo under SwiftShader, asks for ten results, a minimum 70% per-result acceptance, and CSV/JSON export, with a 120-second overall deadline. It sets the diagnostic URL parameter `rate=0.0625`.
+The continuous integration (CI) smoke test runs the compressed 1080p demo under SwiftShader, asks for ten results, a minimum 70% per-result acceptance, and comma-separated values (CSV) and JavaScript Object Notation (JSON) export, with a 120-second overall deadline. It sets the diagnostic URL parameter `rate=0.0625`.
 
-The identical CI step already failed on `main` at `a50f4a4`: six results in 120 seconds and no application errors ([run 42995330907](https://github.com/jeffwitz/live-dic/actions/runs/42995330907)). The two pre-fix PR runs similarly reached five and seven results. The CI timeout therefore predates this PR; the logs alone do not prove why those runs were slow.
+The identical CI step already failed on `main` at `a50f4a4`: six results in 120 seconds and no application errors ([run 42995330907](https://github.com/jeffwitz/live-dic/actions/runs/42995330907)). The two pre-fix pull request (PR) runs similarly reached five and seven results. The CI timeout therefore predates this PR; the logs alone do not prove why those runs were slow.
 
 Locally, Chromium 156 with SwiftShader did reach ten results before timeout, but the unchanged test failed its 70% acceptance guard on both `main` and PR revision `970d894`. A diagnostic-only copy of the test saved the per-result indices and acceptance before the assertion. In the PR reproduction, JavaScript reported `video.playbackRate == 1`, despite the requested 0.0625. A `video.load()` call followed the assignment, resetting the playback rate to its default. The local baseline recorded widely spaced and looping frame indices, with low acceptance for late frames; see [pre-fix observations](local_probe_before.json). These local observations do not establish the cause of the separate CI timeout.
 
