@@ -130,6 +130,12 @@ class RegistrationResult:
     subset_stride: int = 16
     roi: RoiPlan | None = None
     reference_valid: np.ndarray | None = None
+    _zncc: np.ndarray | None = None
+
+    @property
+    def zncc(self) -> np.ndarray | None:
+        """Optional immutable final normalized correlation; NaN means unavailable."""
+        return self._zncc
 
     @property
     def roi_selected(self) -> np.ndarray | None:

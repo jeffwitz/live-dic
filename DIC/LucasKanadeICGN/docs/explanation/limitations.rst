@@ -532,3 +532,20 @@ bit identity between widths. Default-width UHD fingerprints are checked
 separately for exact preservation. The 32-thread choice is not a universal
 speed recommendation, mobile qualification or a sustained 4K60 guarantee.
 The browser refuses width 128 and does not perform width autotuning.
+
+Native seeded affine solves
+---------------------------
+
+``ICGNWGPU.register_seeded`` currently accepts host arrays for the affine
+model and does not run pyramid recovery. It uploads and reads data; it is not
+a GPU-resident interface. Its output status is the existing solver status,
+not a guarantee of physical correctness. An optional final correlation pass on ``register`` and ``register_seeded``
+currently supports only affine motion and uniform full windows; ``register``
+requires a single pyramid level. Other integration configurations are
+rejected explicitly. The score is not proof that a correspondence is correct.
+
+``affine_frontier_seeds`` uses host arrays, performs one snapshot pass, and
+does not enforce displacement or gradient consistency, track provenance, or
+identify material discontinuities. Its median policy differs from the
+two-neighbor policy used by some WGPU-Matching qualifications. It is opt-in
+and does not change the browser or default propagation behavior.

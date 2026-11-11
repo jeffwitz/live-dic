@@ -94,3 +94,24 @@ Numerical equivalence
 The algorithm mirrors the SYCL formulation but is not bit-for-bit equivalent.
 WebGL2 uses single-precision shader arithmetic and a different execution and
 reduction model. See :doc:`limitations` for the remaining scope differences.
+
+Seeded affine subsets
+---------------------
+
+An optional seeded call starts each selected subset at its supplied affine
+state and then runs the same iterative solver and acceptance rule. A seed is
+an initial guess, not evidence of convergence. The active mask selects work;
+it is intersected with the reference region of interest. A rejected result
+must not be interpreted as an accepted measurement.
+
+For supported seeded calls, an optional extra GPU pass evaluates zero-mean
+normalized cross-correlation at the final affine state. It is distinct from
+the value used internally during the final iteration, before its update.
+Undefined correlations and inactive or rejected windows are reported as NaN.
+A high score alone does not establish material correspondence.
+
+The opt-in affine-frontier kernel transports each accepted neighbor's local
+affine field to the destination center and takes a componentwise median over
+the available eight neighbors. One call reads a fixed snapshot and supplies
+only candidate seeds; it does not certify convergence, implement a retry
+limit, or impose continuity across known material boundaries.

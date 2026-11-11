@@ -16,6 +16,8 @@ from .motion import AFFINE_PARAMETER_ORDER, MOTION_MODELS, QUADRATIC_PARAMETER_O
 from .outlier import OUTLIER_POLICIES
 from .wgpu_backend import DEFAULT_IN_FLIGHT_FRAMES, DEFAULT_PYRAMID_LEVELS, ICGNWGPU
 
+SEEDED_SOLVE_API_VERSION = 1
+
 __all__ = [
     "BenchmarkResult",
     "AFFINE_PARAMETER_ORDER",
@@ -34,5 +36,6 @@ __all__ = [
     "QUADRATIC_PARAMETER_ORDER",
     "ReferenceInfo",
     "RegistrationResult",
+    "SEEDED_SOLVE_API_VERSION",
     "register_pair",
 ]
