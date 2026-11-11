@@ -69,6 +69,14 @@ def main():
                     raise RuntimeError(snapshot["errors"])
                 if snapshot and snapshot["completed"] and processing_started is None:
                     processing_started = time.monotonic()
+                    if args.software and not args.plate:
+                        playback_rate = browser._evaluate(
+                            'document.getElementById("video").playbackRate'
+                        )
+                        if abs(playback_rate - 0.0625) > 1e-9:
+                            raise AssertionError(
+                                f"Unexpected software demo playback rate: {playback_rate}"
+                            )
                 if (
                     snapshot
                     and snapshot["completed"] >= args.frames

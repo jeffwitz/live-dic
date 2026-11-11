@@ -1,0 +1,125 @@
+{
+  "elapsed_s": 34.33305208792444,
+  "minimum_acceptance": 0.9686567164179104,
+  "frames": [
+    1,
+    5,
+    9,
+    13,
+    17,
+    22,
+    28,
+    34,
+    40,
+    46
+  ],
+  "accepted": [
+    7788,
+    7788,
+    7788,
+    7788,
+    7788,
+    7788,
+    7788,
+    7788,
+    7788,
+    7788
+  ],
+  "selected": [
+    8040,
+    8040,
+    8040,
+    8040,
+    8040,
+    8040,
+    8040,
+    8040,
+    8040,
+    8040
+  ],
+  "browser": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+  "canvas_std": 52.99829590743833,
+  "export": {
+    "rows": 8040,
+    "finite": true,
+    "grid": [
+      120,
+      67
+    ],
+    "readbackWallMs": 3.600000023841858,
+    "configuration": {
+      "subsetSize": 16,
+      "subsetStride": 16,
+      "initialization": "temporal",
+      "temporalPrediction": "velocity",
+      "temporalFineCorrection": true,
+      "temporalMaxAge": null,
+      "divergencePatience": 3,
+      "divergenceMinIterations": 4,
+      "pyramidPolicy": "fixed",
+      "spatialWeighting": "uniform",
+      "solverWorkgroupSize": 16,
+      "pipelineDepth": 1,
+      "iterations": 16,
+      "tolerance": 0.005,
+      "znccMin": 0.8,
+      "pyramidLevels": 2,
+      "iterationsPerLevel": [
+        8,
+        16
+      ],
+      "tolerancePerLevel": [
+        0.005,
+        0.005
+      ],
+      "interpolation": "bspline",
+      "motionModel": "affine",
+      "outlierPolicy": "median",
+      "medianFilterSize": 3,
+      "medianFilterScope": "rejected"
+    },
+    "adapter": {
+      "vendor": "google",
+      "architecture": "swiftshader",
+      "device": "",
+      "description": ""
+    },
+    "roi": null,
+    "roiGeometry": {
+      "version": 1,
+      "composition": "union of roots; exact pixel-containment alternates domain/hole/island",
+      "baseImage": null,
+      "shapes": []
+    },
+    "acquisition": {
+      "reference": {
+        "kind": "demo",
+        "frame": 0
+      },
+      "source": "derived analytic tensile demo",
+      "encoding": "VP9 CRF 22, full-range grayscale YUV420, BT.709; compressed demonstration, not a numerical regression fixture",
+      "outputSize": [
+        1920,
+        1080
+      ],
+      "lastComparison": {
+        "mode": "fixed",
+        "reference": {
+          "kind": "demo",
+          "frame": 0
+        },
+        "target": {
+          "kind": "demo",
+          "ordinal": 10,
+          "timestampUs": 1529800,
+          "timestampClock": "HTMLVideoElement media timeline"
+        },
+        "referenceAdmissible": 8040,
+        "requested": 8040,
+        "fixedImageCoordinateRoi": true
+      }
+    },
+    "timingBoundary": "Explicit export request while paused -> full field mapped and decoded; acquisition age excluded"
+  },
+  "console_errors": []
+}

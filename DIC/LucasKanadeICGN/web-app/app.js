@@ -560,8 +560,10 @@ async function startDemo() {
   await captureReference(reference);
   const ready=waitForMedia(video,'loadeddata',sourceAbort.signal);
   video.src = new URL('./demo/tensile.webm', import.meta.url); video.loop = true; video.playbackRate=1;
+  video.load();await ready;
+  // load() restores defaultPlaybackRate; apply the diagnostic rate afterwards.
   if (smoke && query.has('rate')) video.playbackRate = Number(query.get('rate'));
-  video.load();await ready;video.pause();paused=true;scheduleVideo(generation);
+  video.pause();paused=true;scheduleVideo(generation);
   message('Analytic tensile demo · compressed 1080p replay. Live error includes image formation and video decoding.');
 }
 async function startPlate() {
