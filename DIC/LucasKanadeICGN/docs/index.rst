@@ -35,10 +35,9 @@ Start here
 * :doc:`tutorials/first-registration` for the first native Python registration.
 * :doc:`tutorials/realtime-sequence` and :doc:`how-to/process-live-frames` for
   persistent NumPy streams.
-* :doc:`how-to/use-roi` for a boolean reference mask; white/True retains pixels.
-  Native Python defaults to complete windows. Analysis defaults to informative
-  partial supports at mask boundaries; both modes are explained in
-  :doc:`how-to/use-partial-roi`.
+* :doc:`reference/roi` for the exact mask contract, policies, pyramid rules,
+  validity states and backend support. :doc:`how-to/use-roi` and
+  :doc:`how-to/use-partial-roi` provide workflows and qualification details.
 * :doc:`how-to/register-large-shifts` for opt-in Fourier and global-affine initialization of sparse pairs.
 * :doc:`how-to/smooth-median-each-pyramid-level` to choose between failed-subset repair and whole-field median smoothing.
 * :doc:`reference/api` for exact defaults and public interfaces.
@@ -73,8 +72,9 @@ have not changed. See :doc:`explanation/backend-selection`.
 The standalone :doc:`how-to/run-in-browser` application now provides a
 JavaScript supervisor for browser-local WebGPU camera, image-folder, video and
 demo processing, with saved-field post-processing and results projects. It uses
-the same portable core as the Python raw-WGSL adapter and supports full ROI,
-temporal history and GPU display. It does not use Three.js or WebGL fallback.
+the same portable core as the Python raw-WGSL adapter and supports full and
+partial ROI, temporal history and GPU display. It does not use Three.js or
+WebGL fallback.
 Python browser binary transport still crosses a process boundary; see
 :doc:`explanation/supervision` for the distinct data-ownership choices.
 
@@ -154,6 +154,7 @@ when exporting a measurement with :doc:`how-to/export-results`.
    :caption: Reference
 
    reference/api
+   reference/roi
    reference/js-api
    reference/result-layout
    reference/command-line

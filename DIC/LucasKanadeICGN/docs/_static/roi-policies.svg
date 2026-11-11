@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="385" viewBox="0 0 1080 385" role="img" aria-labelledby="title desc">
+  <title id="title">What full and partial ROI policies keep</title>
+  <desc id="desc">A 5 by 5 subset crosses the ROI boundary and a forbidden crack. Full rejects the whole square. Partial keeps only the allowed four-connected support containing its central anchor.</desc>
+  <defs>
+    <pattern id="excluded" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="8" height="8" fill="#eef1f4"/>
+      <line x1="0" y1="0" x2="0" y2="8" stroke="#b7c0ca" stroke-width="2"/>
+    </pattern>
+    <style>
+      .title { font: 600 19px sans-serif; fill: #172b3a; }
+      .caption { font: 14px sans-serif; fill: #34495e; }
+      .small { font: 12px sans-serif; fill: #34495e; }
+      .grid { stroke: #fff; stroke-width: 2; }
+    </style>
+  </defs>
+  <rect width="1080" height="385" rx="12" fill="#fff"/>
+
+  <g transform="translate(28 0)">
+    <text class="title" x="122" y="34" text-anchor="middle">Mask and nominal window</text>
+    <text class="caption" x="122" y="58" text-anchor="middle">Blue outline = same 5 × 5 subset</text>
+    <g transform="translate(38 82)">
+      <!-- Mask pixels: allowed field, external exclusion, and an internal crack. -->
+      <rect x="0" y="0" width="224" height="224" fill="url(#excluded)"/>
+      <path d="M0 64H128V0H224V224H0Z" fill="#b9e6d2"/>
+      <rect x="128" y="64" width="32" height="160" fill="#68747e"/>
+      <g class="grid">
+        <path d="M32 0V224M64 0V224M96 0V224M128 0V224M160 0V224M192 0V224M0 32H224M0 64H224M0 96H224M0 128H224M0 160H224M0 192H224" fill="none"/>
+      </g>
+      <rect x="32" y="32" width="160" height="160" fill="none" stroke="#1674a5" stroke-width="5"/>
+      <circle cx="112" cy="112" r="7" fill="#f4b942" stroke="#fff" stroke-width="2"/>
+    </g>
+    <text class="small" x="150" y="326" text-anchor="middle">The square touches excluded pixels and a crack.</text>
+  </g>
+
+  <path d="M360 190H397" stroke="#718096" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <g transform="translate(405 0)">
+    <text class="title" x="122" y="34" text-anchor="middle">full</text>
+    <text class="caption" x="122" y="58" text-anchor="middle">Any forbidden pixel rejects all</text>
+    <g transform="translate(38 82)">
+      <rect x="0" y="0" width="224" height="224" fill="url(#excluded)"/>
+      <path d="M0 64H128V0H224V224H0Z" fill="#b9e6d2"/>
+      <rect x="128" y="64" width="32" height="160" fill="#68747e"/>
+      <g class="grid">
+        <path d="M32 0V224M64 0V224M96 0V224M128 0V224M160 0V224M192 0V224M0 32H224M0 64H224M0 96H224M0 128H224M0 160H224M0 192H224" fill="none"/>
+      </g>
+      <rect x="32" y="32" width="160" height="160" fill="#d9544d" fill-opacity=".18" stroke="#bd302a" stroke-width="5"/>
+      <path d="m82 82 60 60m0-60-60 60" stroke="#a51f1a" stroke-width="9" stroke-linecap="round"/>
+    </g>
+    <text class="small" x="150" y="326" text-anchor="middle">No pixels from this subset are measured.</text>
+  </g>
+
+  <g transform="translate(782 0)">
+    <text class="title" x="122" y="34" text-anchor="middle">partial</text>
+    <text class="caption" x="122" y="58" text-anchor="middle">Keep centre-connected support</text>
+    <g transform="translate(38 82)">
+      <rect x="0" y="0" width="224" height="224" fill="url(#excluded)"/>
+      <path d="M0 64H128V0H224V224H0Z" fill="#b9e6d2"/>
+      <rect x="128" y="64" width="32" height="160" fill="#68747e"/>
+      <g class="grid">
+        <path d="M32 0V224M64 0V224M96 0V224M128 0V224M160 0V224M192 0V224M0 32H224M0 64H224M0 96H224M0 128H224M0 160H224M0 192H224" fill="none"/>
+      </g>
+      <!-- Green cells are the component of allowed pixels inside the square that contains the anchor. -->
+      <path d="M32 64H128V192H32Z" fill="#39a978" fill-opacity=".68" stroke="#16764b" stroke-width="3"/>
+      <rect x="32" y="32" width="160" height="160" fill="none" stroke="#1674a5" stroke-width="4" stroke-dasharray="9 6"/>
+      <circle cx="112" cy="112" r="8" fill="#f4b942" stroke="#fff" stroke-width="2"/>
+    </g>
+    <text class="small" x="150" y="326" text-anchor="middle">Outside pixels and the other side of the crack are skipped.</text>
+  </g>
+
+  <g transform="translate(150 357)">
+    <rect x="0" y="-10" width="16" height="16" fill="#b9e6d2" stroke="#6d9e88"/>
+    <text class="small" x="23" y="3">allowed mask pixel</text>
+    <rect x="178" y="-10" width="16" height="16" fill="url(#excluded)" stroke="#b7c0ca"/>
+    <text class="small" x="201" y="3">excluded by mask</text>
+    <rect x="352" y="-10" width="16" height="16" fill="#39a978" stroke="#16764b"/>
+    <text class="small" x="375" y="3">used by partial</text>
+    <circle cx="515" cy="-2" r="6" fill="#f4b942"/>
+    <text class="small" x="528" y="3">central anchor</text>
+  </g>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 10 5 0 10Z" fill="#718096"/>
+    </marker>
+  </defs>
+</svg>

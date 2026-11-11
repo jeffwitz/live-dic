@@ -2,15 +2,14 @@ Python API reference
 ====================
 
 Both native engines accept ``set_reference(..., roi_mask=mask, roi_policy="full")``.
-The boolean mask selects complete nominal windows in reference coordinates for
-translation and affine models. Results expose ``roi_selected``,
-``reference_valid``, ``populations`` and ``save_npz(path)``. See
-:doc:`../how-to/use-roi` for selection, pyramid, filtering and export contracts.
-The optional ``partial`` policy and ``roi_truncation="visibility"`` are described
-in :doc:`../how-to/use-partial-roi`. Native Python and raw ``webgpu-wgsl`` support
-full and partial ROI for translation and affine. The browser core requires CPU
-reference preparation for partial support and does not implement visibility
-truncation. Three.js rejects ROI.
+The exact mask formats, full/partial support construction, pyramid reduction,
+seed/filter boundaries, validity fields, exports and backend matrix are
+specified in :doc:`roi`. The boolean mask is in reference-image coordinates.
+Native Python and raw ``webgpu-wgsl`` support full and partial ROI for
+translation and affine. Browser partial support requires CPU reference
+preparation and uniform integration; browser engines reject visibility
+truncation. Three.js rejects ROI. The workbench defaults to partial support
+when a mask is applied; direct engine APIs default to full windows.
 
 Supervision contract
 --------------------

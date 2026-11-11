@@ -293,16 +293,20 @@ readback are distinct boundaries. Timestamp queries remain disabled until a
 wall-time sanity test qualifies them. Retain raw age samples; FPS and result
 age are not interchangeable.
 
+.. _js-api-application-mask-image:
+
 Application mask and rendering options
---------------------------------------
+---------------------------------------
 
 The standalone app keeps editable rectangle/ellipse/circle/polygon geometry in
 reference pixels. Complete containment defines nested holes/islands; rasterized
 outer domains unite before holes are removed. The resulting binary mask is
-passed to the existing ``setReference(..., {roiMask})`` full-policy contract.
+passed to ``setReference`` with the selected ``roiPolicy``. Analysis defaults
+to ``partial`` when a mask is applied; **Full window** selects ``full`` instead.
 Vector geometry is a UI representation, not a new IC-GN support model. Export
 ``roiGeometry`` contains the applied shape list and composition version along
 with the binary ``roi`` data. Unapplied edits are not exported as applied data.
+See :doc:`roi` for exact numerical semantics and backend restrictions.
 
 ``web-app/render/live-vectors.js`` is the live presentation adapter, separate
 from ``DICEngine``. It accepts mode 2 (vectors) or 8 (image only), ``arrowStep``
