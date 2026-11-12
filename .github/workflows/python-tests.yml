@@ -387,9 +387,9 @@ jobs:
           if-no-files-found: warn
 
   browser-workflow:
-    name: Linux / Chromium UHD workflow and masks
+    name: Linux / Chromium UHD workflow
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/browser-environment
@@ -397,18 +397,48 @@ jobs:
         run: >-
           python tools/qualify_browser_workflow.py --site _site --software
           --output browser-results/workflow
+      - name: Retain workflow report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-workflow-report
+          path: browser-results/
+          if-no-files-found: warn
+
+  browser-solver-settings:
+    name: Linux / Chromium UHD solver settings
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/browser-environment
       - name: Apply solver settings and retain saved-field provenance
         run: >-
           python tools/qualify_solver_settings.py --site _site --software
           --output browser-results/solver-settings
+      - name: Retain solver-settings report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-solver-settings-report
+          path: browser-results/
+          if-no-files-found: warn
+
+  browser-mask-images:
+    name: Linux / Chromium UHD masks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/browser-environment
       - name: Exercise UHD mask images, vector clipping and PNG export
         run: >-
           python tools/qualify_browser_mask_images.py --site _site --software
           --output browser-results/mask-images
-      - name: Retain workflow and mask reports
+      - name: Retain mask report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: browser-workflow-reports
+          name: browser-mask-report
           path: browser-results/
           if-no-files-found: warn
