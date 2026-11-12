@@ -47,8 +47,12 @@ must explicitly use hardware and record the actual selected adapter.
 Browser execution is separately enabled with `ICGN_RUN_BROWSER_TESTS=1`.
 The native and browser flags can be combined. For Chromium SwiftShader use
 `ICGN_BROWSER_SOFTWARE=1`; its times are correctness evidence only. The
-`browser-software` CI job also compares sixty chronological frames per model
-and slot depth, then exercises the assembled demo under a subpath.
+Chromium CI qualifications run in parallel groups for core parity, the editor
+and vectors, image imports, the workbench and review, and workflow and mask
+handling. A failure is therefore reported against the small group that owns
+it instead of waiting for one long serial browser job to reach its final
+check. The core parity group also compares chronological frames per model and
+slot depth.
 
 Build the static companion with `python3 tools/build_pages.py --output _site`.
 `tools/smoke_browser_app.py` checks it through the existing Chromium harness;

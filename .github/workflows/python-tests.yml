@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - ".github/workflows/python-tests.yml"
+      - ".github/actions/**"
       - "DIC/LucasKanadeICGN/package.json"
       - "DIC/LucasKanadeICGN/package-lock.json"
       - "DIC/LucasKanadeICGN/eslint.config.mjs"
@@ -21,6 +22,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/python-tests.yml"
+      - ".github/actions/**"
       - "DIC/LucasKanadeICGN/package.json"
       - "DIC/LucasKanadeICGN/package-lock.json"
       - "DIC/LucasKanadeICGN/eslint.config.mjs"
@@ -284,79 +286,129 @@ jobs:
           path: browser-pipeline/report.json
           if-no-files-found: warn
 
-  browser-software:
-    name: Linux / Chromium SwiftShader and native CPU parity
+  browser-parity:
+    name: Linux / Chromium core and GPU parity
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-      - name: Install CPU Vulkan driver and the Python package
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes mesa-vulkan-drivers
-          python -m pip install ./DIC/LucasKanadeICGN/python
-          command -v google-chrome || command -v chromium
+      - uses: ./.github/actions/browser-environment
       - name: Execute browser core, ROI, input and readback contracts
         env:
           ICGN_RUN_BROWSER_TESTS: "1"
           ICGN_BROWSER_SOFTWARE: "1"
         run: python -m unittest discover -s DIC/LucasKanadeICGN/python/tests -p test_browser_core.py -v
-      - name: Execute opt-in GPU reference preparation against the CPU oracle
+      - name: Execute GPU reference preparation against the CPU oracle
         env:
           ICGN_RUN_BROWSER_TESTS: "1"
           ICGN_BROWSER_SOFTWARE: "1"
         run: python -m unittest discover -s DIC/LucasKanadeICGN/python/tests -p test_gpu_reference.py -v
-      - name: Compare sixty ordered frames per model and depth
+      - name: Compare ordered browser frames with native CPU results
         run: >-
           python DIC/LucasKanadeICGN/benchmarks/qualify_browser_core.py
           --software-browser --native-device cpu --output browser-results/parity.json
-      - name: Assemble and exercise the demo under a subpath
-        run: |
-          python tools/build_pages.py --output _site
-          python tools/smoke_browser_app.py --site _site --software --frames 10 --export --report browser-results/app.json
-      - name: Exercise UHD plate, mask editing and GPU display on SwiftShader
-        run: >-
-          python tools/qualify_browser_editor.py --site _site --software
-          --report browser-results/editor.json --screenshots browser-results/editor
-      - name: Verify live vector pixels, current-image anchoring and UHD preview
-        run: >-
-          python tools/qualify_live_vectors.py --site _site --software
-          --report browser-results/live-vectors.json
-      - name: Exercise UHD local sources and whole-ROI consecutive failures
-        run: >-
-          python tools/qualify_local_sources.py --site _site --software
-          --output browser-results/local-sources
-      - name: Exercise UHD TIFF images and masks, PNG parity and offline decoding
-        run: >-
-          python tools/qualify_browser_tiff.py --site _site --software
-          --output browser-results/tiff
-      - name: Exercise UHD results analysis, measurements and NPZ interchange
-        run: >-
-          python tools/qualify_browser_workbench.py --site _site --software
-          --output browser-results/workbench
-      - name: Exercise explicit UHD calculation and quantity playback without new correlations
-        run: >-
-          python tools/qualify_browser_workflow.py --site _site --software
-          --output browser-results/workflow
-      - name: Apply edited solver settings and retain original saved-field provenance on UHD
-        run: >-
-          python tools/qualify_solver_settings.py --site _site --software
-          --output browser-results/solver-settings
-      - name: Review an actual UHD field without WebGPU or OffscreenCanvas
-        run: |
-          python tools/qualify_browser_review.py --site _site --software --field browser-results/workbench/processed-field.npz --output browser-results/review-only
-          python tools/qualify_browser_review.py --site _site --software --no-worker --field browser-results/workbench/processed-field.npz --output browser-results/review-main-thread
-      - name: Exercise UHD mask-image input, vector clipping and PNG export
-        run: >-
-          python tools/qualify_browser_mask_images.py --site _site --software
-          --output browser-results/mask-images
-      - name: Retain raw browser qualification reports
+      - name: Retain parity report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: browser-software-reports
+          name: browser-parity-report
+          path: browser-results/
+          if-no-files-found: warn
+
+  browser-editor:
+    name: Linux / Chromium UHD editor and vectors
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/browser-environment
+      - name: Exercise the demo under a subpath
+        run: python tools/smoke_browser_app.py --site _site --software --frames 10 --export --report browser-results/app.json
+      - name: Exercise UHD plate, mask editing and GPU display
+        run: >-
+          python tools/qualify_browser_editor.py --site _site --software
+          --report browser-results/editor.json --screenshots browser-results/editor
+      - name: Verify live vector pixels, image anchoring and UHD preview
+        run: >-
+          python tools/qualify_live_vectors.py --site _site --software
+          --report browser-results/live-vectors.json
+      - name: Retain editor reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-editor-reports
+          path: browser-results/
+          if-no-files-found: warn
+
+  browser-imports:
+    name: Linux / Chromium UHD image imports
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/browser-environment
+      - name: Exercise local sources and consecutive ROI failures
+        run: >-
+          python tools/qualify_local_sources.py --site _site --software
+          --output browser-results/local-sources
+      - name: Exercise UHD TIFF, masks, PNG parity and offline decoding
+        run: >-
+          python tools/qualify_browser_tiff.py --site _site --software
+          --output browser-results/tiff
+      - name: Retain import reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-import-reports
+          path: browser-results/
+          if-no-files-found: warn
+
+  browser-workbench:
+    name: Linux / Chromium UHD workbench and review
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/browser-environment
+      - name: Exercise results analysis, measurements and NPZ interchange
+        run: >-
+          python tools/qualify_browser_workbench.py --site _site --software
+          --output browser-results/workbench
+      - name: Review the produced UHD field without WebGPU or OffscreenCanvas
+        run: |
+          python tools/qualify_browser_review.py --site _site --software --field browser-results/workbench/processed-field.npz --output browser-results/review-only
+          python tools/qualify_browser_review.py --site _site --software --no-worker --field browser-results/workbench/processed-field.npz --output browser-results/review-main-thread
+      - name: Retain workbench and review reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-workbench-reports
+          path: browser-results/
+          if-no-files-found: warn
+
+  browser-workflow:
+    name: Linux / Chromium UHD workflow and masks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/browser-environment
+      - name: Exercise explicit UHD calculation and playback without new correlations
+        run: >-
+          python tools/qualify_browser_workflow.py --site _site --software
+          --output browser-results/workflow
+      - name: Apply solver settings and retain saved-field provenance
+        run: >-
+          python tools/qualify_solver_settings.py --site _site --software
+          --output browser-results/solver-settings
+      - name: Exercise UHD mask images, vector clipping and PNG export
+        run: >-
+          python tools/qualify_browser_mask_images.py --site _site --software
+          --output browser-results/mask-images
+      - name: Retain workflow and mask reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-workflow-reports
           path: browser-results/
           if-no-files-found: warn
