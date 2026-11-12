@@ -48,6 +48,7 @@ def main():
             ICGNBrowser(
                 backend="webgpu-wgsl",
                 chromium_args=(*flags, "--window-size=1600,1200"),
+                startup_timeout=60,
                 call_timeout=300,
             ) as browser,
         ):
