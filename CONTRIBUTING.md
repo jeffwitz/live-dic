@@ -47,13 +47,13 @@ must explicitly use hardware and record the actual selected adapter.
 Browser execution is separately enabled with `ICGN_RUN_BROWSER_TESTS=1`.
 The native and browser flags can be combined. For Chromium SwiftShader use
 `ICGN_BROWSER_SOFTWARE=1`; its times are correctness evidence only. The
-pull-request CI keeps the portable Linux tests, lint, lavapipe regressions,
-Chromium core parity, and the local-source ROI qualification. The wider
-cross-platform and UHD browser qualification runs on pushes to `main`, nightly,
-or on demand through the **Extended qualification** workflow. This keeps
-routine pull-request feedback focused while preserving the full browser suite
-and its reports. The core parity group also compares chronological frames per
-model and slot depth.
+pull-request gate runs the Linux/Python wheel and unit checks, Python and
+JavaScript lint, and the documentation build. The longer cross-platform,
+lavapipe, Chromium parity, local-source ROI, and UHD browser qualifications run
+on pushes to `main`, nightly, or on demand through the **Extended
+qualification** workflow. This keeps routine pull-request feedback short while
+preserving the complete qualification suite and its reports. Browser parity
+also compares chronological frames per model and slot depth.
 
 To run the extended browser checks on a pull request before merge, use the
 workflow's **Run workflow** action on that branch. It reuses one Chromium
