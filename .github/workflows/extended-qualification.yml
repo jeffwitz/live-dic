@@ -90,6 +90,15 @@ jobs:
       - name: Prepare one shared browser environment
         uses: ./.github/actions/browser-environment
 
+      - name: Exercise workspace interactions in a real Chromium DOM
+        env:
+          ICGN_RUN_BROWSER_DOM_TESTS: "1"
+        run: >-
+          python -m unittest discover
+          -s DIC/LucasKanadeICGN/python/tests
+          -p test_browser_workspace_dom.py
+          -v
+
       - name: Qualify disk storage and quota recovery
         run: >-
           python tools/qualify_browser_storage.py --site _site --software

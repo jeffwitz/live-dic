@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -26,6 +27,7 @@ CHROMIUM = (
         None,
     )
 )
+RUN_BROWSER_DOM_TESTS = os.environ.get("ICGN_RUN_BROWSER_DOM_TESTS") == "1"
 
 
 class QuietHandler(SimpleHTTPRequestHandler):
@@ -40,7 +42,10 @@ class QuietHandler(SimpleHTTPRequestHandler):
         self.server.completed.set()
 
 
-@unittest.skipUnless(CHROMIUM, "Chromium is required for the real-DOM workspace test")
+@unittest.skipUnless(
+    CHROMIUM and RUN_BROWSER_DOM_TESTS,
+    "set ICGN_RUN_BROWSER_DOM_TESTS=1 to run the Chromium DOM test",
+)
 class WorkspaceDomTests(unittest.TestCase):
     def test_background_click_does_not_reapply_mode_and_mode_button_fires_once(self):
         with tempfile.TemporaryDirectory(prefix="live-dic-workspace-dom-") as temporary:
