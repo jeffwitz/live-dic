@@ -1,0 +1,136 @@
+name: Extended qualification
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/**"
+      - ".github/actions/**"
+      - "DIC/LucasKanadeICGN/package.json"
+      - "DIC/LucasKanadeICGN/package-lock.json"
+      - "DIC/LucasKanadeICGN/eslint.config.mjs"
+      - ".ruff.toml"
+      - "tools/**"
+      - "README.md"
+      - "CONTRIBUTING.md"
+      - "DIC/LucasKanadeICGN/python/**"
+      - "DIC/LucasKanadeICGN/benchmarks/*.py"
+      - "DIC/LucasKanadeICGN/assets/**"
+      - "DIC/LucasKanadeICGN/web-app/**"
+      - "DIC/LucasKanadeICGN/three/**"
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: extended-qualification-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  cross-platform-python:
+    name: ${{ matrix.os }} / Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: "3.12"
+          - os: ubuntu-latest
+            python: "3.11"
+          - os: windows-latest
+            python: "3.12"
+          - os: macos-latest
+            python: "3.12"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: DIC/LucasKanadeICGN/python/pyproject.toml
+
+      - name: Install package and development tools
+        run: python -m pip install "./DIC/LucasKanadeICGN/python[dev]"
+
+      - name: Build and validate the distributed wheel
+        run: |
+          python -m pip wheel --no-deps ./DIC/LucasKanadeICGN/python --wheel-dir wheel-dist
+          python tools/check_repository.py --wheel-dir wheel-dist
+          python -c "import pathlib, subprocess, sys; wheel = next(pathlib.Path('wheel-dist').glob('*.whl')); subprocess.run([sys.executable, '-m', 'pip', 'install', '--force-reinstall', '--no-deps', str(wheel)], check=True)"
+          python -I -c "import live_dic; from importlib.resources import files; assert files('live_dic').joinpath('shaders/icgn.wgsl').is_file(); print(live_dic.__file__)"
+
+      - name: Run portable unit tests
+        run: >-
+          python -m unittest discover
+          -s DIC/LucasKanadeICGN/python/tests
+          -v
+
+      - name: Check Python style
+        run: |
+          ruff check DIC/LucasKanadeICGN/python DIC/LucasKanadeICGN/benchmarks tools DIC/LucasKanadeICGN/docs
+          ruff format --check DIC/LucasKanadeICGN/python DIC/LucasKanadeICGN/benchmarks tools DIC/LucasKanadeICGN/docs
+
+  chromium-extended:
+    name: Linux / Chromium extended UHD qualification
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Prepare one shared browser environment
+        uses: ./.github/actions/browser-environment
+
+      - name: Qualify disk storage and quota recovery
+        run: >-
+          python tools/qualify_browser_storage.py --site _site --software
+          --output browser-results/storage
+
+      - name: Qualify recording overlap, failures, late decode and export
+        run: >-
+          python tools/qualify_browser_pipeline.py --site _site --software
+          --output browser-results/pipeline/report.json
+
+      - name: Smoke-test the application under a subpath
+        run: >-
+          python tools/smoke_browser_app.py --site _site --software --frames 10
+          --export --report browser-results/app.json
+
+      - name: Qualify editor, masks and live vectors
+        run: |
+          python tools/qualify_browser_editor.py --site _site --software --report browser-results/editor.json --screenshots browser-results/editor
+          python tools/qualify_live_vectors.py --site _site --software --report browser-results/live-vectors.json
+
+      - name: Qualify local sources, TIFF imports and ROI failures
+        run: |
+          python tools/qualify_local_sources.py --site _site --software --output browser-results/local-sources
+          python tools/qualify_browser_tiff.py --site _site --software --output browser-results/tiff
+
+      - name: Qualify workbench analysis, field review and interchange
+        run: |
+          python tools/qualify_browser_workbench.py --site _site --software --output browser-results/workbench
+          python tools/qualify_browser_review.py --site _site --software --field browser-results/workbench/processed-field.npz --output browser-results/review-only
+          python tools/qualify_browser_review.py --site _site --software --no-worker --field browser-results/workbench/processed-field.npz --output browser-results/review-main-thread
+
+      - name: Qualify workflow, solver settings and UHD masks
+        run: |
+          python tools/qualify_browser_workflow.py --site _site --software --output browser-results/workflow
+          python tools/qualify_solver_settings.py --site _site --software --output browser-results/solver-settings
+          python tools/qualify_browser_mask_images.py --site _site --software --output browser-results/mask-images
+
+      - name: Retain all extended browser reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: extended-browser-qualification
+          path: browser-results/
+          if-no-files-found: warn

@@ -54,12 +54,6 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            python: "3.11"
-          - os: ubuntu-latest
-            python: "3.12"
-          - os: windows-latest
-            python: "3.12"
-          - os: macos-latest
             python: "3.12"
 
     steps:
@@ -236,56 +230,6 @@ jobs:
           -p test_latency_options.py
           -v
 
-  browser-storage:
-    name: Linux / Chromium UHD disk storage
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-      - name: Install the Python browser harness
-        run: |
-          python -m pip install ./DIC/LucasKanadeICGN/python
-          command -v google-chrome || command -v chromium
-      - name: Exercise real IndexedDB, eviction, reopen, parts and quota recovery
-        run: |
-          python tools/build_pages.py --output _site
-          python tools/qualify_browser_storage.py --site _site --software --output browser-storage
-      - name: Retain the storage qualification report
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: browser-storage-report
-          path: browser-storage/report.json
-          if-no-files-found: warn
-
-  browser-pipeline:
-    name: Linux / Chromium UHD recording overlap
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-      - name: Install the Python browser harness
-        run: |
-          python -m pip install ./DIC/LucasKanadeICGN/python
-          command -v google-chrome || command -v chromium
-      - name: Exercise bounded admission, failure recovery, late decode and export
-        run: |
-          python tools/build_pages.py --output _site
-          python tools/qualify_browser_pipeline.py --site _site --software --output browser-pipeline/report.json
-      - name: Retain the pipeline qualification report, including failures
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: browser-pipeline-report
-          path: browser-pipeline/report.json
-          if-no-files-found: warn
-
   browser-parity:
     name: Linux / Chromium core and GPU parity
     runs-on: ubuntu-latest
@@ -315,33 +259,8 @@ jobs:
           path: browser-results/
           if-no-files-found: warn
 
-  browser-editor:
-    name: Linux / Chromium UHD editor and vectors
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/browser-environment
-      - name: Exercise the demo under a subpath
-        run: python tools/smoke_browser_app.py --site _site --software --frames 10 --export --report browser-results/app.json
-      - name: Exercise UHD plate, mask editing and GPU display
-        run: >-
-          python tools/qualify_browser_editor.py --site _site --software
-          --report browser-results/editor.json --screenshots browser-results/editor
-      - name: Verify live vector pixels, image anchoring and UHD preview
-        run: >-
-          python tools/qualify_live_vectors.py --site _site --software
-          --report browser-results/live-vectors.json
-      - name: Retain editor reports
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: browser-editor-reports
-          path: browser-results/
-          if-no-files-found: warn
-
-  browser-imports:
-    name: Linux / Chromium UHD image imports
+  browser-local-sources:
+    name: Linux / Chromium local-source ROI qualification
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -351,94 +270,10 @@ jobs:
         run: >-
           python tools/qualify_local_sources.py --site _site --software
           --output browser-results/local-sources
-      - name: Exercise UHD TIFF, masks, PNG parity and offline decoding
-        run: >-
-          python tools/qualify_browser_tiff.py --site _site --software
-          --output browser-results/tiff
-      - name: Retain import reports
+      - name: Retain the local-source qualification report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: browser-import-reports
-          path: browser-results/
-          if-no-files-found: warn
-
-  browser-workbench:
-    name: Linux / Chromium UHD workbench and review
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/browser-environment
-      - name: Exercise results analysis, measurements and NPZ interchange
-        run: >-
-          python tools/qualify_browser_workbench.py --site _site --software
-          --output browser-results/workbench
-      - name: Review the produced UHD field without WebGPU or OffscreenCanvas
-        run: |
-          python tools/qualify_browser_review.py --site _site --software --field browser-results/workbench/processed-field.npz --output browser-results/review-only
-          python tools/qualify_browser_review.py --site _site --software --no-worker --field browser-results/workbench/processed-field.npz --output browser-results/review-main-thread
-      - name: Retain workbench and review reports
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: browser-workbench-reports
-          path: browser-results/
-          if-no-files-found: warn
-
-  browser-workflow:
-    name: Linux / Chromium UHD workflow
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/browser-environment
-      - name: Exercise explicit UHD calculation and playback without new correlations
-        run: >-
-          python tools/qualify_browser_workflow.py --site _site --software
-          --output browser-results/workflow
-      - name: Retain workflow report
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: browser-workflow-report
-          path: browser-results/
-          if-no-files-found: warn
-
-  browser-solver-settings:
-    name: Linux / Chromium UHD solver settings
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/browser-environment
-      - name: Apply solver settings and retain saved-field provenance
-        run: >-
-          python tools/qualify_solver_settings.py --site _site --software
-          --output browser-results/solver-settings
-      - name: Retain solver-settings report
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: browser-solver-settings-report
-          path: browser-results/
-          if-no-files-found: warn
-
-  browser-mask-images:
-    name: Linux / Chromium UHD masks
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/browser-environment
-      - name: Exercise UHD mask images, vector clipping and PNG export
-        run: >-
-          python tools/qualify_browser_mask_images.py --site _site --software
-          --output browser-results/mask-images
-      - name: Retain mask report
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: browser-mask-report
-          path: browser-results/
+          name: browser-local-source-report
+          path: browser-results/local-sources/
           if-no-files-found: warn

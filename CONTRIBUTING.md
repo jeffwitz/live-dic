@@ -47,12 +47,18 @@ must explicitly use hardware and record the actual selected adapter.
 Browser execution is separately enabled with `ICGN_RUN_BROWSER_TESTS=1`.
 The native and browser flags can be combined. For Chromium SwiftShader use
 `ICGN_BROWSER_SOFTWARE=1`; its times are correctness evidence only. The
-Chromium CI qualifications run in parallel groups for core parity, the editor
-and vectors, image imports, the workbench and review, workflow behavior,
-solver settings, and mask handling. A failure is therefore reported against
-the group that owns it instead of waiting for one long serial browser job to
-reach its final check. The core parity group also compares chronological frames
-per model and slot depth.
+pull-request CI keeps the portable Linux tests, lint, lavapipe regressions,
+Chromium core parity, and the local-source ROI qualification. The wider
+cross-platform and UHD browser qualification runs on pushes to `main`, nightly,
+or on demand through the **Extended qualification** workflow. This keeps
+routine pull-request feedback focused while preserving the full browser suite
+and its reports. The core parity group also compares chronological frames per
+model and slot depth.
+
+To run the extended browser checks on a pull request before merge, use the
+workflow's **Run workflow** action on that branch. It reuses one Chromium
+environment and runs the UHD scenarios sequentially to avoid competing
+SwiftShader instances; its report bundle is retained as an artifact.
 
 Build the static companion with `python3 tools/build_pages.py --output _site`.
 `tools/smoke_browser_app.py` checks it through the existing Chromium harness;
