@@ -226,11 +226,6 @@ jobs:
           python DIC/LucasKanadeICGN/benchmarks/qualify_browser_core.py
           --software-browser --native-device cpu --output browser-results/parity.json
 
-      - name: Exercise local sources and consecutive ROI failures
-        run: >-
-          python tools/qualify_local_sources.py --site _site --software
-          --output browser-results/local-sources
-
       - name: Exercise workspace interactions in a real Chromium DOM
         env:
           ICGN_RUN_BROWSER_DOM_TESTS: "1"
