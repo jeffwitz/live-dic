@@ -143,6 +143,11 @@ def main():
             browser._evaluate(
                 "(async()=>{const {platePreset}=await import('./ui/roi-geometry.js');liveDicRoi.reset(3840,2160,platePreset());return true;})()"
             )
+            # Match the native oracle below: it uses complete windows, not the
+            # Analysis UI's default partial-support policy.
+            browser._evaluate(
+                "document.getElementById('roi-policy').value='full';document.getElementById('roi-policy').onchange();true"
+            )
             browser._evaluate("document.getElementById('apply-roi').onclick().then(()=>true)")
             browser._evaluate(
                 "document.getElementById('local-seek').value=1;document.getElementById('local-seek').onchange().then(()=>true)"
@@ -159,18 +164,11 @@ def main():
                 comparison = metadata["comparison"]
                 assert comparison["reference"]["index"] == reference_index, comparison
                 assert comparison["target"]["index"] == target_index, comparison
+                assert metadata["configuration"]["roi"]["policy"] == "full", metadata[
+                    "configuration"
+                ]["roi"]
                 selected = metadata["configuration"]["roi"]["selected"]
-                expected_selected = 32220
-                # Adapter-side boundary classification can differ by a few
-                # subset centres; status-mask consistency and CPU parity are
-                # checked below against the exact count reported for this run.
-                selection_tolerance = round(expected_selected * 0.001)
-                assert abs(selected - expected_selected) <= selection_tolerance, (
-                    label,
-                    selected,
-                    expected_selected,
-                    selection_tolerance,
-                )
+                assert selected == 32220, (label, selected)
                 status = data["status"]
                 assert np.count_nonzero(status == -3) == 32400 - selected
                 record = dict(
@@ -196,7 +194,7 @@ def main():
                         divergence_patience=3,
                         divergence_min_iterations=4,
                     ) as native:
-                        native.set_reference(reference, roi_mask=mask)
+                        native.set_reference(reference, roi_mask=mask, roi_policy="full")
                         expected = native.register(target)
                     common = (status > 0.5) & expected.accepted_mask.ravel()
                     delta = data["parameters"][common] - expected.parameters.reshape(-1, 6)[common]
