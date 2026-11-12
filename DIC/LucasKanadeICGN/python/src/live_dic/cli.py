@@ -159,7 +159,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--startup-timeout",
         type=float,
-        default=20.0,
+        default=60.0,
         help="browser startup timeout in seconds",
     )
     parser.add_argument(

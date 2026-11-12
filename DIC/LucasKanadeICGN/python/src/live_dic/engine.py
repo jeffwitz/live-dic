@@ -888,7 +888,7 @@ class ICGNBrowser:
         *,
         repo_root: str | os.PathLike[str] | None = None,
         chromium: str | os.PathLike[str] | None = None,
-        startup_timeout: float = 20.0,
+        startup_timeout: float = 60.0,
         call_timeout: float = 120.0,
         no_sandbox: bool = True,
         chromium_args: Iterable[str] = (),
