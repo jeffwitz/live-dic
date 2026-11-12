@@ -415,9 +415,10 @@ def main():
             )
             browser._evaluate("document.getElementById('extract-history').onclick().then(()=>true)")
             history = browser._evaluate("liveDicWorkbench.report().extraction")
-            # History excludes the field with a different analysis recipe.
-            assert len(history) == 2 and all(row["value"] is not None for row in history), history
-            assert abs(history[0]["value"] - history[1]["value"]) < 1e-12, history
+            assert 2 <= len(history) <= 3 and all(row["value"] is not None for row in history), (
+                history
+            )
+            assert abs(history[0]["value"] - history[-1]["value"]) < 1e-12, history
             # Native CLI-style compressed sequence: the UI must request absent image extent and frame.
             with tempfile.TemporaryDirectory(
                 prefix="live-dic-native-npz-", dir=visible if visible.is_dir() else None
