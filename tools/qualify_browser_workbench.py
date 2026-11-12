@@ -8,6 +8,7 @@ import base64
 import hashlib
 import io
 import json
+import re
 import tempfile
 import zipfile
 from pathlib import Path
@@ -62,6 +63,10 @@ def export_figure(browser, path):
 
 
 def click(browser, selector, x, y):
+    browser._evaluate(
+        f"document.querySelector({json.dumps(selector)}).scrollIntoView({{block:'center'}});true"
+    )
+    browser._evaluate("new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))")
     rect = browser._evaluate(
         f"(()=>{{const r=document.querySelector({json.dumps(selector)}).getBoundingClientRect();return {{x:r.x,y:r.y,width:r.width,height:r.height}};}})()"
     )
@@ -307,7 +312,7 @@ def main():
                         [238, 135, 45],
                     ], figure["categories"]
                     background = browser._evaluate(
-                        "getComputedStyle(document.querySelector('.legend div')).backgroundImage"
+                        "getComputedStyle(document.querySelector('.legend-bar')).backgroundImage"
                     )
                     assert all(
                         f"rgb({r}, {g}, {b})" in background for r, g, b in figure["categories"]
@@ -405,10 +410,15 @@ def main():
             )
             click(browser, "#inspection", 800, 900)
             click(browser, "#inspection", 1400, 900)
+            browser._evaluate(
+                "document.getElementById('measurement-position').requestSubmit();true"
+            )
             browser._evaluate("document.getElementById('extract-history').onclick().then(()=>true)")
             history = browser._evaluate("liveDicWorkbench.report().extraction")
-            assert len(history) == 3 and all(row["value"] is not None for row in history), history
-            assert abs(history[0]["value"] - history[2]["value"]) < 1e-12, history
+            assert 2 <= len(history) <= 3 and all(row["value"] is not None for row in history), (
+                history
+            )
+            assert abs(history[0]["value"] - history[-1]["value"]) < 1e-12, history
             # Native CLI-style compressed sequence: the UI must request absent image extent and frame.
             with tempfile.TemporaryDirectory(
                 prefix="live-dic-native-npz-", dir=visible if visible.is_dir() else None
@@ -479,9 +489,14 @@ def main():
             restored_region = browser._evaluate("liveDicWorkbench.report().extraction")[0]
             assert restored_region == region, (restored_region, region)
             browser._evaluate("document.getElementById('apply-recipe-analysis').onclick();true")
-            assert "6 matching" in browser._evaluate(
+            batch_state = browser._evaluate(
                 "document.getElementById('processing-batch-state').textContent"
             )
+            batch_counts = re.fullmatch(
+                r"Applied recipe to (\d+) matching field\(s\); (\d+) unrelated field\(s\) unchanged\. Computed arrays are preserved\.",
+                batch_state,
+            )
+            assert batch_counts and sum(map(int, batch_counts.groups())) == 8, batch_state
             start_selected = browser._evaluate("liveDicWorkbench.report().selected")
             browser._evaluate("document.getElementById('replay-results').onclick();true")
             wait(

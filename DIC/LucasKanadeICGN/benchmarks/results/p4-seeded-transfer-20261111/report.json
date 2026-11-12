@@ -1,0 +1,151 @@
+{
+  "configuration": {
+    "width": 3840,
+    "height": 2160,
+    "subset": 64,
+    "stride": 64,
+    "interpolation": "linear",
+    "reference_sha256": "6e90b3f97f441190b78811a0064a055cdf93f1b8dcb6ccc6f1cd9e277759274f",
+    "target_sha256": "b7ae2ff792015f34047bb930d7388752b2a7b04d8367340b670cdff00e95ca39",
+    "warmup": 2,
+    "repetitions": 5,
+    "python": "3.14.2",
+    "grid": [
+      33,
+      60
+    ],
+    "known_seeds": 120,
+    "target_bytes": 8294400,
+    "state_buffer_bytes": 63360,
+    "mask_buffer_bytes": 7920
+  },
+  "samples": [
+    {
+      "frontier_wall_ms": 2.58901494089514,
+      "solve_wall_ms": 4.957030992954969,
+      "target_upload_wall_ms": 0.37202402018010616,
+      "solve_and_readback_wall_ms": 1.97595392819494,
+      "final_zncc_wall_ms": 2.346883062273264,
+      "active": 960,
+      "accepted": 915
+    },
+    {
+      "frontier_wall_ms": 3.2975469948723912,
+      "solve_wall_ms": 4.923971020616591,
+      "target_upload_wall_ms": 0.464826007373631,
+      "solve_and_readback_wall_ms": 1.8958839355036616,
+      "final_zncc_wall_ms": 2.29525298345834,
+      "active": 960,
+      "accepted": 915
+    },
+    {
+      "frontier_wall_ms": 2.4956410052254796,
+      "solve_wall_ms": 4.548161057755351,
+      "target_upload_wall_ms": 0.3597110044211149,
+      "solve_and_readback_wall_ms": 1.7649700166657567,
+      "final_zncc_wall_ms": 2.2085310192778707,
+      "active": 960,
+      "accepted": 915
+    },
+    {
+      "frontier_wall_ms": 2.412470057606697,
+      "solve_wall_ms": 4.817968932911754,
+      "target_upload_wall_ms": 0.33680303022265434,
+      "solve_and_readback_wall_ms": 1.90275302156806,
+      "final_zncc_wall_ms": 2.348158974200487,
+      "active": 960,
+      "accepted": 915
+    },
+    {
+      "frontier_wall_ms": 2.6248220819979906,
+      "solve_wall_ms": 4.892309079878032,
+      "target_upload_wall_ms": 0.4031109856441617,
+      "solve_and_readback_wall_ms": 1.899173017591238,
+      "final_zncc_wall_ms": 2.3463170509785414,
+      "active": 960,
+      "accepted": 915
+    }
+  ],
+  "source": {
+    "git_revision": "a8c3ca0dddbd9d71a4f2f29e60fd151711c69cbe",
+    "files_sha256": {
+      "wgpu_backend.py": "f3b7b053499d516c0f58c86f218e059d82961d2ff538a62ed9c49b530f013c37",
+      "engine.py": "7f3462d600efb07ca21d9f8990a5f00f4912ede5ea350e46a61cdf3b89f84240",
+      "shaders/affine_zncc.wgsl": "2a4d87263825f9a132b3ab9ffb3ea7fbe514852435c45a4d7cfdfa45ab343cee",
+      "shaders/spatial_seed.wgsl": "a68d99bbdb41eac9b99eceeda3ea2f7e3732780a7c009453ddc1f99b077f941e",
+      "shaders/icgn.wgsl": "1e95cbbd1f780958c072de501265f3b034eeaa9cfef124c43d995ab3c90b5547"
+    },
+    "wgpu_version": "0.32.0",
+    "numpy_version": "2.5.4",
+    "timing_note": "Upload buffer timing includes a four-byte readback ordering barrier; no GPU timestamp queries."
+  },
+  "reference_setup_wall_ms": 964.9035630282015,
+  "adapter": {
+    "vendor": "Intel open-source Mesa driver",
+    "architecture": "",
+    "device": "Intel(R) Graphics (LNL)",
+    "description": "Mesa 25.2.8-0ubuntu0.24.04.4",
+    "stackgroup_min_size": 4,
+    "stackgroup_max_size": 128,
+    "vendor_id": 32902,
+    "device_id": 25760,
+    "adapter_type": "IntegratedGPU",
+    "backend_type": "Vulkan"
+  },
+  "isolated_buffer_transfers": {
+    "frame_sized_buffer": {
+      "bytes": 8294400,
+      "upload_synchronized": {
+        "median_ms": 1.2294099433347583,
+        "min_ms": 1.2002550065517426,
+        "max_ms": 1.289447071030736,
+        "samples_ms": [
+          1.289447071030736,
+          1.2294099433347583,
+          1.2002550065517426,
+          1.2654759921133518,
+          1.2183119542896748
+        ]
+      },
+      "download_synchronized": {
+        "median_ms": 0.9445799514651299,
+        "min_ms": 0.9087939979508519,
+        "max_ms": 1.1378860799595714,
+        "samples_ms": [
+          1.0931610595434904,
+          1.1378860799595714,
+          0.9087939979508519,
+          0.9137449087575078,
+          0.9445799514651299
+        ]
+      }
+    },
+    "state_buffer": {
+      "bytes": 63360,
+      "upload_synchronized": {
+        "median_ms": 0.2174969995394349,
+        "min_ms": 0.19808404613286257,
+        "max_ms": 0.31759508419781923,
+        "samples_ms": [
+          0.31759508419781923,
+          0.2837929641827941,
+          0.2174969995394349,
+          0.20912697073072195,
+          0.19808404613286257
+        ]
+      },
+      "download_synchronized": {
+        "median_ms": 0.1833440037444234,
+        "min_ms": 0.17388304695487022,
+        "max_ms": 0.33976498525589705,
+        "samples_ms": [
+          0.33976498525589705,
+          0.2035909565165639,
+          0.1833440037444234,
+          0.17737189773470163,
+          0.17388304695487022
+        ]
+      }
+    }
+  }
+}

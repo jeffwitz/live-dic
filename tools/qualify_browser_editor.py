@@ -114,6 +114,9 @@ def main():
                 browser._evaluate(
                     f"document.getElementById('shape').value={json.dumps(tool)};document.getElementById('shape').onchange();true"
                 )
+                browser._evaluate(
+                    "document.getElementById('roi').scrollIntoView({block:'center'});true"
+                )
                 box = browser._evaluate(
                     "(()=>{const b=document.getElementById('roi').getBoundingClientRect();return {x:b.x,y:b.y,width:b.width,height:b.height};})()"
                 )
@@ -233,8 +236,16 @@ def main():
             browser._evaluate("document.getElementById('pause').onclick().then(()=>true)")
             second = browser._evaluate("liveDicStatus.results.at(-1).plateScore")
             assert second["coverage"] >= 0.90 and second["displacementRmsePx"] < 0.05, second
-            browser._evaluate(
-                "document.getElementById('zoom').value=4;document.getElementById('zoom').onchange();document.getElementById('centre-view').onclick();true"
+            browser._evaluate("""(async()=>{
+              for(let i=0;i<4;i++){
+                document.getElementById('view-zoom-in').click();
+                await new Promise(requestAnimationFrame);
+              }
+              return document.getElementById('view-zoom-label').textContent;
+            })()""")
+            assert (
+                browser._evaluate("document.getElementById('view-zoom-label').textContent")
+                == "400%"
             )
             browser._evaluate("new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))")
             zoom = browser._evaluate(

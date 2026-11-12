@@ -11,10 +11,12 @@ from __future__ import annotations
 import gc
 import operator
 import struct
+import threading
 import time
 from collections import deque
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
+from functools import wraps
 from importlib.resources import files
 from statistics import median
 from typing import Any
@@ -821,6 +823,36 @@ def _reference_arrays(
     )
 
 
+def _exclusive_call(method):
+    """Prevent a synchronous solve or seed pass from sharing an active slot."""
+
+    @wraps(method)
+    def guarded(self, *args, **kwargs):
+        if not self._registration_lock.acquire(blocking=False):
+            raise ICGNError("Another registration or registration stream is active.")
+        try:
+            return method(self, *args, **kwargs)
+        finally:
+            self._registration_lock.release()
+
+    return guarded
+
+
+def _exclusive_stream(method):
+    """Hold the slot lock until the iterator is exhausted or closed."""
+
+    @wraps(method)
+    def guarded(self, *args, **kwargs):
+        if not self._registration_lock.acquire(blocking=False):
+            raise ICGNError("Another registration or registration stream is active.")
+        try:
+            yield from method(self, *args, **kwargs)
+        finally:
+            self._registration_lock.release()
+
+    return guarded
+
+
 class ICGNWGPU:
     """Persistent native WebGPU IC-GN engine with direct NumPy transfers.
 
@@ -956,6 +988,7 @@ class ICGNWGPU:
         self._wgpu = wgpu
         self._owns_device = True
         self._closed = False
+        self._registration_lock = threading.Lock()
         self.adapter = adapter
         required_features = []
         if (
@@ -1158,6 +1191,7 @@ class ICGNWGPU:
         level = object.__new__(ICGNWGPU)
         level._owns_device = False
         level._closed = False
+        level._registration_lock = threading.Lock()
         for name in (
             "_wgpu",
             "adapter",
@@ -2633,6 +2667,229 @@ class ICGNWGPU:
             reference_valid=getattr(self, "reference_valid", None),
         )
 
+    @_exclusive_call
+    def affine_frontier_seeds(
+        self, parameters: npt.ArrayLike, accepted: npt.ArrayLike
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Transport accepted affine neighbors to the next frontier on WebGPU.
+
+        Returns host arrays of shape ``(height, width, 6)`` and a Boolean
+        activity grid. These are guesses, not accepted IC-GN results. A caller
+        may pass them to :meth:`register_seeded`. Neighbors are taken from one
+        immutable input snapshot; ROI validity does not reveal cracks.
+        """
+        if not self._reference_ready:
+            raise ICGNError("Call set_reference() before affine_frontier_seeds().")
+        if self.motion_model != "affine":
+            raise ValueError("affine_frontier_seeds requires motion_model='affine'")
+        shape = (self.grid_height, self.grid_width)
+        values = np.asarray(parameters, dtype=np.float32)
+        mask = np.asarray(accepted)
+        if values.shape != (*shape, 6):
+            raise ValueError(f"parameters must have shape {(*shape, 6)}")
+        if mask.shape != shape or mask.dtype != np.bool_:
+            raise ValueError(f"accepted must be a Boolean array with shape {shape}")
+        if not np.isfinite(values[mask]).all():
+            raise ValueError("accepted parameters must be finite")
+        valid = np.asarray(self.reference_valid, dtype=bool).copy()
+        if self.roi is not None:
+            valid &= self.roi.selected
+        accepted_valid = mask & valid
+        packed = np.zeros((*shape, 8), dtype=np.float32)
+        packed[..., :6] = np.where(accepted_valid[..., None], values, 0)
+        packed[..., 6] = accepted_valid
+        permissions = np.zeros(shape, dtype=np.uint32)
+        padded = np.pad(valid, 1)
+        for dy in range(-1, 2):
+            for dx in range(-1, 2):
+                neighbor = padded[1 + dy : 1 + dy + shape[0], 1 + dx : 1 + dx + shape[1]]
+                permissions |= (valid & neighbor).astype(np.uint32) << ((dy + 1) * 3 + dx + 1)
+        if self.roi is not None:
+            permissions &= self.roi.neighbour_bits
+        count = int(np.prod(shape))
+        config_data = struct.pack(
+            "8I4f",
+            self.width,
+            self.height,
+            self.grid_width,
+            count,
+            self.subset_size,
+            self.subset_stride,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+        )
+        storage = (
+            self._wgpu.BufferUsage.STORAGE
+            | self._wgpu.BufferUsage.COPY_SRC
+            | self._wgpu.BufferUsage.COPY_DST
+        )
+        config = self.device.create_buffer_with_data(
+            data=config_data, usage=self._wgpu.BufferUsage.UNIFORM
+        )
+        source = self.device.create_buffer_with_data(data=packed, usage=storage)
+        links = self.device.create_buffer_with_data(data=permissions, usage=storage)
+        output = self.device.create_buffer(size=count * 32, usage=storage)
+        work = self.device.create_buffer_with_data(
+            data=np.zeros(count + 4, np.uint32), usage=storage
+        )
+        try:
+            shader = self.device.create_shader_module(
+                code=files("live_dic")
+                .joinpath("shaders/spatial_seed.wgsl")
+                .read_text(encoding="utf-8")
+            )
+            pipeline = self.device.create_compute_pipeline(
+                layout="auto", compute={"module": shader, "entry_point": "affine_frontier"}
+            )
+            buffers = {2: config, 3: source, 4: links, 5: output, 6: work}
+            group = self.device.create_bind_group(
+                layout=pipeline.get_bind_group_layout(0),
+                entries=[
+                    self._buffer_resource(binding, buffer) for binding, buffer in buffers.items()
+                ],
+            )
+            encoder = self.device.create_command_encoder(label="DIC affine frontier")
+            compute = encoder.begin_compute_pass()
+            compute.set_pipeline(pipeline)
+            compute.set_bind_group(0, group)
+            compute.dispatch_workgroups((count + 63) // 64)
+            compute.end()
+            self.device.queue.submit([encoder.finish()])
+            states = np.frombuffer(self.device.queue.read_buffer(output), np.float32).reshape(
+                *shape, 8
+            )
+            indices = np.frombuffer(self.device.queue.read_buffer(work), np.uint32)
+            active = np.zeros(count, dtype=bool)
+            active[indices[4 : 4 + int(indices[0])]] = True
+            return states[..., :6].copy(), active.reshape(shape)
+        finally:
+            for buffer in (config, source, links, output, work):
+                buffer.destroy()
+
+    @_exclusive_call
+    def register_seeded(
+        self,
+        target: ImageInput,
+        parameters: npt.ArrayLike,
+        active: npt.ArrayLike,
+        *,
+        iterations: int | None = None,
+        tolerance: float | None = None,
+        zncc_min: float | None = None,
+        include_zncc: bool = False,
+    ) -> RegistrationResult:
+        """Solve active affine subsets from supplied six-parameter initial states.
+
+        ``parameters`` has shape ``(grid_height, grid_width, 6)`` and uses
+        the result's affine ordering. ``active`` is a Boolean grid of the
+        same spatial shape. Inactive or ROI-excluded windows are not solved.
+        The target and outputs are host arrays; this is not a resident API.
+        ``include_zncc`` computes final correlation in an additional GPU pass;
+        version 1 supports uniform full windows only.
+        This version supports the affine model only and does not run pyramid
+        recovery. It does not change the reference or seed later calls.
+        """
+        if not self._reference_ready:
+            raise ICGNError("Call set_reference() before register_seeded().")
+        if self.motion_model != "affine":
+            raise ValueError("register_seeded currently requires motion_model='affine'")
+        if include_zncc:
+            self._check_final_zncc()
+        shape = (self.grid_height, self.grid_width)
+        values = np.asarray(parameters, dtype=np.float32)
+        mask = np.asarray(active)
+        if values.shape != (*shape, 6):
+            raise ValueError(f"parameters must have shape {(*shape, 6)}")
+        if mask.shape != shape or mask.dtype != np.bool_:
+            raise ValueError(f"active must be a Boolean array with shape {shape}")
+        if not np.isfinite(values[mask]).all():
+            raise ValueError("active parameters must be finite")
+        frame = self._prepare_target(target)
+        self._config = self._resolve_config(iterations, tolerance, zncc_min)
+        self._update_config()
+        packed = np.zeros((*shape, 8), dtype=np.float32)
+        packed[..., :6] = np.where(mask[..., None], values, 0)
+        result = self._register_seeded_frame(frame, packed, mask.astype(np.uint32))
+        if include_zncc:
+            self._attach_final_zncc(result)
+        return result
+
+    def _check_final_zncc(self) -> None:
+        if (
+            self.motion_model != "affine"
+            or self.spatial_weighting != "uniform"
+            or (
+                self.roi is not None
+                and self.roi.partial_indices is not None
+                and self.roi.partial_indices.size
+            )
+        ):
+            raise ValueError("include_zncc requires affine motion and uniform full windows")
+
+    def _attach_final_zncc(self, result: RegistrationResult) -> None:
+        start = time.perf_counter()
+        result._zncc = self._final_affine_zncc()
+        elapsed = (time.perf_counter() - start) * 1000.0
+        result.timing = {
+            **result.timing,
+            "finalZnccWallMs": elapsed,
+            "totalWallMs": result.timing["totalWallMs"] + elapsed,
+        }
+
+    def _final_affine_zncc(self) -> npt.NDArray[np.float32]:
+        """Measure post-update correlation from resident reference and target buffers."""
+        slot = self._pipeline_slots[0]
+        shader = self.device.create_shader_module(
+            code=files("live_dic").joinpath("shaders/affine_zncc.wgsl").read_text(encoding="utf-8")
+        )
+        pipeline = self.device.create_compute_pipeline(
+            layout="auto",
+            compute={
+                "module": shader,
+                "entry_point": "main",
+                "constants": {
+                    "SUBSET_SIZE": self.subset_size,
+                    "SUBSET_STRIDE": self.subset_stride,
+                    "INTERPOLATION_MODE": INTERPOLATION_PIPELINE_CONSTANTS[self.interpolation],
+                },
+            },
+        )
+        count = self.grid_width * self.grid_height
+        output = self.device.create_buffer(
+            size=count * 4, usage=self._wgpu.BufferUsage.STORAGE | self._wgpu.BufferUsage.COPY_SRC
+        )
+        try:
+            bind_group = self.device.create_bind_group(
+                layout=pipeline.get_bind_group_layout(0),
+                entries=[
+                    {"binding": 0, "resource": slot.source_texture.create_view()},
+                    self._buffer_resource(1, slot.buffers["reference"]),
+                    self._buffer_resource(2, self._output_buffer(slot)),
+                    self._buffer_resource(3, slot.buffers["config"]),
+                    self._buffer_resource(4, output),
+                    self._buffer_resource(5, slot.buffers["temporary"]),
+                ],
+            )
+            encoder = self.device.create_command_encoder(label="DIC final affine ZNCC")
+            compute = encoder.begin_compute_pass()
+            compute.set_pipeline(pipeline)
+            compute.set_bind_group(0, bind_group)
+            compute.dispatch_workgroups(self.grid_width, self.grid_height, 1)
+            compute.end()
+            self.device.queue.submit([encoder.finish()])
+            result = np.frombuffer(self.device.queue.read_buffer(output), dtype=np.float32).copy()
+        finally:
+            output.destroy()
+        result[result < -1.0] = np.nan
+        return np.frombuffer(result.tobytes(), dtype=np.float32).reshape(
+            self.grid_height, self.grid_width
+        )
+
+    @_exclusive_call
     def register(
         self,
         target: ImageInput,
@@ -2640,14 +2897,23 @@ class ICGNWGPU:
         iterations: int | None = None,
         tolerance: float | None = None,
         zncc_min: float | None = None,
+        include_zncc: bool = False,
     ) -> RegistrationResult:
         if not self._reference_ready:
             raise ICGNError("Call set_reference() before register().")
+        if include_zncc:
+            self._check_final_zncc()
+            if self.pyramid_levels != 1:
+                raise ValueError("include_zncc requires a single pyramid level")
         total_start = time.perf_counter()
         frame = self._prepare_target(target)
         self._config = self._resolve_config(iterations, tolerance, zncc_min)
         if self.roi is not None and self.roi.empty:
-            return self._empty_roi_result(total_start, self._config)
+            result = self._empty_roi_result(total_start, self._config)
+            if include_zncc:
+                empty = np.full((self.grid_height, self.grid_width), np.nan, np.float32)
+                result._zncc = np.frombuffer(empty.tobytes(), np.float32).reshape(empty.shape)
+            return result
         self._update_config()
 
         upload_wall_ms = self._upload_frame(self._pipeline_slots[0], frame)
@@ -2673,6 +2939,8 @@ class ICGNWGPU:
                 **result.timing,
                 "totalWallMs": (time.perf_counter() - total_start) * 1_000.0,
             }
+        if include_zncc:
+            self._attach_final_zncc(result)
         return result
 
     def _submit_slot(
@@ -2725,6 +2993,7 @@ class ICGNWGPU:
         }
         return result
 
+    @_exclusive_stream
     def register_stream(
         self,
         targets: Iterable[ImageInput],

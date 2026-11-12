@@ -118,7 +118,15 @@ and ``executionDeviceType``. Selection is performed at construction and does
 not handle a device loss during a sequence. See :doc:`../how-to/run-on-cpu`.
 
 .. autoclass:: live_dic.ICGNWGPU
-   :members: set_reference, register, register_stream, register_many, close
+   :members: set_reference, register, register_seeded, affine_frontier_seeds, register_stream, register_many, close
+
+The affine host-array seeded contract is identified by
+``live_dic.SEEDED_SOLVE_API_VERSION == 1``. It does not imply support for
+resident buffers or other motion models. With ``include_zncc=True`` on ``register`` or ``register_seeded``,
+``RegistrationResult.zncc`` is a read-only post-update correlation array for
+accepted windows; unavailable scores are NaN. This optional pass currently
+requires affine motion and uniform full windows. B-spline, linear, and Keys cubic
+interpolation are supported. ``register`` also requires one pyramid level.
 
 The standard package includes the native engine. It returns the same
 ``ReferenceInfo`` and ``RegistrationResult`` types as the browser engine, but

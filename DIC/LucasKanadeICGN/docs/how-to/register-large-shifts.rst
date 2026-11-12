@@ -212,3 +212,40 @@ For a named pair such as ``Ref.tiff`` / ``Def.tiff``, select the reference
 explicitly: natural filename ordering places ``Def.tiff`` first. Choosing the
 currently previewed image as reference suggests another target when available;
 you can still seek back deliberately for an identity check.
+
+Seed a sparse affine solve
+--------------------------
+
+For independently obtained initial affine estimates, the native single-scale
+engine accepts a six-parameter array and a Boolean active grid::
+
+   import numpy as np
+   from live_dic import ICGNWGPU
+
+   engine = ICGNWGPU(motion_model="affine", interpolation="linear",
+                     outlier_policy="disabled")
+   try:
+       info = engine.set_reference(reference)
+       # Shape: (grid_height, grid_width, 6), ordered as result.parameters.
+       seeds = np.zeros((*info.grid[::-1], 6), dtype=np.float32)
+       active = np.zeros(info.grid[::-1], dtype=bool)
+       # Fill trusted initial states and mark their active positions here.
+       result = engine.register_seeded(target, seeds, active, include_zncc=True)
+       # result.zncc is read-only; unavailable values are NaN.
+   finally:
+       engine.close()
+
+Only active, ROI-selected subsets are solved; inactive results are not
+measurements. The reference is unchanged. This experimental host-array path
+does not provide pyramid recovery or a GPU-resident interface.
+
+For a subsequent frontier, ``seeds, active = engine.affine_frontier_seeds(
+result.parameters, result.status == 1)`` transports the accepted neighbors
+to adjacent unresolved subsets. These values are initial guesses: run
+``engine.register_seeded(target, seeds, active)`` and apply the application's
+consistency and retry policy before treating any new state as reliable. The
+method transfers arrays through the host and reuses the prepared region-of-interest
+links to avoid crossing masked cracks. It cannot identify an unmasked crack.
+A running ``register_stream`` owns the solver until exhausted or explicitly
+closed; seeded, frontier and independent registration calls fail while it is
+active.

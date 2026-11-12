@@ -261,3 +261,49 @@ fn median_seed(@builtin(global_invocation_id) id: vec3<u32>) {
         seeds.values[2u * index + 1u] = vec4<f32>(0.0, 0.0, max(b.z, 0.0), b.w);
     }
 }
+
+// Opt-in affine frontier initialization. Each work item uses the immutable
+// previous-pass snapshot and the median of first-order 8-neighbour transports.
+// It produces seeds and a compact work list, never accepted measurements.
+@compute @workgroup_size(64)
+fn affine_frontier(@builtin(global_invocation_id) id: vec3<u32>) {
+    let index = id.x;
+    if index >= config.count || (permissions.values[index] & 16u) == 0u { return; }
+    if snapshot.values[2u * index + 1u].z >= 0.5 { return; }
+    let gx = i32(index % config.grid_width);
+    let gy = i32(index / config.grid_width);
+    var t0: array<f32, 9>;
+    var g0: array<f32, 9>;
+    var g1: array<f32, 9>;
+    var t1: array<f32, 9>;
+    var g2: array<f32, 9>;
+    var g3: array<f32, 9>;
+    var count = 0u;
+    for (var dy = -1; dy <= 1; dy++) {
+        for (var dx = -1; dx <= 1; dx++) {
+            if dx == 0 && dy == 0 { continue; }
+            let x = gx + dx;
+            let y = gy + dy;
+            let bit = u32((dy + 1) * 3 + dx + 1);
+            if x < 0 || y < 0 || x >= i32(config.grid_width)
+                || y >= i32(config.count / config.grid_width)
+                || (permissions.values[index] & (1u << bit)) == 0u { continue; }
+            let neighbor = u32(y) * config.grid_width + u32(x);
+            let p = snapshot.values[2u * neighbor];
+            let q = snapshot.values[2u * neighbor + 1u];
+            if (permissions.values[neighbor] & 16u) == 0u || q.z != 1.0 { continue; }
+            let delta = vec2<f32>(f32(-dx), f32(-dy)) * f32(config.stride);
+            t0[count] = p.x + dot(p.yz, delta);
+            t1[count] = p.w + dot(q.xy, delta);
+            g0[count] = p.y; g1[count] = p.z;
+            g2[count] = q.x; g3[count] = q.y;
+            count++;
+        }
+    }
+    if count == 0u { return; }
+    seeds.values[2u * index] = vec4<f32>(median(&t0, count), median(&g0, count),
+                                         median(&g1, count), median(&t1, count));
+    seeds.values[2u * index + 1u] = vec4<f32>(median(&g2, count), median(&g3, count), 0.0, 0.0);
+    let ordinal = atomicAdd(&work.count, 1u);
+    work.indices[ordinal] = index;
+}

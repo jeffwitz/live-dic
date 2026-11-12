@@ -143,7 +143,8 @@ Runtime options
    Select a Chromium or Chrome executable.
 
 ``--startup-timeout SECONDS``
-   Browser startup timeout. Default: 20 seconds.
+   Browser startup timeout. Default: 60 seconds, allowing slower software
+   WebGPU adapters to initialize on cold systems.
 
 ``--call-timeout SECONDS``
    Timeout for one browser-control or binary-registration operation. Default:

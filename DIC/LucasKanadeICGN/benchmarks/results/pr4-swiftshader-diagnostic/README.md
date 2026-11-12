@@ -1,0 +1,11 @@
+# SwiftShader demo playback-rate diagnostic
+
+The continuous integration (CI) smoke test runs the compressed 1080p demo under SwiftShader, asks for ten results, a minimum 70% per-result acceptance, and comma-separated values (CSV) and JavaScript Object Notation (JSON) export, with a 120-second overall deadline. It sets the diagnostic URL parameter `rate=0.0625`.
+
+The identical CI step already failed on `main` at `a50f4a4`: six results in 120 seconds and no application errors ([run 42995330907](https://github.com/jeffwitz/live-dic/actions/runs/42995330907)). The two pre-fix pull request (PR) runs similarly reached five and seven results. The CI timeout therefore predates this PR; the logs alone do not prove why those runs were slow.
+
+Locally, Chromium 156 with SwiftShader did reach ten results before timeout, but the unchanged test failed its 70% acceptance guard on both `main` and PR revision `970d894`. A diagnostic-only copy of the test saved the per-result indices and acceptance before the assertion. In the PR reproduction, JavaScript reported `video.playbackRate == 1`, despite the requested 0.0625. A `video.load()` call followed the assignment, resetting the playback rate to its default. The local baseline recorded widely spaced and looping frame indices, with low acceptance for late frames; see [pre-fix observations](local_probe_before.json). These local observations do not establish the cause of the separate CI timeout.
+
+The fix applies the requested diagnostic playback rate after the load completes. The smoke harness now verifies the actual rate after the first result. It preserves the deadline, ten-result requirement, acceptance threshold, and export assertions. No production demo playback setting changes when the diagnostic URL parameter is absent.
+
+On the same local setup, the corrected PR passed the complete, unchanged numerical/export guards: ten results in 35.96 s, minimum acceptance 96.87%, and frame indices 1, 6, 10, 15, 19, 23, 28, 34, 40, 45; see [post-fix observations](local_after.json). A second local repetition passed in 34.33 s with the same minimum acceptance; see [repeat](local_after_repeat.json). These local results are not GitHub-runner performance results. The PR remains a draft until its new GitHub CI has finished and the maintainer has reviewed the changes.

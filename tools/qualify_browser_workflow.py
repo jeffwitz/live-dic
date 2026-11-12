@@ -66,10 +66,17 @@ def main():
                 "document.getElementById('pause').closest('#pane-solve')!==null"
             )
             browser._evaluate("document.getElementById('draw').onclick().then(()=>true)")
-            assert browser._evaluate(
-                "!liveDicSourceState().viewingInput&&!document.getElementById('field').hidden"
+            visible_state = browser._evaluate(
+                "({source:liveDicSourceState(),inputHidden:document.getElementById('input-field').hidden,fieldHidden:document.getElementById('field').hidden,message:document.getElementById('message').textContent})"
             )
-            assert browser._evaluate("liveDicPipelineReport().presentation.referencePreview")
+            assert (
+                visible_state["source"]["viewingInput"]
+                and not visible_state["inputHidden"]
+                and visible_state["fieldHidden"]
+            ), visible_state
+            assert browser._evaluate(
+                "(()=>{const c=document.getElementById('input-field'),x=c.getContext('2d');return c.width===3840&&c.height===2160&&!c.hidden&&Array.from({length:5},(_,i)=>x.getImageData(100+i*500,100+i*300,1,1).data[0]).some(v=>v>0);})()"
+            )
             assert browser._evaluate("liveDicStatus.completed") == 0
             browser._evaluate("document.getElementById('cancel-roi').onclick().then(()=>true)")
             assert browser._evaluate("liveDicSourceState().viewingInput")

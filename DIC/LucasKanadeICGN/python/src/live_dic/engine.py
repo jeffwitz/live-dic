@@ -130,6 +130,12 @@ class RegistrationResult:
     subset_stride: int = 16
     roi: RoiPlan | None = None
     reference_valid: np.ndarray | None = None
+    _zncc: np.ndarray | None = None
+
+    @property
+    def zncc(self) -> np.ndarray | None:
+        """Optional immutable final normalized correlation; NaN means unavailable."""
+        return self._zncc
 
     @property
     def roi_selected(self) -> np.ndarray | None:
@@ -882,7 +888,7 @@ class ICGNBrowser:
         *,
         repo_root: str | os.PathLike[str] | None = None,
         chromium: str | os.PathLike[str] | None = None,
-        startup_timeout: float = 20.0,
+        startup_timeout: float = 60.0,
         call_timeout: float = 120.0,
         no_sandbox: bool = True,
         chromium_args: Iterable[str] = (),

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 import unittest
 from dataclasses import replace
 from types import SimpleNamespace
@@ -51,6 +52,7 @@ class _Readback:
 
 def _engine(clock: _Clock, *, pyramid_levels: int = 1) -> ICGNWGPU:
     engine = object.__new__(ICGNWGPU)
+    engine._registration_lock = threading.Lock()
     engine.subset_size = 16
     engine.outlier_policy = "replace"
     engine._reference_ready = True

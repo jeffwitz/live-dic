@@ -1,0 +1,21 @@
+name: Prepare Chromium qualification environment
+description: Install the browser test package and build the static application
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: "3.12"
+        cache: pip
+        cache-dependency-path: DIC/LucasKanadeICGN/python/pyproject.toml
+    - name: Install software Vulkan and the Python package
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install --yes mesa-vulkan-drivers
+        python -m pip install ./DIC/LucasKanadeICGN/python
+        command -v google-chrome || command -v chromium
+    - name: Build the browser application
+      shell: bash
+      run: python tools/build_pages.py --output _site
