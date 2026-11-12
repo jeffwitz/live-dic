@@ -158,10 +158,13 @@ function updatePipelineState(force = false) {
 }
 function details() {
   const settings=sourceSettings.actual; $('camera-summary').hidden=source!=='camera';
+  let profile=null;
+  try { profile=options().profile; }
+  catch (error) { $('solver-summary').textContent=error.message; }
   if(source==='camera'&&settings) $('camera-summary').textContent=`Actual ${settings.width} × ${settings.height} · ${settings.frameRate ?? '?'} Hz negotiated (requested ${sourceSettings.requested?.width} × ${sourceSettings.requested?.height} · ${sourceSettings.requested?.frameRate} Hz). ${sourceSettings.frameDelivery ?? 'Preparing capture'} · ${sourceSettings.deliveryState ?? 'preparing'}. Delivered/processed rates may be lower.`;
   $('details').textContent = JSON.stringify({ capabilities, acquisition: { ...sourceSettings, files: sourceSettings.files ? `${sourceSettings.files.length} file records retained in export` : undefined },
   build: buildInfo, execution: transport.isMain ? 'Main-thread fallback: OffscreenCanvas unavailable' : 'Dedicated worker',
-  reference: referenceInfo ? { ...referenceInfo, prepared:referencePrepared, roiSelected: undefined, referenceValid: undefined } : null, profile: options().profile,
+  reference: referenceInfo ? { ...referenceInfo, prepared:referencePrepared, roiSelected: undefined, referenceValid: undefined } : null, profile,
   requestedResolution: $('resolution').value }, null, 2); }
 function updateScale(scale) {
   if (!Number.isFinite(scale)) return;
