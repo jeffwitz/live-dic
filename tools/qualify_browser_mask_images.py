@@ -43,6 +43,8 @@ def main():
     )
     y, x = np.ogrid[:2160, :3840]
     mask = ((x - 1920) ** 2 + (y - 1080) ** 2 >= 112**2).astype(np.uint8)
+    selected_from_mask = mask.reshape(135, 16, 240, 16).all(axis=(1, 3))
+    selected_count = int(selected_from_mask.sum())
 
     def digest(values):
         return hashlib.sha256(values.tobytes()).hexdigest()
@@ -83,13 +85,19 @@ def main():
                     "(async()=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',liveDicRoi.mask()))].map(v=>v.toString(16).padStart(2,'0')).join(''))()"
                 )
 
+            browser._evaluate(
+                "document.getElementById('mask-conversion').value='strict';document.getElementById('mask-conversion').onchange();true"
+            )
             choose(binary)
             assert not browser._evaluate("document.getElementById('roi-editor').hidden")
             assert mask_hash() == digest(mask)
             browser._evaluate("document.getElementById('apply-roi').onclick().then(()=>true)")
             browser._evaluate("document.getElementById('pause').onclick().then(()=>true)")
             initial = export(browser)
-            assert initial["metadata"]["configuration"]["roi"]["selected"] == 32220
+            np.testing.assert_array_equal(
+                initial["status"].reshape(135, 240) != -3, selected_from_mask
+            )
+            assert initial["metadata"]["configuration"]["roi"]["selected"] == selected_count
             assert initial["metadata"]["roiGeometry"]["baseImage"]["threshold"] is None
             for path, expected in [(wrong, "never resized"), (gray, "not opaque black/white")]:
                 choose(path)
@@ -269,7 +277,7 @@ def main():
                 user_agent=browser._evaluate("navigator.userAgent"),
                 touch_resize=dict(before=touch_before, after=touch_after),
                 emulated_viewport=touch_geometry,
-                original_selected=32220,
+                original_selected=selected_count,
                 clipped_selected=int(selected.sum()),
                 mask_sha256=digest(mask),
                 clipped_sha256=digest(expected.astype(np.uint8)),
