@@ -12,8 +12,11 @@ solver is a separate implementation; this wording does not claim that Pierre
 authored the current solver or that live-dic reuses Strobox source code.
 
 This standalone application uses the live-dic portable WGSL solver. It does
-not use GPU-IO, Three.js or Tweakpane; pinned browser codecs and their licences
-are listed in `../THIRD_PARTY.md`.
+not use GPU-IO or Three.js. Tweakpane has been retired. An optional CPM-HOG
+matcher source snapshot from the maintainer's WGPU-Matching project is included
+for Analysis initialization; see `vendor/wgpu-matching/PROVENANCE.md`. It does
+not include source from the original CPM implementation. Pinned browser codecs
+and third-party licences are listed in `../THIRD_PARTY.md`.
 
 The tensile demonstration is derived from the archived synthetic native-UHD
 fixtures under `DIC/LucasKanadeICGN/assets/uhd_tensile`. Its manifest records

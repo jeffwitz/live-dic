@@ -1,0 +1,190 @@
+{
+  "schema_version": 1,
+  "coordinates": {
+    "origin": "top-left",
+    "pixel_centres": "integer coordinates identify pixel centres",
+    "seed_centres": "grid seed centre is (grid_index * stride + (patch_size - 1) / 2)",
+    "displacement": "target_coordinate = source_coordinate + displacement"
+  },
+  "result_fields": {
+    "source_x_px": { "python": "x", "javascript": "x" },
+    "source_y_px": { "python": "y", "javascript": "y" },
+    "dx_px": { "python": "dx", "javascript": "dx" },
+    "dy_px": { "python": "dy", "javascript": "dy" },
+    "usable": { "python": "usable", "javascript": "usable" },
+    "score": { "python": "score", "javascript": "score" },
+    "second_score": { "python": "second_score", "javascript": "secondScore" },
+    "margin": { "python": "margin", "javascript": "margin" },
+    "reciprocal": { "python": "reciprocal", "javascript": "reciprocal" },
+    "inliers": { "python": "inliers", "javascript": "inliers" },
+    "candidates": { "python": "candidates", "javascript": "candidates" },
+    "inlier_fraction": { "python": "inlier_fraction", "javascript": "inlierFraction" },
+    "residual_px": { "python": "residual", "javascript": "residual" },
+    "local_consistency_px": { "python": "local_consistency_px", "javascript": "localConsistencyPx" },
+    "local_consistency_neighbors": { "python": "local_consistency_neighbors", "javascript": "localConsistencyNeighbors" },
+    "seed_x_px": { "python": "seed_x", "javascript": "seedX" },
+    "seed_y_px": { "python": "seed_y", "javascript": "seedY" },
+    "root_x_px": { "python": "root_x", "javascript": "rootX" },
+    "root_y_px": { "python": "root_y", "javascript": "rootY" },
+    "target_x_px": { "python": "target_x", "javascript": "targetX" },
+    "target_y_px": { "python": "target_y", "javascript": "targetY" }
+  },
+  "algorithms": {
+    "deepmatching": {
+      "defaults": {
+        "patch_size_px": 128,
+        "root_patch_size_px": 512,
+        "stride_px": 512,
+        "downscale_levels": 2,
+        "search_radius_px": 256,
+        "minimum_score": 0.0,
+        "minimum_margin": 0.0,
+        "seed_points": null,
+        "mode": "inria"
+      },
+      "constraints": {
+        "patch_size_px": { "type": "integer", "minimum": 1 },
+        "root_patch_size_px": { "type": "integer", "minimum": 1 },
+        "stride_px": { "type": "integer", "minimum": 1 },
+        "downscale_levels": { "type": "integer", "minimum": 0, "maximum": 8 },
+        "search_radius_px": { "type": "number", "minimum": 0 },
+        "minimum_score": { "type": "number", "minimum": 0, "maximum": 1 },
+        "minimum_margin": { "type": "number", "minimum": 0, "maximum": 1 },
+        "mode": { "type": "enum", "values": ["inria", "inria_sparse", "direct"] },
+        "seed_points": { "type": "points", "maximum_count": 512 }
+      },
+      "option_keys": {
+        "patch_size_px": { "python": "patch_size", "javascript": "patchSize" },
+        "root_patch_size_px": { "python": "root_patch_size", "javascript": "rootPatchSize" },
+        "stride_px": { "python": "stride", "javascript": "stride" },
+        "downscale_levels": { "python": "downscale_levels", "javascript": "downscaleLevels" },
+        "search_radius_px": { "python": "search_radius_px", "javascript": "searchRadiusPx" },
+        "minimum_score": { "python": "minimum_score", "javascript": "minimumScore" },
+        "minimum_margin": { "python": "minimum_margin", "javascript": "minimumMargin" },
+        "mode": { "python": "mode", "javascript": "mode" },
+        "seed_points": { "python": "seed_points", "javascript": "seedPoints" }
+      }
+    },
+    "horg": {
+      "defaults": {
+        "patch_size_px": 128,
+        "stride_px": 512,
+        "reduction": 4,
+        "max_features": 1024,
+        "seed_points": null
+      },
+      "constraints": {
+        "patch_size_px": { "type": "integer", "minimum": 1 },
+        "stride_px": { "type": "integer", "minimum": 1 },
+        "reduction": { "type": "integer", "minimum": 1 },
+        "max_features": { "type": "integer", "minimum": 1 },
+        "seed_points": { "type": "points", "maximum_count": 512 }
+      },
+      "option_keys": {
+        "patch_size_px": { "python": "patch_size", "javascript": "patchSize" },
+        "stride_px": { "python": "stride", "javascript": "stride" },
+        "reduction": { "python": "reduction", "javascript": "horgReduction" },
+        "max_features": { "python": "max_features", "javascript": "horgMaxFeatures" },
+        "seed_points": { "python": "seed_points", "javascript": "seedPoints" }
+      }
+    },
+    "cpm": {
+      "defaults": {
+        "patch_size_px": 128,
+        "stride_px": 512,
+        "downscale_levels": 2,
+        "search_radius_px": 256,
+        "matching_support_px": 32,
+        "work_grid_stride_px": 16,
+        "levels": 4,
+        "propagation_iterations": 6,
+        "random_trials": 4,
+        "initial_hypotheses": 16,
+        "local_search_radius_px": 16,
+        "affine_radius_px": null,
+        "seed": 1,
+        "reciprocal_threshold_px": 8,
+        "minimum_similarity": 0.0,
+        "seed_points": null,
+        "oracle_affine": null
+      },
+      "constraints": {
+        "patch_size_px": { "type": "integer", "minimum": 1 },
+        "stride_px": { "type": "integer", "minimum": 1 },
+        "downscale_levels": { "type": "integer", "minimum": 0, "maximum": 8 },
+        "search_radius_px": { "type": "integer", "minimum": 0 },
+        "matching_support_px": { "type": "integer", "minimum": 8, "maximum": 128 },
+        "work_grid_stride_px": { "type": "integer", "minimum": 4, "maximum": 256 },
+        "levels": { "type": "integer", "minimum": 1, "maximum": 6 },
+        "propagation_iterations": { "type": "integer", "minimum": 1, "maximum": 16 },
+        "random_trials": { "type": "integer", "minimum": 1, "maximum": 16 },
+        "initial_hypotheses": { "type": "integer", "minimum": 1, "maximum": 64 },
+        "local_search_radius_px": { "type": "number", "minimum": 1, "maximum": 512 },
+        "affine_radius_px": { "type": "optional_number", "minimum": 1, "maximum": 512 },
+        "seed": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "reciprocal_threshold_px": { "type": "number", "minimum": 0 },
+        "minimum_similarity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "seed_points": { "type": "points", "maximum_count": 512 }
+      },
+      "option_keys": {
+        "patch_size_px": { "python": "patch_size", "javascript": "patchSize" },
+        "stride_px": { "python": "stride", "javascript": "stride" },
+        "downscale_levels": { "python": "downscale_levels", "javascript": "downscaleLevels" },
+        "search_radius_px": { "python": "search_radius_px", "javascript": "searchRadiusPx" },
+        "matching_support_px": { "python": "matching_support_px", "javascript": "cpmMatchingPatchSizePx" },
+        "work_grid_stride_px": { "python": "work_grid_stride", "javascript": "cpmGridStride" },
+        "levels": { "python": "levels", "javascript": "cpmLevels" },
+        "propagation_iterations": { "python": "propagation_iterations", "javascript": "cpmPropagationIterations" },
+        "random_trials": { "python": "random_trials", "javascript": "cpmRandomTrials" },
+        "initial_hypotheses": { "python": "initial_hypotheses", "javascript": "cpmInitialHypotheses" },
+        "local_search_radius_px": { "python": "local_search_radius_px", "javascript": "cpmLocalSearchRadiusPx" },
+        "affine_radius_px": { "python": "affine_radius_px", "javascript": "cpmAffineRadiusPx" },
+        "seed": { "python": "seed", "javascript": "cpmSeed" },
+        "reciprocal_threshold_px": { "python": "reciprocal_threshold_px", "javascript": "cpmReciprocalThresholdPx" },
+        "minimum_similarity": { "python": "minimum_similarity", "javascript": "cpmMinimumSimilarity" },
+        "seed_points": { "python": "seed_points", "javascript": "seedPoints" },
+        "oracle_affine": { "python": "oracle_affine", "javascript": "cpmOracleAffine" }
+      }
+    },
+    "projection": {
+      "defaults": {
+        "basis": "gaussian_rbf",
+        "center_counts": [16, 32, 64],
+        "width_factors": [1.0, 2.0, 4.0],
+        "ridge_values": [0.000001, 0.0001, 0.01],
+        "folds": 3,
+        "max_irls_iterations": 20,
+        "irls_tolerance": 0.0001,
+        "irls_damping": 0.0,
+        "huber_delta": 1.345,
+        "minimum_scale_px": 0.05,
+        "density_cells": [16, 12],
+        "random_seed": 20261106
+      },
+      "constraints": {
+        "basis": { "type": "enum", "values": ["affine", "gaussian_rbf"] },
+        "folds": { "type": "integer", "minimum": 2, "maximum": 8 },
+        "max_irls_iterations": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "irls_tolerance": { "type": "number", "minimum": 0 },
+        "irls_damping": { "type": "number", "minimum": 0, "maximum": 0.999999 },
+        "huber_delta": { "type": "number", "minimum": 0 },
+        "minimum_scale_px": { "type": "number", "minimum": 0 },
+        "random_seed": { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+      },
+      "option_keys": {
+        "basis": { "python": "basis", "javascript": null },
+        "center_counts": { "python": "center_counts", "javascript": null },
+        "width_factors": { "python": "width_factors", "javascript": null },
+        "ridge_values": { "python": "ridge_values", "javascript": null },
+        "folds": { "python": "folds", "javascript": null },
+        "max_irls_iterations": { "python": "max_irls_iterations", "javascript": null },
+        "irls_tolerance": { "python": "irls_tolerance", "javascript": null },
+        "irls_damping": { "python": "irls_damping", "javascript": null },
+        "huber_delta": { "python": "huber_delta", "javascript": null },
+        "minimum_scale_px": { "python": "minimum_scale_px", "javascript": null },
+        "density_cells": { "python": "density_cells", "javascript": null },
+        "random_seed": { "python": "random_seed", "javascript": null }
+      }
+    }
+  }
+}

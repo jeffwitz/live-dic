@@ -107,11 +107,16 @@ export function solverOptions(mode = document.body?.dataset.workspaceMode ?? 'an
   if (get('gpu-reference-preparation')?.checked) base.referencePreparation = 'gpu';
   const fourier = !!get('fourier-start')?.checked;
   const globalAffine = !!get('global-affine-start')?.checked;
-  if (fourier && globalAffine) throw new Error('Choose either Fourier or global affine initialization');
+  const wgpuMatching = !!get('wgpu-matching-start')?.checked;
+  if ([fourier, globalAffine, wgpuMatching].filter(Boolean).length > 1) throw new Error('Choose one image-pair initializer');
   if (fourier) Object.assign(base,{initialization:'fourier',temporalPrediction:'none',temporalFineCorrection:false,divergencePatience:null});
   if (globalAffine) Object.assign(base,{initialization:'global-affine',globalAffineLevels:Number(get('global-affine-levels')?.value??5),temporalPrediction:'none',temporalFineCorrection:false,divergencePatience:null});
+  if (wgpuMatching) {
+    if (base.referencePreparation === 'gpu') throw new Error('WGPU-Matching initialization requires CPU reference preparation');
+    Object.assign(base,{initialization:'wgpu-matching',webInitializer:'cpm',temporalPrediction:'none',temporalFineCorrection:false,divergencePatience:null});
+  }
   const customSolver = !!get('custom-solver')?.checked;
-  if (fourier || globalAffine || customSolver || base.referencePreparation) base.profile = 'custom';
+  if (fourier || globalAffine || wgpuMatching || customSolver || base.referencePreparation) base.profile = 'custom';
   const propagationSetting = get('spatial-propagation')?.value ?? 'auto';
   const motionModel = customSolver ? get('motion-model').value : 'affine';
   const interpolation = customSolver ? get('interpolation').value : 'bspline';
@@ -137,7 +142,7 @@ export function solverOptions(mode = document.body?.dataset.workspaceMode ?? 'an
   if (!Number.isInteger(stride) || stride < 1 || stride > size) throw new Error('Grid step must be an integer between 1 and the window width');
   if (!Number.isInteger(levels) || levels < 1 || levels > 6) throw new Error('Pyramid levels must be between 1 and 6');
   if (![coarse, fine].every(v => Number.isInteger(v) && v > 0 && v <= 30)) throw new Error('GN limits must be integers between 1 and 30');
-  const temporal = !fourier && !globalAffine && get('temporal-start').checked;
+  const temporal = !fourier && !globalAffine && !wgpuMatching && get('temporal-start').checked;
   const outlierPolicy = get('outlier-policy').value;
   const medianFilterSize = outlierPolicy === 'median'
     ? Number(get('median-filter-size')?.value ?? 3) : 3;
@@ -148,7 +153,7 @@ export function solverOptions(mode = document.body?.dataset.workspaceMode ?? 'an
   return { ...base, subsetSize: size, subsetStride: stride, motionModel: get('motion-model').value,
     interpolation: get('interpolation').value, outlierPolicy, medianFilterSize, medianFilterScope,
     pyramidLevels: levels, iterationsPerLevel: levels === 1 ? [fine] : [coarse, ...(levels === 3 ? [4] : Array(Math.max(0, levels - 2)).fill(8)), fine],
-    initialization: fourier ? 'fourier' : globalAffine ? 'global-affine' : temporal ? 'temporal' : 'zero', temporalPrediction: temporal ? 'velocity' : 'none',
+    initialization: fourier ? 'fourier' : globalAffine ? 'global-affine' : wgpuMatching ? 'wgpu-matching' : temporal ? 'temporal' : 'zero', temporalPrediction: temporal ? 'velocity' : 'none',
     temporalFineCorrection: temporal && levels === 2, divergencePatience: temporal ? 3 : null };
 }
 

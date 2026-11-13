@@ -29,6 +29,9 @@ export class DICEngine {
         && ((options.motionModel ?? 'affine') === 'quadratic' || (options.pipelineDepth ?? 1) !== 1)) {
       throw new Error('GPU reference preparation supports translation/affine and one slot');
     }
+    if (options.referencePreparation === 'gpu' && options.initialization === 'wgpu-matching') {
+      throw new Error('WGPU-Matching initialization requires CPU reference preparation');
+    }
     if (options.solverWorkgroupSize !== undefined && ![16, 32].includes(options.solverWorkgroupSize)) throw new Error('solverWorkgroupSize must be 16 or 32');
     if (options.roiTruncation !== undefined && options.roiTruncation !== 'none') throw new Error('ROI truncation is not supported in the browser engine');
     if (options.temporalFineCorrection !== undefined && typeof options.temporalFineCorrection !== 'boolean') throw new Error('temporalFineCorrection must be boolean');
@@ -97,8 +100,8 @@ export class DICEngine {
     this.inputs.forEach((input) => input.destroy()); this.inputs = [];
     for (let i = 0; i < this.ring.depth; i++) this.inputs.push(await createInputConverter(this.device, width, height));
     if (this.options.referencePreparation === 'gpu') {
-      if(['fourier','global-affine'].includes(this.options.initialization)&&!(source instanceof Uint8Array))pixels=await this.inputs[0].referencePixels(source);
-      source = { width, height, gpuSource: source,...(['fourier','global-affine'].includes(this.options.initialization)?{pixels}:{}) };
+      if(['fourier','global-affine','wgpu-matching'].includes(this.options.initialization)&&!(source instanceof Uint8Array))pixels=await this.inputs[0].referencePixels(source);
+      source = { width, height, gpuSource: source,...(['fourier','global-affine','wgpu-matching'].includes(this.options.initialization)?{pixels}:{}) };
     } else {
       if (!(source instanceof Uint8Array)) pixels = await this.inputs[0].referencePixels(source);
       if (pixels instanceof Uint8Array) {
@@ -109,14 +112,17 @@ export class DICEngine {
     this.reference = await this.host.setReference(source, { ...this.options, ...options, roiMask: ownedMask });
     return this.reference;
   }
-  register(source, { sourceKind = null } = {}) {
+  register(source, { sourceKind = null, initialAffineEstimate = null } = {}) {
     this.assertOpen();
     if (!this.reference) throw new Error('A reference image must be configured first');
+    if (initialAffineEstimate !== null && this.options.initialization !== 'wgpu-matching') {
+      throw new Error('initialAffineEstimate requires initialization="wgpu-matching"');
+    }
     return this.ring.run(async (slotIndex) => {
       const started = performance.now();
       const result = source instanceof Uint8Array
-        ? await this.host.registerBytes(source, this.reference.width, this.reference.height, {}, slotIndex)
-        : await this.host.registerExternal(source, slotIndex, { sourceKind });
+        ? await this.host.registerBytes(source, this.reference.width, this.reference.height, {}, slotIndex, initialAffineEstimate)
+        : await this.host.registerExternal(source, slotIndex, { sourceKind, initialAffineEstimate });
       result.timing.totalWallMs = performance.now() - started;
       return result;
     });

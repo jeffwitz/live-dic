@@ -35,6 +35,16 @@ reference. The input helper also accepts an HTMLVideoElement in a page; it does 
 frames alive and unchanged until the matching registration promise resolves. The caller owns and then closes external frames.
 The PWA worker closes the frames transferred to it.
 
+For an application that provides its own affine bootstrap, call
+``engine.register(source, { initialAffineEstimate })`` with
+``initialAffineEstimate = { dx, dy, linear: [du/dx, du/dy, dv/dx, dv/dy] }``.
+The translation is evaluated at the full-image centre; the four linear terms
+are displacement derivatives relative to identity. All six numbers must be
+finite. This is the low-level seed interface used by the browser workbench's
+experimental WGPU-Matching option. It requires
+``initialization: 'wgpu-matching'`` and CPU reference preparation. It does not
+run a matcher itself.
+
 Capabilities
 ------------
 
@@ -112,11 +122,15 @@ Options and native correspondence
      - Direct API default 0; Analysis/Solve UI defaults to automatic
      - Integer 0..4. Maximum extra failed-point seed-search passes per level;
        translation or affine, B-spline, uniform full windows, CPU reference
-       preparation and one slot.
-       Runs before the selected spatial filter; repeats stop when no seed is queued.
-       See :doc:`propagation` and
+       preparation and one slot. Runs before the selected spatial filter;
+       repeats stop when no seed is queued. See :doc:`propagation` and
        :doc:`../how-to/run-in-browser` for the UI's compatible two-pass default
        and limitations.
+   * - ``initialization: 'wgpu-matching'``
+     - No Python equivalent
+     - Reserved for a caller-supplied ``initialAffineEstimate`` on each
+       decoded image pair. The browser Analysis workbench computes this from
+       CPM-HOG matches; live camera and ``registerPair`` are unsupported.
    * - ``initialization``
      - ``initialization="zero"``
      - Temporal mode is opt-in.

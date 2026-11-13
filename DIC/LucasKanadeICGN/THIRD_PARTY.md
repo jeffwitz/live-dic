@@ -40,6 +40,16 @@ The Python wheel contains the Three.js/TSL and raw-WebGPU browser adapters,
 their local vendor modules, shared JavaScript core and WGSL shaders. No
 GPU-IO runtime or legacy GPU-IO demonstration is maintained in this repository.
 
+## WGPU-Matching initializer snapshot
+
+The standalone browser application includes the CPM-HOG browser modules and
+their five WGSL shaders from the maintainer's `jeffwitz/WGPU-Matching` project,
+commit `4dce5d0bbbf2ac7b58b35bfb9824afe4cb200d93`. The source subset and path
+layout are recorded in `web-app/vendor/wgpu-matching/PROVENANCE.md`. It is
+first-party project source, not code copied from the original CPM
+implementation. The browser uses the snapshot locally and makes no CDN or
+runtime package request. It is not added to the Python wheel.
+
 ## Native WebGPU dependencies
 
 The standard Python dependencies include `wgpu>=0.32,<0.33`. The published

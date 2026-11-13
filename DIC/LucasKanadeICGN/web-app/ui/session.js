@@ -18,6 +18,7 @@ export function createSession(send) {
   let display = { mode: 2, scale: null }, received = 0, completed = 0, exportSerial = 0;
   const ages = [], sampleLog = [];
   let lastComparison = null, referenceAdmissible = 0, referenceSourceKind = null;
+  let matchingReferencePixels = null, lastMatchingDiagnostics = null;
   let recording = false;
   let analysisEpoch = null;
   let activeOptions = null;
@@ -70,7 +71,7 @@ export function createSession(send) {
     await Promise.all([...outstanding]);
     renderer?.destroy(); referenceTexture?.destroy(); engine?.destroy();
     const width = frame.displayWidth ?? frame.width, height = frame.displayHeight ?? frame.height;
-    const { profile: profileName, supervision: requestedSupervision, ...engineOptions } = options;
+    const { profile: profileName, supervision: requestedSupervision, webInitializer, ...engineOptions } = options;
     supervision = selectedSupervision; supervisionConfigured = requestedSupervision !== undefined;
     lastDrawnAt = -Infinity; lastPresentation = null; lastResultId = null; lastWorkerArrivalEpochMs = null;
     presentationStats = {draws:0,bitmaps:0,drawWallMs:0,bitmapWallMs:0};
@@ -84,16 +85,25 @@ export function createSession(send) {
     analysisEpoch = crypto.randomUUID();
     const info = await engine.setReference(frame, { roiMask: mask, roiPolicy: options.roiPolicy ?? 'full' });
     referenceAdmissible = [...info.referenceValid].reduce((n,v,i)=>n+ +(v && (!info.roiSelected || info.roiSelected[i])),0);
+    matchingReferencePixels = null; lastMatchingDiagnostics = null;
+    if (webInitializer === 'cpm') {
+      const { readMatchingPixels } = await import('./wgpu-matching-initializer.js');
+      matchingReferencePixels = await readMatchingPixels(engine, frame);
+    }
     lastComparison = null;
     renderer = canvas ? new FieldRenderer(engine.device, canvas) : null;
     referenceTexture = engine.device.createTexture({ size: [width, height], format: 'rgba8unorm',
       usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT });
     engine.device.queue.copyExternalImageToTexture({ source: frame }, { texture: referenceTexture }, [width, height]);
     showingReference = false;
-    last = await engine.register(frame, { sourceKind }); paintLast();
+    last = await engine.register(frame, { sourceKind, ...(webInitializer === 'cpm' ? { initialAffineEstimate: {
+      dx: 0, dy: 0, linear: [0, 0, 0, 0], score: 1, overlap: 1, sampleCount: 0, levels: 0,
+      diagnostics: { source: 'identity preview before the first image pair' },
+    } } : {}) }); paintLast();
     present({ type: 'preview' }); engine.resetTemporalState();
     ages.length = 0; sampleLog.length = 0; received = completed = 0; completionTimes.length = 0;
-    return { ...info, ...(supervisionConfigured?{supervision}:{}), controllerPreparationWallMs: performance.now() - preparationStarted };
+    return { ...info, ...(webInitializer ? { webInitializer } : {}),
+      ...(supervisionConfigured?{supervision}:{}), controllerPreparationWallMs: performance.now() - preparationStarted };
   }
   async function handle(message) {
     const { type, id } = message;
@@ -142,12 +152,52 @@ export function createSession(send) {
             }
             if (message.reset && !gpuPair) engine.resetTemporalState();
             engine.setAnalyticTruth(message.truth ?? null);
+            let initialAffineEstimate = null;
+            let matchingDiagnostics = null;
+            let currentMatchingPixels = null;
+            if (activeOptions?.webInitializer === 'cpm') {
+              if (gpuPair) throw new Error('WGPU-Matching requires CPU reference preparation for decoded image pairs');
+              const sourceKind = message.comparison?.target?.kind ?? referenceSourceKind;
+              if (!['images', 'video-file', 'demo', 'plate'].includes(sourceKind)) {
+                throw new Error('WGPU-Matching initialization requires decoded image or video-file pairs');
+              }
+              const { initializeWithWgpuMatching, readMatchingPixels } = await import('./wgpu-matching-initializer.js');
+              const referencePixels = message.referenceFrame
+                ? await readMatchingPixels(engine, message.referenceFrame) : matchingReferencePixels;
+              if (!referencePixels) throw new Error('WGPU-Matching has no grayscale reference image');
+              if (engine.reference.roiSelected?.some(Boolean) === false) {
+                initialAffineEstimate = { dx: 0, dy: 0, linear: [0, 0, 0, 0], score: 0,
+                  overlap: 0, sampleCount: 0, levels: 0,
+                  diagnostics: { matchingAlgorithm: 'CPM-HOG WebGPU', skipped: 'ROI selects no subsets' } };
+                matchingDiagnostics = initialAffineEstimate.diagnostics;
+              } else {
+                currentMatchingPixels = await readMatchingPixels(engine, message.frame);
+                let lastProgress = '', lastProgressAt = -Infinity;
+                initialAffineEstimate = await initializeWithWgpuMatching(engine, referencePixels,
+                  currentMatchingPixels, { width: engine.reference.width, height: engine.reference.height,
+                    grid: engine.reference.grid, subsetSize: engine.reference.subsetSize,
+                    subsetStride: engine.reference.subsetStride, roiSelected: engine.reference.roiSelected,
+                    roiMask: mask, onProgress: text => {
+                      if (text !== lastProgress || performance.now() - lastProgressAt >= 250) {
+                        lastProgress = text; lastProgressAt = performance.now();
+                        send({ type: 'initializer-progress', message: text });
+                      }
+                    } });
+                matchingDiagnostics = initialAffineEstimate.diagnostics;
+              }
+            }
             last = gpuPair
               ? await engine.registerPair(message.referenceFrame, message.frame)
-              : await engine.register(message.frame, { sourceKind: message.comparison?.target?.kind ?? null });
+              : await engine.register(message.frame, { sourceKind: message.comparison?.target?.kind ?? null,
+                initialAffineEstimate });
+            if (activeOptions?.webInitializer === 'cpm' && message.comparison?.mode === 'consecutive') {
+              matchingReferencePixels = currentMatchingPixels;
+            }
+            lastMatchingDiagnostics = matchingDiagnostics;
             if (gpuPair) { preparationMs = null; referenceAdmissible = last.referenceAdmissible; }
             last.timing.pairReferencePreparationWallMs = preparationMs;
-            lastComparison = {...message.comparison, referenceAdmissible, requested:last.selected, fixedImageCoordinateRoi:true};
+            lastComparison = {...message.comparison, referenceAdmissible, requested:last.selected, fixedImageCoordinateRoi:true,
+              ...(matchingDiagnostics ? { initializer: matchingDiagnostics } : {})};
             const age = performance.now() - available;
             const plateScore = message.plate ? scorePlate(await engine.exportField(), message.plate, engine.reference.roiSelected ?? new Uint8Array(last.grid[0] * last.grid[1]).fill(1)) : null;
             if (plateScore) last.truthRmse = plateScore.displacementRmsePx;
@@ -163,6 +213,7 @@ export function createSession(send) {
               const started = performance.now(), field = await engine.exportField();
               record = { field, metadata: { analysisEpoch, comparison: lastComparison, configuration: field.config,
                 createdAt: new Date().toISOString(), frameIndex: message.frameIndex,
+                ...(matchingDiagnostics ? { initializer: matchingDiagnostics } : {}),
                 workerArrivalEpochMs:lastWorkerArrivalEpochMs,
                 ...(supervisionConfigured?{supervision}:{}),
                 recordingReadbackWallMs: performance.now()-started,
@@ -185,6 +236,7 @@ export function createSession(send) {
               accepted: last.accepted, selected: last.selected, meanIterations: last.meanIterations,
               truthRmse: last.truthRmse, scale, counters: last.counters, timing: last.timing,
               frameIndex: message.frameIndex, plateScore, comparison:lastComparison, record,
+              ...(matchingDiagnostics ? { initializer: matchingDiagnostics } : {}),
               ...(message.recordTicket!==undefined?{recordTicket:message.recordTicket}:{}) },
               record ? [record.field.parameters.buffer, record.field.status.buffer, record.field.iterations.buffer] : [], paint);
           } finally { message.frame.close(); message.referenceFrame?.close(); }
@@ -219,7 +271,8 @@ export function createSession(send) {
         await Promise.all([...outstanding]);
         if (!engine) throw new Error('No field is available');
         const start = performance.now(), field = await engine.exportField();
-        const metadata = { configuration: field.config??engine.reference.config, capabilities, profile, analysisEpoch, comparison:lastComparison, createdAt: new Date().toISOString(),
+        const metadata = { configuration: field.config??engine.reference.config, capabilities, profile, analysisEpoch, comparison:lastComparison,
+          ...(lastMatchingDiagnostics ? { initializer: lastMatchingDiagnostics } : {}), createdAt: new Date().toISOString(),
           exportSerial: ++exportSerial, readbackWallMs: performance.now() - start,
           width: field.width, height: field.height, grid: field.grid, subsetSize: field.subsetSize,
           subsetStride: field.subsetStride, samples: sampleLog,
@@ -238,6 +291,7 @@ export function createSession(send) {
       else if (type === 'destroy') {
         await Promise.all([...outstanding]); cancelPresentation();
         renderer?.destroy(); referenceTexture?.destroy(); engine?.destroy(); reference?.close();
+        matchingReferencePixels = null; lastMatchingDiagnostics = null;
         engine = renderer = reference = null; send({ type: 'destroy', id });
       }
     } catch (error) {

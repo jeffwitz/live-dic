@@ -38,7 +38,7 @@ Start here
 * :doc:`reference/roi` for the exact mask contract, policies, pyramid rules,
   validity states and backend support. :doc:`how-to/use-roi` and
   :doc:`how-to/use-partial-roi` provide workflows and qualification details.
-* :doc:`how-to/register-large-shifts` for opt-in Fourier and global-affine initialization of sparse pairs.
+* :doc:`how-to/register-large-shifts` for opt-in Fourier, global-affine and experimental WGPU-Matching initialization of sparse pairs.
 * :doc:`how-to/smooth-median-each-pyramid-level` to choose between failed-subset repair and whole-field median smoothing.
 * :doc:`reference/api` for exact defaults and public interfaces.
 * :doc:`reference/propagation` for illustrated seed propagation, median

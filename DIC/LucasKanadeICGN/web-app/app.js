@@ -188,6 +188,7 @@ function updateVectorLengthLegend(){
   $('vector-key-label').textContent=`${reference.toPrecision(3)} px displacement · lengths ×${legend.gain.toPrecision(3)}. Tips mark current subset centres.`;
 }
 async function receive({ data }) {
+  if (data.type === 'initializer-progress') { $('solve-progress').textContent = data.message; return; }
   if(data.type==='preview'&&data.presentation?.referencePreview){viewingInput=false;$('input-field').hidden=true;if(!workbench.reviewing)$('field').hidden=false;}
   if (data.bitmap) {
     // Assigning either size resets the canvas, even if the value is unchanged.
@@ -251,6 +252,7 @@ async function receive({ data }) {
     $('age').textContent = `${data.ageMedian.toFixed(1)} / ${data.ageP95.toFixed(1)} ms`;
     if(data.globalTranslation)$('last-reference-summary').textContent+=` Fourier seed (${data.globalTranslation.dx}, ${data.globalTranslation.dy}) px · correlation ${data.globalTranslation.correlation.toFixed(3)}.`;
     if(data.globalAffineEstimate){const fit=data.globalAffineEstimate;$('last-reference-summary').textContent+=` Global affine seed: centre (${fit.dx.toFixed(2)}, ${fit.dy.toFixed(2)}) px · correlation ${fit.score.toFixed(3)} · ${fit.levels} scales · ${data.timing.globalAffineWallMs?.toFixed(1)??'—'} ms CPU.`;}
+    if(data.initializer?.matchingAlgorithm){const seed=data.initializer;$('last-reference-summary').textContent+=` WGPU-Matching ${seed.matchingAlgorithm}: ${seed.inliers}/${seed.usableMatches} usable matches in the affine consensus · ${seed.affineRmsePx.toFixed(2)} px fit RMSE.`;}
     $('acceptance').textContent = `${data.accepted} / ${data.selected}`;
     $('iterations').textContent = data.meanIterations?.toFixed(2) ?? '—';
     $('error').textContent = data.truthRmse == null ? '—' : `${data.truthRmse.toFixed(4)} px`;
@@ -380,8 +382,8 @@ function invalidatePreparedReference(force=false) {
 async function prepareCalculation(requested) {
   if(!referenceInfo||!pendingReferenceFrame)throw new Error('Choose a reference image first');
   if(roiEditing)throw new Error('Apply or cancel mask edits before changing solver settings');
-  if(requested.initialization==='global-affine'&&!['images','video-file','demo','plate'].includes(source))
-    throw new Error('Global affine initialization needs loaded image or video files; select another initialization for a live camera.');
+  if(['global-affine','wgpu-matching'].includes(requested.initialization)&&!['images','video-file','demo','plate'].includes(source))
+    throw new Error('Global affine and WGPU-Matching initialization need loaded image or video files; select another initialization for a live camera.');
   workbench.returnLive();workbench.setReady(false);$('export').disabled=true;
   clearLiveMetrics();$('solve-progress').textContent='Preparing the reference, mask and solver on the GPU…';calculationProgress.setPhase('Preparing reference and GPU solver…');
   const frame=await duplicateFrame(pendingReferenceFrame);
@@ -400,7 +402,8 @@ async function updateReferenceControls() {
   const cfg=referenceInfo.config,total=referenceInfo.grid[0]*referenceInfo.grid[1];
   let selected=0,valid=0;
   for(let i=0;i<total;i++)if(!referenceInfo.roiSelected||referenceInfo.roiSelected[i]){selected++;if(referenceInfo.referenceValid?.[i])valid++;}
-  $('applied-solver-summary').textContent=`Applied ${cfg.motionModel} · ${cfg.interpolation} · ${cfg.pyramidLevels} level(s)\nWindow ${referenceInfo.subsetSize} px · step ${referenceInfo.subsetStride} px · ${Math.round(100*(1-referenceInfo.subsetStride/referenceInfo.subsetSize))}% overlap\nIteration limits (coarse → fine): ${cfg.iterationsPerLevel.join(' / ')}\nGrid ${referenceInfo.grid.join(' × ')} · ${selected} selected / ${total} positions\n${valid} admissible prepared references; target convergence remains to be measured.\nReference preparation: ${cfg.referencePreparation??'cpu'}. Initialization: ${cfg.initialization}.`;
+  const initializerLabel = referenceInfo.webInitializer === 'cpm' ? 'WGPU-Matching CPM-HOG (experimental)' : cfg.initialization;
+  $('applied-solver-summary').textContent=`Applied ${cfg.motionModel} · ${cfg.interpolation} · ${cfg.pyramidLevels} level(s)\nWindow ${referenceInfo.subsetSize} px · step ${referenceInfo.subsetStride} px · ${Math.round(100*(1-referenceInfo.subsetStride/referenceInfo.subsetSize))}% overlap\nIteration limits (coarse → fine): ${cfg.iterationsPerLevel.join(' / ')}\nGrid ${referenceInfo.grid.join(' × ')} · ${selected} selected / ${total} positions\n${valid} admissible prepared references; target convergence remains to be measured.\nReference preparation: ${cfg.referencePreparation??'cpu'}. Initialization: ${initializerLabel}.`;
   if(cfg.roi) $('applied-solver-summary').textContent += `\nROI ${cfg.roi.policy}: ${cfg.roi.selected} selected (${cfg.roi.full} complete windows, ${cfg.roi.partial} partial supports).`;
   if (cfg.spatialPropagationPasses) $('applied-solver-summary').textContent += `\nGPU seed propagation: ${cfg.spatialPropagationPasses} pass(es) maximum per level, rejected points only; stops after an unchanged pass.`;
   $('last-reference-summary').textContent='Awaiting a target field.';
@@ -900,10 +903,10 @@ for(const id of ['display-rate','preview-width'])$(id).onchange=()=>{
 $('large-shift-preset').onclick = () => {
   $('custom-solver').checked=true;$('pyramid-levels').value='6';
   $('coarse-iterations').value='20';$('fine-iterations').value='16';
-  $('temporal-start').checked=false;$('fourier-start').checked=false;$('global-affine-start').checked=false;
+  $('temporal-start').checked=false;$('fourier-start').checked=false;$('global-affine-start').checked=false;$('wgpu-matching-start').checked=false;
   $('custom-solver').onchange();
 };
-for (const id of ['fourier-start','global-affine-start','global-affine-levels','overlap-pipeline','gpu-reference-preparation','custom-solver','motion-model','subset-size','subset-stride','interpolation','spatial-propagation','pyramid-levels','coarse-iterations','fine-iterations','outlier-policy','temporal-start','roi-policy']) $(id).onchange = () => {
+for (const id of ['fourier-start','global-affine-start','wgpu-matching-start','global-affine-levels','overlap-pipeline','gpu-reference-preparation','custom-solver','motion-model','subset-size','subset-stride','interpolation','spatial-propagation','pyramid-levels','coarse-iterations','fine-iterations','outlier-policy','temporal-start','roi-policy']) $(id).onchange = () => {
   $('solver-settings').disabled = !$('custom-solver').checked;
   $('temporal-start').disabled = !$('custom-solver').checked;
   $('global-affine-levels').disabled = !$('global-affine-start').checked;

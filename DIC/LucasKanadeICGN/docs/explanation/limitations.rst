@@ -102,6 +102,16 @@ accepted state. Temporal history requires
 ordered inputs and cannot guarantee recovery after discontinuous motion or
 accepted wrong-basin solutions. See :doc:`temporal-initialization`.
 
+The browser Analysis workbench additionally offers experimental
+WGPU-Matching CPM-HOG initialization. It seeds a global affine transform from
+up to 512 reciprocal patch matches and requires a minimum robust consensus.
+This path is implemented only in the standalone browser workbench, adds
+per-pair descriptor construction and grayscale readback, and has not yet been
+qualified on the analytical UHD fixtures. Failure to obtain a consensus stops
+the pair; the application does not substitute another initializer. It is not
+a camera-rate path and has no general accuracy or speed guarantee. See
+:doc:`../how-to/register-large-shifts`.
+
 The shared browser WGSL core has an experimental
 ``initialization="global-affine"`` for sparse image pairs. It fits one robust
 affine transform over sampled pixels in the reference mask using five CPU

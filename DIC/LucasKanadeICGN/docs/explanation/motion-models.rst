@@ -156,6 +156,17 @@ mode without an ROI mask, it fills the six affine coefficients and starts all
 six curvature coefficients at zero; the local solve can then estimate
 curvature from each subset.
 
+The Analysis workbench also has a separate experimental **WGPU-Matching ·
+CPM-HOG** bootstrap. It computes reciprocal local patch correspondences on the
+GPU, robustly fits a single affine transform to their displacements, and hands
+that transform to the same pyramid seed transfer. It does not replace the
+local solve: Translation still estimates only two parameters, and Affine still
+estimates its six local parameters. The matcher and IC-GN acceptance are
+separate stages, so correspondence diagnostics and accepted DIC windows must
+be read separately. This workbench option is limited to decoded image pairs;
+it is not a camera initializer or a qualified accuracy/performance profile.
+See :doc:`../how-to/register-large-shifts` for the current support limits.
+
 In the browser workbench, enable **Use custom settings** and choose **Motion
 model: Translation** to request translation-only local solves. Then select
 **Global affine initialization** in Solve. The initializer radio option leaves
