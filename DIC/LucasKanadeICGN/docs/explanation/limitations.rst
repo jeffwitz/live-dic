@@ -102,14 +102,24 @@ accepted state. Temporal history requires
 ordered inputs and cannot guarantee recovery after discontinuous motion or
 accepted wrong-basin solutions. See :doc:`temporal-initialization`.
 
-The browser Analysis workbench additionally offers experimental
-WGPU-Matching CPM-HOG initialization. It seeds a global affine transform from
-up to 512 reciprocal patch matches and requires a minimum robust consensus.
-This path is implemented only in the standalone browser workbench, adds
-per-pair descriptor construction and grayscale readback, and has not yet been
-qualified on the analytical UHD fixtures. Failure to obtain a consensus stops
-the pair; the application does not substitute another initializer. It is not
-a camera-rate path and has no general accuracy or speed guarantee. See
+The browser Analysis workbench offers experimental WGPU-Matching CPM-HOG
+initialization. It fits one global affine transform from up to 512 reciprocal
+patch matches and requires a minimum robust consensus. The native Python
+``ICGNWGPUFullPyramid`` API separately offers
+``initialization="wgpu-matching"`` when the optional ``wgpu-matching`` package
+is installed. That adapter uses up to 512 accepted coarse-grid translations as
+sparse seeds, then runs the normal coarse-to-fine local solve; it does not fit
+the browser's global affine consensus. Both approaches reject a pair if they
+cannot obtain usable seeds rather than silently switching initializers.
+
+The browser implementation uses its bundled JavaScript snapshot and does not
+inspect or require Python packages. The native Python adapter creates a
+separate WebGPU matcher device and rebuilds CPM descriptors for each target.
+Both paths are intended for file-pair Analysis, not camera-rate processing, and
+neither has general accuracy or speed qualification on the analytical UHD
+fixtures. With an ROI, live-dic restricts requested seed centres to selected,
+reference-valid subsets, but CPM-HOG still searches image content outside the
+mask; this is not strict photometric isolation. See
 :doc:`../how-to/register-large-shifts`.
 
 The shared browser WGSL core has an experimental

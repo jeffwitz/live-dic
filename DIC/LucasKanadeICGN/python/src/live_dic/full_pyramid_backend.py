@@ -13,7 +13,7 @@ import operator
 import struct
 import time
 from collections import deque
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from importlib.resources import files
 from typing import Any
@@ -88,7 +88,7 @@ class _FullPyramidSlot:
     reduction_edges: list[_ReductionEdge]
     seed_edges: dict[int, _SeedEdge]
     temporal: _TemporalSlot | None = None
-    fourier_seed: Any | None = None
+    initial_seed: Any | None = None
 
 
 @dataclass(slots=True)
@@ -118,6 +118,8 @@ class _PendingFullPyramidRegistration:
     submission_wall_ms: float
     levels_used: int | None = None
     global_translation: dict[str, Any] | None = None
+    matching_initialization: dict[str, Any] | None = None
+    initialization_wall_ms: float = 0.0
 
 
 def _level_count(value: int) -> int:
@@ -162,9 +164,10 @@ class ICGNWGPUFullPyramid:
 
     ``iterations_per_level`` and ``tolerance_per_level`` are ordered from the
     coarsest level to the finest level.  Reference preparation is performed
-    once per level by :meth:`set_reference`; per target, all reductions,
-    prefilters, solves, seed transfers, and optional UOD passes stay on one WebGPU
-    device and are encoded into one command buffer. ``linear`` and ``cubic``
+    once per level by :meth:`set_reference`; per target, pyramid reductions,
+    prefilters, solves, seed transfers, and optional UOD passes stay on one
+    WebGPU device and are encoded into one command buffer. An optional
+    WGPU-Matching initializer runs as a separate pre-pass. ``linear`` and ``cubic``
     interpolation omit the per-level prefilters; ``bspline`` remains the
     compatibility default. ``subset_size`` accepts every integer width from
     4 to 46,340; odd widths have an exact pixel centre and even widths have a
@@ -179,6 +182,14 @@ class ICGNWGPUFullPyramid:
     supply targets chronologically and finish consuming a stream before reset
     or reference replacement. ``temporal_max_age`` expires seeds after more
     than this many rejected frames; ``None`` keeps them until reset or success.
+
+    ``initialization="wgpu-matching"`` requires the optional
+    ``wgpu-matching`` package. It runs CPM-HOG on up to 512 selected coarse-grid
+    centres for each target, then uses those accepted translations to seed the
+    ordinary pyramid solve. It supports translation and affine local models.
+    This analysis initializer adds a separate matcher device and per-target
+    work; it is not intended for camera-rate streaming. Install instructions
+    and limitations are in the large-shift initialization guide.
 
     ``device_type`` accepts ``"auto"``, ``"gpu"``, or ``"cpu"`` with the same
     initialization-time policy as :class:`ICGNWGPU`. All pyramid levels and
@@ -205,6 +216,7 @@ class ICGNWGPUFullPyramid:
         spatial_weighting: str = "uniform",
         gaussian_sigma: float | None = None,
         initialization: str = "zero",
+        matching_options: Mapping[str, Any] | None = None,
         temporal_max_age: int | None = None,
         temporal_fine_correction: bool = False,
         temporal_prediction: str = "none",
@@ -253,8 +265,21 @@ class ICGNWGPUFullPyramid:
             "zero",
             "temporal",
             "fourier",
+            "wgpu-matching",
         ):
-            raise ValueError("initialization must be 'zero', 'temporal' or 'fourier'")
+            raise ValueError(
+                "initialization must be 'zero', 'temporal', 'fourier' or 'wgpu-matching'"
+            )
+        if matching_options is not None and initialization != "wgpu-matching":
+            raise ValueError("matching_options requires initialization='wgpu-matching'")
+        if matching_options is not None and not isinstance(matching_options, Mapping):
+            raise ValueError("matching_options must be a mapping of CPM-HOG option names")
+        self._matching_options = dict(matching_options or {})
+        self._matching_class = None
+        self._matching_options_class = None
+        self._matching = None
+        self._matching_reference: np.ndarray | None = None
+        self.power_preference = power_preference
         if temporal_max_age is not None:
             try:
                 age = operator.index(temporal_max_age)
@@ -274,6 +299,34 @@ class ICGNWGPUFullPyramid:
             raise ValueError(
                 "Fourier initialization currently supports translation and affine models"
             )
+        if initialization == "wgpu-matching":
+            if self.motion_model == "quadratic":
+                raise ValueError(
+                    "WGPU-Matching initialization currently supports translation and affine models"
+                )
+            reserved_options = {"seed_points", "oracle_affine"}.intersection(self._matching_options)
+            if reserved_options:
+                raise ValueError(
+                    "matching_options cannot set seed_points or oracle_affine; "
+                    "live-dic supplies the coarse-grid seed points"
+                )
+            try:
+                from wgpu_matching import CPMOptions, WGPUMatching
+            except ModuleNotFoundError as error:
+                if error.name != "wgpu_matching":
+                    raise
+                raise ICGNError(
+                    "WGPU-Matching initialization is optional; install it with "
+                    "`python -m pip install "
+                    '"wgpu-matching @ https://github.com/jeffwitz/WGPU-Matching/archive/'
+                    '4dce5d0bbbf2ac7b58b35bfb9824afe4cb200d93.zip"`'
+                ) from error
+            self._matching_class = WGPUMatching
+            self._matching_options_class = CPMOptions
+            try:
+                CPMOptions(**self._matching_options)
+            except TypeError as error:
+                raise ValueError(f"Invalid matching_options: {error}") from error
         self._fourier = None
         self.outlier_policy = normalize_outlier_policy(outlier_policy)
         self.median_filter_size = normalize_median_filter_size(median_filter_size)
@@ -294,6 +347,8 @@ class ICGNWGPUFullPyramid:
         )
         self.solver_workgroup_size = solver_workgroup_size
         self.pyramid_levels = _level_count(pyramid_levels)
+        if initialization == "wgpu-matching" and self.pyramid_levels < 2:
+            raise ValueError("WGPU-Matching initialization requires at least two pyramid levels")
         self._adaptive_next_levels = self.pyramid_levels
         iteration_values = _schedule(
             iterations_per_level,
@@ -1044,12 +1099,12 @@ class ICGNWGPUFullPyramid:
     def _create_full_slot(self, slot_index: int) -> _FullPyramidSlot:
         level_slots = tuple(level._pipeline_slots[slot_index] for level in self._levels)
         seed_edges = self._create_seed_edges(level_slots)
-        fourier_seed = None
-        if self.initialization == "fourier":
+        initial_seed = None
+        if self.initialization in {"fourier", "wgpu-matching"}:
             coarse = self._levels[-1]
             coarse._ensure_seed_resources(level_slots[-1])
             count = coarse.grid_width * coarse.grid_height
-            fourier_seed = np.zeros((count, state_float_count(self.motion_model)), np.float32)
+            initial_seed = np.zeros((count, state_float_count(self.motion_model)), np.float32)
             selected = (
                 np.ones(count, np.uint32)
                 if coarse.roi is None
@@ -1063,7 +1118,7 @@ class ICGNWGPUFullPyramid:
             temporal=self._create_temporal_slot(level_slots[0], level_slots[-1], seed_edges.get(0))
             if self.initialization == "temporal"
             else None,
-            fourier_seed=fourier_seed,
+            initial_seed=initial_seed,
         )
 
     def _ensure_full_slots(self, depth: int) -> list[_FullPyramidSlot]:
@@ -1128,6 +1183,11 @@ class ICGNWGPUFullPyramid:
             if self.initialization == "fourier" and (mask is None or mask.any())
             else None
         )
+        matching_reference = (
+            np.array(reference, dtype=np.uint8, order="C", copy=True)
+            if self.initialization == "wgpu-matching"
+            else None
+        )
         references = [reference]
         masks = [mask]
         for _ in range(1, self.pyramid_levels):
@@ -1140,6 +1200,7 @@ class ICGNWGPUFullPyramid:
         self._reference_ready = False
         self._clear_level_resources()
         self._fourier = fourier
+        self._matching_reference = matching_reference
         reference_build_wall_ms = 0.0
         for level_index, level_reference in enumerate(references):
             engine = (
@@ -1230,6 +1291,14 @@ class ICGNWGPUFullPyramid:
             self._root._pyramid_config.update(
                 initialization="fourier", fourierWindow=None if fourier is None else fourier.window
             )
+        elif self.initialization == "wgpu-matching":
+            self._root._pyramid_config.update(
+                initialization="wgpu-matching",
+                matchingAlgorithm="CPM-HOG",
+                matchingOptions=self._matching_options,
+                matchingSeedLimit=512,
+                matchingSeedExpansion="accepted-coarse-points-only",
+            )
 
         first_slot = self._create_full_slot(0)
         self._full_slots = [first_slot]
@@ -1268,6 +1337,16 @@ class ICGNWGPUFullPyramid:
                         "fourierWindow": None if fourier is None else fourier.window,
                     }
                     if self.initialization == "fourier"
+                    else {}
+                ),
+                **(
+                    {
+                        "initialization": "wgpu-matching",
+                        "matchingAlgorithm": "CPM-HOG",
+                        "matchingOptions": self._matching_options,
+                        "matchingSeedLimit": 512,
+                    }
+                    if self.initialization == "wgpu-matching"
                     else {}
                 ),
             },
@@ -1398,10 +1477,10 @@ class ICGNWGPUFullPyramid:
             encoder,
             coarsest_slot,
             coarsest._portable_solver
-            if slot.temporal is None and slot.fourier_seed is None
+            if slot.temporal is None and slot.initial_seed is None
             else coarsest._seeded_solver,
             solver_bind_group=coarsest_slot.bind_group
-            if slot.temporal is None and slot.fourier_seed is None
+            if slot.temporal is None and slot.initial_seed is None
             else coarsest_slot.seeded_bind_group,
             compute_pass=compute_pass,
             median_pipeline=median_pipeline,
@@ -1482,6 +1561,88 @@ class ICGNWGPUFullPyramid:
         encoding_wall_ms = (time.perf_counter() - encode_started) * 1_000.0
         return command, encoding_wall_ms
 
+    def _prepare_matching_seed(self, frame: np.ndarray, slot: _FullPyramidSlot) -> dict[str, Any]:
+        """Run CPM-HOG at up to 512 valid coarse-grid centres and seed those solves."""
+
+        if self._matching_reference is None:
+            raise ICGNError("Call set_reference() before WGPU-Matching initialization.")
+        coarse = self._levels[-1]
+        count = coarse.grid_width * coarse.grid_height
+        selected = (
+            np.ones(count, dtype=bool)
+            if coarse.roi is None
+            else coarse.roi.selected.ravel().astype(bool)
+        )
+        valid = np.asarray(coarse.reference_valid, dtype=bool).ravel()
+        eligible = np.flatnonzero(selected & valid)
+        if not len(eligible):
+            raise ICGNError(
+                "WGPU-Matching has no selected, reference-valid coarse-grid seed locations"
+            )
+
+        seed_count = min(512, len(eligible))
+        sample_positions = np.linspace(0, len(eligible) - 1, seed_count, dtype=np.int64)
+        seed_indices = eligible[sample_positions]
+        seed_rows, seed_columns = np.divmod(seed_indices, coarse.grid_width)
+        scale = 1 << (self.pyramid_levels - 1)
+        centre_offset = (self.subset_size - 1) / 2
+        seed_points = tuple(
+            (
+                float((column * self.subset_stride + centre_offset) * scale),
+                float((row * self.subset_stride + centre_offset) * scale),
+            )
+            for row, column in zip(seed_rows, seed_columns, strict=True)
+        )
+        option_values = {
+            "patch_size": self.subset_size,
+            "stride": self.subset_stride,
+            **self._matching_options,
+            "seed_points": seed_points,
+        }
+        options = self._matching_options_class(**option_values)
+        if self._matching is None:
+            self._matching = self._matching_class(
+                device_type=self.device_type,
+                power_preference=self.power_preference,
+            )
+        field = self._matching.match_cpm(self._matching_reference, frame, options=options)
+        if len(field.matches) != len(seed_indices):
+            raise ICGNError(
+                "WGPU-Matching returned a different number of seed results than requested"
+            )
+
+        seed_state = slot.initial_seed
+        if seed_state is None:
+            raise RuntimeError("WGPU-Matching seed storage was not allocated")
+        seed_state.fill(0)
+        active = np.zeros(count, dtype=np.uint32)
+        usable_count = 0
+        for index, match in zip(seed_indices, field.matches, strict=True):
+            if not match.usable or not np.isfinite((match.dx, match.dy)).all():
+                continue
+            active[index] = 1
+            seed_state[index, 0] = float(match.dx) / scale
+            seed_state[index, 3] = float(match.dy) / scale
+            usable_count += 1
+        if not usable_count:
+            raise ICGNError(
+                "WGPU-Matching CPM-HOG found no usable coarse-grid seeds; "
+                "no local field was calculated"
+            )
+        self.device.queue.write_buffer(slot.level_slots[-1].buffers["active_mask"], 0, active)
+        self.device.queue.write_buffer(slot.level_slots[-1].buffers["seed_state"], 0, seed_state)
+        return {
+            "algorithm": "CPM-HOG",
+            "requestedSeeds": len(seed_indices),
+            "usableSeeds": usable_count,
+            "seedLimit": 512,
+            "coarseGrid": [coarse.grid_width, coarse.grid_height],
+            "coarseScale": scale,
+            "seedExpansion": "accepted-coarse-points-only",
+            "higherOrderSeedTerms": "zero",
+            "device": self._matching.device_name,
+        }
+
     def _submit_slot(
         self,
         slot: _FullPyramidSlot,
@@ -1491,17 +1652,24 @@ class ICGNWGPUFullPyramid:
         input_preparation_wall_ms: float,
     ) -> _PendingFullPyramidRegistration:
         estimate = None
+        matching_initialization = None
+        initialization_wall_ms = 0.0
         if self._fourier is not None:
             try:
                 estimate = self._fourier.estimate(frame)
             except ValueError as error:
                 raise ICGNError(str(error)) from error
             scale = 1 << (self.pyramid_levels - 1)
-            slot.fourier_seed[:, 0] = estimate["dx"] / scale
-            slot.fourier_seed[:, 3] = estimate["dy"] / scale
+            slot.initial_seed[:, 0] = estimate["dx"] / scale
+            slot.initial_seed[:, 3] = estimate["dy"] / scale
             self.device.queue.write_buffer(
-                slot.level_slots[-1].buffers["seed_state"], 0, slot.fourier_seed
+                slot.level_slots[-1].buffers["seed_state"], 0, slot.initial_seed
             )
+            initialization_wall_ms = estimate["wallMs"]
+        elif self.initialization == "wgpu-matching":
+            initialization_started = time.perf_counter()
+            matching_initialization = self._prepare_matching_seed(frame, slot)
+            initialization_wall_ms = (time.perf_counter() - initialization_started) * 1_000.0
         upload_wall_ms = self._root._upload_frame(slot.level_slots[0], frame)
         command, encoding_wall_ms = self._encode_slot(slot)
         submission_started = time.perf_counter()
@@ -1516,6 +1684,8 @@ class ICGNWGPUFullPyramid:
             submission_wall_ms=submission_wall_ms,
             levels_used=getattr(self, "_adaptive_next_levels", self.pyramid_levels),
             global_translation=estimate,
+            matching_initialization=matching_initialization,
+            initialization_wall_ms=initialization_wall_ms,
         )
 
     def _retire_slot(self, pending: _PendingFullPyramidRegistration) -> RegistrationResult:
@@ -1576,6 +1746,16 @@ class ICGNWGPUFullPyramid:
         if pending.global_translation is not None:
             result.config["globalTranslation"] = pending.global_translation
             result.timing["fourierWallMs"] = pending.global_translation["wallMs"]
+            result.timing["initializationWallMs"] = pending.initialization_wall_ms
+        if pending.matching_initialization is not None:
+            result.config.update(
+                initialization="wgpu-matching",
+                matchingAlgorithm="CPM-HOG",
+                matchingOptions=self._matching_options,
+                wgpuMatching=pending.matching_initialization,
+            )
+            result.timing["initializationWallMs"] = pending.initialization_wall_ms
+            result.timing["matchingInitializationWallMs"] = pending.initialization_wall_ms
         total_wall_ms = (time.perf_counter() - pending.accepted_at) * 1_000.0
         result.timing = {
             **result.timing,
@@ -1661,8 +1841,8 @@ class ICGNWGPUFullPyramid:
                     input_preparation_wall_ms=preparation_wall_ms,
                 )
             except Exception:
-                # Preserve earlier ordered results when a Fourier target is rejected.
-                if self.initialization == "fourier":
+                # Preserve earlier ordered results when an initializer rejects a target.
+                if self.initialization in {"fourier", "wgpu-matching"}:
                     while pending:
                         yield self._retire_slot(pending.popleft())
                 raise
@@ -1682,6 +1862,10 @@ class ICGNWGPUFullPyramid:
         self._reference_ready = False
         self._clear_level_resources()
         self._fourier = None
+        self._matching_reference = None
+        if self._matching is not None:
+            self._matching.close()
+            self._matching = None
         self._closed = True
         # Drop the wrapper's pipeline/device aliases before the root collects
         # native wrappers. Shared levels never destroy the root's device.

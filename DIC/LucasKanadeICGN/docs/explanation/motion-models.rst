@@ -167,6 +167,12 @@ be read separately. This workbench option is limited to decoded image pairs;
 it is not a camera initializer or a qualified accuracy/performance profile.
 See :doc:`../how-to/register-large-shifts` for the current support limits.
 
+The native Python ``ICGNWGPUFullPyramid`` API has an optional
+``initialization="wgpu-matching"`` mode as well. It uses up to 512 accepted
+coarse-grid CPM translations as sparse pyramid seeds; it does not fit the
+browser's single global affine consensus. The ordinary translation or affine
+IC-GN model remains responsible for the final local field.
+
 In the browser workbench, enable **Use custom settings** and choose **Motion
 model: Translation** to request translation-only local solves. Then select
 **Global affine initialization** in Solve. The initializer radio option leaves

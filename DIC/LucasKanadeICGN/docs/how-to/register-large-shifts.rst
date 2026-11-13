@@ -32,6 +32,60 @@ and affine; quadratic is explicitly refused. Do not combine it with velocity
 prediction or temporal fine correction. ``ICGNWGPU`` single-scale/selective
 recovery does not expose this initializer.
 
+Native Python Analysis with WGPU-Matching
+-----------------------------------------
+
+``ICGNWGPUFullPyramid`` can use the optional WGPU-Matching Python package to
+obtain sparse CPM-HOG displacement seeds before its normal local solve. Install
+the pinned source revision into the same Python environment as live-dic. This
+WGPU-Matching revision requires Python 3.11 or newer; live-dic's base install
+and its other initializers do not acquire this additional requirement:
+
+.. code-block:: console
+
+   python -m pip install "wgpu-matching @ https://github.com/jeffwitz/WGPU-Matching/archive/4dce5d0bbbf2ac7b58b35bfb9824afe4cb200d93.zip"
+
+The base live-dic installation remains unchanged. Then select the initializer
+in the native full-pyramid API just like ``fourier`` or ``temporal``:
+
+.. code-block:: python
+
+   from live_dic import ICGNWGPUFullPyramid
+
+   with ICGNWGPUFullPyramid(
+       initialization="wgpu-matching",
+       motion_model="translation",  # or "affine"
+       pyramid_levels=3,
+       device_type="gpu",
+   ) as engine:
+       engine.set_reference(reference, roi_mask=mask)  # mask is optional
+       result = engine.register(current)
+       print(result.config["wgpuMatching"])
+
+The matcher runs CPM-HOG on up to 512 evenly spaced, reference-valid coarse
+subset centres. Only usable CPM translations become active coarse-level seeds;
+the existing IC-GN pyramid solves those subsets and propagates their estimates
+to finer levels. Affine local solving remains available, but the matcher seeds
+translation at each centre and initializes higher-order terms to zero. At least
+two pyramid levels are required. If no usable match is found, registration
+raises an error rather than silently switching to zero initialization.
+
+``matching_options`` optionally accepts CPM option names as a mapping, for
+example to tune search radius or matching support. live-dic supplies the seed
+points itself; callers cannot set ``seed_points`` or ``oracle_affine`` there.
+The matching patch size and stride default to the local subset size and stride.
+The reference ROI limits which coarse centres are requested, but CPM-HOG still
+searches and describes image content outside that ROI; it does not provide
+strict photometric isolation.
+
+This Python integration is for offline Analysis, not a camera-rate path. It
+creates a separate WebGPU matcher device and runs matching for every target,
+adding device memory use and per-pair work. The result's ``config`` records the
+initializer and seed counts, and ``timing["matchingInitializationWallMs"]``
+records its wall time. There is no general accuracy or performance
+qualification yet. The ``live-dic`` command-line supervisor does not expose
+this Python initializer.
+
 Browser workbench
 -----------------
 
@@ -157,8 +211,9 @@ remain the authority for whether local measurements were accepted.
 The browser ships a small local source snapshot under
 ``web-app/vendor/wgpu-matching/`` so GitHub Pages and offline use require no
 CDN or Python package installation. The snapshot revision and included files
-are recorded in ``PROVENANCE.md``. This is currently a browser-only option;
-the Python API and CLI do not expose WGPU-Matching initialization.
+are recorded in ``PROVENANCE.md``. It is independent of the optional Python
+package and uses a browser-specific global affine consensus; do not assume its
+seed construction or qualification is identical to the native Python API.
 
 Recover rejected coarse subsets with median seeds
 --------------------------------------------------

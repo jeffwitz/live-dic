@@ -171,6 +171,20 @@ FFT latency; results retain ``config["globalTranslation"]`` and
 ``timing["fourierWallMs"]``. The raw browser wrapper accepts this same option;
 Three.js refuses it. See :doc:`../how-to/register-large-shifts`.
 
+``ICGNWGPUFullPyramid(initialization="wgpu-matching")`` is an optional native
+Python Analysis initializer. It requires the separately installed
+``wgpu-matching`` package, supports translation and affine local models, and
+requires at least two pyramid levels. ``matching_options`` accepts a mapping
+of CPM-HOG option names; live-dic supplies ``seed_points`` and does not allow
+callers to override them. Each target obtains up to 512 accepted coarse-grid
+translation seeds before the ordinary pyramid solve. Insufficient usable
+matches raise an error; no other initializer is substituted. The result
+configuration includes ``wgpuMatching`` diagnostics and the timing dictionary
+includes ``matchingInitializationWallMs``. This is per-target analysis work,
+not a camera-rate path. The Python CLI does not expose this setting. See
+:doc:`../how-to/register-large-shifts` for installation and the browser
+implementation's distinct seed policy.
+
 The Python-supervised raw browser backend additionally accepts
 ``initialization="global-affine"`` with ``backend="webgpu-wgsl"`` and the
 translation, affine, or quadratic local motion model. The quadratic model is

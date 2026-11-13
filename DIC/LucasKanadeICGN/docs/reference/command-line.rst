@@ -91,6 +91,10 @@ Solver options
    ``--global-affine-levels`` option accepts 5–8 scales. The default is zero
    initialization. See :doc:`../how-to/register-large-shifts`.
 
+   WGPU-Matching initialization is available through the native Python
+   ``ICGNWGPUFullPyramid`` API when its optional package is installed; it is
+   not a command-line option.
+
 ``--global-affine-levels {5,6,7,8}``
    Number of coarse-to-fine CPU scales for ``global-affine`` initialization.
    Default: ``5``. Six to eight are experimental settings for large shifts and
