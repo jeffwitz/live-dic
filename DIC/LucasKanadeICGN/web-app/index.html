@@ -75,7 +75,7 @@
           <p class="hint">Start calculation after opting in. Up to two recorded fields, including a calculation in progress, can overlap disk admission. A full queue slows admission; disk failure pauses acquisition and retains completed fields in RAM. Live monitoring controls below are independent of recording.</p>
           <p id="pipeline-state" class="hint" role="status">Synchronous recording and native-size presentation.</p>
           <p class="hint" data-workspace-only="analysis">The preset keeps the existing two-level affine B-spline configuration. Reference preparation is deferred until Start calculation; changing settings here only updates the pending configuration.</p>
-          <p class="hint" data-workspace-only="live" hidden>Live uses the fixed two-level affine B-spline preset with temporal initialization and one processing slot. Fourier, global-affine and custom pyramid settings are available in Analysis.</p>
+          <p class="hint" data-workspace-only="live" hidden>Live uses the fixed two-level affine B-spline preset with temporal initialization and one processing slot. Fourier, global-affine, WGPU-Matching and custom pyramid settings are available in Analysis.</p>
           <fieldset id="initialization-options" data-workspace-only="analysis"><legend>Initialization · independent of local motion model</legend>
             <label class="check"><input id="fourier-start" name="initialization" type="radio" value="fourier">Fourier · rigid shift, up to 1024 × 1024</label>
             <p class="hint">For large rigid shifts between sparse pairs. Estimates a global translation before each local solve; CPU FFT and a target-window readback add latency. Ambiguous matches are refused.</p>
