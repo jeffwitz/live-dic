@@ -177,11 +177,13 @@ Python Analysis initializer. It requires the separately installed
 requires at least two pyramid levels. ``matching_options`` accepts a mapping
 of CPM-HOG option names; live-dic supplies ``seed_points`` and does not allow
 callers to override them. Each target obtains up to 512 accepted coarse-grid
-translation seeds before the ordinary pyramid solve. Insufficient usable
-matches raise an error; no other initializer is substituted. The result
-configuration includes ``wgpuMatching`` diagnostics and the timing dictionary
-includes ``matchingInitializationWallMs``. This is per-target analysis work,
-not a camera-rate path. The Python CLI does not expose this setting. See
+CPM-HOG local affine fits before the ordinary pyramid solve. Translation uses
+the fitted centre displacement only; affine also seeds its four local
+displacement gradients from the fit. Insufficient usable matches raise an
+error; no other initializer is substituted. The result configuration includes
+``wgpuMatching`` diagnostics and the timing dictionary includes
+``matchingInitializationWallMs``. This is per-target analysis work, not a
+camera-rate path. The Python CLI does not expose this setting. See
 :doc:`../how-to/register-large-shifts` for installation and the browser
 implementation's distinct seed policy.
 

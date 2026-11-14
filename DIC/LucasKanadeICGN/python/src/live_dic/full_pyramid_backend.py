@@ -185,11 +185,13 @@ class ICGNWGPUFullPyramid:
 
     ``initialization="wgpu-matching"`` requires the optional
     ``wgpu-matching`` package. It runs CPM-HOG on up to 512 selected coarse-grid
-    centres for each target, then uses those accepted translations to seed the
-    ordinary pyramid solve. It supports translation and affine local models.
-    This analysis initializer adds a separate matcher device and per-target
-    work; it is not intended for camera-rate streaming. Install instructions
-    and limitations are in the large-shift initialization guide.
+    centres for each target. Translation uses the accepted centre displacement;
+    an affine local model also receives CPM-HOG's fitted displacement gradients
+    at each accepted centre. The ordinary pyramid solve then refines those
+    sparse seeds and transfers them to finer levels. This analysis initializer
+    adds a separate matcher device and per-target work; it is not intended for
+    camera-rate streaming. Install instructions and limitations are in the
+    large-shift initialization guide.
 
     ``device_type`` accepts ``"auto"``, ``"gpu"``, or ``"cpu"`` with the same
     initialization-time policy as :class:`ICGNWGPU`. All pyramid levels and
@@ -1292,12 +1294,17 @@ class ICGNWGPUFullPyramid:
                 initialization="fourier", fourierWindow=None if fourier is None else fourier.window
             )
         elif self.initialization == "wgpu-matching":
+            seed_model = "local-affine" if self.motion_model == "affine" else "translation"
             self._root._pyramid_config.update(
                 initialization="wgpu-matching",
                 matchingAlgorithm="CPM-HOG",
                 matchingOptions=self._matching_options,
                 matchingSeedLimit=512,
                 matchingSeedExpansion="accepted-coarse-points-only",
+                matchingSeedModel=seed_model,
+                matchingHigherOrderSeedTerms=(
+                    "local-affine-fit" if self.motion_model == "affine" else "zero"
+                ),
             )
 
         first_slot = self._create_full_slot(0)
@@ -1611,18 +1618,55 @@ class ICGNWGPUFullPyramid:
                 "WGPU-Matching returned a different number of seed results than requested"
             )
 
+        match_diagnostics = None
+        if self.motion_model == "affine":
+            metadata = getattr(field, "metadata", None)
+            match_diagnostics = (
+                metadata.get("match_diagnostics") if isinstance(metadata, Mapping) else None
+            )
+            if not isinstance(match_diagnostics, (list, tuple)) or len(match_diagnostics) != len(
+                field.matches
+            ):
+                raise ICGNError(
+                    "WGPU-Matching did not return per-seed affine diagnostics required "
+                    "for affine initialization"
+                )
+
         seed_state = slot.initial_seed
         if seed_state is None:
             raise RuntimeError("WGPU-Matching seed storage was not allocated")
         seed_state.fill(0)
         active = np.zeros(count, dtype=np.uint32)
         usable_count = 0
-        for index, match in zip(seed_indices, field.matches, strict=True):
+        for match_index, (index, match) in enumerate(zip(seed_indices, field.matches, strict=True)):
             if not match.usable or not np.isfinite((match.dx, match.dy)).all():
                 continue
+            if self.motion_model == "affine":
+                diagnostic = match_diagnostics[match_index]
+                affine_parameters = (
+                    diagnostic.get("affine_parameters") if isinstance(diagnostic, Mapping) else None
+                )
+                try:
+                    coefficients = np.asarray(affine_parameters, dtype=np.float64)
+                except (TypeError, ValueError) as error:
+                    raise ICGNError(
+                        "WGPU-Matching returned invalid affine parameters for a usable seed"
+                    ) from error
+                if coefficients.shape != (6,) or not np.isfinite(coefficients).all():
+                    raise ICGNError(
+                        "WGPU-Matching returned invalid affine parameters for a usable seed"
+                    )
+                seed_x, seed_y = seed_points[match_index]
+                seed_state[index, 0] = (coefficients[0] - seed_x) / scale
+                seed_state[index, 1] = coefficients[1] - 1.0
+                seed_state[index, 2] = coefficients[2]
+                seed_state[index, 3] = (coefficients[3] - seed_y) / scale
+                seed_state[index, 4] = coefficients[4]
+                seed_state[index, 5] = coefficients[5] - 1.0
+            else:
+                seed_state[index, 0] = float(match.dx) / scale
+                seed_state[index, 3] = float(match.dy) / scale
             active[index] = 1
-            seed_state[index, 0] = float(match.dx) / scale
-            seed_state[index, 3] = float(match.dy) / scale
             usable_count += 1
         if not usable_count:
             raise ICGNError(
@@ -1639,7 +1683,10 @@ class ICGNWGPUFullPyramid:
             "coarseGrid": [coarse.grid_width, coarse.grid_height],
             "coarseScale": scale,
             "seedExpansion": "accepted-coarse-points-only",
-            "higherOrderSeedTerms": "zero",
+            "seedModel": "local-affine" if self.motion_model == "affine" else "translation",
+            "higherOrderSeedTerms": (
+                "local-affine-fit" if self.motion_model == "affine" else "zero"
+            ),
             "device": self._matching.device_name,
         }
 

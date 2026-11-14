@@ -63,12 +63,17 @@ in the native full-pyramid API just like ``fourier`` or ``temporal``:
        print(result.config["wgpuMatching"])
 
 The matcher runs CPM-HOG on up to 512 evenly spaced, reference-valid coarse
-subset centres. Only usable CPM translations become active coarse-level seeds;
-the existing IC-GN pyramid solves those subsets and propagates their estimates
-to finer levels. Affine local solving remains available, but the matcher seeds
-translation at each centre and initializes higher-order terms to zero. At least
-two pyramid levels are required. If no usable match is found, registration
-raises an error rather than silently switching to zero initialization.
+subset centres. Only usable local affine fits become active coarse-level seeds.
+With ``motion_model="translation"``, live-dic uses each fit's centre
+displacement and leaves affine terms at zero. With ``motion_model="affine"``,
+it also transfers the fit's four displacement gradients into the affine seed:
+``du/dx = dx'/dx - 1``, ``du/dy = dx'/dy``, ``dv/dx = dy'/dx`` and
+``dv/dy = dy'/dy - 1``. Centre displacements are converted to coarse-level
+pixels; gradients are dimensionless and are kept unchanged. The IC-GN pyramid
+then solves those subsets and transfers the resulting states to finer levels.
+At least two pyramid levels are required. If no usable fit is found,
+registration raises an error rather than silently switching to zero
+initialization.
 
 ``matching_options`` optionally accepts CPM option names as a mapping, for
 example to tune search radius or matching support. live-dic supplies the seed

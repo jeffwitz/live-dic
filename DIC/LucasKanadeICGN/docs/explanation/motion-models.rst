@@ -169,9 +169,13 @@ See :doc:`../how-to/register-large-shifts` for the current support limits.
 
 The native Python ``ICGNWGPUFullPyramid`` API has an optional
 ``initialization="wgpu-matching"`` mode as well. It uses up to 512 accepted
-coarse-grid CPM translations as sparse pyramid seeds; it does not fit the
-browser's single global affine consensus. The ordinary translation or affine
-IC-GN model remains responsible for the final local field.
+coarse-grid CPM local fits as sparse pyramid seeds; it does not fit the
+browser's single global affine consensus. A translation solve receives only
+the fitted displacement at each seed centre. An affine solve also receives the
+four displacement gradients from that local fit, converted from target-map
+derivatives by subtracting the identity terms from the diagonal. The ordinary
+translation or affine IC-GN model remains responsible for the final local
+field.
 
 In the browser workbench, enable **Use custom settings** and choose **Motion
 model: Translation** to request translation-only local solves. Then select
