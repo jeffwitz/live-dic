@@ -71,7 +71,8 @@ export function createSession(send) {
     await Promise.all([...outstanding]);
     renderer?.destroy(); referenceTexture?.destroy(); engine?.destroy();
     const width = frame.displayWidth ?? frame.width, height = frame.displayHeight ?? frame.height;
-    const { profile: profileName, supervision: requestedSupervision, webInitializer, ...engineOptions } = options;
+    const { profile: profileName, supervision: requestedSupervision, webInitializer,
+      wgpuMatchingSeedModel, ...engineOptions } = options;
     supervision = selectedSupervision; supervisionConfigured = requestedSupervision !== undefined;
     lastDrawnAt = -Infinity; lastPresentation = null; lastResultId = null; lastWorkerArrivalEpochMs = null;
     presentationStats = {draws:0,bitmaps:0,drawWallMs:0,bitmapWallMs:0};
@@ -82,6 +83,7 @@ export function createSession(send) {
     mask = roiMask; profile = options.profile ?? 'portable';
     referenceSourceKind = sourceKind;
     activeOptions = structuredClone(options);
+    if (webInitializer === 'cpm') activeOptions.wgpuMatchingSeedModel = wgpuMatchingSeedModel ?? 'global';
     analysisEpoch = crypto.randomUUID();
     const info = await engine.setReference(frame, { roiMask: mask, roiPolicy: options.roiPolicy ?? 'full' });
     referenceAdmissible = [...info.referenceValid].reduce((n,v,i)=>n+ +(v && (!info.roiSelected || info.roiSelected[i])),0);
@@ -177,7 +179,8 @@ export function createSession(send) {
                   currentMatchingPixels, { width: engine.reference.width, height: engine.reference.height,
                     grid: engine.reference.grid, subsetSize: engine.reference.subsetSize,
                     subsetStride: engine.reference.subsetStride, roiSelected: engine.reference.roiSelected,
-                    roiMask: mask, onProgress: text => {
+                    roiMask: mask, seedModel: activeOptions.wgpuMatchingSeedModel ?? 'global',
+                    seedGrid: engine.reference.matchingSeedGrid, onProgress: text => {
                       if (text !== lastProgress || performance.now() - lastProgressAt >= 250) {
                         lastProgress = text; lastProgressAt = performance.now();
                         send({ type: 'initializer-progress', message: text });

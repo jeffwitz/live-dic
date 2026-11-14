@@ -1126,6 +1126,14 @@ export function createPyramidHost(options = {}) {
       config: { ...configuration },
       roiSelected: roiPlans[0]?.selected ?? null,
       referenceValid: levels[0].referenceValid,
+      ...(configuration.initialization === 'wgpu-matching' ? {
+        matchingSeedGrid: {
+          grid: [levels.at(-1).gridWidth, levels.at(-1).gridHeight],
+          scale: 2 ** levels.at(-1).index,
+          roiSelected: levels.at(-1).roi?.selected ?? null,
+          referenceValid: levels.at(-1).referenceValid,
+        },
+      } : {}),
       device: (await info()).device,
     };
   };
@@ -1145,11 +1153,22 @@ export function createPyramidHost(options = {}) {
     if(slot.globalAffineEstimate){
       const estimate=slot.globalAffineEstimate;
       const external = configuration.initialization === 'wgpu-matching';
-      const key = external ? 'externalAffineEstimate' : 'globalAffineEstimate';
-      result.config={...result.config,[key]:{dx:estimate.dx,dy:estimate.dy,linear:estimate.linear,
-        score:estimate.score,overlap:estimate.overlap,sampleCount:estimate.sampleCount,levels:estimate.levels,
-        diagnostics:estimate.diagnostics}};
-      result.timing[external ? 'affineSeedUploadWallMs' : 'globalAffineWallMs']=estimate.wallMs;
+      if (external && estimate.seedMode === 'local-affine') {
+        result.config = { ...result.config, wgpuMatchingSeedInitialization: {
+          mode: estimate.seedMode,
+          requestedSeeds: estimate.requestedSeeds,
+          usableSeeds: estimate.usableSeeds,
+          levels: estimate.levels,
+          diagnostics: estimate.diagnostics,
+        } };
+        result.timing.localAffineSeedPreparationWallMs = estimate.wallMs;
+      } else {
+        const key = external ? 'externalAffineEstimate' : 'globalAffineEstimate';
+        result.config={...result.config,[key]:{dx:estimate.dx,dy:estimate.dy,linear:estimate.linear,
+          score:estimate.score,overlap:estimate.overlap,sampleCount:estimate.sampleCount,levels:estimate.levels,
+          diagnostics:estimate.diagnostics}};
+        result.timing[external ? 'affineSeedUploadWallMs' : 'globalAffineWallMs']=estimate.wallMs;
+      }
     }
     return result;
   };
@@ -1168,8 +1187,71 @@ export function createPyramidHost(options = {}) {
     slot.fourierEstimate=estimate;
   };
 
+  const prepareLocalAffineSeeds = (slot, estimate) => {
+    if (!Array.isArray(estimate.seeds)) {
+      throw new Error('Local WGPU-Matching initialization requires a list of affine seed fits');
+    }
+    const started = performance.now();
+    const coarse = slot.levels.at(-1);
+    const scale = 2 ** coarse.index;
+    const stateStride = configuration.motionModel === 'quadratic' ? 16 : 8;
+    const seedState = slot.globalAffineSeed;
+    if (!seedState) throw new Error('Local WGPU-Matching seed storage was not prepared');
+    seedState.fill(0);
+    const active = new Uint32Array(coarse.gridCount);
+    let usableSeeds = 0;
+    for (const seed of estimate.seeds) {
+      const index = seed.gridIndex;
+      if (!Number.isInteger(index) || index < 0 || index >= coarse.gridCount) {
+        throw new Error('Local WGPU-Matching seed has an invalid coarse-grid index');
+      }
+      if (coarse.roi && !coarse.roi.selected[index]) continue;
+      if (!coarse.referenceValid[index]) continue;
+      const parameters = seed.parameters;
+      if (!Array.isArray(parameters) || parameters.length !== 6
+          || !parameters.every(Number.isFinite) || !Number.isFinite(seed.x) || !Number.isFinite(seed.y)) {
+        throw new Error('Local WGPU-Matching seed must provide finite affine parameters and coordinates');
+      }
+      const gridX = index % coarse.gridWidth;
+      const gridY = Math.floor(index / coarse.gridWidth);
+      const coarseX = gridX * SUBSET_STRIDE + (SUBSET_SIZE - 1) * 0.5;
+      const coarseY = gridY * SUBSET_STRIDE + (SUBSET_SIZE - 1) * 0.5;
+      const fullX = coarseX * scale + (scale - 1) * 0.5;
+      const fullY = coarseY * scale + (scale - 1) * 0.5;
+      if (Math.abs(seed.x - fullX) > 1e-3 || Math.abs(seed.y - fullY) > 1e-3) {
+        throw new Error('Local WGPU-Matching seed coordinates do not match its coarse-grid subset');
+      }
+      const offset = index * stateStride;
+      seedState[offset] = (parameters[0] - seed.x) / scale;
+      seedState[offset + 3] = (parameters[3] - seed.y) / scale;
+      if (configuration.motionModel !== 'translation') {
+        seedState[offset + 1] = parameters[1] - 1;
+        seedState[offset + 2] = parameters[2];
+        seedState[offset + 4] = parameters[4];
+        seedState[offset + 5] = parameters[5] - 1;
+      }
+      active[index] = 1;
+      usableSeeds++;
+    }
+    if (!usableSeeds) throw new Error('WGPU-Matching produced no usable local affine seeds');
+    device.queue.writeBuffer(coarse.buffers.seedState, 0, seedState);
+    device.queue.writeBuffer(coarse.buffers.activeMask, 0, active);
+    slot.globalAffineEstimate = {
+      seedMode: 'local-affine',
+      requestedSeeds: estimate.requestedSeeds,
+      usableSeeds,
+      levels: estimate.levels,
+      diagnostics: estimate.diagnostics,
+      wallMs: performance.now() - started,
+    };
+  };
+
   const prepareGlobalAffine = async (slot, pixels, suppliedEstimate = null) => {
     if (roiPlans[0]?.count === 0) return;
+    if (suppliedEstimate?.seedMode === 'local-affine') {
+      prepareLocalAffineSeeds(slot, suppliedEstimate);
+      return;
+    }
     if (!globalAffine && suppliedEstimate === null) {
       throw new Error('WGPU-Matching registration requires an external affine estimate');
     }

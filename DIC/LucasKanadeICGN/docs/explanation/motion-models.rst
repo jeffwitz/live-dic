@@ -156,26 +156,28 @@ mode without an ROI mask, it fills the six affine coefficients and starts all
 six curvature coefficients at zero; the local solve can then estimate
 curvature from each subset.
 
-The Analysis workbench also has a separate experimental **WGPU-Matching ·
-CPM-HOG** bootstrap. It computes reciprocal local patch correspondences on the
-GPU, robustly fits a single affine transform to their displacements, and hands
-that transform to the same pyramid seed transfer. It does not replace the
-local solve: Translation still estimates only two parameters, and Affine still
-estimates its six local parameters. The matcher and IC-GN acceptance are
-separate stages, so correspondence diagnostics and accepted DIC windows must
-be read separately. This workbench option is limited to decoded image pairs;
-it is not a camera initializer or a qualified accuracy/performance profile.
-See :doc:`../how-to/register-large-shifts` for the current support limits.
+The Analysis workbench also has an experimental **WGPU-Matching · CPM-HOG**
+bootstrap with two seed strategies. **Global affine consensus** robustly fits
+one affine transform to reciprocal GPU patch matches and evaluates it at each
+coarse subset centre. **Local affine fits** uses CPM-HOG's affine fit at each
+accepted coarse-grid seed, then lets the pyramid transfer those sparse states
+to finer levels. Translation receives only each seed's centre displacement;
+Affine and Quadratic also receive its four fitted displacement gradients. The
+quadratic curvature terms start at zero. Neither strategy replaces the local
+IC-GN solve. Matcher diagnostics and accepted DIC windows
+describe separate stages and should be read separately. This workbench option
+is limited to decoded image pairs; it is not a camera initializer or a
+qualified accuracy/performance profile. See
+:doc:`../how-to/register-large-shifts` for the current support limits.
 
 The native Python ``ICGNWGPUFullPyramid`` API has an optional
 ``initialization="wgpu-matching"`` mode as well. It uses up to 512 accepted
-coarse-grid CPM local fits as sparse pyramid seeds; it does not fit the
-browser's single global affine consensus. A translation solve receives only
-the fitted displacement at each seed centre. An affine solve also receives the
-four displacement gradients from that local fit, converted from target-map
-derivatives by subtracting the identity terms from the diagonal. The ordinary
-translation or affine IC-GN model remains responsible for the final local
-field.
+coarse-grid CPM matches as sparse pyramid seeds; it does not fit the browser's
+global affine consensus. Translation and Quadratic receive only the fitted
+centre displacement. Affine also receives the four displacement gradients,
+converted from target-map derivatives by subtracting the identity terms from
+the diagonal. Higher-order terms start at zero. The ordinary local IC-GN model
+remains responsible for the final field.
 
 In the browser workbench, enable **Use custom settings** and choose **Motion
 model: Translation** to request translation-only local solves. Then select

@@ -906,10 +906,12 @@ $('large-shift-preset').onclick = () => {
   $('temporal-start').checked=false;$('fourier-start').checked=false;$('global-affine-start').checked=false;$('wgpu-matching-start').checked=false;
   $('custom-solver').onchange();
 };
-for (const id of ['fourier-start','global-affine-start','wgpu-matching-start','global-affine-levels','overlap-pipeline','gpu-reference-preparation','custom-solver','motion-model','subset-size','subset-stride','interpolation','spatial-propagation','pyramid-levels','coarse-iterations','fine-iterations','outlier-policy','temporal-start','roi-policy']) $(id).onchange = () => {
+for (const id of ['fourier-start','global-affine-start','wgpu-matching-start','global-affine-levels','wgpu-matching-seed-model','overlap-pipeline','gpu-reference-preparation','custom-solver','motion-model','subset-size','subset-stride','interpolation','spatial-propagation','pyramid-levels','coarse-iterations','fine-iterations','outlier-policy','temporal-start','roi-policy']) $(id).onchange = () => {
   $('solver-settings').disabled = !$('custom-solver').checked;
   $('temporal-start').disabled = !$('custom-solver').checked;
   $('global-affine-levels').disabled = !$('global-affine-start').checked;
+  $('wgpu-matching-seed-model-control').hidden = !$('wgpu-matching-start').checked;
+  $('wgpu-matching-seed-model-hint').hidden = !$('wgpu-matching-start').checked;
   $('subset-stride').max = $('subset-size').value;
   if (Number($('subset-stride').value) > Number($('subset-size').value)) $('subset-stride').value = $('subset-size').value;
   invalidatePreparedReference();

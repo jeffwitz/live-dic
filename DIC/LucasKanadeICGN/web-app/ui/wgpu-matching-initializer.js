@@ -10,17 +10,22 @@ export async function readMatchingPixels(engine, source) {
   return engine.inputs[0].referencePixels(source);
 }
 
-function selectedSeeds({ width, height, grid, subsetSize, subsetStride, roiSelected, roiMask, matchingSupport }) {
-  const [gridWidth, gridHeight] = grid;
+function selectedSeeds({ width, height, grid, subsetSize, subsetStride, roiSelected, roiMask,
+  matchingSupport, seedGrid = null }) {
+  const [gridWidth, gridHeight] = seedGrid?.grid ?? grid;
+  const selected = seedGrid?.roiSelected ?? roiSelected;
+  const referenceValid = seedGrid?.referenceValid ?? null;
+  const scale = seedGrid?.scale ?? 1;
   const candidates = [];
   const half = (matchingSupport - 1) * 0.5;
   for (let index = 0; index < gridWidth * gridHeight; index++) {
-    if (roiSelected && !roiSelected[index]) continue;
+    if (selected && !selected[index]) continue;
+    if (referenceValid && !referenceValid[index]) continue;
     const gx = index % gridWidth, gy = Math.floor(index / gridWidth);
-    const x = gx * subsetStride + (subsetSize - 1) * 0.5;
-    const y = gy * subsetStride + (subsetSize - 1) * 0.5;
+    const x = (gx * subsetStride + (subsetSize - 1) * 0.5) * scale + (scale - 1) * 0.5;
+    const y = (gy * subsetStride + (subsetSize - 1) * 0.5) * scale + (scale - 1) * 0.5;
     if (x < half || y < half || x > width - 1 - half || y > height - 1 - half) continue;
-    candidates.push({ x, y });
+    candidates.push({ x, y, gridIndex: index });
   }
   if (!candidates.length) throw new Error('WGPU-Matching found no seed centres inside the selected ROI');
   const validSupport = ({ x, y }) => {
@@ -152,21 +157,83 @@ function fitRobustAffine(matches, width, height) {
 }
 
 export async function initializeWithWgpuMatching(engine, referencePixels, targetPixels,
-  { width, height, grid, subsetSize, subsetStride, roiSelected, roiMask, onProgress = () => {} }) {
+  { width, height, grid, subsetSize, subsetStride, roiSelected, roiMask, seedModel = 'global',
+    seedGrid = null, onProgress = () => {} }) {
   const matchingSupportPx = 32;
+  if (!['global', 'local'].includes(seedModel)) {
+    throw new Error('WGPU-Matching seed strategy must be global or local');
+  }
+  if (seedModel === 'local' && (!seedGrid || !Array.isArray(seedGrid.grid)
+      || seedGrid.grid.length !== 2 || !Number.isInteger(seedGrid.scale) || seedGrid.scale < 1)) {
+    throw new Error('Local WGPU-Matching requires the prepared coarse-grid geometry');
+  }
   const seeds = selectedSeeds({ width, height, grid, subsetSize, subsetStride,
-    roiSelected, roiMask, matchingSupportPx });
+    roiSelected, roiMask, matchingSupport: matchingSupportPx,
+    ...(seedModel === 'local' ? { seedGrid } : {}) });
   if (seeds.length < MIN_INLIERS) {
     throw new Error(`WGPU-Matching needs at least ${MIN_INLIERS} spatially distributed seed centres; found ${seeds.length}`);
   }
   const result = await computeCPM(engine.device, referencePixels, targetPixels, width, height, {
-    seedPoints: seeds,
+    seedPoints: seeds.map(({ x, y }) => ({ x, y })),
     patchSize: matchingSupportPx,
     cpmMatchingPatchSizePx: matchingSupportPx,
   }, onProgress);
+  if (seedModel === 'local') {
+    if (!Array.isArray(result.matches) || result.matches.length !== seeds.length) {
+      throw new Error('WGPU-Matching returned a different number of local fits than requested');
+    }
+    const localSeeds = [];
+    let fitRmseSum = 0, fitRmseCount = 0;
+    for (let index = 0; index < seeds.length; index++) {
+      const match = result.matches[index];
+      if (!match.usable) continue;
+      const parameters = match.localAffine?.parameters;
+      if (!Array.isArray(parameters) || parameters.length !== 6 || !parameters.every(Number.isFinite)) {
+        throw new Error('WGPU-Matching returned an invalid local affine fit for a usable seed');
+      }
+      localSeeds.push({
+        gridIndex: seeds[index].gridIndex,
+        x: seeds[index].x,
+        y: seeds[index].y,
+        parameters,
+      });
+      if (Number.isFinite(match.affineFitRmsePx)) {
+        fitRmseSum += match.affineFitRmsePx;
+        fitRmseCount++;
+      }
+    }
+    if (localSeeds.length < MIN_INLIERS) {
+      throw new Error(`WGPU-Matching returned only ${localSeeds.length} usable local affine seeds; at least ${MIN_INLIERS} are required`);
+    }
+    return {
+      seedMode: 'local-affine',
+      seeds: localSeeds,
+      requestedSeeds: seeds.length,
+      usableSeeds: localSeeds.length,
+      levels: result.levels,
+      diagnostics: {
+        algorithm: 'CPM-HOG WebGPU local affine fits',
+        matchingAlgorithm: result.algorithm,
+        seedMode: 'local-affine',
+        requestedSeeds: seeds.length,
+        usableSeeds: localSeeds.length,
+        meanAffineFitRmsePx: fitRmseCount ? fitRmseSum / fitRmseCount : null,
+        matchingLevels: result.levels,
+        matchingSupportPx: result.matchingSupportPx,
+        affineRadiusPx: result.affineRadiusPx,
+        workGridStridePx: result.workGridStridePx,
+        workGridUsableCount: result.workGridUsableCount,
+        matchingMs: result.matchingMs,
+        descriptorMs: result.descriptorMs,
+        pyramidMs: result.pyramidMs,
+      },
+    };
+  }
   const estimate = fitRobustAffine(result.matches, width, height);
+  estimate.seedMode = 'global-affine';
   estimate.levels = result.levels;
   estimate.diagnostics = { ...estimate.diagnostics, matchingAlgorithm: result.algorithm,
+    seedMode: 'global-affine',
     matchingLevels: result.levels, matchingSupportPx, workGridStridePx: result.workGridStridePx,
     workGridUsableCount: result.workGridUsableCount, matchingMs: result.matchingMs,
     descriptorMs: result.descriptorMs, pyramidMs: result.pyramidMs };

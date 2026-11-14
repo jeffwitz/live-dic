@@ -40,8 +40,11 @@ For an application that provides its own affine bootstrap, call
 ``initialAffineEstimate = { dx, dy, linear: [du/dx, du/dy, dv/dx, dv/dy] }``.
 The translation is evaluated at the full-image centre; the four linear terms
 are displacement derivatives relative to identity. All six numbers must be
-finite. This is the low-level seed interface used by the browser workbench's
-experimental WGPU-Matching option. It requires
+finite. This is the low-level seed interface for a single externally fitted
+affine transform, including the browser workbench's **Global affine consensus**
+WGPU-Matching strategy. The workbench's **Local affine fits** strategy instead
+uses a per-coarse-subset seed payload; that payload is not part of the
+documented public JavaScript API. Both workbench strategies require
 ``initialization: 'wgpu-matching'`` and CPU reference preparation. It does not
 run a matcher itself.
 

@@ -188,19 +188,30 @@ WGPU-Matching in the browser Analysis workspace
 
 The browser workbench also offers **WGPU-Matching · CPM-HOG (experimental)**
 in the Analysis/Solve initialization group. This option is separate from the
-local motion model: it estimates one global affine seed from sparse reciprocal
-GPU patch matches, then runs the normal live-dic IC-GN solver with the selected
-Translation or Affine model. The local correlation and rejection criteria
-remain active. A successful matcher fit is not itself a DIC result.
+local motion model. The **CPM-HOG affine seed strategy** selector offers two
+ways to turn sparse reciprocal GPU patch matches into pyramid seeds:
 
-The current browser adapter uses CPM-HOG on up to 512 evenly distributed
-subset centres selected inside the reference ROI. It fits the accepted
-displacements with a deterministic affine consensus and requires at least 12
-usable inliers. If the matcher or consensus is insufficient, the pair reports
-an error; it does not silently fall back to zero initialization. Each requested
+* **Global affine consensus** (the default) robustly fits one affine map to
+  the accepted matches, evaluates it at every coarse subset centre, and runs
+  the normal IC-GN solve.
+* **Local affine fits** uses CPM-HOG's independent local affine fit at each
+  accepted coarse-grid seed. Only those accepted coarse subsets are solved at
+  the coarsest level; live-dic then transfers the resulting states to finer
+  levels. Translation uses each seed's centre displacement. Affine and
+  Quadratic also use the four local displacement gradients; Quadratic starts
+  with zero curvature terms.
+
+Both strategies keep the selected Translation, Affine or Quadratic model and
+the normal live-dic correlation and rejection criteria. A successful matcher
+fit is not itself a DIC result.
+
+Both strategies use up to 512 evenly distributed seed centres selected inside
+the reference ROI and require at least 12 usable fits or consensus inliers. If
+the matcher or selected strategy is insufficient, the pair reports an error;
+it does not silently fall back to zero initialization. Each requested
 32-pixel seed support must fit inside the image and the selected ROI. This can
-leave too few seeds for a narrow ROI. The CPM descriptor and local affine fit
-are still computed over the full image; pixels outside the ROI near a selected
+leave too few seeds for a narrow ROI. CPM descriptors and local affine fits
+still use full-frame matching context; pixels outside the ROI near a selected
 seed can influence its match. The ROI therefore constrains seed selection but
 does not provide strict photometric isolation for this initializer.
 
@@ -209,16 +220,18 @@ It is not available for a camera stream and requires CPU reference preparation.
 Matcher output is read back as grayscale bytes, and CPM builds temporary GPU
 descriptor and matching resources for each pair. Expect additional latency;
 no real-time performance or general accuracy qualification is claimed yet.
-Diagnostics record the requested/usable match counts, affine inlier count,
-fit residual, matcher pyramid and timing. The usual DIC acceptance counts
-remain the authority for whether local measurements were accepted.
+Diagnostics record the chosen seed strategy, requested and usable seed counts,
+fit residuals or global consensus inliers, matcher pyramid and timing. The
+usual DIC acceptance counts remain the authority for whether local
+measurements were accepted.
 
 The browser ships a small local source snapshot under
 ``web-app/vendor/wgpu-matching/`` so GitHub Pages and offline use require no
 CDN or Python package installation. The snapshot revision and included files
 are recorded in ``PROVENANCE.md``. It is independent of the optional Python
-package and uses a browser-specific global affine consensus; do not assume its
-seed construction or qualification is identical to the native Python API.
+package and offers global consensus and local affine seed strategies; do not
+assume its seed construction or qualification is identical to the native Python
+API.
 
 Recover rejected coarse subsets with median seeds
 --------------------------------------------------

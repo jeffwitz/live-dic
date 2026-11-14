@@ -113,7 +113,10 @@ export function solverOptions(mode = document.body?.dataset.workspaceMode ?? 'an
   if (globalAffine) Object.assign(base,{initialization:'global-affine',globalAffineLevels:Number(get('global-affine-levels')?.value??5),temporalPrediction:'none',temporalFineCorrection:false,divergencePatience:null});
   if (wgpuMatching) {
     if (base.referencePreparation === 'gpu') throw new Error('WGPU-Matching initialization requires CPU reference preparation');
+    const seedModel = get('wgpu-matching-seed-model')?.value ?? 'global';
+    if (!['global', 'local'].includes(seedModel)) throw new Error('WGPU-Matching seed strategy must be global or local');
     Object.assign(base,{initialization:'wgpu-matching',webInitializer:'cpm',temporalPrediction:'none',temporalFineCorrection:false,divergencePatience:null});
+    base.wgpuMatchingSeedModel = seedModel;
   }
   const customSolver = !!get('custom-solver')?.checked;
   if (fourier || globalAffine || wgpuMatching || customSolver || base.referencePreparation) base.profile = 'custom';

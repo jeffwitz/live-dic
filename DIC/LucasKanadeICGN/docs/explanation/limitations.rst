@@ -103,15 +103,18 @@ ordered inputs and cannot guarantee recovery after discontinuous motion or
 accepted wrong-basin solutions. See :doc:`temporal-initialization`.
 
 The browser Analysis workbench offers experimental WGPU-Matching CPM-HOG
-initialization. It fits one global affine transform from up to 512 reciprocal
-patch matches and requires a minimum robust consensus. The native Python
+initialization with either a global affine consensus or sparse local affine
+fits from up to 512 reciprocal patch matches. The global strategy requires a
+minimum robust consensus; the local strategy requires a minimum number of
+usable fits. The native Python
 ``ICGNWGPUFullPyramid`` API separately offers
 ``initialization="wgpu-matching"`` when the optional ``wgpu-matching`` package
-is installed. That adapter uses up to 512 accepted coarse-grid local affine
-fits as sparse seeds. A translation solve takes only each fit's centre
-displacement; an affine solve also takes its four displacement gradients. It
-then runs the normal coarse-to-fine local solve; it does not fit the browser's
-global affine consensus. Both approaches reject a pair if they cannot obtain
+is installed. That adapter uses up to 512 accepted coarse-grid matches as sparse
+seeds. Translation and Quadratic use each match's centre displacement; Affine
+also uses the local affine fit's four displacement gradients. Higher-order
+terms start at zero. The browser's Local affine fits strategy uses those four
+gradients for both Affine and Quadratic local models. Both paths then run the
+normal coarse-to-fine local solve and reject a pair if they cannot obtain
 usable seeds rather than silently switching initializers.
 
 The browser implementation uses its bundled JavaScript snapshot and does not
